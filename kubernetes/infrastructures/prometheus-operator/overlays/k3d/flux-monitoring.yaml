@@ -1,0 +1,119 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: flux-source-controller
+  namespace: prometheus-operator-system
+  labels:
+    app.kubernetes.io/name: flux-system
+    app.kubernetes.io/component: source-controller
+spec:
+  namespaceSelector:
+    matchNames:
+      - flux-system
+  selector:
+    matchLabels:
+      app: source-controller
+  endpoints:
+    - port: http-prom
+      interval: 30s
+      path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: flux-notification-controller
+  namespace: prometheus-operator-system
+  labels:
+    app.kubernetes.io/name: flux-system
+    app.kubernetes.io/component: notification-controller
+spec:
+  namespaceSelector:
+    matchNames:
+      - flux-system
+  selector:
+    matchLabels:
+      app: notification-controller
+  endpoints:
+    - port: http-prom
+      interval: 30s
+      path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: flux-helm-controller
+  namespace: prometheus-operator-system
+  labels:
+    app.kubernetes.io/name: flux-system
+    app.kubernetes.io/component: helm-controller
+spec:
+  namespaceSelector:
+    matchNames:
+      - flux-system
+  selector:
+    matchLabels:
+      app: helm-controller
+  podMetricsEndpoints:
+    - port: http-prom
+      interval: 30s
+      path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: flux-kustomize-controller
+  namespace: prometheus-operator-system
+  labels:
+    app.kubernetes.io/name: flux-system
+    app.kubernetes.io/component: kustomize-controller
+spec:
+  namespaceSelector:
+    matchNames:
+      - flux-system
+  selector:
+    matchLabels:
+      app: kustomize-controller
+  podMetricsEndpoints:
+    - port: http-prom
+      interval: 30s
+      path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: flux-image-automation-controller
+  namespace: prometheus-operator-system
+  labels:
+    app.kubernetes.io/name: flux-system
+    app.kubernetes.io/component: image-automation-controller
+spec:
+  namespaceSelector:
+    matchNames:
+      - flux-system
+  selector:
+    matchLabels:
+      app: image-automation-controller
+  podMetricsEndpoints:
+    - port: http-prom
+      interval: 30s
+      path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: flux-image-reflector-controller
+  namespace: prometheus-operator-system
+  labels:
+    app.kubernetes.io/name: flux-system
+    app.kubernetes.io/component: image-reflector-controller
+spec:
+  namespaceSelector:
+    matchNames:
+      - flux-system
+  selector:
+    matchLabels:
+      app: image-reflector-controller
+  podMetricsEndpoints:
+    - port: http-prom
+      interval: 30s
+      path: /metrics

@@ -1,0 +1,120 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: opentelemetry-collector
+  namespace: flux-system
+spec:
+  interval: 30m
+  dependsOn:
+    - name: opentelemetry-operator
+  chart:
+    spec:
+      chart: opentelemetry-collector
+      version: "0.104.0"
+      sourceRef:
+        kind: HelmRepository
+        name: opentelemetry
+        namespace: flux-system
+  targetNamespace: opentelemetry-system
+  install:
+    createNamespace: true
+  values:
+    mode: deployment
+    image:
+      repository: otel/opentelemetry-collector-contrib
+      tag: 0.104.0
+    serviceMonitor:
+      enabled: true
+    prometheusRule:
+      enabled: true
+    config:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+            http:
+              endpoint: 0.0.0.0:4318
+        prometheus:
+          config:
+            scrape_configs:
+              - job_name: 'otel-collector'
+                scrape_interval: 10s
+                static_configs:
+                  - targets: ['0.0.0.0:8888']
+        prometheus/internal:
+          config:
+            scrape_configs:
+              - job_name: 'otel-collector-internal'
+                scrape_interval: 10s
+                static_configs:
+                  - targets: ['0.0.0.0:8888']
+      processors:
+        batch: {}
+        resource:
+          attributes:
+            - key: cluster.name
+              value: kind
+              action: upsert
+        memory_limiter:
+          limit_mib: 400
+      exporters:
+        prometheus:
+          endpoint: "0.0.0.0:8889"
+          send_timestamps: true
+          metric_expiration: 180m
+          enable_open_metrics: true
+        logging:
+          loglevel: debug
+      extensions:
+        health_check:
+          endpoint: "0.0.0.0:13133"
+        pprof:
+          endpoint: 0.0.0.0:1777
+        zpages:
+          endpoint: 0.0.0.0:55679
+      service:
+        extensions: [health_check, pprof, zpages]
+        pipelines:
+          metrics:
+            receivers: [otlp, prometheus]
+            processors: [memory_limiter, resource, batch]
+            exporters: [prometheus, logging]
+          metrics/internal:
+            receivers: [prometheus/internal]
+            processors: [memory_limiter, resource, batch]
+            exporters: [prometheus, logging]
+          traces:
+            receivers: [otlp]
+            processors: [memory_limiter, resource, batch]
+            exporters: [logging]
+    ports:
+      otlp:
+        enabled: true
+        containerPort: 4317
+        servicePort: 4317
+        hostPort: 4317
+        protocol: TCP
+      otlp-http:
+        enabled: true
+        containerPort: 4318
+        servicePort: 4318
+        hostPort: 4318
+        protocol: TCP
+      metrics:
+        enabled: true
+        containerPort: 8888
+        servicePort: 8888
+        protocol: TCP
+      prom-metrics:
+        enabled: true
+        containerPort: 8889
+        servicePort: 8889
+        protocol: TCP
+    resources:
+      limits:
+        cpu: 256m
+        memory: 512Mi
+      requests:
+        cpu: 256m
+        memory: 512Mi

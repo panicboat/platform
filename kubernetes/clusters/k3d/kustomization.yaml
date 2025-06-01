@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - helmrepositories.yaml
+  - infrastructures/gateway-api.yaml
+  - infrastructures/cilium.yaml
+  - infrastructures/prometheus-operator.yaml
+  - infrastructures/opentelemetry.yaml
+  - infrastructures/gitea.yaml
+  - infrastructures/kubernetes.yaml
+  - apps

@@ -1,0 +1,27 @@
+name: Auto-approve Renovate PRs
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    if: github.actor == 'renovate[bot]'
+
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2.0.6
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Auto-approve Renovate PRs
+        uses: hmarr/auto-approve-action@v4
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}

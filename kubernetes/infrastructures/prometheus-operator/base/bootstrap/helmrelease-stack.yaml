@@ -1,0 +1,147 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+  namespace: flux-system
+spec:
+  interval: 30m
+  dependsOn:
+    - name: prometheus-operator-crds
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      version: "65.1.1"
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+        namespace: flux-system
+  targetNamespace: prometheus-operator-system
+  install:
+    createNamespace: true
+  values:
+    crds:
+      enabled: false
+
+    # TODO: Enable if you are concerned about alerts on kind
+    # defaultRules:
+    #   rules:
+    #     etcd: false
+    #     kubeControllerManager: false
+    #     kubeScheduler: false
+    #     kubeProxy: false
+    #     node: false
+    #     nodeExporterAlerting: false
+    #     kubeApiserver: false
+    #     kubernetesApps: true
+    #     kubernetesResources: true
+    #     kubernetesStorage: true
+    #     kubernetesSystem: false
+    #     prometheus: false
+    #     general: false
+    #     alertmanager: true
+
+    prometheus:
+      prometheusSpec:
+        serviceMonitorSelectorNilUsesHelmValues: false
+        serviceMonitorSelector: {}
+        serviceMonitorNamespaceSelector: {}
+        podMonitorSelectorNilUsesHelmValues: false
+        podMonitorSelector: {}
+        podMonitorNamespaceSelector: {}
+        retention: 7d
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: local-path
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 2Gi
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+      service:
+        type: ClusterIP
+        port: 9090
+      # Gateway API経由でアクセス
+      # ingress:
+      #   enabled: false
+
+    alertmanager:
+      alertmanagerSpec:
+        storage:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: local-path
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 1Gi
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+      service:
+        type: ClusterIP
+        port: 9093
+
+    grafana:
+      enabled: true
+      adminPassword: admin
+      service:
+        type: ClusterIP
+        port: 80
+      # Gateway API経由でアクセス
+      # ingress:
+      #   enabled: false
+      persistence:
+        enabled: true
+        storageClassName: local-path
+        size: 1Gi
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+      sidecar:
+        datasources:
+          enabled: true
+          defaultDatasourceEnabled: true
+
+    # TODO: Enable if you are concerned about alerts on kind
+    # kubeControllerManager:
+    #   enabled: false
+    # kubeScheduler:
+    #   enabled: false
+    # kubeEtcd:
+    #   enabled: false
+    # kubeProxy:
+    #   enabled: false
+
+    kubeStateMetrics:
+      enabled: true
+
+    nodeExporter:
+      enabled: true
+
+    prometheusOperator:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
+      admissionWebhooks:
+        enabled: true
+        patch:
+          enabled: true

@@ -1,0 +1,22 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: flux-system
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: http://gitea-gitea-http.gitea.svc.cluster.local:3000/giteaadmin/platform.git
+  ref:
+    branch: main
+  secretRef:
+    name: git-credentials
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: git-credentials
+  namespace: flux-system
+type: Opaque
+data:
+  username: Z2l0ZWFhZG1pbg==  # giteaadmin (base64)
+  password: YWRtaW4xMjM=      # admin123 (base64)
