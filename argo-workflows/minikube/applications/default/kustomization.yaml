@@ -1,0 +1,13 @@
+kind: Kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+namespace: default
+resources:
+  - configmap/artifact-repositories.yaml
+  - role/argo-role.yaml
+  - role/argo-server-role.yaml
+  - role/argo-workflows-default-executor-role.yaml
+  - rolebinding/argo-binding.yaml
+  - rolebinding/argo-server-binding.yaml
+  - rolebinding/argo-workflows-default-executor-binding.yaml
+  - secret/aws-credentials.yaml
+  - serviceaccount/argo-workflows-default-executor.yaml

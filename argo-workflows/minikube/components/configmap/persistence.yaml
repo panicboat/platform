@@ -1,0 +1,12 @@
+archive: true
+postgresql:
+  host: postgres.default.svc.cluster.local
+  port: 5432
+  database: postgres
+  tableName: workflows
+  userNameSecret:
+    name: argo-postgres-secret
+    key: POSTGRES_USER
+  passwordSecret:
+    name: argo-postgres-secret
+    key: POSTGRES_PASSWORD

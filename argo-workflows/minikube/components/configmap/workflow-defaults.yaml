@@ -1,0 +1,117 @@
+metadata:
+  annotations:
+    workflows.argoproj.io/notification: false
+    workflows.argoproj.io/snitch: none
+    workflows.argoproj.io/snitch-token: none
+  labels:
+    workflows.argoproj.io/creator: nobody
+    workflows.argoproj.io/owner: nobody
+    workflows.argoproj.io/name: none
+    workflows.argoproj.io/service: none
+    workflows.argoproj.io/project: none
+spec:
+  podDisruptionBudget:
+    minAvailable: 9999
+  ttlStrategy:
+    secondsAfterCompletion: 30
+  archiveLogs: true
+  podGC:
+    strategy: OnPodCompletion
+  artifactGC:
+    strategy: Never
+  serviceAccountName: argo-workflows-default-executor
+  metrics:
+    prometheus:
+      - name: exec_duration_gauge
+        help: "Duration of execution by name"
+        labels:
+          - key: owner
+            value: "{{ workflow.labels.workflows.argoproj.io/owner }}"
+          - key: service
+            value: "{{ workflow.labels.workflows.argoproj.io/service }}"
+          - key: project
+            value: "{{ workflow.labels.workflows.argoproj.io/project }}"
+          - key: workflow_name
+            value: "{{ workflow.labels.workflows.argoproj.io/name }}"
+          - key: workflow_origin_name
+            value: "{{ workflow.name }}"
+          - key: workflow_uid
+            value: "{{ workflow.uid }}"
+          - key: status
+            value: "{{ workflow.status }}"
+        gauge:
+          value: "{{ workflow.duration }}"
+      - name: exec_status_count
+        help: "Count of execution by status"
+        labels:
+          - key: owner
+            value: "{{ workflow.labels.workflows.argoproj.io/owner }}"
+          - key: service
+            value: "{{ workflow.labels.workflows.argoproj.io/service }}"
+          - key: project
+            value: "{{ workflow.labels.workflows.argoproj.io/project }}"
+          - key: workflow_name
+            value: "{{ workflow.labels.workflows.argoproj.io/name }}"
+          - key: workflow_origin_name
+            value: "{{ workflow.name }}"
+          - key: workflow_uid
+            value: "{{ workflow.uid }}"
+          - key: status
+            value: "{{ workflow.status }}"
+        counter:
+          value: 1
+  templateDefaults:
+    metadata:
+      annotations:
+        karpenter.sh/do-not-disrupt: true
+      labels:
+        workflows.argoproj.io/owner: "{{ workflow.labels.workflows.argoproj.io/owner }}"
+        workflows.argoproj.io/name: "{{ workflow.labels.workflows.argoproj.io/name }}"
+        workflows.argoproj.io/service: "{{ workflow.labels.workflows.argoproj.io/service }}"
+        workflows.argoproj.io/project: "{{ workflow.labels.workflows.argoproj.io/project }}"
+    retryStrategy:
+      limit: "10"
+      backoff:
+        duration: "1"
+        factor: "2"
+      retryPolicy: OnTransientError
+    metrics:
+      prometheus:
+        - name: template_duration_gauge
+          help: "Duration of execution by name"
+          labels:
+            - key: owner
+              value: "{{ workflow.labels.workflows.argoproj.io/owner }}"
+            - key: service
+              value: "{{ workflow.labels.workflows.argoproj.io/service }}"
+            - key: project
+              value: "{{ workflow.labels.workflows.argoproj.io/project }}"
+            - key: workflow_name
+              value: "{{ workflow.labels.workflows.argoproj.io/name }}"
+            - key: workflow_origin_name
+              value: "{{ workflow.name }}"
+            - key: workflow_uid
+              value: "{{ workflow.uid }}"
+            - key: status
+              value: "{{ status }}"
+          gauge:
+            value: "{{ workflow.duration }}"
+        - name: template_status_count
+          help: "Count of step execution by result status"
+          labels:
+            - key: owner
+              value: "{{ workflow.labels.workflows.argoproj.io/owner }}"
+            - key: service
+              value: "{{ workflow.labels.workflows.argoproj.io/service }}"
+            - key: project
+              value: "{{ workflow.labels.workflows.argoproj.io/project }}"
+            - key: workflow_name
+              value: "{{ workflow.labels.workflows.argoproj.io/name }}"
+            - key: workflow_origin_name
+              value: "{{ workflow.name }}"
+            - key: workflow_uid
+              value: "{{ workflow.uid }}"
+            - key: status
+              value: "{{ status }}"
+          counter:
+            value: 1

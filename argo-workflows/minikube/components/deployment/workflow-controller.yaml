@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workflow-controller
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+      - name: workflow-controller
+        args:
+        - --namespaced
+        - --managed-namespace
+        - default
+        env:
+        - name: TRANSIENT_ERROR_PATTERN
+          value: "(OCI runtime create failed)"
