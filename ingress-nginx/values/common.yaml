@@ -1,0 +1,30 @@
+ingress-nginx:
+  controller:
+    image:
+      tag: "v1.8.2"
+
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: false
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 90Mi
+
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 101
+      fsGroup: 101
+
+    config:
+      use-forwarded-headers: "true"
+      compute-full-forwarded-for: "true"
+      proxy-body-size: "10m"
+
+    admissionWebhooks:
+      enabled: true
+
+    defaultBackend:
+      enabled: false
