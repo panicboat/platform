@@ -11,8 +11,8 @@ spec:
     path: ingress-nginx
     helm:
       valueFiles:
-      - ingress-nginx/values/common.yaml
-      - ingress-nginx/values/staging.yaml
+      - values/common.yaml
+      - values/staging.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: ingress-nginx

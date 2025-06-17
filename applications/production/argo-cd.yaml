@@ -11,8 +11,8 @@ spec:
     path: argo-cd
     helm:
       valueFiles:
-      - argo-cd/values/common.yaml
-      - argo-cd/values/production.yaml
+      - values/common.yaml
+      - values/production.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
