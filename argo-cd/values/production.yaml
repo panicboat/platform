@@ -1,0 +1,100 @@
+argo-cd:
+  configs:
+    cm:
+      url: argocd.panicboat.net
+      # oidc.config: |
+      #   name: OIDC
+      #   issuer: https://your-oidc-provider.com
+      #   clientId: argocd
+      #   clientSecret: $oidc.clientSecret
+      #   requestedScopes: ["openid", "profile", "email", "groups"]
+      #   requestedIDTokenClaims: {"groups": {"essential": true}}
+
+  controller:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: argocd-application-controller
+            topologyKey: kubernetes.io/hostname
+
+  server:
+    replicas: 3
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 384Mi
+
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: argocd-server
+            topologyKey: kubernetes.io/hostname
+
+    ingress:
+      annotations:
+        nginx.ingress.kubernetes.io/ssl-redirect: "true"
+        nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+        nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+        nginx.ingress.kubernetes.io/grpc-backend: "true"
+        service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:region:account:certificate/prod-cert"
+        service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
+        nginx.ingress.kubernetes.io/configuration-snippet: |
+          more_set_headers "X-Frame-Options: DENY";
+          more_set_headers "X-Content-Type-Options: nosniff";
+          more_set_headers "X-XSS-Protection: 1; mode=block";
+      hosts:
+        - argocd.panicboat.net
+      tls:
+        - secretName: argocd-server-tls-prod
+          hosts:
+            - argocd.panicboat.net
+
+  repoServer:
+    replicas: 3
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 384Mi
+
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: argocd-repo-server
+            topologyKey: kubernetes.io/hostname
+
+  applicationSet:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 300m
+        memory: 256Mi
