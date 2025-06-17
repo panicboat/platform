@@ -1,0 +1,49 @@
+argo-cd:
+  configs:
+    cm:
+      url: https://argocd.dev.panicboat.net
+
+  controller:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+  server:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+
+    ingress:
+      annotations:
+        nginx.ingress.kubernetes.io/ssl-redirect: "true"
+        nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+        nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+        nginx.ingress.kubernetes.io/grpc-backend: "true"
+        service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:region:account:certificate/dev-cert"
+        service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
+      hosts:
+        - argocd.dev.panicboat.net
+      tls:
+        - secretName: argocd-server-tls-dev
+          hosts:
+            - argocd.dev.panicboat.net
+
+  repoServer:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
