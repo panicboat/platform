@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/panicboat/kubernetes-clusters
-    targetRevision: main
+    targetRevision: panicboat-patch-1
     path: ingress-nginx
     helm:
       valueFiles:
