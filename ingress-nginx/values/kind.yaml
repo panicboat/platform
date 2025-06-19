@@ -19,10 +19,10 @@ ingress-nginx:
     resources:
       requests:
         cpu: 100m
-        memory: 90Mi
+        memory: 128Mi
       limits:
-        cpu: 200m
-        memory: 200Mi
+        cpu: 500m
+        memory: 256Mi
 
     # Logging configuration
     config:
