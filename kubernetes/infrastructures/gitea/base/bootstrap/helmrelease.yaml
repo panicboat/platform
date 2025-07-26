@@ -80,6 +80,10 @@ spec:
         repository:
           DEFAULT_BRANCH: "main"
 
+        packages:
+          ENABLED: true
+          CHUNKED_UPLOAD_PATH: "/tmp/packages"
+
     # リソース制限
     resources:
       limits:
