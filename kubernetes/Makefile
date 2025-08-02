@@ -137,7 +137,7 @@ flux-install: ## Install FluxCD
 	@if kubectl get namespace flux-system >/dev/null 2>&1; then \
 		echo "$(YELLOW)⚠️  Already installed$(NC)"; \
 	else \
-		flux install --namespace=flux-system >/dev/null; \
+		flux install --namespace=flux-system --components-extra=image-reflector-controller,image-automation-controller >/dev/null; \
 		echo "$(GREEN)✅ FluxCD installed$(NC)"; \
 	fi
 	@echo "$(BLUE)⏳ Waiting for FluxCD to be ready...$(NC)"
