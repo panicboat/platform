@@ -1,4 +1,4 @@
-# terragrunt.hcl - Terragrunt configuration for panicboat/generated-manifests repository
+# terragrunt.hcl - Terragrunt configuration for panicboat/platform repository
 
 # Include root configuration
 include "root" {
