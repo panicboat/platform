@@ -1,9 +1,9 @@
-# repo.hcl - Configuration for panicboat/monorepo repository
+# repo.hcl - Configuration for panicboat/platform repository
 
 locals {
   repository_config = {
-    name        = "monorepo"
-    description = "Monorepo for multiple services and infrastructure configurations"
+    name        = "platform"
+    description = "Platform for multiple services and infrastructure configurations"
     visibility  = "public"
 
     # Repository features
