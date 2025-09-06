@@ -1,0 +1,86 @@
+name: 'Auto Label - Label Resolver'
+
+on:
+  pull_request:
+    types: [labeled]
+    branches:
+      - '**'
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy-trigger:
+    name: 'Deployment Trigger'
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.resolver.outputs.targets }}
+      has-targets: ${{ steps.resolver.outputs.has-targets }}
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2.1.1
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Get PR information
+        id: pr-info
+        uses: jwalton/gh-find-current-pr@v1
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          state: all
+        continue-on-error: true
+
+      - name: Label Resolver
+        id: resolver
+        uses: panicboat/deploy-actions/label-resolver@main
+        with:
+          repository: ${{ github.repository }}
+          pr-number: ${{ steps.pr-info.outputs.number }}
+          github-token: ${{ steps.app-token.outputs.token }}
+          config-path: 'workflow-config.yaml'
+
+  deploy-terragrunt:
+    name: 'Deploy Terragrunt (${{ matrix.target.service }}:${{ matrix.target.environment }})'
+    needs: deploy-trigger
+    if: |
+      needs.deploy-trigger.outputs.has-targets == 'true' &&
+      contains(needs.deploy-trigger.outputs.targets, '"stack":"terragrunt"')
+    strategy:
+      matrix:
+        target: ${{ fromJson(needs.deploy-trigger.outputs.targets) }}
+      fail-fast: false
+    uses: ./.github/workflows/reusable--terragrunt-executor.yaml
+    with:
+      service-name: ${{ matrix.target.service }}
+      environment: ${{ matrix.target.environment }}
+      action-type: ${{ matrix.target.stack == 'terragrunt' && (github.event_name == 'pull_request' && 'plan' || 'apply') || '' }}
+      iam-role: ${{ github.event_name == 'pull_request' && matrix.target.iam_role_plan || matrix.target.iam_role_apply }}
+      aws-region: ${{ matrix.target.aws_region }}
+      working-directory: ${{ matrix.target.working_directory }}
+      app-id: ${{ vars.APP_ID }}
+    secrets:
+      private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+  deployment-summary:
+    name: 'Deployment Summary'
+    needs: [deploy-trigger, deploy-terragrunt]
+    if: always() && needs.deploy-trigger.outputs.has-targets == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "📊 Deployment Summary"
+          echo "Event: ${{ github.event_name }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Environment: ${{ needs.deploy-trigger.outputs.target-environment }}"
+          echo "Safety Status: ${{ needs.deploy-trigger.outputs.safety-status }}"
+          echo "Targets: ${{ needs.deploy-trigger.outputs.targets }}"
+          echo "Terragrunt Job Status: ${{ needs.deploy-terragrunt.result }}"
