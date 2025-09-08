@@ -6,11 +6,11 @@ locals {
 
   # GitHub configuration
   github_org  = "panicboat"
-  github_repo = "monorepo"
+  github_repos = ["monorepo","platform"]
 
   # GitHub branches that can assume the role in production (service-specific)
   github_branches = [
-    "production/*"
+    "*"
   ]
 
   # GitHub environments that can assume the role

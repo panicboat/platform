@@ -6,7 +6,7 @@ locals {
 
   # GitHub configuration
   github_org  = "panicboat"
-  github_repo = "monorepo"
+  github_repos = ["monorepo","platform"]
 
   # GitHub branches that can assume the role in develop
   github_branches = [

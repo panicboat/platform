@@ -27,9 +27,9 @@ variable "github_org" {
   type        = string
 }
 
-variable "github_repo" {
-  description = "GitHub repository name"
-  type        = string
+variable "github_repos" {
+  description = "List of GitHub repository names"
+  type        = list(string)
 }
 
 variable "github_branches" {

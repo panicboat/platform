@@ -35,9 +35,9 @@ output "github_org" {
   value       = var.github_org
 }
 
-output "github_repo" {
-  description = "GitHub repository name"
-  value       = var.github_repo
+output "github_repos" {
+  description = "GitHub repository names"
+  value       = var.github_repos
 }
 
 output "allowed_branches" {
