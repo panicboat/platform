@@ -34,24 +34,31 @@ locals {
 
 # Build trust policy conditions for GitHub Actions
 locals {
-  # Base condition for repository
-  repo_condition = "repo:${var.github_org}/${var.github_repo}:*"
+  # Base conditions for repositories
+  repo_conditions = [
+    for repo in var.github_repos :
+    "repo:${var.github_org}/${repo}:*"
+  ]
 
   # Conditions for specific branches
-  branch_conditions = [
-    for branch in var.github_branches :
-    "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/${branch}"
-  ]
+  branch_conditions = flatten([
+    for repo in var.github_repos : [
+      for branch in var.github_branches :
+      "repo:${var.github_org}/${repo}:ref:refs/heads/${branch}"
+    ]
+  ])
 
   # Conditions for specific environments
-  environment_conditions = [
-    for env in var.github_environments :
-    "repo:${var.github_org}/${var.github_repo}:environment:${env}"
-  ]
+  environment_conditions = flatten([
+    for repo in var.github_repos : [
+      for env in var.github_environments :
+      "repo:${var.github_org}/${repo}:environment:${env}"
+    ]
+  ])
 
   # Combine all conditions
   all_conditions = concat(
-    [local.repo_condition],
+    local.repo_conditions,
     local.branch_conditions,
     local.environment_conditions
   )
@@ -85,8 +92,6 @@ resource "aws_iam_role" "github_actions_role" {
 
   tags = merge(var.common_tags, {
     Name        = "${var.project_name}-${var.environment}-github-actions-role"
-    GitHubOrg   = var.github_org
-    GitHubRepo  = var.github_repo
     Purpose     = "github-actions-oidc"
   })
 }

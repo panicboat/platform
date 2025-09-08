@@ -1,0 +1,72 @@
+name: 'Reusable - Terragrunt Executor'
+
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        required: true
+        type: string
+        description: 'Service name for terragrunt execution'
+      environment:
+        required: true
+        type: string
+        description: 'Environment name (develop, staging, production, etc.)'
+      action-type:
+        required: true
+        type: string
+        description: 'Action type: plan or apply'
+      iam-role:
+        required: true
+        type: string
+        description: 'IAM role for plan/apply operations'
+      aws-region:
+        required: true
+        type: string
+        description: 'AWS region'
+      working-directory:
+        required: true
+        type: string
+        description: 'Working directory for terragrunt execution'
+      app-id:
+        required: true
+        type: string
+        description: 'GitHub App ID for authentication'
+    secrets:
+      private-key:
+        required: true
+        description: 'GitHub App private key for authentication'
+
+jobs:
+  execute-terragrunt:
+    name: 'Execute Terragrunt'
+    if: inputs.action-type != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2.1.1
+        with:
+          app-id: ${{ inputs.app-id }}
+          private-key: ${{ secrets.private-key }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Get PR information
+        id: pr-info
+        uses: jwalton/gh-find-current-pr@v1
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          state: all
+        continue-on-error: true
+
+      - name: Execute Terragrunt
+        uses: panicboat/deploy-actions/terragrunt@main
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          service-name: ${{ inputs.service-name }}
+          environment: ${{ inputs.environment }}
+          action-type: ${{ inputs.action-type }}
+          iam-role: ${{ inputs.iam-role }}
+          aws-region: ${{ inputs.aws-region }}
+          working-directory: ${{ inputs.working-directory }}
+          repository: ${{ github.repository }}
+          pr-number: ${{ steps.pr-info.outputs.number }}

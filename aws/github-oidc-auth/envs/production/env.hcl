@@ -1,26 +1,26 @@
-# env.hcl - Staging environment configuration
+# env.hcl - Production environment configuration
 locals {
   # Environment metadata
-  environment = "staging"
+  environment = "production"
   aws_region  = "ap-northeast-1"
 
   # GitHub configuration
   github_org  = "panicboat"
-  github_repo = "monorepo"
+  github_repos = ["monorepo","platform"]
 
-  # GitHub branches that can assume the role in staging
+  # GitHub branches that can assume the role in production (service-specific)
   github_branches = [
-    "staging/*"
+    "*"
   ]
 
   # GitHub environments that can assume the role
   github_environments = [
-    "staging"
+    "production"
   ]
 
-  # Additional IAM policies for staging (if needed)
+  # Additional IAM policies for production (if needed)
   additional_iam_policies = [
-    # Example: Add specific policies for staging environment
+    # Example: Add specific policies for production environment
     # "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
   ]
 
@@ -28,13 +28,14 @@ locals {
   create_oidc_provider = false
   oidc_provider_arn    = "arn:aws:iam::${get_aws_account_id()}:oidc-provider/token.actions.githubusercontent.com"
 
-  # Session duration (2 hours for staging)
-  max_session_duration = 7200
+  # Session duration (4 hours for production)
+  max_session_duration = 14400
 
-  # Staging-specific resource tags
+  # Production-specific resource tags
   additional_tags = {
-    CostCenter = "staging"
+    CostCenter = "production"
     Owner      = "panicboat"
-    Purpose    = "github-actions-staging"
+    Purpose    = "github-actions-production"
+    Critical   = "true"
   }
 }

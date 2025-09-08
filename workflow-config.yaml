@@ -1,0 +1,26 @@
+environments:
+  - environment: develop
+    aws_region: ap-northeast-1
+    iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-develop-github-actions-role
+    iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-develop-github-actions-role
+
+  # - environment: staging
+  #   aws_region: ap-northeast-1
+  #   iam_role_plan: arn:aws:iam::123456789012:role/terragrunt-plan-staging-role
+  #   iam_role_apply: arn:aws:iam::123456789012:role/terragrunt-apply-staging-role
+
+  # - environment: production
+  #   aws_region: ap-northeast-1
+  #   iam_role_plan: arn:aws:iam::123456789012:role/terragrunt-plan-production-role
+  #   iam_role_apply: arn:aws:iam::123456789012:role/terragrunt-apply-production-role
+
+directory_conventions:
+  - root: "aws/{service}"
+    stacks:
+      - name: terragrunt
+        directory: "envs/{environment}"
+
+  - root: "kubernetes/infrastructures/{service}"
+    stacks:
+      - name: kubernetes
+        directory: "kubernetes/overlays/{environment}"
