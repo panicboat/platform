@@ -23,10 +23,8 @@ graph TB
 
         subgraph "Phase 3: Infrastructure"
             HR[HelmRepositories]
-            GITEA[Gitea Git Server]
             PROM[Prometheus Stack]
             OTEL[OpenTelemetry]
-            HR --> GITEA
             HR --> PROM
             HR --> OTEL
         end
@@ -46,7 +44,6 @@ graph TB
     end
 
     CNI -.-> GC
-    HTTP --> GITEA
     HTTP --> PROM
     BROWSER --> LOCALHOST
     LOCALHOST --> GT
@@ -58,7 +55,7 @@ graph TB
 
     class GW,CNI,DNS foundation
     class FLUX gitops
-    class HR,GITEA,PROM,OTEL infra
+    class HR,PROM,OTEL infra
     class GC,GT,HTTP mesh
 ```
 
@@ -80,7 +77,7 @@ make phase2
 - FluxCD コントローラーインストール
 - GitOps基盤構築
 
-### Phase 3: Infrastructure Bootstrap (インフラ自動構築)
+### Phase 3: Infrastructure Bootstrap
 ```bash
 make phase3
 ```
@@ -88,17 +85,9 @@ make phase3
 - 全インフラコンポーネント自動検出・Bootstrap
 - 依存関係自動解決 (CRDs → Applications)
 
-### Phase 4: Gitea Configuration (Git Repository Setup)
+### Phase 4: GitOps Migration
 ```bash
 make phase4
-```
-- Gitea port-forward (http://localhost:3000)
-- 管理者情報表示 (giteaadmin/admin123)
-- リポジトリ作成・Git設定ガイド
-
-### Phase 5: GitOps Migration (完全GitOps移行)
-```bash
-make phase5
 ```
 - Bootstrap → GitOps移行
 - 継続的デプロイメント有効化
@@ -140,7 +129,6 @@ make down            # クラスター完全削除
 ```bash
 make gateway-install # Gateway API CRDs
 make cilium-install  # Cilium Bootstrap
-make gitea-setup     # Gitea port-forward + ガイド
 make status          # クラスター状態確認
 ```
 
@@ -215,6 +203,6 @@ make down && make up        # 高速リセット
 
 ### 本番運用移行
 ```bash
-make phase5                 # Bootstrap → GitOps
+make phase4                 # Bootstrap → GitOps
 # 継続的デプロイメント開始
 ```

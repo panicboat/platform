@@ -6,6 +6,5 @@ resources:
   - infrastructures/cilium.yaml
   - infrastructures/prometheus-operator.yaml
   - infrastructures/opentelemetry.yaml
-  - infrastructures/gitea.yaml
   - infrastructures/kubernetes.yaml
   - apps

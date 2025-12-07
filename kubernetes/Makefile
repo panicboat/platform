@@ -30,16 +30,10 @@ help: ## Show help
 	@echo "- Auto-discovers and installs all infrastructure components"
 	@echo "- Includes: Gitea, Prometheus, OpenTelemetry, etc."
 	@echo ""
-	@echo "$(BLUE)Phase 4: Gitea Configuration & Setup$(NC)"
+	@echo "$(BLUE)Phase 4: GitOps Complete Migration$(NC)"
 	@echo "make phase4        - Complete Phase 4"
-	@echo "- Gitea port-forward and setup guidance"
-	@echo "- Repository creation and Git configuration"
-	@echo ""
-	@echo "$(BLUE)Phase 5: GitOps Complete Migration$(NC)"
-	@echo "make phase5        - Complete Phase 5"
 	@echo ""
 	@echo "$(BLUE)Individual targets:$(NC)"
-	@echo "make gitea-setup     - Start Gitea port-forward and show setup guide"
 	@echo "make gitops-setup    - Setup FluxCD GitOps management"
 	@echo "make gitops-status   - Check GitOps status"
 	@echo "make gitops-enable   - Enable GitOps for all components"
@@ -176,42 +170,9 @@ phase3: ## Complete Phase 3 (Auto-discover and install all infrastructure)
 		echo "$(GREEN)✅ All infrastructure components installed$(NC)"; \
 	fi
 	@echo "$(GREEN)🎉 Phase 3 Complete!$(NC)"
-	@echo "$(BLUE)💡 Ready for Gitea configuration (Phase 4)$(NC)"
+	@echo "$(BLUE)💡 Ready for GitOps configuration (Phase 4)$(NC)"
 
-# Phase 4: Gitea Configuration & Operation Setup
-.PHONY: gitea-setup
-gitea-setup: ## Start Gitea port-forward and show setup instructions
-	@echo "$(BLUE)🔧 Starting Gitea setup...$(NC)"
-	@if ! kubectl get pod -l app.kubernetes.io/name=gitea -n gitea >/dev/null 2>&1; then \
-		echo "$(RED)❌ Gitea not found. Run 'make phase3' first$(NC)"; \
-		exit 1; \
-	fi
-	@echo "$(BLUE)🌐 Starting port-forward to Gitea...$(NC)"
-	@echo "$(YELLOW)💡 Access Gitea at: http://localhost:3000$(NC)"
-	@echo "$(YELLOW)💡 Admin credentials: giteaadmin / admin123$(NC)"
-	@echo ""
-	@echo "$(BLUE)📋 Setup Instructions:$(NC)"
-	@echo "  1. Access http://localhost:3000 in your browser"
-	@echo "  2. Login with giteaadmin / admin123"
-	@echo "  3. Create a new repository named 'platform'"
-	@echo "  4. Run the following commands in this directory:"
-	@echo ""
-	@echo "$(GREEN)git init$(NC)"
-	@echo "$(GREEN)git add .$(NC)"
-	@echo "$(GREEN)git commit -m \"Initial platform setup\"$(NC)"
-	@echo "$(GREEN)git branch -M main$(NC)"
-	@echo "$(GREEN)git remote add gitea http://giteaadmin:admin123@localhost:3000/giteaadmin/platform.git$(NC)"
-	@echo "$(GREEN)git push -u gitea main$(NC)"
-	@echo ""
-	@echo "$(BLUE)Press Ctrl+C to stop port-forward when done$(NC)"
-	@kubectl port-forward -n gitea svc/gitea-gitea-http 3000:3000 &
-
-.PHONY: phase4
-phase4: gitea-setup ## Complete Phase 4 (Gitea Configuration & Setup)
-	@echo "$(GREEN)🎉 Phase 4 Complete!$(NC)"
-	@echo "$(BLUE)🔗 Gitea configured and ready for GitOps$(NC)"
-
-# Phase 5: Application Deployment
+# Phase 4: GitOps Complete Migration
 .PHONY: gitops-setup
 gitops-setup: ## Setup FluxCD GitOps management
 	@echo "$(BLUE)🔧 Setting up FluxCD GitOps...$(NC)"
@@ -231,18 +192,16 @@ gitops-status: ## Check GitOps status
 	@flux get sources git -A || echo "$(YELLOW)No Git sources found$(NC)"
 	@flux get kustomizations -A || echo "$(YELLOW)No Kustomizations found$(NC)"
 
-# Phase 5: GitOps Complete Migration
-.PHONY: phase5
-phase5: gitops-setup gitops-enable gitops-status ## Complete Phase 5 (GitOps Migration)
-	@echo "$(GREEN)🎉 Phase 5 Complete!$(NC)"
+.PHONY: phase4
+phase4: gitops-setup gitops-enable gitops-status ## Complete Phase 4 (GitOps Migration)
+	@echo "$(GREEN)🎉 Phase 4 Complete!$(NC)"
 	@echo "$(BLUE)🔄 Full GitOps management enabled$(NC)"
 	@echo "$(BLUE)💡 All infrastructure now managed by FluxCD from Git repository$(NC)"
 
 .PHONY: up
 up: phase1 phase2 phase3 phase4 ## Complete all phases
 	@echo "$(GREEN)🎉 All phases completed!$(NC)"
-	@echo "$(BLUE)You can now deploy applications using GitOps with FluxCD and Gitea$(NC)"
-	@echo "$(YELLOW)💡 Optional: Run 'make phase5' for complete GitOps migration$(NC)"
+	@echo "$(BLUE)You can now deploy applications using GitOps with FluxCD$(NC)"
 
 .PHONY: down
 down: ## Delete k3d cluster

@@ -4,7 +4,6 @@ resources:
   - ../helmrepositories
   - kubernetes/overlays/k3d
   - gateway-api/overlays/k3d
-  - gitea/overlays/k3d
   - cilium/overlays/k3d
   - prometheus-operator/overlays/k3d
   - opentelemetry/overlays/k3d

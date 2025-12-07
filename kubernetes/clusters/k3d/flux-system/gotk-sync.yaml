@@ -5,18 +5,19 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1m
-  url: http://gitea-gitea-http.gitea.svc.cluster.local:3000/giteaadmin/platform.git
+  url: https://github.com/panicboat/platform.git
   ref:
     branch: main
-  secretRef:
-    name: git-credentials
 ---
-apiVersion: v1
-kind: Secret
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
 metadata:
-  name: git-credentials
+  name: flux-system
   namespace: flux-system
-type: Opaque
-data:
-  username: Z2l0ZWFhZG1pbg==  # giteaadmin (base64)
-  password: YWRtaW4xMjM=      # admin123 (base64)
+spec:
+  interval: 10m0s
+  path: ./kubernetes/clusters/k3d
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
