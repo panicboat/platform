@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m
-  path: ./infrastructures/kubernetes/overlays/k3d
+  path: ./kubernetes/infrastructures/kubernetes/overlays/k3d
   prune: true
   sourceRef:
     kind: GitRepository

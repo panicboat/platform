@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m
-  path: ./infrastructures/opentelemetry/overlays/k3d
+  path: ./kubernetes/infrastructures/opentelemetry/overlays/k3d
   prune: true
   sourceRef:
     kind: GitRepository
