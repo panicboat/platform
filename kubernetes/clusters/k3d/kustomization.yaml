@@ -7,4 +7,4 @@ resources:
   - infrastructures/prometheus-operator.yaml
   - infrastructures/opentelemetry.yaml
   - infrastructures/kubernetes.yaml
-  - apps
+  - repositories
