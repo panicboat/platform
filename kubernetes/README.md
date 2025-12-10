@@ -61,6 +61,10 @@ graph TB
 
 ## 🚀 セットアップ
 
+```bash
+export GITHUB_TOKEN=ghp_... # 必須 (repo権限が必要)
+```
+
 ### Phase 1: Foundation Setup (基盤構築)
 ```bash
 make phase1
@@ -121,6 +125,7 @@ make phase4
 
 ### 完全自動セットアップ
 ```bash
+export GITHUB_TOKEN=ghp_... # 必須 (repo権限が必要)
 make up              # Phase 1-4 全自動実行 (2-3分)
 make down            # クラスター完全削除
 ```

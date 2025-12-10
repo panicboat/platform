@@ -138,6 +138,26 @@ flux-install: ## Install FluxCD
 	@kubectl wait --for=condition=ready pod -l app=source-controller -n flux-system --timeout=300s >/dev/null
 	@echo "$(GREEN)✅ FluxCD is ready$(NC)"
 
+# Regist GitHub Secret
+.PHONY: secret-create
+secret-create: ## Create github-token secret from env var
+	@echo "$(BLUE)🔐 Creating github-token secret...$(NC)"
+	@if [ -z "$(GITHUB_TOKEN)" ]; then \
+		echo "$(RED)Error: GITHUB_TOKEN is not set$(NC)"; \
+		echo "$(YELLOW)Please export GITHUB_TOKEN=ghp_... before running this command$(NC)"; \
+		exit 1; \
+	fi
+	@if kubectl get secret github-token -n flux-system >/dev/null 2>&1; then \
+		echo "$(YELLOW)⚠️  Secret github-token already exists$(NC)"; \
+	else \
+		kubectl create secret generic github-token \
+			--namespace flux-system \
+			--from-literal=username=panicboat \
+			--from-literal=password=$(GITHUB_TOKEN) \
+			--dry-run=client -o yaml | kubectl apply -f -; \
+		echo "$(GREEN)✅ Secret github-token created$(NC)"; \
+	fi
+
 .PHONY: flux-status
 flux-status: ## Check FluxCD status
 	@echo "$(BLUE)📊 FluxCD Status$(NC)"
@@ -146,7 +166,8 @@ flux-status: ## Check FluxCD status
 	@flux get all -A 2>/dev/null || echo "$(YELLOW)No resources found$(NC)"
 
 .PHONY: phase2
-phase2: flux-install flux-status ## Complete Phase 2
+phase2:  secret-create flux-install flux-status ## Complete Phase 2
+
 	@echo "$(GREEN)🎉 Phase 2 Complete!$(NC)"
 
 # Phase 3: Infrastructure Auto-Bootstrap
