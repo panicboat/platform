@@ -1,0 +1,11 @@
+# Cilium Gateway API implementation automatically prepends `cilium-gateway-` and appends the Gateway name to the created Service.
+# This results in the Service name `cilium-gateway-cilium-gateway` for a Gateway named `cilium-gateway`.
+# This alias Service allows access via the desired DNS name `cilium-gateway.default.svc.cluster.local`.
+apiVersion: v1
+kind: Service
+metadata:
+  name: cilium-gateway
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: cilium-gateway-cilium-gateway.default.svc.cluster.local

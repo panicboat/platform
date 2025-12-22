@@ -6,3 +6,4 @@ resources:
   - hubble-httproute.yaml
   - referencegrant.yaml
   - servicemonitor.yaml
+  - service.yaml
