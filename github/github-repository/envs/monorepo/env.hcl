@@ -16,7 +16,7 @@ locals {
     # Branch protection rules
     branch_protection = {
       main = {
-        required_reviews                = 1
+        required_reviews                = 0
         dismiss_stale_reviews           = true
         require_code_owner_reviews      = true
         restrict_pushes                 = true
