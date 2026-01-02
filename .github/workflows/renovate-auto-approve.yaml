@@ -25,3 +25,10 @@ jobs:
         uses: hmarr/auto-approve-action@v4
         with:
           github-token: ${{ steps.app-token.outputs.token }}
+
+      - name: Auto-merge Renovate PRs
+        continue-on-error: true
+        run: gh pr merge --rebase --auto "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
