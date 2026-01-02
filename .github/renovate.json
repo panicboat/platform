@@ -21,7 +21,8 @@
       "description": "Base rule - packageFileDir and depName separation",
       "matchPaths": ["**"],
       "automerge": true,
-      "groupName": "{{packageFileDir}} {{depName}}"
+      "groupName": "{{packageFileDir}} {{depName}}",
+      "addLabels": ["🤖 automerge"]
     },
 
     {

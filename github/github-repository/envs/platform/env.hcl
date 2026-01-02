@@ -18,9 +18,9 @@ locals {
       main = {
         required_reviews                = 0
         dismiss_stale_reviews           = true
-        require_code_owner_reviews      = true
+        require_code_owner_reviews      = false
         restrict_pushes                 = true
-        require_last_push_approval      = true
+        require_last_push_approval      = false
         required_status_checks          = []
         enforce_admins                  = false
         allow_force_pushes              = false
