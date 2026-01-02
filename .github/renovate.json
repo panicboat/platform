@@ -22,7 +22,7 @@
       "matchPaths": ["**"],
       "automerge": true,
       "groupName": "{{packageFileDir}} {{depName}}",
-      "addLabels": ["🤖 automerge"]
+      "addLabels": ["automerge"]
     },
 
     {
