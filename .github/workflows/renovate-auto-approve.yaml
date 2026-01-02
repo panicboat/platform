@@ -14,9 +14,15 @@ jobs:
     if: github.actor == 'renovate[bot]'
 
     steps:
-      - name: Auto-approve Renovate PRs
-        uses: panicboat/deploy-actions/auto-approve@main
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2.2.1
         with:
           app-id: ${{ vars.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Auto-approve Renovate PRs
+        uses: panicboat/deploy-actions/auto-approve@main
+        with:
+          token: ${{ steps.app-token.outputs.token }}
           auto-merge-label: 'automerge'
