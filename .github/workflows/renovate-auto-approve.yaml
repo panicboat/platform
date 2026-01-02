@@ -14,21 +14,8 @@ jobs:
     if: github.actor == 'renovate[bot]'
 
     steps:
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v2.2.1
+      - name: Auto-approve Renovate PRs
+        uses: panicboat/deploy-actions/auto-approve@main
         with:
           app-id: ${{ vars.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
-      - name: Auto-approve Renovate PRs
-        uses: hmarr/auto-approve-action@v4
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-
-      - name: Auto-merge Renovate PRs
-        continue-on-error: true
-        run: gh pr merge --rebase --auto "$PR_URL"
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
