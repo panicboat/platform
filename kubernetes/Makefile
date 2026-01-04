@@ -37,6 +37,11 @@ help: ## Show help
 	@echo "make gitops-setup    - Setup FluxCD GitOps management"
 	@echo "make gitops-status   - Check GitOps status"
 	@echo "make gitops-enable   - Enable GitOps for all components"
+	@echo "make hydrate         - Hydrate manifests from Helmfile"
+
+##########################
+# Phase 1: Foundation Setup
+##########################
 
 .PHONY: cluster-create
 cluster-create: ## Create k3d cluster
@@ -63,34 +68,21 @@ gateway-install: ## Install Gateway API CRDs
 	@if kubectl get crd gatewayclasses.gateway.networking.k8s.io >/dev/null 2>&1; then \
 		echo "$(YELLOW)⚠️  Gateway API CRDs already installed$(NC)"; \
 	else \
-		kubectl apply -k infrastructures/gateway-api/base/bootstrap >/dev/null; \
+		kubectl apply -k components/gateway-api/base/bootstrap >/dev/null; \
 		echo "$(GREEN)✅ Gateway API CRDs installed$(NC)"; \
 	fi
 
 .PHONY: cilium-install
-cilium-install: ## Install Cilium directly via Helm
-	@echo "$(BLUE)📦 Installing Cilium directly via Helm...$(NC)"
-	@if helm list -n kube-system | grep -q cilium; then \
+cilium-install: ## Install Cilium via Helmfile
+	@echo "$(BLUE)📦 Installing Cilium via Helmfile...$(NC)"
+	@if kubectl get ds cilium -n kube-system >/dev/null 2>&1; then \
     echo "$(YELLOW)⚠️  Cilium already installed$(NC)"; \
 	else \
-		helm repo add cilium https://helm.cilium.io/ >/dev/null 2>&1; \
-    helm repo update >/dev/null 2>&1; \
-    helm install cilium cilium/cilium \
-      --namespace kube-system \
-      --set kubeProxyReplacement=true \
-      --set k8sServiceHost=k3d-k8s-local-server-0 \
-      --set k8sServicePort=6443 \
-      --set ipam.operator.clusterPoolIPv4PodCIDRList="{10.42.0.0/16}" \
-      --set operator.replicas=1 \
-      --set gatewayAPI.enabled=true \
-      --set hostServices.enabled=false \
-      --set dnsProxy.enabled=false \
-      --set ipv6.enabled=false \
-      --set enableIPv4Masquerade=true >/dev/null; \
+		kubectl apply -f manifests/k3d/cilium.yaml; \
 		echo "$(BLUE)⏳ Waiting for Cilium to be ready...$(NC)"; \
 		kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=cilium-operator -n kube-system --timeout=300s >/dev/null; \
 		kubectl wait --for=condition=ready pod -l k8s-app=cilium -n kube-system --timeout=300s >/dev/null; \
-		echo "$(GREEN)✅ Cilium installed directly via Helm$(NC)"; \
+		echo "$(GREEN)✅ Cilium installed via Manifests$(NC)"; \
 	fi
 
 .PHONY: coredns-update
@@ -99,7 +91,7 @@ coredns-update: ## Fix CoreDNS after k3s stabilization
 	@kubectl wait --for=condition=ready node --all --timeout=300s >/dev/null
 	@sleep 60
 	@echo "$(BLUE)🔧 Applying CoreDNS patch (after k3s stabilization)...$(NC)"
-	@kubectl apply -f infrastructures/kubernetes/overlays/k3d/coredns-patch.yaml >/dev/null
+	@kubectl apply -k components/coredns/overlays/k3d >/dev/null
 	@kubectl rollout restart deployment/coredns -n kube-system >/dev/null
 	@kubectl rollout status deployment/coredns -n kube-system --timeout=300s >/dev/null
 	@echo "$(BLUE)🧪 Testing DNS resolution...$(NC)"
@@ -120,11 +112,10 @@ status: ## Check cluster status
 	@echo ""
 	@kubectl get pods -n kube-system
 
-.PHONY: phase1
-phase1: cluster-create gateway-install cilium-install coredns-update status ## Complete Phase 1
-	@echo "$(GREEN)🎉 Phase 1 Complete!$(NC)"
-
+#######################################
 # Phase 2: FluxCD Installation
+#######################################
+
 .PHONY: flux-install
 flux-install: ## Install FluxCD
 	@echo "$(BLUE)📦 Installing FluxCD...$(NC)"
@@ -138,26 +129,6 @@ flux-install: ## Install FluxCD
 	@kubectl wait --for=condition=ready pod -l app=source-controller -n flux-system --timeout=300s >/dev/null
 	@echo "$(GREEN)✅ FluxCD is ready$(NC)"
 
-# Regist GitHub Secret
-.PHONY: secret-create
-secret-create: ## Create github-token secret from env var
-	@echo "$(BLUE)🔐 Creating github-token secret...$(NC)"
-	@if [ -z "$(GITHUB_TOKEN)" ]; then \
-		echo "$(RED)Error: GITHUB_TOKEN is not set$(NC)"; \
-		echo "$(YELLOW)Please export GITHUB_TOKEN=ghp_... before running this command$(NC)"; \
-		exit 1; \
-	fi
-	@if kubectl get secret github-token -n flux-system >/dev/null 2>&1; then \
-		echo "$(YELLOW)⚠️  Secret github-token already exists$(NC)"; \
-	else \
-		kubectl create secret generic github-token \
-			--namespace flux-system \
-			--from-literal=username=panicboat \
-			--from-literal=password=$(GITHUB_TOKEN) \
-			--dry-run=client -o yaml | kubectl apply -f -; \
-		echo "$(GREEN)✅ Secret github-token created$(NC)"; \
-	fi
-
 .PHONY: flux-status
 flux-status: ## Check FluxCD status
 	@echo "$(BLUE)📊 FluxCD Status$(NC)"
@@ -165,35 +136,10 @@ flux-status: ## Check FluxCD status
 	@echo ""
 	@flux get all -A 2>/dev/null || echo "$(YELLOW)No resources found$(NC)"
 
-.PHONY: phase2
-phase2:  secret-create flux-install flux-status ## Complete Phase 2
-
-	@echo "$(GREEN)🎉 Phase 2 Complete!$(NC)"
-
-# Phase 3: Infrastructure Auto-Bootstrap
-.PHONY: phase3
-phase3: ## Complete Phase 3 (Auto-discover and install all infrastructure)
-	@echo "$(BLUE)🏗️ Auto-bootstrapping all infrastructure components...$(NC)"
-	@echo "$(BLUE)📦 Setting up HelmRepositories...$(NC)"
-	@kubectl apply -k helmrepositories >/dev/null
-	@echo "$(BLUE)🔍 Auto-discovering infrastructure components...$(NC)"
-	@bootstrap_dirs=$$(find infrastructures/*/base/bootstrap -name kustomization.yaml 2>/dev/null | xargs dirname | grep -v cilium); \
-	if [ -z "$$bootstrap_dirs" ]; then \
-		echo "$(YELLOW)⚠️  No infrastructure components found$(NC)"; \
-	else \
-		for dir in $$bootstrap_dirs; do \
-			component=$$(echo $$dir | cut -d'/' -f2); \
-			echo "$(BLUE)Installing $$component via Bootstrap...$(NC)"; \
-			kubectl apply -k $$dir >/dev/null || echo "$(YELLOW)⚠️  $$component installation failed$(NC)"; \
-		done; \
-		echo "$(BLUE)⏳ Waiting for all components to be ready...$(NC)"; \
-		kubectl wait --for=condition=ready helmrelease --all -n flux-system --timeout=300s >/dev/null 2>&1 || true; \
-		echo "$(GREEN)✅ All infrastructure components installed$(NC)"; \
-	fi
-	@echo "$(GREEN)🎉 Phase 3 Complete!$(NC)"
-	@echo "$(BLUE)💡 Ready for GitOps configuration (Phase 4)$(NC)"
-
+#######################################
 # Phase 4: GitOps Complete Migration
+#######################################
+
 .PHONY: gitops-setup
 gitops-setup: ## Setup FluxCD GitOps management
 	@echo "$(BLUE)🔧 Setting up FluxCD GitOps...$(NC)"
@@ -213,6 +159,47 @@ gitops-status: ## Check GitOps status
 	@flux get sources git -A || echo "$(YELLOW)No Git sources found$(NC)"
 	@flux get kustomizations -A || echo "$(YELLOW)No Kustomizations found$(NC)"
 
+.PHONY: hydrate
+hydrate: ## Hydrate manifests
+	@echo "$(BLUE)💧 Hydrating manifests...$(NC)"
+	@rm -rf manifests/k3d/*
+	@echo "$(BLUE)💧 Hydrating namespaces...$(NC)"
+	@find components -name namespace.yaml -print0 | xargs -0 -I{} sh -c 'echo "---"; cat {}' > manifests/k3d/00-namespaces.yaml
+	@echo "$(BLUE)💧 Hydrating helmfile components...$(NC)"
+	@echo "resources:" > manifests/k3d/kustomization.yaml
+	@helmfile -e k3d list | awk 'NR>1 {print $$1}' | while read release; do \
+		echo "Hydrating $$release..."; \
+		helmfile -e k3d -l name=$$release template --include-crds > manifests/k3d/$$release.yaml; \
+		echo "- $$release.yaml" >> manifests/k3d/kustomization.yaml; \
+	done
+	@echo "- 00-namespaces.yaml" >> manifests/k3d/kustomization.yaml
+	@echo "$(GREEN)✅ Manifests hydrated (Flat Files)$(NC)"
+
+.PHONY: phase1
+phase1: cluster-create gateway-install cilium-install coredns-update status ## Complete Phase 1
+	@echo "$(GREEN)🎉 Phase 1 Complete!$(NC)"
+
+.PHONY: phase2
+phase2:  flux-install flux-status ## Complete Phase 2
+	@echo "$(GREEN)🎉 Phase 2 Complete!$(NC)"
+
+# Phase 3: Infrastructure Auto-Bootstrap
+.PHONY: phase3
+phase3: ## Complete Phase 3 (Apply hydrated manifests)
+	@echo "$(BLUE)🏗️ Applying hydrated manifests...$(NC)"
+	@kubectl apply -f manifests/k3d/00-namespaces.yaml
+	@echo "$(BLUE)⏳ Waiting for namespaces...$(NC)"
+	@sleep 2
+	@echo "$(BLUE)Applying CRD-containing stacks (allow failing once for CRDs)...$(NC)"
+	@-kubectl apply --server-side --force-conflicts -f manifests/k3d/kube-prometheus-stack.yaml >/dev/null 2>&1
+	@echo "$(BLUE)⏳ Waiting for CRDs to register...$(NC)"
+	@sleep 15
+	@echo "$(BLUE)Applying all manifests...$(NC)"
+	@kubectl apply --server-side --force-conflicts -k manifests/k3d >/dev/null
+	@echo "$(GREEN)✅ All infrastructure components installed via manifests$(NC)"
+	@echo "$(GREEN)🎉 Phase 3 Complete!$(NC)"
+	@echo "$(BLUE)💡 Ready for GitOps configuration (Phase 4)$(NC)"
+
 .PHONY: phase4
 phase4: gitops-setup gitops-enable gitops-status ## Complete Phase 4 (GitOps Migration)
 	@echo "$(GREEN)🎉 Phase 4 Complete!$(NC)"
@@ -220,7 +207,7 @@ phase4: gitops-setup gitops-enable gitops-status ## Complete Phase 4 (GitOps Mig
 	@echo "$(BLUE)💡 All infrastructure now managed by FluxCD from Git repository$(NC)"
 
 .PHONY: up
-up: phase1 phase2 phase3 phase4 ## Complete all phases
+up: hydrate phase1 phase2 phase3 phase4 ## Complete all phases
 	@echo "$(GREEN)🎉 All phases completed!$(NC)"
 	@echo "$(BLUE)You can now deploy applications using GitOps with FluxCD$(NC)"
 

@@ -1,0 +1,21 @@
+environments:
+  k3d:
+    values:
+      - env/k3d/version.yaml
+  production:
+    values:
+      - env/production/version.yaml
+
+---
+
+repositories:
+  - name: opentelemetry
+    url: https://open-telemetry.github.io/opentelemetry-helm-charts
+
+releases:
+  - name: opentelemetry-collector
+    namespace: opentelemetry-system
+    chart: opentelemetry/opentelemetry-collector
+    version: "{{ .Values.version }}"
+    values:
+      - values/{{ .Environment.Name }}.yaml

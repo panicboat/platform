@@ -1,5 +1,5 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - repositories
-  - ../../manifests/k3d
+  - configmap.yaml
+  - deployment.yaml

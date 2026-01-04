@@ -1,0 +1,20 @@
+admissionWebhooks:
+  certManager:
+    enabled: false
+  autoGenerateCert:
+    enabled: true
+manager:
+  collectorImage:
+    repository: otel/opentelemetry-collector-contrib
+    tag: 0.104.0
+  serviceMonitor:
+    enabled: true
+  prometheusRule:
+    enabled: false
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 100m
+      memory: 64Mi

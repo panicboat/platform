@@ -20,7 +20,9 @@ directory_conventions:
       - name: terragrunt
         directory: "envs/{environment}"
 
-  - root: "kubernetes/infrastructures/{service}"
+  - root: "kubernetes/components/{service}"
     stacks:
       - name: kubernetes
-        directory: "kubernetes/overlays/{environment}"
+        directory: "overlays/{environment}"
+      - name: helmfile
+        directory: "env/{environment}"

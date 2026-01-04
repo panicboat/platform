@@ -1,0 +1,23 @@
+grafana:
+  enabled: true
+  testFramework:
+    enabled: false
+  adminPassword: "password"
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+prometheus:
+  prometheusSpec:
+    retention: 2d
+    resources:
+      limits:
+        memory: 1G
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 2Gi
+alertmanager:
+  enabled: false

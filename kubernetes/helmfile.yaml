@@ -1,0 +1,8 @@
+environments:
+  k3d:
+  # develop:
+  # staging:
+  # production:
+
+helmfiles:
+  - components/*/helmfile.yaml
