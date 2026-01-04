@@ -8,8 +8,8 @@ spec:
   url: https://github.com/panicboat/monorepo.git
   ref:
     branch: main
-  secretRef:
-    name: github-token
+  # secretRef:
+  #   name: github-token
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
