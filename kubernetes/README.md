@@ -2,12 +2,20 @@
 
 ## 概要
 
-**Ciliumサイドカーレスサービスメッシュ**と**FluxCD GitOps**を組み合わせたKubernetesプラットフォーム。**Bootstrap + GitOps ハイブリッド戦略**により、高速ローカル開発と本格運用の両方に対応します。
+**Ciliumサイドカーレスサービスメッシュ**と**FluxCD GitOps**を組み合わせたKubernetesプラットフォーム。**Helmfile Hydration Pattern** により、HelmチャートとKustomizeマニフェストを一元管理し、純粋なYAMLとしてGit管理することで、GitOpsの信頼性と可視性を向上させています。
 
 ## 🏗️ アーキテクチャ
 
 ```mermaid
 graph TB
+    subgraph "Local / CI"
+        HF[Helmfile / Components]
+        HYD[Hydration Process]
+        MF[Manifests (YAML)]
+        HF --> HYD
+        HYD --> MF
+    end
+
     subgraph "k3d Cluster"
         subgraph "Phase 1: Foundation"
             GW[Gateway API CRDs]
@@ -21,12 +29,12 @@ graph TB
             FLUX[FluxCD Controllers]
         end
 
-        subgraph "Phase 3: Infrastructure"
-            HR[HelmRepositories]
+        subgraph "Phase 3: Hydrated Resources"
+            M_APP[Hydrated Manifests]
             PROM[Prometheus Stack]
             OTEL[OpenTelemetry]
-            HR --> PROM
-            HR --> OTEL
+            M_APP --> PROM
+            M_APP --> OTEL
         end
 
         subgraph "Service Mesh Layer"
@@ -43,6 +51,8 @@ graph TB
         LOCALHOST[localhost:80/443]
     end
 
+    MF -.-> FLUX
+    FLUX --> M_APP
     CNI -.-> GC
     HTTP --> PROM
     BROWSER --> LOCALHOST
@@ -52,11 +62,13 @@ graph TB
     classDef gitops fill:#f3e5f5
     classDef infra fill:#e8f5e8
     classDef mesh fill:#fff3e0
+    classDef hydration fill:#fffde7
 
     class GW,CNI,DNS foundation
     class FLUX gitops
-    class HR,PROM,OTEL infra
+    class M_APP,PROM,OTEL infra
     class GC,GT,HTTP mesh
+    class HF,HYD,MF hydration
 ```
 
 ## 🚀 セットアップ
@@ -81,20 +93,19 @@ make phase2
 - FluxCD コントローラーインストール
 - GitOps基盤構築
 
-### Phase 3: Infrastructure Bootstrap
+### Phase 3: Hydration & Sync (アプリ展開)
 ```bash
 make phase3
 ```
-- HelmRepositories自動セットアップ
-- 全インフラコンポーネント自動検出・Bootstrap
-- 依存関係自動解決 (CRDs → Applications)
+- FluxCD が `manifests/k3d` を同期
+- Hydration 済みマニフェスト（Helm + Kustomize）の一括適用
+- Namespace, CRD, アプリケーションの順序制御（Flux Kustomization依存）
 
-### Phase 4: GitOps Migration
+### Phase 4: GitOps Complete Migration
 ```bash
 make phase4
 ```
-- Bootstrap → GitOps移行
-- 継続的デプロイメント有効化
+- リポジトリ全域の GitOps 管理自動化
 
 ## 🌐 サービスアクセス
 
@@ -132,6 +143,7 @@ make down            # クラスター完全削除
 
 ### 個別操作
 ```bash
+make hydrate         # マニフェスト生成 (components -> manifests)
 make gateway-install # Gateway API CRDs
 make cilium-install  # Cilium Bootstrap
 make status          # クラスター状態確認
@@ -144,25 +156,24 @@ make gitops-enable   # 全コンポーネントGitOps化
 make gitops-status   # GitOps状態確認
 ```
 
+**[CI/CD] Reusable Workflow**:
+- `reusable--hydrate-manifests.yaml`: 指定環境のマニフェスト生成・コミットを行うリユーザブルワークフロー。
+- `auto-label--deploy-trigger.yaml`: 環境変更を検知し、上記を実行します。
+
 ## 💡 設計思想
 
-### Bootstrap + GitOps ハイブリッド戦略
+### Hydration Pattern 戦略
 
-**Bootstrap Phase:**
-- ✅ 高速性: 2-3分で完全環境
-- ✅ 確実性: CRD依存関係問題解決
-- ✅ 開発効率: 頻繁なdelete/create対応
+**Why Hydration?**
+1.  **可視性 (Visibility)**: 実際に適用される YAML が `manifests/` に存在するため、コミットログで変更理由が明確になる。
+2.  **安全性 (Safety)**: Helm チャートのレンダリング結果を承認してからデプロイ可能。予期せぬ Breaking Change を防ぐ。
+3.  **環境分離 (Isolation)**: `helmfile -e <env>` により環境ごとの差異を吸収しつつ、バージョン管理を厳密化。
 
-**GitOps Phase:**
-- ✅ 運用性: 継続的デプロイメント
-- ✅ Infrastructure as Code
-- ✅ チーム協業: Git中心ワークフロー
+### 構成管理
 
-### 自動検出・拡張性
-
-- 新コンポーネント: `infrastructures/*/base/bootstrap/`作成のみ
-- Makefile変更不要: 自動検出システム
-- 依存関係自動解決: Phase順序管理
+- **Components (`components/`)**: アプリケーションのソース（Helm Values, Kustomize Base/Overlays）。
+- **Manifests (`manifests/`)**: 自動生成される最終成果物。
+- **Environment**: `env/<env>/version.yaml` によるディレクトリベースのバージョン分離（Renovate対応）。
 
 ## 🔍 監視・オブザーバビリティ
 
