@@ -63,14 +63,11 @@ cluster-create: ## Create k3d cluster
 	fi
 
 .PHONY: gateway-install
-gateway-install: ## Install Gateway API CRDs
-	@echo "$(BLUE)📦 Installing Gateway API CRDs...$(NC)"
-	@if kubectl get crd gatewayclasses.gateway.networking.k8s.io >/dev/null 2>&1; then \
-		echo "$(YELLOW)⚠️  Gateway API CRDs already installed$(NC)"; \
-	else \
-		kubectl apply -k components/gateway-api/base/bootstrap >/dev/null; \
-		echo "$(GREEN)✅ Gateway API CRDs installed$(NC)"; \
-	fi
+gateway-install: ## Install Gateway API CRDs and Gateway resources
+	@echo "$(BLUE)📦 Installing Gateway API CRDs and resources...$(NC)"
+	@kubectl apply -k components/gateway-api/base/bootstrap >/dev/null
+	@echo "$(GREEN)✅ Gateway API CRDs and resources installed$(NC)"
+	@echo "$(BLUE)💡 HTTPRoutes are included via Helmfile postRenderer$(NC)"
 
 .PHONY: cilium-install
 cilium-install: ## Install Cilium via Helmfile
@@ -163,13 +160,20 @@ gitops-status: ## Check GitOps status
 hydrate: ## Hydrate manifests
 	@echo "$(BLUE)💧 Hydrating manifests...$(NC)"
 	@rm -rf manifests/k3d/*
+	@mkdir -p manifests/k3d
 	@echo "$(BLUE)💧 Hydrating namespaces...$(NC)"
 	@find components -name namespace.yaml -print0 | xargs -0 -I{} sh -c 'echo "---"; cat {}' > manifests/k3d/00-namespaces.yaml
 	@echo "$(BLUE)💧 Hydrating helmfile components...$(NC)"
 	@echo "resources:" > manifests/k3d/kustomization.yaml
 	@helmfile -e k3d list | awk 'NR>1 {print $$1}' | while read release; do \
 		echo "Hydrating $$release..."; \
+		component=$$(find components -name helmfile.yaml -exec grep -l "name: $$release" {} \; | head -1 | cut -d'/' -f2); \
 		helmfile -e k3d -l name=$$release template --include-crds > manifests/k3d/$$release.yaml; \
+		if [ -n "$$component" ] && [ -d "components/$$component/overlays/k3d" ] && [ -f "components/$$component/overlays/k3d/kustomization.yaml" ]; then \
+			echo "  + Adding overlay resources from $$component..."; \
+			echo "---" >> manifests/k3d/$$release.yaml; \
+			kustomize build components/$$component/overlays/k3d >> manifests/k3d/$$release.yaml; \
+		fi; \
 		echo "- $$release.yaml" >> manifests/k3d/kustomization.yaml; \
 	done
 	@echo "- 00-namespaces.yaml" >> manifests/k3d/kustomization.yaml
