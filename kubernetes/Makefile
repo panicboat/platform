@@ -65,7 +65,7 @@ cluster-create: ## Create k3d cluster
 .PHONY: gateway-install
 gateway-install: ## Install Gateway API CRDs and Gateway resources
 	@echo "$(BLUE)📦 Installing Gateway API CRDs...$(NC)"
-	@kubectl apply -k components/gateway-api/base/crds >/dev/null
+	@kubectl apply -k components/gateway-api/base >/dev/null
 	@echo "$(BLUE)⏳ Waiting for CRDs to be registered...$(NC)"
 	@sleep 3
 	@echo "$(BLUE)📦 Installing Gateway resources...$(NC)"
