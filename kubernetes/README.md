@@ -11,7 +11,7 @@ graph TB
     subgraph "Local / CI"
         HF[Helmfile / Components]
         HYD[Hydration Process]
-        MF[Manifests (YAML)]
+        MF[Manifests]
         HF --> HYD
         HYD --> MF
     end
@@ -57,18 +57,6 @@ graph TB
     HTTP --> PROM
     BROWSER --> LOCALHOST
     LOCALHOST --> GT
-
-    classDef foundation fill:#e1f5fe
-    classDef gitops fill:#f3e5f5
-    classDef infra fill:#e8f5e8
-    classDef mesh fill:#fff3e0
-    classDef hydration fill:#fffde7
-
-    class GW,CNI,DNS foundation
-    class FLUX gitops
-    class M_APP,PROM,OTEL infra
-    class GC,GT,HTTP mesh
-    class HF,HYD,MF hydration
 ```
 
 ## 🚀 セットアップ
