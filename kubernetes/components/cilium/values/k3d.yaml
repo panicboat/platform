@@ -11,6 +11,12 @@ gatewayAPI:
   enabled: true
 hostServices:
   enabled: false
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: true
 dnsProxy:
   enabled: false
 ipv6:

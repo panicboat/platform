@@ -20,4 +20,4 @@ prometheus:
             requests:
               storage: 2Gi
 alertmanager:
-  enabled: false
+  enabled: true

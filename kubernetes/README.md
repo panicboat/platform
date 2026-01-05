@@ -158,7 +158,7 @@ make gitops-status   # GitOps状態確認
 
 **[CI/CD] Reusable Workflow**:
 - `reusable--hydrate-manifests.yaml`: 指定環境のマニフェスト生成・コミットを行うリユーザブルワークフロー。
-- `auto-label--deploy-trigger.yaml`: 環境変更を検知し、上記を実行します。
+- `auto-label--deploy-trigger.yaml`: 変更を検知し上記を実行します。
 
 ## 💡 設計思想
 
