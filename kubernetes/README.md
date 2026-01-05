@@ -73,10 +73,6 @@ graph TB
 
 ## 🚀 セットアップ
 
-```bash
-export GITHUB_TOKEN=ghp_... # 必須 (repo権限が必要)
-```
-
 ### Phase 1: Foundation Setup (基盤構築)
 ```bash
 make phase1
@@ -155,10 +151,6 @@ make gitops-setup    # FluxCD GitOps設定
 make gitops-enable   # 全コンポーネントGitOps化
 make gitops-status   # GitOps状態確認
 ```
-
-**[CI/CD] Reusable Workflow**:
-- `reusable--hydrate-manifests.yaml`: 指定環境のマニフェスト生成・コミットを行うリユーザブルワークフロー。
-- `auto-label--deploy-trigger.yaml`: 変更を検知し上記を実行します。
 
 ## 💡 設計思想
 
