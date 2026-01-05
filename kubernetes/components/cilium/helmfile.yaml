@@ -7,7 +7,6 @@ environments:
       - env/production/version.yaml
 
 ---
-
 repositories:
   - name: cilium
     url: https://helm.cilium.io/
