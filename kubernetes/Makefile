@@ -1,5 +1,6 @@
 # Variables
 CLUSTER_NAME ?= k8s-local
+ENV ?= k3d
 
 # Colors
 GREEN = \033[0;32m
@@ -161,26 +162,26 @@ gitops-status: ## Check GitOps status
 	@flux get kustomizations -A || echo "$(YELLOW)No Kustomizations found$(NC)"
 
 .PHONY: hydrate
-hydrate: ## Hydrate manifests
-	@echo "$(BLUE)💧 Hydrating manifests...$(NC)"
-	@rm -rf manifests/k3d/*
-	@mkdir -p manifests/k3d
+hydrate: ## Hydrate manifests (usage: make hydrate ENV=production)
+	@echo "$(BLUE)💧 Hydrating manifests for $(ENV)...$(NC)"
+	@rm -rf manifests/$(ENV)/*
+	@mkdir -p manifests/$(ENV)
 	@echo "$(BLUE)💧 Hydrating namespaces...$(NC)"
-	@find components -name namespace.yaml -print0 | xargs -0 -I{} sh -c 'echo "---"; cat {}' > manifests/k3d/00-namespaces.yaml
+	@find components -name namespace.yaml -print0 | xargs -0 -I{} sh -c 'echo "---"; cat {}' > manifests/$(ENV)/00-namespaces.yaml
 	@echo "$(BLUE)💧 Hydrating helmfile components...$(NC)"
-	@echo "resources:" > manifests/k3d/kustomization.yaml
-	@helmfile -e k3d list | awk 'NR>1 {print $$1}' | while read release; do \
+	@echo "resources:" > manifests/$(ENV)/kustomization.yaml
+	@helmfile -e $(ENV) list | awk 'NR>1 {print $$1}' | while read release; do \
 		echo "Hydrating $$release..."; \
 		component=$$(find components -name helmfile.yaml -exec grep -l "name: $$release" {} \; | head -1 | cut -d'/' -f2); \
-		helmfile -e k3d -l name=$$release template --include-crds > manifests/k3d/$$release.yaml; \
-		if [ -n "$$component" ] && [ -d "components/$$component/overlays/k3d" ] && [ -f "components/$$component/overlays/k3d/kustomization.yaml" ]; then \
+		helmfile -e $(ENV) -l name=$$release template --include-crds > manifests/$(ENV)/$$release.yaml; \
+		if [ -n "$$component" ] && [ -d "components/$$component/overlays/$(ENV)" ] && [ -f "components/$$component/overlays/$(ENV)/kustomization.yaml" ]; then \
 			echo "  + Adding overlay resources from $$component..."; \
-			echo "---" >> manifests/k3d/$$release.yaml; \
-			kustomize build components/$$component/overlays/k3d >> manifests/k3d/$$release.yaml; \
+			echo "---" >> manifests/$(ENV)/$$release.yaml; \
+			kustomize build components/$$component/overlays/$(ENV) >> manifests/$(ENV)/$$release.yaml; \
 		fi; \
-		echo "- $$release.yaml" >> manifests/k3d/kustomization.yaml; \
+		echo "- $$release.yaml" >> manifests/$(ENV)/kustomization.yaml; \
 	done
-	@echo "- 00-namespaces.yaml" >> manifests/k3d/kustomization.yaml
+	@echo "- 00-namespaces.yaml" >> manifests/$(ENV)/kustomization.yaml
 	@echo "$(GREEN)✅ Manifests hydrated (Flat Files)$(NC)"
 
 .PHONY: phase1
