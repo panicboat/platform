@@ -67,6 +67,14 @@ resource "aws_iam_policy" "bedrock_claude_policy" {
           "bedrock:GetFoundationModel"
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "aws-marketplace:ViewSubscriptions",
+          "aws-marketplace:Subscribe"
+        ]
+        Resource = "*"
       }
     ]
   })
