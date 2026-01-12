@@ -21,7 +21,7 @@ locals {
         require_code_owner_reviews      = false
         restrict_pushes                 = true
         require_last_push_approval      = false
-        required_status_checks          = []
+        required_status_checks          = ["CI Gatekeeper"]
         enforce_admins                  = false
         allow_force_pushes              = false
         allow_deletions                 = false
