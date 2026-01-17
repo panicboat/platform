@@ -32,7 +32,7 @@ data:
         Time_Keep Off
         Time_Key time
         Time_Format %Y-%m-%dT%H:%M:%S.%L
-
+    
   fluent-bit.conf: |
     [SERVICE]
         Daemon Off
@@ -44,7 +44,7 @@ data:
         HTTP_Listen 0.0.0.0
         HTTP_Port 2020
         Health_Check On
-
+    
     [INPUT]
         Name tail
         Path /var/log/containers/*.log
@@ -52,7 +52,7 @@ data:
         Tag kube.*
         Mem_Buf_Limit 5MB
         Skip_Long_Lines On
-
+    
     [FILTER]
         Name kubernetes
         Match kube.*
@@ -60,7 +60,7 @@ data:
         Keep_Log Off
         K8S-Logging.Parser On
         K8S-Logging.Exclude On
-
+    
     [OUTPUT]
         Name loki
         Match kube.*
@@ -200,3 +200,26 @@ spec:
         - hostPath:
             path: /var/lib/docker/containers
           name: varlibdockercontainers
+---
+# Source: fluent-bit/templates/tests/test-connection.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "fluent-bit-test-connection"
+  namespace: monitoring
+  labels:
+    helm.sh/chart: fluent-bit-0.44.0
+    app.kubernetes.io/version: "2.2.2"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: hook-succeeded
+spec:
+  containers:
+    - name: wget
+      image: "busybox:latest"
+      imagePullPolicy: Always
+      command: ["sh"]
+      args: ["-c", "wget -O- fluent-bit:2020"]
+  restartPolicy: Never
+

@@ -1,0 +1,16 @@
+environments:
+  k3d:
+
+---
+
+repositories:
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
+
+releases:
+  - name: tempo
+    namespace: monitoring
+    chart: grafana/tempo
+    version: "1.8.0"
+    values:
+      - values.yaml

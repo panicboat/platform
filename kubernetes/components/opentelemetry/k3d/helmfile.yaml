@@ -1,0 +1,16 @@
+environments:
+  k3d:
+
+---
+
+repositories:
+  - name: opentelemetry
+    url: https://open-telemetry.github.io/opentelemetry-helm-charts
+
+releases:
+  - name: opentelemetry-operator
+    namespace: opentelemetry-operator-system
+    chart: opentelemetry/opentelemetry-operator
+    version: "0.68.0"
+    values:
+      - values.yaml

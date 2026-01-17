@@ -1,0 +1,16 @@
+environments:
+  k3d:
+
+---
+
+repositories:
+  - name: fluent
+    url: https://fluent.github.io/helm-charts
+
+releases:
+  - name: fluent-bit
+    namespace: monitoring
+    chart: fluent/fluent-bit
+    version: "0.44.0"
+    values:
+      - values.yaml

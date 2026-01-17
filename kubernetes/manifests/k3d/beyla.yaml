@@ -43,7 +43,6 @@ data:
     discovery:
       services:
       - k8s_namespace: default
-      - k8s_namespace: demo
     filter:
       network:
         k8s_dst_owner_name:
@@ -155,7 +154,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 5dd29b468490392849967a8d45a7d95c824ddb9fe0d4e2f4eef59e418781c5fe
+        checksum/config: f767227e969ae5c9b88df130b01b06f42b229540fa86c802297d461199107e7a
       labels:
         helm.sh/chart: beyla-1.6.0
         app.kubernetes.io/name: beyla

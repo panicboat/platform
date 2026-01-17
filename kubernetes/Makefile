@@ -70,7 +70,7 @@ gateway-install: ## Install Gateway API CRDs and Gateway resources
 	@echo "$(BLUE)⏳ Waiting for CRDs to be registered...$(NC)"
 	@sleep 3
 	@echo "$(BLUE)📦 Installing Gateway resources...$(NC)"
-	@kubectl apply -k components/gateway-api/overlays/k3d >/dev/null
+	@kubectl apply -k components/gateway-api/k3d/kustomization >/dev/null
 	@echo "$(GREEN)✅ Gateway API CRDs and resources installed$(NC)"
 	@echo "$(BLUE)💡 HTTPRoutes are included via kustomize overlays$(NC)"
 
@@ -93,7 +93,7 @@ coredns-update: ## Fix CoreDNS after k3s stabilization
 	@kubectl wait --for=condition=ready node --all --timeout=300s >/dev/null
 	@sleep 60
 	@echo "$(BLUE)🔧 Applying CoreDNS patch (after k3s stabilization)...$(NC)"
-	@kubectl apply -k components/coredns/overlays/k3d >/dev/null
+	@kubectl apply -k components/coredns/k3d/kustomization >/dev/null
 	@kubectl rollout restart deployment/coredns -n kube-system >/dev/null
 	@kubectl rollout status deployment/coredns -n kube-system --timeout=300s >/dev/null
 	@echo "$(BLUE)🧪 Testing DNS resolution...$(NC)"
@@ -172,12 +172,12 @@ hydrate: ## Hydrate manifests (usage: make hydrate ENV=production)
 	@echo "resources:" > manifests/$(ENV)/kustomization.yaml
 	@helmfile -e $(ENV) list | awk 'NR>1 {print $$1}' | while read release; do \
 		echo "Hydrating $$release..."; \
-		component=$$(find components -name helmfile.yaml -exec grep -l "name: $$release" {} \; | head -1 | cut -d'/' -f2); \
+		component=$$(find components -name helmfile.yaml | grep "/$(ENV)/helmfile.yaml" | xargs grep -l "name: $$release" | head -1 | cut -d'/' -f2); \
 		helmfile -e $(ENV) -l name=$$release template --include-crds > manifests/$(ENV)/$$release.yaml; \
-		if [ -n "$$component" ] && [ -d "components/$$component/overlays/$(ENV)" ] && [ -f "components/$$component/overlays/$(ENV)/kustomization.yaml" ]; then \
+		if [ -n "$$component" ] && [ -d "components/$$component/$(ENV)/kustomization" ]; then \
 			echo "  + Adding overlay resources from $$component..."; \
 			echo "---" >> manifests/$(ENV)/$$release.yaml; \
-			kustomize build components/$$component/overlays/$(ENV) >> manifests/$(ENV)/$$release.yaml; \
+			kustomize build components/$$component/$(ENV)/kustomization >> manifests/$(ENV)/$$release.yaml; \
 		fi; \
 		echo "- $$release.yaml" >> manifests/$(ENV)/kustomization.yaml; \
 	done
@@ -200,7 +200,7 @@ phase3: ## Complete Phase 3 (Apply hydrated manifests)
 	@echo "$(BLUE)⏳ Waiting for namespaces...$(NC)"
 	@sleep 2
 	@echo "$(BLUE)Applying CRD-containing stacks (allow failing once for CRDs)...$(NC)"
-	@-kubectl apply --server-side --force-conflicts -f manifests/k3d/kube-prometheus-stack.yaml >/dev/null 2>&1
+	@kubectl apply --server-side --force-conflicts -f manifests/k3d/kube-prometheus-stack.yaml >/dev/null 2>&1
 	@echo "$(BLUE)⏳ Waiting for CRDs to register...$(NC)"
 	@sleep 15
 	@echo "$(BLUE)Applying all manifests...$(NC)"

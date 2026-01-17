@@ -1,0 +1,15 @@
+environments:
+  k3d:
+
+---
+repositories:
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
+
+releases:
+  - name: beyla
+    namespace: monitoring
+    chart: grafana/beyla
+    version: "1.6.0"
+    values:
+      - values.yaml
