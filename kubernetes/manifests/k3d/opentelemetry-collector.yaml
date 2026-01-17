@@ -28,11 +28,19 @@ metadata:
 data:
   relay: |
     exporters:
-      debug: {}
-      logging:
-        loglevel: debug
+      debug:
+        verbosity: basic
       otlp/tempo:
         endpoint: tempo.monitoring.svc.cluster.local:4317
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_elapsed_time: 300s
+          max_interval: 30s
+        sending_queue:
+          enabled: true
+          num_consumers: 10
+          queue_size: 5000
         tls:
           insecure: true
       prometheus:
@@ -48,11 +56,15 @@ data:
       zpages:
         endpoint: 0.0.0.0:55679
     processors:
-      batch: {}
+      batch:
+        send_batch_max_size: 1500
+        send_batch_size: 1000
+        timeout: 10s
       memory_limiter:
-        check_interval: 5s
+        check_interval: 1s
         limit_mib: 400
         limit_percentage: 80
+        spike_limit_mib: 100
         spike_limit_percentage: 25
       resource:
         attributes:
@@ -109,7 +121,6 @@ data:
         metrics:
           exporters:
           - prometheus
-          - logging
           processors:
           - memory_limiter
           - resource
@@ -120,7 +131,6 @@ data:
         metrics/internal:
           exporters:
           - prometheus
-          - logging
           processors:
           - memory_limiter
           - resource
@@ -129,7 +139,6 @@ data:
           - prometheus/internal
         traces:
           exporters:
-          - logging
           - otlp/tempo
           processors:
           - memory_limiter
@@ -224,7 +233,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8eb1c1bd96a8d89f842f23968606e6dd7f16ff0e725d0d840824904552db64c7
+        checksum/config: 13534aca35fccfd074bc659548d4964911b696da8506cb1d038376a9132c7b22
         
       labels:
         app.kubernetes.io/name: opentelemetry-collector

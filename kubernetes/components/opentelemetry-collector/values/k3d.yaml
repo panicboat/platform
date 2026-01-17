@@ -29,26 +29,40 @@ config:
             static_configs:
               - targets: ['0.0.0.0:8888']
   processors:
-    batch: {}
+    batch:
+      send_batch_size: 1000
+      send_batch_max_size: 1500
+      timeout: 10s
     resource:
       attributes:
         - key: cluster.name
           value: kind
           action: upsert
     memory_limiter:
+      check_interval: 1s
       limit_mib: 400
+      spike_limit_mib: 100
   exporters:
     prometheus:
       endpoint: "0.0.0.0:8889"
       send_timestamps: true
       metric_expiration: 180m
       enable_open_metrics: true
-    logging:
-      loglevel: debug
+    debug:
+      verbosity: basic
     otlp/tempo:
       endpoint: "tempo.monitoring.svc.cluster.local:4317"
       tls:
         insecure: true
+      sending_queue:
+        enabled: true
+        num_consumers: 10
+        queue_size: 5000
+      retry_on_failure:
+        enabled: true
+        initial_interval: 5s
+        max_interval: 30s
+        max_elapsed_time: 300s
   extensions:
     health_check:
       endpoint: "0.0.0.0:13133"
@@ -62,15 +76,15 @@ config:
       metrics:
         receivers: [otlp, prometheus]
         processors: [memory_limiter, resource, batch]
-        exporters: [prometheus, logging]
+        exporters: [prometheus]
       metrics/internal:
         receivers: [prometheus/internal]
         processors: [memory_limiter, resource, batch]
-        exporters: [prometheus, logging]
+        exporters: [prometheus]
       traces:
         receivers: [otlp]
         processors: [memory_limiter, resource, batch]
-        exporters: [logging, otlp/tempo]
+        exporters: [otlp/tempo]
 ports:
   otlp:
     enabled: true

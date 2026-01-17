@@ -223,4 +223,29 @@ spec:
           requests:
             storage: "5Gi"
         storageClassName:
+---
+# Source: tempo/templates/servicemonitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: tempo
+  labels:
+    app: tempo
+    chart: tempo-1.8.0
+    release: tempo
+    heritage: Helm
+spec:
+  selector:
+    matchLabels:
+      helm.sh/chart: tempo-1.8.0
+      app.kubernetes.io/name: tempo
+      app.kubernetes.io/instance: tempo
+      app.kubernetes.io/version: "2.4.0"
+      app.kubernetes.io/managed-by: Helm
+  namespaceSelector:
+    matchNames:
+      - "monitoring"
+  endpoints:
+    - port: tempo-prom-metrics
+    - port: jaeger-metrics
 

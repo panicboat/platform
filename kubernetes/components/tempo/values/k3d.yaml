@@ -18,3 +18,7 @@ persistence:
 # Disable gateway, use internal
 gateway:
   enabled: false
+
+# Enable ServiceMonitor for Prometheus scraping
+serviceMonitor:
+  enabled: true

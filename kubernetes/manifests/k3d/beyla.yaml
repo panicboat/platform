@@ -31,11 +31,6 @@ metadata:
     app.kubernetes.io/component: config
 data:
   beyla-config.yml: |
-    discovery:
-      services:
-        - k8s_namespace: .
-      exclude_services:
-        - exe_path: ".*alloy.*|.*otelcol.*|.*beyla.*"
     attributes:
       kubernetes:
         enable: true
@@ -45,6 +40,10 @@ data:
           - k8s.src.owner.type
           - k8s.dst.owner.type
           - direction
+    discovery:
+      services:
+      - k8s_namespace: default
+      - k8s_namespace: demo
     filter:
       network:
         k8s_dst_owner_name:
@@ -53,11 +52,16 @@ data:
           not_match: '{kube*,*jaeger-agent*,*prometheus*,*promtail*,*grafana-agent*}'
     otel_metrics_export:
       endpoint: http://opentelemetry-collector.opentelemetry-system.svc.cluster.local:4317
+      interval: 30s
     otel_traces_export:
       endpoint: http://opentelemetry-collector.opentelemetry-system.svc.cluster.local:4317
+      interval: 5s
+      max_export_batch_size: 512
     prometheus_export:
       path: /metrics
       port: 9090
+    routes:
+      unmatched: heuristic
 ---
 # Source: beyla/templates/cluster-role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -102,6 +106,31 @@ roleRef:
   kind: ClusterRole
   name: beyla
 ---
+# Source: beyla/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: beyla
+  namespace: monitoring
+  labels:
+    helm.sh/chart: beyla-1.6.0
+    app.kubernetes.io/name: beyla
+    app.kubernetes.io/instance: beyla
+    app.kubernetes.io/version: "1.9.6"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: beyla
+    app.kubernetes.io/component: networking
+spec:
+  type: ClusterIP
+  ports:
+    - name: metrics
+      port: 80
+      protocol: TCP
+      targetPort: 9090
+  selector:
+    app.kubernetes.io/name: beyla
+    app.kubernetes.io/instance: beyla
+---
 # Source: beyla/templates/daemon-set.yaml
 apiVersion: apps/v1
 kind: DaemonSet
@@ -126,7 +155,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: c60feec20bd848e6a49330881b2b76a5a5d7ebf9b7b2a4cb8e3aaf703c20afba
+        checksum/config: 5dd29b468490392849967a8d45a7d95c824ddb9fe0d4e2f4eef59e418781c5fe
       labels:
         helm.sh/chart: beyla-1.6.0
         app.kubernetes.io/name: beyla
@@ -158,4 +187,33 @@ spec:
         - name: beyla-config
           configMap:
             name: beyla
+---
+# Source: beyla/templates/servicemonitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: beyla
+  namespace: monitoring
+  labels:
+    helm.sh/chart: beyla-1.6.0
+    app.kubernetes.io/name: beyla
+    app.kubernetes.io/instance: beyla
+    app.kubernetes.io/version: "1.9.6"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: beyla
+    app.kubernetes.io/component: metrics
+spec:
+  endpoints:
+    - port: metrics
+      path: /metrics
+      scheme: http
+  jobLabel: beyla
+  selector:
+    matchLabels:
+      helm.sh/chart: beyla-1.6.0
+      app.kubernetes.io/name: beyla
+      app.kubernetes.io/instance: beyla
+      app.kubernetes.io/version: "1.9.6"
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/part-of: beyla
 

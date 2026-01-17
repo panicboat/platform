@@ -26,6 +26,13 @@ grafana:
           datasourceUid: 'loki'
 prometheus:
   prometheusSpec:
+    # Allow all ServiceMonitors/PodMonitors regardless of labels
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelector: {}
+    podMonitorNamespaceSelector: {}
     retention: 2d
     thanos:
       version: v0.31.0 # Check for latest version compatible with kube-prometheus-stack

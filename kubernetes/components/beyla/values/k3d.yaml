@@ -2,7 +2,33 @@ config:
   data:
     otel_traces_export:
       endpoint: http://opentelemetry-collector.opentelemetry-system.svc.cluster.local:4317
+      # Increase batch size and interval to reduce queue pressure
+      interval: 5s
+      max_export_batch_size: 512
     otel_metrics_export:
       endpoint: http://opentelemetry-collector.opentelemetry-system.svc.cluster.local:4317
+      interval: 30s
+    prometheus_export:
+      port: 9090
+      path: /metrics
+    # Limit instrumentation to specific namespaces
+    discovery:
+      services:
+        - k8s_namespace: "default"
+    # Exclude monitoring/system components from tracing
+    routes:
+      unmatched: heuristic
+    # Reduce trace sampling for high-volume services
+    attributes:
+      kubernetes:
+        enable: true
 
 preset: application
+
+# Enable Service for metrics exposure
+service:
+  enabled: true
+
+# Enable ServiceMonitor for Prometheus scraping
+serviceMonitor:
+  enabled: true

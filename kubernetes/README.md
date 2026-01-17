@@ -63,14 +63,6 @@ flowchart TB
     Thanos --> Grafana
     Tempo --> Grafana
     Loki --> Grafana
-
-    classDef graduated fill:#22c55e,stroke:#16a34a,color:#fff
-    classDef incubating fill:#3b82f6,stroke:#2563eb,color:#fff
-    classDef grafana fill:#f97316,stroke:#ea580c,color:#fff
-
-    class Prometheus,OTelCol,Cilium graduated
-    class Thanos,FluentBit incubating
-    class Tempo,Loki,Grafana,Beyla,Hubble grafana
 ```
 
 ### Dataflow
@@ -168,8 +160,7 @@ make phase4
 
 ### 完全自動セットアップ
 ```bash
-export GITHUB_TOKEN=ghp_... # 必須 (repo権限が必要)
-make up              # Phase 1-4 全自動実行 (2-3分)
+make up              # Phase 1-4 全自動実行
 make down            # クラスター完全削除
 ```
 

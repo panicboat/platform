@@ -50,3 +50,12 @@ read:
   replicas: 0
 write:
   replicas: 0
+
+# Enable ServiceMonitor for Prometheus scraping
+monitoring:
+  serviceMonitor:
+    enabled: true
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false

@@ -60,7 +60,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
 data:
   config.yaml: |
-    
+
     auth_enabled: false
     common:
       compactor_address: 'http://loki:3100'
@@ -205,7 +205,7 @@ spec:
     - name: http-metrics
       port: 9150
       targetPort: 9150
-    
+
   selector:
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
@@ -322,7 +322,7 @@ spec:
         app.kubernetes.io/component: canary
     spec:
       serviceAccountName: loki-canary
-      
+
       securityContext:
         fsGroup: 10001
         runAsGroup: 10001
@@ -353,7 +353,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-            
+
           readinessProbe:
             httpGet:
               path: /metrics
@@ -484,7 +484,7 @@ spec:
       partition: 0
   serviceName: loki-headless
   revisionHistoryLimit: 10
-  
+
   persistentVolumeClaimRetentionPolicy:
     whenDeleted: Delete
     whenScaled: Delete
@@ -506,7 +506,7 @@ spec:
       serviceAccountName: loki
       automountServiceAccountToken: true
       enableServiceLinks: true
-      
+
       securityContext:
         fsGroup: 10001
         runAsGroup: 10001
@@ -588,34 +588,3 @@ spec:
         resources:
           requests:
             storage: "5Gi"
----
-# Source: loki/templates/tests/test-canary.yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: "loki-helm-test"
-  namespace: monitoring
-  labels:
-    helm.sh/chart: loki-6.6.6
-    app.kubernetes.io/name: loki
-    app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.0.0"
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/component: helm-test
-  annotations:
-    "helm.sh/hook": test
-spec:
-  containers:
-    - name: loki-helm-test
-      image: docker.io/grafana/loki-helm-test:ewelch-distributed-helm-chart-17db5ee
-      env:
-        - name: CANARY_SERVICE_ADDRESS
-          value: "http://loki-canary:3500/metrics"
-        - name: CANARY_PROMETHEUS_ADDRESS
-          value: ""
-        - name: CANARY_TEST_TIMEOUT
-          value: "1m"
-      args:
-        - -test.v
-  restartPolicy: Never
-
