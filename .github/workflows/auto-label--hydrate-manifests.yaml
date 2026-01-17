@@ -86,7 +86,7 @@ jobs:
 
       - name: Commit and Push Changes
         if: steps.git-check.outputs.changes_exist == 'true'
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore(k8s): hydrate manifests"
           file_pattern: 'kubernetes/manifests/**'
