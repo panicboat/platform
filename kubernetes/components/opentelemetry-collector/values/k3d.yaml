@@ -45,6 +45,10 @@ config:
       enable_open_metrics: true
     logging:
       loglevel: debug
+    otlp/tempo:
+      endpoint: "tempo.monitoring.svc.cluster.local:4317"
+      tls:
+        insecure: true
   extensions:
     health_check:
       endpoint: "0.0.0.0:13133"
@@ -66,7 +70,7 @@ config:
       traces:
         receivers: [otlp]
         processors: [memory_limiter, resource, batch]
-        exporters: [logging]
+        exporters: [logging, otlp/tempo]
 ports:
   otlp:
     enabled: true

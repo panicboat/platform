@@ -1,0 +1,20 @@
+environments:
+  k3d:
+    values:
+      - env/k3d/version.yaml
+  production:
+    values:
+      - env/production/version.yaml
+
+---
+repositories:
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
+
+releases:
+  - name: loki
+    namespace: monitoring
+    chart: grafana/loki
+    version: "{{ .Values.version }}"
+    values:
+      - values/{{ .Environment.Name }}.yaml

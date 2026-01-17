@@ -56454,6 +56454,22 @@ data:
       jsonData:
         handleGrafanaManagedAlerts: false
         implementation: prometheus
+    - access: proxy
+      jsonData:
+        maxLines: 1000
+      name: Loki
+      type: loki
+      uid: loki
+      url: http://loki.monitoring.svc.cluster.local:3100
+    - access: proxy
+      jsonData:
+        httpMethod: GET
+        tracesToLogs:
+          datasourceUid: loki
+      name: Tempo
+      type: tempo
+      uid: tempo
+      url: http://tempo.monitoring.svc.cluster.local:3100
 ---
 # Source: kube-prometheus-stack/templates/grafana/dashboards-1.14/alertmanager-overview.yaml
 apiVersion: v1
@@ -58535,6 +58551,8 @@ spec:
         resources:
           requests:
             storage: 2Gi
+  thanos:
+    version: v0.31.0
   portName: http-web
   hostNetwork: false
 ---

@@ -7,13 +7,33 @@ grafana:
     dashboards:
       enabled: true
       label: grafana_dashboard
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      uid: loki
+      url: http://loki.monitoring.svc.cluster.local:3100
+      access: proxy
+      jsonData:
+        maxLines: 1000
+    - name: Tempo
+      type: tempo
+      uid: tempo
+      url: http://tempo.monitoring.svc.cluster.local:3100
+      access: proxy
+      jsonData:
+        httpMethod: GET
+        tracesToLogs:
+          datasourceUid: 'loki'
 prometheus:
   prometheusSpec:
     retention: 2d
+    thanos:
+      version: v0.31.0 # Check for latest version compatible with kube-prometheus-stack
     resources:
       limits:
         memory: 1G
     storageSpec:
+      # TODO: Configure Thanos Sidecar and Object Storage for long-term metrics retention in production
       volumeClaimTemplate:
         spec:
           resources:

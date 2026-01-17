@@ -1,6 +1,10 @@
 resources:
 - cilium.yaml
+- beyla.yaml
+- fluent-bit.yaml
 - kube-prometheus-stack.yaml
+- loki.yaml
+- tempo.yaml
 - opentelemetry-operator.yaml
 - opentelemetry-collector.yaml
 - 00-namespaces.yaml

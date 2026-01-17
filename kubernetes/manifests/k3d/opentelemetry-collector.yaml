@@ -31,6 +31,10 @@ data:
       debug: {}
       logging:
         loglevel: debug
+      otlp/tempo:
+        endpoint: tempo.monitoring.svc.cluster.local:4317
+        tls:
+          insecure: true
       prometheus:
         enable_open_metrics: true
         endpoint: 0.0.0.0:8889
@@ -126,6 +130,7 @@ data:
         traces:
           exporters:
           - logging
+          - otlp/tempo
           processors:
           - memory_limiter
           - resource
@@ -219,7 +224,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 11e715171bacf5e8266f9d8b28ae74dff6039bdb77ad8277e2a342258d8d82bc
+        checksum/config: 8eb1c1bd96a8d89f842f23968606e6dd7f16ff0e725d0d840824904552db64c7
         
       labels:
         app.kubernetes.io/name: opentelemetry-collector

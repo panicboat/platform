@@ -7,56 +7,104 @@
 ## 🏗️ アーキテクチャ
 
 ```mermaid
-graph TB
-    subgraph "Local / CI"
-        HF[Helmfile / Components]
-        HYD[Hydration Process]
-        MF[Manifests]
-        HF --> HYD
-        HYD --> MF
-    end
-
-    subgraph "k3d Cluster"
-        subgraph "Phase 1: Foundation"
-            GW[Gateway API CRDs]
-            CNI[Cilium CNI + Gateway Controller]
-            DNS[CoreDNS]
-            GW --> CNI
-            CNI --> DNS
+flowchart TB
+    subgraph EKS["EKS Cluster"]
+        subgraph Apps["Application Pods"]
+            App["App"]
         end
 
-        subgraph "Phase 2: GitOps"
-            FLUX[FluxCD Controllers]
+        subgraph Collection["Collection Layer"]
+            Cilium["Cilium CNI<br/>(CNCF Graduated)"]
+            Hubble["Hubble"]
+            Beyla["Beyla<br/>(eBPF)"]
+            OTelCol["OTel Collector<br/>(CNCF Graduated)"]
+            FluentBit["Fluent Bit<br/>(CNCF Incubating)"]
         end
 
-        subgraph "Phase 3: Hydrated Resources"
-            M_APP[Hydrated Manifests]
-            PROM[Prometheus Stack]
-            OTEL[OpenTelemetry]
-            M_APP --> PROM
-            M_APP --> OTEL
-        end
-
-        subgraph "Service Mesh Layer"
-            GC[GatewayClass: cilium]
-            GT[Gateway: cilium-gateway]
-            HTTP[HTTPRoutes]
-            GC --> GT
-            GT --> HTTP
+        subgraph Storage["Storage Layer"]
+            Prometheus["Prometheus<br/>(CNCF Graduated)"]
+            Thanos["Thanos Sidecar<br/>(CNCF Incubating)"]
+            Tempo["Tempo"]
+            Loki["Loki"]
         end
     end
 
-    subgraph "External Access"
-        BROWSER[Browser]
-        LOCALHOST[localhost:80/443]
+    subgraph S3["S3"]
+        S3Thanos[("Metrics")]
+        S3Tempo[("Traces")]
+        S3Loki[("Logs")]
     end
 
-    MF -.-> FLUX
-    FLUX --> M_APP
-    CNI -.-> GC
-    HTTP --> PROM
-    BROWSER --> LOCALHOST
-    LOCALHOST --> GT
+    Grafana["Grafana"]
+
+    %% Network
+    Cilium --> Hubble
+
+    %% All telemetry → OTel Collector
+    Hubble -->|OTLP| OTelCol
+    App -.->|eBPF| Beyla
+    Beyla -->|OTLP| OTelCol
+
+    %% OTel Collector → Backends
+    OTelCol -->|remote_write| Prometheus
+    OTelCol -->|OTLP| Tempo
+
+    %% Logs
+    Apps -.->|stdout| FluentBit
+    FluentBit --> Loki
+
+    %% Long-term storage
+    Prometheus --> Thanos
+    Thanos --> S3Thanos
+    Tempo --> S3Tempo
+    Loki --> S3Loki
+
+    %% Visualization
+    Thanos --> Grafana
+    Tempo --> Grafana
+    Loki --> Grafana
+
+    classDef graduated fill:#22c55e,stroke:#16a34a,color:#fff
+    classDef incubating fill:#3b82f6,stroke:#2563eb,color:#fff
+    classDef grafana fill:#f97316,stroke:#ea580c,color:#fff
+
+    class Prometheus,OTelCol,Cilium graduated
+    class Thanos,FluentBit incubating
+    class Tempo,Loki,Grafana,Beyla,Hubble grafana
+```
+
+### Dataflow
+
+```mermaid
+flowchart LR
+    subgraph Sources["Data Sources"]
+        H["Hubble<br/>(Network L3/L4/L7)"]
+        B["Beyla<br/>(App L7)"]
+        L["stdout"]
+    end
+
+    subgraph Collector["Unified Collector"]
+        OTel["OTel Collector"]
+        FB["Fluent Bit"]
+    end
+
+    subgraph Backends["Backends"]
+        P["Prometheus → Thanos"]
+        T["Tempo"]
+        LO["Loki"]
+    end
+
+    H -->|OTLP| OTel
+    B -->|OTLP| OTel
+    L --> FB
+
+    OTel -->|Metrics| P
+    OTel -->|Traces| T
+    FB --> LO
+
+    P --> Grafana
+    T --> Grafana
+    LO --> Grafana
 ```
 
 ## 🚀 セットアップ
@@ -201,4 +249,45 @@ make down && make up        # 高速リセット
 ```bash
 make phase4                 # Bootstrap → GitOps
 # 継続的デプロイメント開始
+```
+
+## 障害調査例
+
+```mermaid
+flowchart LR
+    subgraph Problem["問題発生"]
+        Alert["🚨 アラート発火<br/>Error Rate > 1%"]
+    end
+
+    subgraph Metrics["Metrics (Prometheus)"]
+        M1["http_requests_total<br/>status=500 増加"]
+        M2["Exemplar リンク付き"]
+    end
+
+    subgraph Traces["Traces (Tempo)"]
+        T1["Trace ID: abc123"]
+        T2["Span: POST /api/users<br/>500ms, error=true"]
+        T3["Span: DB Query<br/>480ms"]
+    end
+
+    subgraph Logs["Logs (Loki)"]
+        L1["{trace_id=abc123}"]
+        L2["ERROR: Connection timeout<br/>to database:5432"]
+    end
+
+    subgraph RootCause["根本原因"]
+        RC["DB コネクション枯渇"]
+    end
+
+    Alert --> M1
+    M1 --> M2
+    M2 -->|"Exemplar Click"| T1
+    T1 --> T2
+    T2 --> T3
+    T3 -->|"TraceID で検索"| L1
+    L1 --> L2
+    L2 --> RC
+
+    style Alert fill:#ef4444
+    style RC fill:#22c55e,color:#fff
 ```

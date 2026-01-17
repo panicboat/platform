@@ -1,0 +1,20 @@
+tempo:
+  repository: grafana/tempo
+  tag: 2.4.0
+  retention: 24h
+  storage:
+    trace:
+      # TODO: Use S3 for long-term trace storage (backend: s3) in production
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+
+persistence:
+  enabled: true
+  size: 5Gi
+
+# Disable gateway, use internal
+gateway:
+  enabled: false
