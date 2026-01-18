@@ -41,6 +41,33 @@ help: ## Show help
 	@echo "make hydrate         - Hydrate manifests from Helmfile"
 
 ##########################
+# Phase 0: Hydrate Manifests
+##########################
+
+.PHONY: hydrate
+hydrate: ## Hydrate manifests (usage: make hydrate ENV=production)
+	@echo "$(BLUE)💧 Hydrating manifests for $(ENV)...$(NC)"
+	@rm -rf manifests/$(ENV)/*
+	@mkdir -p manifests/$(ENV)
+	@echo "$(BLUE)💧 Hydrating namespaces...$(NC)"
+	@find components -name namespace.yaml -print0 | xargs -0 -I{} sh -c 'echo "---"; cat {}' > manifests/$(ENV)/00-namespaces.yaml
+	@echo "$(BLUE)💧 Hydrating helmfile components...$(NC)"
+	@echo "resources:" > manifests/$(ENV)/kustomization.yaml
+	@helmfile -e $(ENV) list | awk 'NR>1 {print $$1}' | while read release; do \
+		echo "Hydrating $$release..."; \
+		component=$$(find components -name helmfile.yaml | grep "/$(ENV)/helmfile.yaml" | xargs grep -l "name: $$release" | head -1 | cut -d'/' -f2); \
+		helmfile -e $(ENV) -l name=$$release template --include-crds > manifests/$(ENV)/$$release.yaml; \
+		if [ -n "$$component" ] && [ -d "components/$$component/$(ENV)/kustomization" ]; then \
+			echo "  + Adding overlay resources from $$component..."; \
+			echo "---" >> manifests/$(ENV)/$$release.yaml; \
+			kustomize build components/$$component/$(ENV)/kustomization >> manifests/$(ENV)/$$release.yaml; \
+		fi; \
+		echo "- $$release.yaml" >> manifests/$(ENV)/kustomization.yaml; \
+	done
+	@echo "- 00-namespaces.yaml" >> manifests/$(ENV)/kustomization.yaml
+	@echo "$(GREEN)✅ Manifests hydrated (Flat Files)$(NC)"
+
+##########################
 # Phase 1: Foundation Setup
 ##########################
 
@@ -158,40 +185,23 @@ gitops-status: ## Check GitOps status
 	@flux get sources git -A || echo "$(YELLOW)No Git sources found$(NC)"
 	@flux get kustomizations -A || echo "$(YELLOW)No Kustomizations found$(NC)"
 
-.PHONY: hydrate
-hydrate: ## Hydrate manifests (usage: make hydrate ENV=production)
-	@echo "$(BLUE)💧 Hydrating manifests for $(ENV)...$(NC)"
-	@rm -rf manifests/$(ENV)/*
-	@mkdir -p manifests/$(ENV)
-	@echo "$(BLUE)💧 Hydrating namespaces...$(NC)"
-	@find components -name namespace.yaml -print0 | xargs -0 -I{} sh -c 'echo "---"; cat {}' > manifests/$(ENV)/00-namespaces.yaml
-	@echo "$(BLUE)💧 Hydrating helmfile components...$(NC)"
-	@echo "resources:" > manifests/$(ENV)/kustomization.yaml
-	@helmfile -e $(ENV) list | awk 'NR>1 {print $$1}' | while read release; do \
-		echo "Hydrating $$release..."; \
-		component=$$(find components -name helmfile.yaml | grep "/$(ENV)/helmfile.yaml" | xargs grep -l "name: $$release" | head -1 | cut -d'/' -f2); \
-		helmfile -e $(ENV) -l name=$$release template --include-crds > manifests/$(ENV)/$$release.yaml; \
-		if [ -n "$$component" ] && [ -d "components/$$component/$(ENV)/kustomization" ]; then \
-			echo "  + Adding overlay resources from $$component..."; \
-			echo "---" >> manifests/$(ENV)/$$release.yaml; \
-			kustomize build components/$$component/$(ENV)/kustomization >> manifests/$(ENV)/$$release.yaml; \
-		fi; \
-		echo "- $$release.yaml" >> manifests/$(ENV)/kustomization.yaml; \
-	done
-	@echo "- 00-namespaces.yaml" >> manifests/$(ENV)/kustomization.yaml
-	@echo "$(GREEN)✅ Manifests hydrated (Flat Files)$(NC)"
+###########################
+# Complete Phases
+###########################
 
+## Foundation Setup
 .PHONY: phase1
 phase1: cluster-create gateway-install cilium-install coredns-update status ## Complete Phase 1
 	@echo "$(GREEN)🎉 Phase 1 Complete!$(NC)"
 
+## FluxCD Installation
 .PHONY: phase2
-phase2:  flux-install flux-status ## Complete Phase 2
+phase2:  flux-install flux-status
 	@echo "$(GREEN)🎉 Phase 2 Complete!$(NC)"
 
-# Phase 3: Infrastructure Auto-Bootstrap
+## Infrastructure Auto-Bootstrap
 .PHONY: phase3
-phase3: ## Complete Phase 3 (Apply hydrated manifests)
+phase3:
 	@echo "$(BLUE)🏗️ Applying hydrated manifests...$(NC)"
 	@kubectl apply -f manifests/k3d/00-namespaces.yaml
 	@echo "$(BLUE)⏳ Waiting for namespaces...$(NC)"
@@ -206,12 +216,16 @@ phase3: ## Complete Phase 3 (Apply hydrated manifests)
 	@echo "$(GREEN)🎉 Phase 3 Complete!$(NC)"
 	@echo "$(BLUE)💡 Ready for GitOps configuration (Phase 4)$(NC)"
 
+## GitOps Migration
 .PHONY: phase4
-phase4: gitops-setup gitops-enable gitops-status ## Complete Phase 4 (GitOps Migration)
+phase4: gitops-setup gitops-enable gitops-status
 	@echo "$(GREEN)🎉 Phase 4 Complete!$(NC)"
 	@echo "$(BLUE)🔄 Full GitOps management enabled$(NC)"
 	@echo "$(BLUE)💡 All infrastructure now managed by FluxCD from Git repository$(NC)"
 
+##########################
+# Complete All Phases
+##########################
 .PHONY: up
 up: hydrate phase1 phase2 phase3 phase4 ## Complete all phases
 	@echo "$(GREEN)🎉 All phases completed!$(NC)"

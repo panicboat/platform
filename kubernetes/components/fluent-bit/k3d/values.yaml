@@ -33,10 +33,12 @@ config:
         K8S-Logging.Parser On
         K8S-Logging.Exclude On
 
-  outputs: |
+outputs: |
     [OUTPUT]
-        Name loki
+        Name opentelemetry
         Match kube.*
-        Host loki.monitoring.svc.cluster.local
-        Port 3100
-        Labels job=fluent-bit
+        Host opentelemetry-collector.opentelemetry-system.svc.cluster.local
+        Port 4318
+        Logs_uri /v1/logs
+        Log_response_payload True
+        Tls Off

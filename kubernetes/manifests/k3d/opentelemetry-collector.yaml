@@ -30,6 +30,8 @@ data:
     exporters:
       debug:
         verbosity: basic
+      loki:
+        endpoint: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
       otlp/tempo:
         endpoint: tempo.monitoring.svc.cluster.local:4317
         retry_on_failure:
@@ -233,7 +235,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 749fe660442872cd525e6095cf85b3a77b929925a0c9ea1e341780bf7b21f1e4
+        checksum/config: fc5ff8e51c226170f05f8bd0b9a17a5735aad4755466ec8648b023638636449e
         
       labels:
         app.kubernetes.io/name: opentelemetry-collector

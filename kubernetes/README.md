@@ -47,11 +47,12 @@ flowchart TB
 
     %% OTel Collector → Backends
     OTelCol -->|remote_write| Prometheus
-    OTelCol -->|OTLP| Tempo
+    OTelCol --> Tempo
 
     %% Logs
     Apps -.->|stdout| FluentBit
-    FluentBit --> Loki
+    FluentBit --> |OTLP| OTelCol
+    OTelCol --> Loki
 
     %% Long-term storage
     Prometheus --> Thanos
@@ -75,9 +76,9 @@ flowchart LR
         L["stdout"]
     end
 
-    subgraph Collector["Unified Collector"]
-        OTel["OTel Collector"]
+    subgraph Collector["Unified Collector (The Hub)"]
         FB["Fluent Bit"]
+        OTel["OTel Collector"]
     end
 
     subgraph Backends["Backends"]
@@ -88,11 +89,13 @@ flowchart LR
 
     H -->|OTLP| OTel
     B -->|OTLP| OTel
-    L --> |stdout| FB
+    L -->|stdout| FB
+
+    FB -->|OTLP| OTel
 
     OTel -->|Metrics| P
     OTel -->|Traces| T
-    FB --> |Logs| LO
+    OTel -->|Logs| LO
 
     P --> Grafana
     T --> Grafana

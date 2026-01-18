@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: observability-stack-dashboard
+  name: observability-stack
   namespace: monitoring
   labels:
     grafana_dashboard: "1"

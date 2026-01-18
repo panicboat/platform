@@ -50,6 +50,8 @@ config:
       enable_open_metrics: true
     debug:
       verbosity: basic
+    loki:
+      endpoint: "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
     otlp/tempo:
       endpoint: "tempo.monitoring.svc.cluster.local:4317"
       tls:
@@ -85,6 +87,10 @@ config:
         receivers: [otlp]
         processors: [memory_limiter, resource, batch]
         exporters: [otlp/tempo]
+      logs:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [loki]
 ports:
   otlp:
     enabled: true
