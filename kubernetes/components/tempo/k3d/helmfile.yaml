@@ -12,3 +12,9 @@ releases:
     version: "1.8.0"
     values:
       - values.yaml
+    strategicMergePatches:
+      - apiVersion: monitoring.coreos.com/v1
+        kind: ServiceMonitor
+        metadata:
+          name: tempo
+          namespace: monitoring

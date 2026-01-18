@@ -197,7 +197,7 @@ phase3: ## Complete Phase 3 (Apply hydrated manifests)
 	@echo "$(BLUE)⏳ Waiting for namespaces...$(NC)"
 	@sleep 2
 	@echo "$(BLUE)Applying CRD-containing stacks (allow failing once for CRDs)...$(NC)"
-	@kubectl apply --server-side --force-conflicts -f manifests/k3d/kube-prometheus-stack.yaml >/dev/null 2>&1
+	@kubectl apply --server-side --force-conflicts -f manifests/k3d/kube-prometheus-stack.yaml >/dev/null 2>&1 || true
 	@echo "$(BLUE)⏳ Waiting for CRDs to register...$(NC)"
 	@sleep 15
 	@echo "$(BLUE)Applying all manifests...$(NC)"
