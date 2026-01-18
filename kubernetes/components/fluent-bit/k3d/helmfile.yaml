@@ -9,6 +9,6 @@ releases:
   - name: fluent-bit
     namespace: monitoring
     chart: fluent/fluent-bit
-    version: "0.44.0"
+    version: "0.54.1"
     values:
       - values.yaml
