@@ -88,11 +88,11 @@ flowchart LR
 
     H -->|OTLP| OTel
     B -->|OTLP| OTel
-    L --> FB
+    L --> |stdout| FB
 
     OTel -->|Metrics| P
     OTel -->|Traces| T
-    FB --> LO
+    FB --> |Logs| LO
 
     P --> Grafana
     T --> Grafana
@@ -192,14 +192,18 @@ make gitops-status   # GitOps状態確認
 
 - **Components (`components/`)**: アプリケーションのソース（Helm Values, Kustomize Base/Overlays）。
 - **Manifests (`manifests/`)**: 自動生成される最終成果物。
-- **Environment**: `env/<env>/version.yaml` によるディレクトリベースのバージョン分離（Renovate対応）。
 
 ## 🔍 監視・オブザーバビリティ
 
 ### 統合監視スタック
 - **Prometheus**: メトリクス収集・アラート
+- **Thanos**: 長期メトリクスストレージ
 - **Grafana**: 可視化ダッシュボード
-- **OpenTelemetry**: 分散トレーシング
+- **Loki**: ログ集約
+- **Tempo**: 分散トレーシングバックエンド
+- **Fluent Bit**: ログ収集
+- **OpenTelemetry Collector**: テレメトリ統合
+- **Beyla**: eBPF自動計装
 - **Cilium Hubble**: ネットワーク観測
 
 ### アクセス方法
