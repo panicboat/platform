@@ -22,4 +22,3 @@ gateway:
 # Enable ServiceMonitor for Prometheus scraping
 serviceMonitor:
   enabled: true
-  namespace: monitoring

@@ -9,12 +9,6 @@ releases:
   - name: tempo
     namespace: monitoring
     chart: grafana/tempo
-    version: "1.8.0"
+    version: "1.23.1"
     values:
       - values.yaml
-    strategicMergePatches:
-      - apiVersion: monitoring.coreos.com/v1
-        kind: ServiceMonitor
-        metadata:
-          name: tempo
-          namespace: monitoring
