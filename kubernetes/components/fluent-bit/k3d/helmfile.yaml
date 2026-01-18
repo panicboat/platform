@@ -1,3 +1,6 @@
+environments:
+  k3d:
+---
 repositories:
   - name: fluent
     url: https://fluent.github.io/helm-charts

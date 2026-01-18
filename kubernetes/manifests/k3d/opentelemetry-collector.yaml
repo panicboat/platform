@@ -112,7 +112,7 @@ data:
       pipelines:
         logs:
           exporters:
-          - debug
+          - loki
           processors:
           - memory_limiter
           - batch
@@ -233,7 +233,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 13534aca35fccfd074bc659548d4964911b696da8506cb1d038376a9132c7b22
+        checksum/config: 749fe660442872cd525e6095cf85b3a77b929925a0c9ea1e341780bf7b21f1e4
         
       labels:
         app.kubernetes.io/name: opentelemetry-collector

@@ -1,3 +1,6 @@
+environments:
+  k3d:
+---
 repositories:
   - name: cilium
     url: https://helm.cilium.io/
