@@ -33,7 +33,7 @@ config:
         K8S-Logging.Parser On
         K8S-Logging.Exclude On
 
-outputs: |
+  outputs: |
     [OUTPUT]
         Name opentelemetry
         Match kube.*

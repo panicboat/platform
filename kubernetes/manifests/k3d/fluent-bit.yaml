@@ -62,19 +62,13 @@ data:
         K8S-Logging.Exclude On
     
     [OUTPUT]
-        Name es
+        Name opentelemetry
         Match kube.*
-        Host elasticsearch-master
-        Logstash_Format On
-        Retry_Limit False
-    
-    [OUTPUT]
-        Name es
-        Match host.*
-        Host elasticsearch-master
-        Logstash_Format On
-        Logstash_Prefix node
-        Retry_Limit False
+        Host opentelemetry-collector.opentelemetry-system.svc.cluster.local
+        Port 4318
+        Logs_uri /v1/logs
+        Log_response_payload True
+        Tls Off
 ---
 # Source: fluent-bit/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -164,7 +158,7 @@ spec:
         app.kubernetes.io/name: fluent-bit
         app.kubernetes.io/instance: fluent-bit
       annotations:
-        checksum/config: 2a5bd1d624a81fde9b7c64198feb8df6dba5601f4acbe96e3680f910c00fd156
+        checksum/config: f729aa7db3afce270ee03b1e71a9a6d47c5b94880f2afc923a7480f36552f587
     spec:
       serviceAccountName: fluent-bit
       hostNetwork: false
