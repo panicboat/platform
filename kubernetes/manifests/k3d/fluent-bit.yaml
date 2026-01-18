@@ -202,26 +202,4 @@ spec:
         - hostPath:
             path: /var/lib/docker/containers
           name: varlibdockercontainers
----
-# Source: fluent-bit/templates/tests/test-connection.yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: "fluent-bit-test-connection"
-  namespace: monitoring
-  labels:
-    helm.sh/chart: fluent-bit-0.44.0
-    app.kubernetes.io/version: "2.2.2"
-    app.kubernetes.io/managed-by: Helm
-  annotations:
-    helm.sh/hook: test
-    helm.sh/hook-delete-policy: hook-succeeded
-spec:
-  containers:
-    - name: wget
-      image: "busybox:latest"
-      imagePullPolicy: Always
-      command: ["sh"]
-      args: ["-c", "wget -O- fluent-bit:2020"]
-  restartPolicy: Never
 

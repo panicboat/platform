@@ -56,7 +56,7 @@ hydrate: ## Hydrate manifests (usage: make hydrate ENV=production)
 	@helmfile -e $(ENV) list | awk 'NR>1 {print $$1}' | while read release; do \
 		echo "Hydrating $$release..."; \
 		component=$$(find components -name helmfile.yaml | grep "/$(ENV)/helmfile.yaml" | xargs grep -l "name: $$release" | head -1 | cut -d'/' -f2); \
-		helmfile -e $(ENV) -l name=$$release template --include-crds > manifests/$(ENV)/$$release.yaml; \
+		helmfile -e $(ENV) -l name=$$release template --include-crds --skip-tests > manifests/$(ENV)/$$release.yaml; \
 		if [ -n "$$component" ] && [ -d "components/$$component/$(ENV)/kustomization" ]; then \
 			echo "  + Adding overlay resources from $$component..."; \
 			echo "---" >> manifests/$(ENV)/$$release.yaml; \
