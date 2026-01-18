@@ -9,6 +9,6 @@ releases:
   - name: loki
     namespace: monitoring
     chart: grafana/loki
-    version: "6.6.6"
+    version: "6.49.0"
     values:
       - values.yaml
