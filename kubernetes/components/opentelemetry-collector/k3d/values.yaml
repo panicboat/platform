@@ -1,7 +1,7 @@
 mode: deployment
 image:
   repository: otel/opentelemetry-collector-contrib
-  tag: 0.104.0
+  tag: 0.143.1
 serviceMonitor:
   enabled: true
 prometheusRule:
