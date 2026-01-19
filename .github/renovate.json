@@ -20,7 +20,6 @@
     {
       "description": "Base rule - packageFileDir and depName separation",
       "matchPaths": ["**"],
-      "automerge": true,
       "groupName": "{{packageFileDir}} {{depName}}"
     },
 
@@ -41,6 +40,7 @@
     {
       "description": "✅ Non major updates - apply automerge label",
       "matchUpdateTypes": ["minor","patch","pin","digest"],
+      "automerge": true,
       "addLabels": ["automerge"]
     }
   ]
