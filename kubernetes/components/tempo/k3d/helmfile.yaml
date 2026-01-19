@@ -9,6 +9,6 @@ releases:
   - name: tempo
     namespace: monitoring
     chart: grafana/tempo
-    version: "1.23.1"
+    version: "1.24.3"
     values:
       - values.yaml
