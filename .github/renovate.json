@@ -41,7 +41,7 @@
       "description": "✅ Non major updates - apply automerge label",
       "matchUpdateTypes": ["minor","patch","pin","digest"],
       "automerge": true,
-      "addLabels": ["automerge"]
+      "addLabels": []
     }
   ]
 }
