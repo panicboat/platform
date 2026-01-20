@@ -1,3 +1,12 @@
+# =============================================================================
+# Cilium Helmfile for k3d
+# =============================================================================
+# Cilium is the CNI (Container Network Interface) providing:
+#   - Network connectivity
+#   - Network policies
+#   - Gateway API implementation
+#   - Hubble observability
+# =============================================================================
 environments:
   k3d:
 ---

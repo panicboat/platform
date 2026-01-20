@@ -1,12 +1,40 @@
+# OpenTelemetry Collector Configuration for k3d
+# Production-ready base configuration with k3d-specific overrides
+
+# =============================================================================
+# Deployment Mode
+# =============================================================================
 mode: deployment
+
+# =============================================================================
+# Service Configuration
+# =============================================================================
+service:
+  # ClusterIP is sufficient - Beyla connects via hostPort (localhost:4317)
+  type: ClusterIP
+
+# =============================================================================
+# Image Configuration
+# =============================================================================
 image:
   repository: otel/opentelemetry-collector-contrib
   tag: 0.143.1
+
+# =============================================================================
+# Monitoring
+# =============================================================================
 serviceMonitor:
   enabled: true
 prometheusRule:
   enabled: false
+
+# =============================================================================
+# Collector Configuration
+# =============================================================================
 config:
+  # ---------------------------------------------------------------------------
+  # Receivers
+  # ---------------------------------------------------------------------------
   receivers:
     otlp:
       protocols:
@@ -14,20 +42,10 @@ config:
           endpoint: 0.0.0.0:4317
         http:
           endpoint: 0.0.0.0:4318
-    prometheus:
-      config:
-        scrape_configs:
-          - job_name: 'otel-collector'
-            scrape_interval: 10s
-            static_configs:
-              - targets: ['0.0.0.0:8888']
-    prometheus/internal:
-      config:
-        scrape_configs:
-          - job_name: 'otel-collector-internal'
-            scrape_interval: 10s
-            static_configs:
-              - targets: ['0.0.0.0:8888']
+
+  # ---------------------------------------------------------------------------
+  # Processors
+  # ---------------------------------------------------------------------------
   processors:
     batch:
       send_batch_size: 1000
@@ -36,22 +54,46 @@ config:
     resource:
       attributes:
         - key: cluster.name
-          value: kind
+          # TODO(k3d): Change to actual cluster name in production
+          value: k8s-local
           action: upsert
     memory_limiter:
       check_interval: 1s
       limit_mib: 400
       spike_limit_mib: 100
+    # Transform processor to extract Kubernetes metadata from log body
+    transform/logs:
+      error_mode: ignore
+      log_statements:
+        - context: log
+          statements:
+            - set(resource.attributes["k8s.namespace.name"], body["kubernetes"]["namespace_name"]) where body["kubernetes"]["namespace_name"] != nil
+            - set(resource.attributes["k8s.pod.name"], body["kubernetes"]["pod_name"]) where body["kubernetes"]["pod_name"] != nil
+            - set(resource.attributes["k8s.container.name"], body["kubernetes"]["container_name"]) where body["kubernetes"]["container_name"] != nil
+            - set(resource.attributes["service.name"], body["kubernetes"]["pod_name"]) where body["kubernetes"]["pod_name"] != nil and resource.attributes["service.name"] == nil
+            - set(body, body["log"]) where body["log"] != nil
+
+  # ---------------------------------------------------------------------------
+  # Exporters
+  # ---------------------------------------------------------------------------
   exporters:
+    # Prometheus exporter for metrics
     prometheus:
       endpoint: "0.0.0.0:8889"
       send_timestamps: true
       metric_expiration: 180m
       enable_open_metrics: true
+    # Debug exporter for troubleshooting
     debug:
       verbosity: basic
-    loki:
-      endpoint: "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+      sampling_initial: 5
+      sampling_thereafter: 200
+    # Loki exporter for logs
+    otlphttp/loki:
+      endpoint: "http://loki.monitoring.svc.cluster.local:3100/otlp"
+      tls:
+        insecure: true
+    # Tempo exporter for traces
     otlp/tempo:
       endpoint: "tempo.monitoring.svc.cluster.local:4317"
       tls:
@@ -65,6 +107,10 @@ config:
         initial_interval: 5s
         max_interval: 30s
         max_elapsed_time: 300s
+
+  # ---------------------------------------------------------------------------
+  # Extensions
+  # ---------------------------------------------------------------------------
   extensions:
     health_check:
       endpoint: "0.0.0.0:13133"
@@ -72,37 +118,42 @@ config:
       endpoint: 0.0.0.0:1777
     zpages:
       endpoint: 0.0.0.0:55679
+
+  # ---------------------------------------------------------------------------
+  # Service Pipelines
+  # ---------------------------------------------------------------------------
   service:
     extensions: [health_check, pprof, zpages]
     pipelines:
+      # Metrics pipeline
       metrics:
-        receivers: [otlp, prometheus]
+        receivers: [otlp]
         processors: [memory_limiter, resource, batch]
         exporters: [prometheus]
-      metrics/internal:
-        receivers: [prometheus/internal]
-        processors: [memory_limiter, resource, batch]
-        exporters: [prometheus]
+      # Traces pipeline
       traces:
         receivers: [otlp]
         processors: [memory_limiter, resource, batch]
-        exporters: [otlp/tempo]
+        exporters: [otlp/tempo, debug]
+      # Logs pipeline
       logs:
         receivers: [otlp]
-        processors: [memory_limiter, batch]
-        exporters: [loki]
+        processors: [memory_limiter, transform/logs, batch]
+        exporters: [otlphttp/loki]
+
+# =============================================================================
+# Port Configuration
+# =============================================================================
 ports:
   otlp:
     enabled: true
     containerPort: 4317
     servicePort: 4317
-    hostPort: 4317
     protocol: TCP
   otlp-http:
     enabled: true
     containerPort: 4318
     servicePort: 4318
-    hostPort: 4318
     protocol: TCP
   metrics:
     enabled: true
@@ -114,10 +165,14 @@ ports:
     containerPort: 8889
     servicePort: 8889
     protocol: TCP
+
+# =============================================================================
+# Resource Limits
+# =============================================================================
 resources:
   limits:
     cpu: 256m
     memory: 512Mi
   requests:
-    cpu: 256m
-    memory: 512Mi
+    cpu: 128m
+    memory: 256Mi

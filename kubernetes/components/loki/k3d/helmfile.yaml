@@ -1,3 +1,10 @@
+# =============================================================================
+# Loki Helmfile for k3d
+# =============================================================================
+# Loki is a log aggregation system designed for efficiency and ease of
+# operation. It receives logs from the OTel Collector and provides querying
+# capabilities in Grafana.
+# =============================================================================
 environments:
   k3d:
 ---

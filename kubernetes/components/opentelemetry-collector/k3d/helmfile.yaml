@@ -1,3 +1,12 @@
+# =============================================================================
+# OpenTelemetry Collector Helmfile for k3d
+# =============================================================================
+# The OTel Collector receives telemetry data from various sources and exports
+# to appropriate backends:
+#   - Traces: Tempo
+#   - Metrics: Prometheus
+#   - Logs: Loki
+# =============================================================================
 environments:
   k3d:
 ---

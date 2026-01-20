@@ -1,20 +1,43 @@
+# =============================================================================
+# OpenTelemetry Operator Configuration for k3d
+# =============================================================================
+# The OpenTelemetry Operator manages OpenTelemetry Collectors and
+# auto-instrumentation resources using Kubernetes CRDs.
+#
+# This deployment uses the Helm chart directly for the collector, but the
+# operator enables future use of OpenTelemetryCollector CRDs.
+# =============================================================================
+
+# =============================================================================
+# Admission Webhooks
+# =============================================================================
 admissionWebhooks:
   certManager:
+    # TODO(production): Use cert-manager for production TLS certificates
     enabled: false
   autoGenerateCert:
     enabled: true
+
+# =============================================================================
+# Manager Configuration
+# =============================================================================
 manager:
+  # Default collector image for operator-managed collectors
   collectorImage:
     repository: otel/opentelemetry-collector-contrib
     tag: 0.143.1
+
+  # Enable ServiceMonitor for Prometheus scraping
   serviceMonitor:
     enabled: true
   prometheusRule:
     enabled: false
+
+  # Resource limits
   resources:
     limits:
       cpu: 100m
       memory: 128Mi
     requests:
-      cpu: 100m
+      cpu: 50m
       memory: 64Mi

@@ -1,3 +1,10 @@
+# =============================================================================
+# FluxCD GitOps Sync Configuration for k3d
+# =============================================================================
+# This file configures FluxCD to sync with the Git repository.
+#
+# TODO(production): Configure different branches for different environments
+# =============================================================================
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
 metadata:
@@ -7,7 +14,7 @@ spec:
   interval: 1m
   url: https://github.com/panicboat/platform.git
   ref:
-    # TODO: change to your branch
+    # TODO(k3d): Change branch for different environments
     branch: main
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1

@@ -1,8 +1,36 @@
+# =============================================================================
+# Helmfile Configuration
+# =============================================================================
+# This is the main entry point for Helmfile.
+# It defines environments and includes component-specific helmfiles.
+#
+# Usage:
+#   helmfile -e k3d list              # List all releases
+#   helmfile -e k3d template          # Generate manifests
+#   helmfile -e k3d apply             # Deploy to cluster
+#
+# TODO(production): Add production, staging environments
+# =============================================================================
+
 environments:
   k3d:
-  # develop:
-  # staging:
+    values:
+      - cluster:
+          name: k8s-local
+          # TODO(k3d): k3d-specific settings
+          isLocal: true
+  # TODO(production): Uncomment and configure for production
   # production:
+  #   values:
+  #     - cluster:
+  #         name: eks-production
+  #         isLocal: false
+  # staging:
+  #   values:
+  #     - cluster:
+  #         name: eks-staging
+  #         isLocal: false
 
+# Include all component helmfiles for the current environment
 helmfiles:
   - components/*/{{ .Environment.Name }}/helmfile.yaml

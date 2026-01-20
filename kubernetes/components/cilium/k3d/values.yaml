@@ -1,24 +1,87 @@
-# k3d environment specific values
+# Cilium CNI Configuration for k3d
+# Production-ready base configuration with k3d-specific overrides
+
+# =============================================================================
+# Kube-proxy replacement
+# =============================================================================
+# TODO(k3d): Using kubeProxyReplacement: true with kube-proxy also running.
+# This hybrid mode allows Gateway API to work while kube-proxy provides
+# iptables-based service routing as fallback for hostNetwork pods.
 kubeProxyReplacement: true
+
+# TODO(k3d): These values are specific to k3d cluster
+# In production (EKS), use the actual API server endpoint
 k8sServiceHost: k3d-k8s-local-server-0
 k8sServicePort: 6443
+
+# =============================================================================
+# IPAM Configuration
+# =============================================================================
 ipam:
   operator:
+    # TODO(k3d): Adjust CIDR for production environment
     clusterPoolIPv4PodCIDRList: ["10.42.0.0/16"]
+
+# =============================================================================
+# Operator Configuration
+# =============================================================================
 operator:
+  # TODO(production): Increase replicas to 2+ for HA in production
   replicas: 1
+
+# =============================================================================
+# Gateway API (recommended for production)
+# =============================================================================
 gatewayAPI:
   enabled: true
-hostServices:
-  enabled: false
+
+# =============================================================================
+# Socket Load Balancing
+# Required for hostNetwork pods (Beyla) to reach ClusterIP services
+# =============================================================================
+socketLB:
+  enabled: true
+
+# =============================================================================
+# Hubble Observability
+# =============================================================================
 hubble:
   enabled: true
   relay:
     enabled: true
   ui:
     enabled: true
+  metrics:
+    enabled:
+      - dns
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - http
+    serviceMonitor:
+      enabled: true
+
+# =============================================================================
+# DNS Proxy
+# Required for proper DNS resolution from hostNetwork pods
+# =============================================================================
 dnsProxy:
-  enabled: false
+  enabled: true
+
+# =============================================================================
+# Network Configuration
+# =============================================================================
 ipv6:
   enabled: false
 enableIPv4Masquerade: true
+
+# =============================================================================
+# Prometheus Metrics
+# =============================================================================
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    # Required for helm template to work without prometheus-operator CRDs installed
+    trustCRDsExist: true

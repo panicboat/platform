@@ -1,34 +1,89 @@
+# Beyla eBPF Auto-Instrumentation Configuration for k3d
+# Production-ready base configuration with k3d-specific overrides
+
+# =============================================================================
+# Preset Configuration
+# =============================================================================
+# "application" preset: Focuses on application-level metrics and traces
+preset: application
+
+# =============================================================================
+# Beyla Configuration
+# =============================================================================
 config:
   data:
+    # -------------------------------------------------------------------------
+    # OTEL Traces Export
+    # -------------------------------------------------------------------------
     otel_traces_export:
+      # Using ClusterIP DNS name - works with kube-proxy enabled in k3d
       endpoint: http://opentelemetry-collector.opentelemetry-system.svc.cluster.local:4317
-      # Increase batch size and interval to reduce queue pressure
+      protocol: grpc
       interval: 5s
       max_export_batch_size: 512
+
+    # -------------------------------------------------------------------------
+    # OTEL Metrics Export
+    # -------------------------------------------------------------------------
     otel_metrics_export:
+      # Using ClusterIP DNS name - works with kube-proxy enabled in k3d
       endpoint: http://opentelemetry-collector.opentelemetry-system.svc.cluster.local:4317
+      protocol: grpc
       interval: 30s
+
+    # -------------------------------------------------------------------------
+    # Prometheus Export (for ServiceMonitor scraping)
+    # -------------------------------------------------------------------------
     prometheus_export:
       port: 9090
       path: /metrics
-    # Limit instrumentation to specific namespaces
+
+    # -------------------------------------------------------------------------
+    # Service Discovery
+    # -------------------------------------------------------------------------
     discovery:
       services:
-        - k8s_namespace: "default"
-    # Exclude monitoring/system components from tracing
+        # TODO(k3d): Using open_ports discovery because k8s_namespace discovery
+        # requires Kubernetes API access which is unreliable in k3d hostNetwork mode.
+        # In production, use:
+        #   - k8s_namespace: "default"
+        #   - k8s_namespace: "your-app-namespace"
+        - name: "http-services"
+          open_ports: "80,443,8080,3000"
+
+    # -------------------------------------------------------------------------
+    # Route Configuration
+    # -------------------------------------------------------------------------
     routes:
       unmatched: heuristic
-    # Reduce trace sampling for high-volume services
+
+    # -------------------------------------------------------------------------
+    # Kubernetes Attributes
+    # -------------------------------------------------------------------------
     attributes:
       kubernetes:
-        enable: true
+        # TODO(k3d): Disabled because Beyla cannot reliably access Kubernetes API
+        # in k3d hostNetwork mode. Enable in production for rich K8s metadata.
+        enable: false
 
-preset: application
+    # -------------------------------------------------------------------------
+    # Network Filter (optional - reduce noise)
+    # -------------------------------------------------------------------------
+    filter:
+      network:
+        k8s_dst_owner_name:
+          not_match: "{kube*,*prometheus*,*grafana-agent*}"
+        k8s_src_owner_name:
+          not_match: "{kube*,*prometheus*,*grafana-agent*}"
 
-# Enable Service for metrics exposure
+# =============================================================================
+# Service Configuration
+# =============================================================================
 service:
   enabled: true
 
-# Enable ServiceMonitor for Prometheus scraping
+# =============================================================================
+# ServiceMonitor for Prometheus
+# =============================================================================
 serviceMonitor:
   enabled: true

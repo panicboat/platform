@@ -1,3 +1,9 @@
+# =============================================================================
+# Tempo Helmfile for k3d
+# =============================================================================
+# Tempo is a distributed tracing backend. It receives traces from the OTel
+# Collector and provides querying capabilities in Grafana.
+# =============================================================================
 environments:
   k3d:
 ---

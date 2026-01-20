@@ -1,22 +1,4 @@
 ---
-# Source: loki/templates/results-cache/poddisruptionbudget-results-cache.yaml
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: loki-memcached-results-cache
-  namespace: monitoring
-  labels:
-    app.kubernetes.io/name: loki
-    app.kubernetes.io/instance: loki
-    app.kubernetes.io/component: memcached-results-cache
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: loki
-      app.kubernetes.io/instance: loki
-      app.kubernetes.io/component: memcached-results-cache
-  maxUnavailable: 1
----
 # Source: loki/templates/loki-canary/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -24,11 +6,10 @@ metadata:
   name: loki-canary
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-6.6.6
+    helm.sh/chart: loki-6.49.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.0.0"
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/version: "3.6.3"
     app.kubernetes.io/component: canary
 automountServiceAccountToken: true
 ---
@@ -39,11 +20,10 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-6.6.6
+    helm.sh/chart: loki-6.49.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.0.0"
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/version: "3.6.3"
 automountServiceAccountToken: true
 ---
 # Source: loki/templates/config.yaml
@@ -53,17 +33,24 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-6.6.6
+    helm.sh/chart: loki-6.49.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.0.0"
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/version: "3.6.3"
 data:
   config.yaml: |
     
     auth_enabled: false
+    bloom_build:
+      builder:
+        planner_address: ""
+      enabled: false
+    bloom_gateway:
+      client:
+        addresses: ""
+      enabled: false
     common:
-      compactor_address: 'http://loki:3100'
+      compactor_grpc_address: 'loki.monitoring.svc.cluster.local:9095'
       path_prefix: /var/loki
       replication_factor: 1
       storage:
@@ -80,6 +67,15 @@ data:
     limits_config:
       allow_structured_metadata: true
       max_cache_freshness_per_query: 10m
+      otlp_config:
+        resource_attributes:
+          attributes_config:
+          - action: index_label
+            attributes:
+            - k8s.namespace.name
+            - k8s.pod.name
+            - k8s.container.name
+            - service.name
       query_timeout: 300s
       reject_old_samples: true
       reject_old_samples_max_age: 168h
@@ -87,7 +83,7 @@ data:
       volume_enabled: true
     memberlist:
       join_members:
-      - loki-memberlist
+      - loki-memberlist.monitoring.svc.cluster.local
     pattern_ingester:
       enabled: true
     query_range:
@@ -101,13 +97,15 @@ data:
             writeback_size_limit: 500MB
           default_validity: 12h
           memcached_client:
-            addresses: dnssrvnoa+_memcached-client._tcp.loki-results-cache.monitoring.svc
+            addresses: dnssrvnoa+_memcached-client._tcp.loki-results-cache.monitoring.svc.cluster.local
             consistent_hash: true
             timeout: 500ms
             update_interval: 1m
     ruler:
       storage:
         type: local
+      wal:
+        dir: /var/loki/ruler-wal
     runtime_config:
       file: /etc/loki/runtime-config/runtime-config.yaml
     schema_config:
@@ -125,6 +123,8 @@ data:
       http_server_read_timeout: 600s
       http_server_write_timeout: 600s
     storage_config:
+      bloom_shipper:
+        working_directory: /var/loki/data/bloomshipper
       boltdb_shipper:
         index_gateway_client:
           server_address: ""
@@ -135,6 +135,7 @@ data:
       tsdb_shipper:
         index_gateway_client:
           server_address: ""
+      use_thanos_objstore: false
     tracing:
       enabled: false
 ---
@@ -145,14 +146,47 @@ metadata:
   name: loki-runtime
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-6.6.6
+    helm.sh/chart: loki-6.49.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.0.0"
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/version: "3.6.3"
 data:
   runtime-config.yaml: |
     {}
+---
+# Source: loki/templates/backend/clusterrole.yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  labels:
+    helm.sh/chart: loki-6.49.0
+    app.kubernetes.io/name: loki
+    app.kubernetes.io/instance: loki
+    app.kubernetes.io/version: "3.6.3"
+  name: loki-clusterrole
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "watch", "list"]
+---
+# Source: loki/templates/backend/clusterrolebinding.yaml
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: loki-clusterrolebinding
+  labels:
+    helm.sh/chart: loki-6.49.0
+    app.kubernetes.io/name: loki
+    app.kubernetes.io/instance: loki
+    app.kubernetes.io/version: "3.6.3"
+subjects:
+  - kind: ServiceAccount
+    name: loki
+    namespace: monitoring
+roleRef:
+  kind: ClusterRole
+  name: loki-clusterrole
+  apiGroup: rbac.authorization.k8s.io
 ---
 # Source: loki/templates/loki-canary/service.yaml
 apiVersion: v1
@@ -161,11 +195,10 @@ metadata:
   name: loki-canary
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-6.6.6
+    helm.sh/chart: loki-6.49.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.0.0"
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/version: "3.6.3"
     app.kubernetes.io/component: canary
   annotations:
 spec:
@@ -186,11 +219,10 @@ kind: Service
 metadata:
   name: loki-results-cache
   labels:
-    helm.sh/chart: loki-6.6.6
+    helm.sh/chart: loki-6.49.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.0.0"
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/version: "3.6.3"
     app.kubernetes.io/component: "memcached-results-cache"
   annotations:
     {}
@@ -201,10 +233,10 @@ spec:
   ports:
     - name: memcached-client
       port: 11211
-      targetPort: 11211
+      targetPort: client
     - name: http-metrics
       port: 9150
-      targetPort: 9150
+      targetPort: http-metrics
     
   selector:
     app.kubernetes.io/name: loki
@@ -218,11 +250,11 @@ metadata:
   name: loki-memberlist
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-6.6.6
+    helm.sh/chart: loki-6.49.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.0.0"
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/version: "3.6.3"
+  annotations:
 spec:
   type: ClusterIP
   clusterIP: None
@@ -243,11 +275,10 @@ metadata:
   name: loki-headless
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-6.6.6
+    helm.sh/chart: loki-6.49.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.0.0"
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/version: "3.6.3"
     variant: headless
     prometheus.io/service-monitor: "false"
   annotations:
@@ -269,11 +300,10 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-6.6.6
+    helm.sh/chart: loki-6.49.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.0.0"
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/version: "3.6.3"
   annotations:
 spec:
   type: ClusterIP
@@ -298,11 +328,10 @@ metadata:
   name: loki-canary
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-6.6.6
+    helm.sh/chart: loki-6.49.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.0.0"
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/version: "3.6.3"
     app.kubernetes.io/component: canary
 spec:
   selector:
@@ -325,12 +354,13 @@ spec:
       
       securityContext:
         fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
         runAsGroup: 10001
         runAsNonRoot: true
         runAsUser: 10001
       containers:
         - name: loki-canary
-          image: docker.io/grafana/loki-canary:3.0.0
+          image: docker.io/grafana/loki-canary:3.6.3
           imagePullPolicy: IfNotPresent
           args:
             - -addr=loki.monitoring.svc.cluster.local.:3100
@@ -368,11 +398,10 @@ kind: StatefulSet
 metadata:
   name: loki-results-cache
   labels:
-    helm.sh/chart: loki-6.6.6
+    helm.sh/chart: loki-6.49.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.0.0"
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/version: "3.6.3"
     app.kubernetes.io/component: "memcached-results-cache"
     name: "memcached-results-cache"
   annotations:
@@ -390,7 +419,6 @@ spec:
   updateStrategy:
     type: RollingUpdate
   serviceName: loki-results-cache
-
   template:
     metadata:
       labels:
@@ -399,11 +427,13 @@ spec:
         app.kubernetes.io/component: "memcached-results-cache"
         name: "memcached-results-cache"
       annotations:
-
     spec:
       serviceAccountName: loki
       securityContext:
-        {}
+        fsGroup: 11211
+        runAsGroup: 11211
+        runAsNonRoot: true
+        runAsUser: 11211
       initContainers:
         []
       nodeSelector:
@@ -417,7 +447,7 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: memcached
-          image: memcached:1.6.23-alpine
+          image: memcached:1.6.39-alpine
           imagePullPolicy: IfNotPresent
           resources:
             limits:
@@ -443,8 +473,22 @@ spec:
               drop:
               - ALL
             readOnlyRootFilesystem: true
+          readinessProbe:
+            failureThreshold: 6
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            tcpSocket:
+              port: client
+            timeoutSeconds: 3
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            tcpSocket:
+              port: client
+            timeoutSeconds: 5
         - name: exporter
-          image: prom/memcached-exporter:v0.14.2
+          image: prom/memcached-exporter:v0.15.4
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 9150
@@ -461,6 +505,22 @@ spec:
               drop:
               - ALL
             readOnlyRootFilesystem: true
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /metrics
+              port: http-metrics
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /metrics
+              port: http-metrics
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
 ---
 # Source: loki/templates/single-binary/statefulset.yaml
 apiVersion: apps/v1
@@ -469,11 +529,10 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-6.6.6
+    helm.sh/chart: loki-6.49.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.0.0"
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/version: "3.6.3"
     app.kubernetes.io/component: single-binary
     app.kubernetes.io/part-of: memberlist
 spec:
@@ -496,7 +555,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 474a49269c4cd233bbbced7561a93f9b231b3d76900cba3ee18c13bdeae78df1
+        checksum/config: 3b13e7db83892f17afa0a6501e54db9d626515d01ce320331d16276440f9eaa0
+        storage/size: "5Gi"
+        kubectl.kubernetes.io/default-container: "loki"
       labels:
         app.kubernetes.io/name: loki
         app.kubernetes.io/instance: loki
@@ -509,13 +570,14 @@ spec:
       
       securityContext:
         fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
         runAsGroup: 10001
         runAsNonRoot: true
         runAsUser: 10001
       terminationGracePeriodSeconds: 30
       containers:
         - name: loki
-          image: docker.io/grafana/loki:3.0.0
+          image: docker.io/grafana/loki:3.6.3
           imagePullPolicy: IfNotPresent
           args:
             - -config.file=/etc/loki/config/config.yaml
@@ -537,10 +599,13 @@ spec:
               - ALL
             readOnlyRootFilesystem: true
           readinessProbe:
+            failureThreshold: 3
             httpGet:
               path: /ready
               port: http-metrics
-            initialDelaySeconds: 30
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
             timeoutSeconds: 1
           volumeMounts:
             - name: tmp
@@ -551,19 +616,50 @@ spec:
               mountPath: /etc/loki/runtime-config
             - name: storage
               mountPath: /var/loki
+            - name: sc-rules-volume
+              mountPath: "/rules"
           resources:
             limits:
               cpu: 1
-              memory: 2Gi
-            requests:
-              cpu: 500m
               memory: 1Gi
+            requests:
+              cpu: 200m
+              memory: 512Mi
+        - name: loki-sc-rules
+          image: docker.io/kiwigrid/k8s-sidecar:1.30.9
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: METHOD
+              value: WATCH
+            - name: LABEL
+              value: "loki_rule"
+            - name: FOLDER
+              value: "/rules"
+            - name: RESOURCE
+              value: "both"
+            - name: WATCH_SERVER_TIMEOUT
+              value: "60"
+            - name: WATCH_CLIENT_TIMEOUT
+              value: "60"
+            - name: LOG_LEVEL
+              value: "INFO"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: sc-rules-volume
+              mountPath: "/rules"
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector:
               matchLabels:
                 app.kubernetes.io/component: single-binary
+                app.kubernetes.io/instance: 'loki'
+                app.kubernetes.io/name: 'loki'
             topologyKey: kubernetes.io/hostname
       volumes:
         - name: tmp
@@ -577,6 +673,8 @@ spec:
         - name: runtime-config
           configMap:
             name: loki-runtime
+        - name: sc-rules-volume
+          emptyDir: {}
   volumeClaimTemplates:
     - apiVersion: v1
       kind: PersistentVolumeClaim

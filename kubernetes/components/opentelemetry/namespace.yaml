@@ -1,4 +1,9 @@
+# =============================================================================
+# OpenTelemetry Operator Namespace
+# =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
   name: opentelemetry-operator-system
+  labels:
+    app.kubernetes.io/name: opentelemetry-operator

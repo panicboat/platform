@@ -1,3 +1,9 @@
+# =============================================================================
+# Beyla Helmfile for k3d
+# =============================================================================
+# Beyla is an eBPF-based auto-instrumentation tool that captures traces and
+# metrics without code changes.
+# =============================================================================
 environments:
   k3d:
 ---

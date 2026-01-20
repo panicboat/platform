@@ -1,13 +1,31 @@
+# Kube-Prometheus-Stack Configuration for k3d
+# Production-ready base configuration with k3d-specific overrides
+
+# =============================================================================
+# Grafana Configuration
+# =============================================================================
 grafana:
   enabled: true
   testFramework:
     enabled: false
+
+  # TODO(production): Use secure password management (e.g., Kubernetes secrets, Vault)
   adminPassword: "password"
+
+  # -------------------------------------------------------------------------
+  # Sidecar for Dashboard Discovery
+  # -------------------------------------------------------------------------
   sidecar:
     dashboards:
       enabled: true
       label: grafana_dashboard
+      searchNamespace: ALL
+
+  # -------------------------------------------------------------------------
+  # Additional Data Sources
+  # -------------------------------------------------------------------------
   additionalDataSources:
+    # Loki for logs
     - name: Loki
       type: loki
       uid: loki
@@ -15,17 +33,53 @@ grafana:
       access: proxy
       jsonData:
         maxLines: 1000
+        derivedFields:
+          - datasourceUid: tempo
+            matcherRegex: '"traceId":"([a-f0-9]+)"'
+            name: TraceID
+            url: "$${__value.raw}"
+
+    # Tempo for traces
     - name: Tempo
       type: tempo
       uid: tempo
-      url: http://tempo.monitoring.svc.cluster.local:3100
+      url: http://tempo.monitoring.svc.cluster.local:3200
       access: proxy
       jsonData:
         httpMethod: GET
-        tracesToLogs:
-          datasourceUid: 'loki'
+        tracesToLogsV2:
+          datasourceUid: loki
+          spanStartTimeShift: "-1h"
+          spanEndTimeShift: "1h"
+          filterByTraceID: true
+          filterBySpanID: false
+          tags:
+            - key: "k8s.namespace.name"
+              value: "namespace"
+            - key: "k8s.pod.name"
+              value: "pod"
+        tracesToMetrics:
+          datasourceUid: prometheus
+          spanStartTimeShift: "-1h"
+          spanEndTimeShift: "1h"
+          tags:
+            - key: "service.name"
+              value: "service"
+        serviceMap:
+          datasourceUid: prometheus
+        nodeGraph:
+          enabled: true
+        lokiSearch:
+          datasourceUid: loki
+
+# =============================================================================
+# Prometheus Configuration
+# =============================================================================
 prometheus:
   prometheusSpec:
+    # -------------------------------------------------------------------------
+    # ServiceMonitor/PodMonitor Discovery
+    # -------------------------------------------------------------------------
     # Allow all ServiceMonitors/PodMonitors regardless of labels
     serviceMonitorSelectorNilUsesHelmValues: false
     serviceMonitorSelector: {}
@@ -33,18 +87,60 @@ prometheus:
     podMonitorSelectorNilUsesHelmValues: false
     podMonitorSelector: {}
     podMonitorNamespaceSelector: {}
+
+    # -------------------------------------------------------------------------
+    # Retention
+    # -------------------------------------------------------------------------
+    # TODO(production): Increase retention for production
     retention: 2d
-    thanos:
-      version: v0.31.0 # Check for latest version compatible with kube-prometheus-stack
+
+    # -------------------------------------------------------------------------
+    # Remote Write (for receiving metrics from Tempo)
+    # -------------------------------------------------------------------------
+    enableRemoteWriteReceiver: true
+
+    # -------------------------------------------------------------------------
+    # Resource Limits
+    # -------------------------------------------------------------------------
     resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
       limits:
-        memory: 1G
+        cpu: 1
+        memory: 1Gi
+
+    # -------------------------------------------------------------------------
+    # Storage
+    # -------------------------------------------------------------------------
     storageSpec:
-      # TODO: Configure Thanos Sidecar and Object Storage for long-term metrics retention in production
+      # TODO(production): Configure Thanos Sidecar and Object Storage for long-term metrics retention
       volumeClaimTemplate:
         spec:
           resources:
             requests:
+              # TODO(production): Increase storage size based on metrics volume
               storage: 2Gi
+
+# =============================================================================
+# Alertmanager Configuration
+# =============================================================================
 alertmanager:
   enabled: true
+
+# =============================================================================
+# Prometheus Node Exporter
+# =============================================================================
+prometheus-node-exporter:
+  hostRootFsMount:
+    enabled: true
+    mountPropagation: HostToContainer
+
+# =============================================================================
+# Kube-State-Metrics
+# =============================================================================
+kube-state-metrics:
+  metricLabelsAllowlist:
+    - pods=[*]
+    - deployments=[*]
+    - statefulsets=[*]

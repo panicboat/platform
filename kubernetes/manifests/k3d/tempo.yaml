@@ -6,10 +6,10 @@ metadata:
   name: tempo
   namespace: monitoring
   labels:
-    helm.sh/chart: tempo-1.23.1
+    helm.sh/chart: tempo-1.24.3
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
-    app.kubernetes.io/version: "2.4.0"
+    app.kubernetes.io/version: "2.6.1"
     app.kubernetes.io/managed-by: Helm
 automountServiceAccountToken: true
 ---
@@ -20,10 +20,10 @@ metadata:
   name: tempo
   namespace: monitoring
   labels:
-    helm.sh/chart: tempo-1.23.1
+    helm.sh/chart: tempo-1.24.3
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
-    app.kubernetes.io/version: "2.4.0"
+    app.kubernetes.io/version: "2.6.1"
     app.kubernetes.io/managed-by: Helm
 data:
   overrides.yaml: |
@@ -83,10 +83,10 @@ metadata:
   name: tempo
   namespace: monitoring
   labels:
-    helm.sh/chart: tempo-1.23.1
+    helm.sh/chart: tempo-1.24.3
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
-    app.kubernetes.io/version: "2.4.0"
+    app.kubernetes.io/version: "2.6.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -146,10 +146,10 @@ metadata:
   name: tempo
   namespace: monitoring
   labels:
-    helm.sh/chart: tempo-1.23.1
+    helm.sh/chart: tempo-1.24.3
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
-    app.kubernetes.io/version: "2.4.0"
+    app.kubernetes.io/version: "2.6.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
@@ -164,7 +164,7 @@ spec:
         app.kubernetes.io/name: tempo
         app.kubernetes.io/instance: tempo
       annotations:
-        checksum/config: 7426f95ae9f4855ab6f06a37565373df92c01f9ffdc9d3f2952f661c0944ee63
+        checksum/config: 7f37caaaf6e332659f2620558efa02ba02cde7a295700ab04f3051ac6f4829c6
     spec:
       serviceAccountName: tempo
       automountServiceAccountToken: true
@@ -172,7 +172,7 @@ spec:
       - args:
         - -config.file=/conf/tempo.yaml
         - -mem-ballast-size-mbs=1024
-        image: grafana/tempo:2.4.0
+        image: docker.io/grafana/tempo:2.6.1
         imagePullPolicy: IfNotPresent
         name: tempo
         ports:
@@ -239,7 +239,9 @@ spec:
     type:
       RollingUpdate
   volumeClaimTemplates:
-    - metadata:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
         name: storage
         annotations:
           null
@@ -259,15 +261,15 @@ metadata:
   namespace: monitoring
   labels:
     app: tempo
-    chart: tempo-1.23.1
+    chart: tempo-1.24.3
     heritage: Helm
 spec:
   selector:
     matchLabels:
-      helm.sh/chart: tempo-1.23.1
+      helm.sh/chart: tempo-1.24.3
       app.kubernetes.io/name: tempo
       app.kubernetes.io/instance: tempo
-      app.kubernetes.io/version: "2.4.0"
+      app.kubernetes.io/version: "2.6.1"
       app.kubernetes.io/managed-by: Helm
   namespaceSelector:
     matchNames:

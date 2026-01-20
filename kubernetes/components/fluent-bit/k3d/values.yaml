@@ -1,3 +1,9 @@
+# Fluent-bit Log Collector Configuration for k3d
+# Production-ready base configuration with k3d-specific overrides
+
+# =============================================================================
+# Volume Mounts for Log Collection
+# =============================================================================
 daemonSetVolumes:
   - name: varlog
     hostPath:
@@ -13,17 +19,28 @@ daemonSetVolumeMounts:
     mountPath: /var/lib/docker/containers
     readOnly: true
 
+# =============================================================================
+# Fluent-bit Configuration
+# =============================================================================
 config:
-  # Disable systemd input to prevent mounting /etc/machine-id error in k3d
+  # -------------------------------------------------------------------------
+  # Inputs
+  # -------------------------------------------------------------------------
+  # TODO(k3d): Systemd input is disabled to prevent /etc/machine-id mount errors in k3d
+  # In production (EKS), you may want to enable systemd input for system logs
   inputs: |
     [INPUT]
         Name tail
         Path /var/log/containers/*.log
-        Parser docker
+        multiline.parser cri
         Tag kube.*
         Mem_Buf_Limit 5MB
         Skip_Long_Lines On
+        Refresh_Interval 10
 
+  # -------------------------------------------------------------------------
+  # Filters
+  # -------------------------------------------------------------------------
   filters: |
     [FILTER]
         Name kubernetes
@@ -32,7 +49,20 @@ config:
         Keep_Log Off
         K8S-Logging.Parser On
         K8S-Logging.Exclude On
+        Labels On
+        Annotations Off
+        Buffer_Size 0
 
+    [FILTER]
+        Name modify
+        Match kube.*
+        Remove_wildcard annotation.
+        Remove time
+        Remove logtag
+
+  # -------------------------------------------------------------------------
+  # Outputs
+  # -------------------------------------------------------------------------
   outputs: |
     [OUTPUT]
         Name opentelemetry
@@ -42,3 +72,34 @@ config:
         Logs_uri /v1/logs
         Log_response_payload True
         Tls Off
+        Retry_Limit 3
+        add_label cluster k8s-local
+        add_label app fluent-bit
+
+# =============================================================================
+# Resource Limits
+# =============================================================================
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+# =============================================================================
+# Tolerations (to run on all nodes including control plane)
+# =============================================================================
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+
+# =============================================================================
+# ServiceMonitor for Prometheus
+# =============================================================================
+serviceMonitor:
+  enabled: true

@@ -1,3 +1,8 @@
+# =============================================================================
+# CoreDNS Deployment Patch for k3d
+# =============================================================================
+# This patch configures resource limits for CoreDNS.
+# =============================================================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -7,10 +12,11 @@ spec:
   template:
     spec:
       containers:
-      - name: coredns
-        resources:
-          limits:
-            memory: 170Mi
-          requests:
-            cpu: 100m
-            memory: 70Mi
+        - name: coredns
+          resources:
+            limits:
+              cpu: 200m
+              memory: 170Mi
+            requests:
+              cpu: 100m
+              memory: 70Mi

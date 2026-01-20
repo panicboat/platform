@@ -1,3 +1,13 @@
+# =============================================================================
+# Kube-Prometheus-Stack Helmfile for k3d
+# =============================================================================
+# This chart installs:
+#   - Prometheus Operator
+#   - Prometheus
+#   - Alertmanager
+#   - Grafana
+#   - Various exporters and ServiceMonitors
+# =============================================================================
 environments:
   k3d:
 ---

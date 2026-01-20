@@ -1,13 +1,14 @@
 # =============================================================================
-# Cilium Kustomization Overlay for k3d
+# OpenTelemetry Collector Kustomization for k3d
 # =============================================================================
-# This kustomization adds additional resources to the Cilium Helm release:
-#   - GatewayClass and Gateway for HTTP routing
-#   - HTTPRoute for Hubble UI
+# Adds hostPort to allow Beyla (hostNetwork) to connect via localhost:4317
 # =============================================================================
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-resources:
-  - gateway.yaml
-  - hubble-ui
+patches:
+  - path: hostport-patch.yaml
+    target:
+      kind: Deployment
+      name: opentelemetry-collector
+      namespace: opentelemetry-system

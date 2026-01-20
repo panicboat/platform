@@ -1,3 +1,19 @@
+# =============================================================================
+# Cilium Gateway Configuration for k3d
+# =============================================================================
+# This file defines the GatewayClass and Gateway for Cilium's Gateway API
+# implementation.
+#
+# Access URLs (add to /etc/hosts -> 127.0.0.1):
+#   - http://grafana.local
+#   - http://prometheus.local
+#   - http://alertmanager.local
+#   - http://hubble.local
+#   - http://nginx.local (from monorepo)
+#   - http://handbooks.local (from monorepo)
+#
+# TODO(production): Configure TLS termination and certificates
+# =============================================================================
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
@@ -14,9 +30,20 @@ metadata:
 spec:
   gatewayClassName: cilium
   listeners:
-    - name: web
+    - name: http
       protocol: HTTP
       port: 80
       allowedRoutes:
         namespaces:
           from: All
+    # TODO(production): Add HTTPS listener with TLS configuration
+    # - name: https
+    #   protocol: HTTPS
+    #   port: 443
+    #   tls:
+    #     mode: Terminate
+    #     certificateRefs:
+    #       - name: wildcard-tls
+    #   allowedRoutes:
+    #     namespaces:
+    #       from: All

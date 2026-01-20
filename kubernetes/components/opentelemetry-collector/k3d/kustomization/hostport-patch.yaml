@@ -1,0 +1,26 @@
+# =============================================================================
+# hostPort Patch for OpenTelemetry Collector
+# =============================================================================
+# TODO(k3d): This patch adds hostPort to allow Beyla (hostNetwork pod) to
+# connect to OTel Collector via localhost:4317.
+# In production (EKS), this patch is not needed - use ClusterIP with DNS.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opentelemetry-collector
+  namespace: opentelemetry-system
+spec:
+  template:
+    spec:
+      containers:
+        - name: opentelemetry-collector
+          ports:
+            - name: otlp
+              containerPort: 4317
+              hostPort: 4317
+              protocol: TCP
+            - name: otlp-http
+              containerPort: 4318
+              hostPort: 4318
+              protocol: TCP

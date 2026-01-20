@@ -1,15 +1,39 @@
 ---
+# =============================================================================
+# OpenTelemetry Collector Namespace
+# =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
   name: opentelemetry-system
+  labels:
+    app.kubernetes.io/name: opentelemetry-collector
 ---
+# =============================================================================
+# OpenTelemetry Operator Namespace
+# =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
   name: opentelemetry-operator-system
+  labels:
+    app.kubernetes.io/name: opentelemetry-operator
 ---
+# =============================================================================
+# Monitoring Namespace
+# =============================================================================
+# This namespace contains the full observability stack:
+#   - Prometheus (metrics)
+#   - Grafana (visualization)
+#   - Alertmanager (alerting)
+#   - Loki (logs)
+#   - Tempo (traces)
+#   - Beyla (eBPF instrumentation)
+#   - Fluent-bit (log collection)
+# =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
   name: monitoring
+  labels:
+    app.kubernetes.io/name: monitoring

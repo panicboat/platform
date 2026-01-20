@@ -1,10 +1,13 @@
 resources:
-- cilium.yaml
 - beyla.yaml
+- cilium.yaml
+- coredns.yaml
+- dashboard.yaml
 - fluent-bit.yaml
-- kube-prometheus-stack.yaml
+- gateway-api.yaml
 - loki.yaml
-- tempo.yaml
-- opentelemetry-operator.yaml
+- opentelemetry.yaml
 - opentelemetry-collector.yaml
+- prometheus-operator.yaml
+- tempo.yaml
 - 00-namespaces.yaml

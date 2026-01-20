@@ -1,0 +1,48 @@
+---
+apiVersion: v1
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health {
+            lameduck 5s
+        }
+        ready
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+            pods insecure
+            fallthrough in-addr.arpa ip6.arpa
+            ttl 30
+        }
+        prometheus :9153
+        # TODO(k3d): Using public DNS forwarders for k3d compatibility
+        # In production, this would use the VPC DNS resolver
+        forward . 8.8.8.8 8.8.4.4 1.1.1.1 {
+            max_concurrent 1000
+        }
+        cache 30
+        loop
+        reload
+        loadbalance
+    }
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coredns
+  namespace: kube-system
+spec:
+  template:
+    spec:
+      containers:
+      - name: coredns
+        resources:
+          limits:
+            cpu: 200m
+            memory: 170Mi
+          requests:
+            cpu: 100m
+            memory: 70Mi

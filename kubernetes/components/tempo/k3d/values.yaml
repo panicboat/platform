@@ -1,24 +1,101 @@
+# Tempo Distributed Tracing Backend Configuration for k3d
+# Production-ready base configuration with k3d-specific overrides
+
+# =============================================================================
+# Tempo Configuration
+# =============================================================================
 tempo:
   repository: grafana/tempo
-  tag: 2.4.0
+  tag: 2.6.1
+
+  # Trace retention period
+  # TODO(production): Increase retention and use object storage for long-term retention
   retention: 24h
+
+  # -------------------------------------------------------------------------
+  # Receivers Configuration
+  # -------------------------------------------------------------------------
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+
+  # -------------------------------------------------------------------------
+  # Storage Configuration
+  # -------------------------------------------------------------------------
   storage:
     trace:
-      # TODO: Use S3 for long-term trace storage (backend: s3) in production
+      # TODO(production): Use S3/GCS for long-term trace storage
+      # Example for S3:
+      #   backend: s3
+      #   s3:
+      #     bucket: tempo-traces
+      #     endpoint: s3.amazonaws.com
+      #     region: ap-northeast-1
       backend: local
       local:
         path: /var/tempo/traces
       wal:
         path: /var/tempo/wal
 
+  # -------------------------------------------------------------------------
+  # Query Configuration
+  # -------------------------------------------------------------------------
+  query_frontend:
+    search:
+      max_duration: 0s
+
+  # -------------------------------------------------------------------------
+  # Metrics Generator (for trace-to-metrics)
+  # -------------------------------------------------------------------------
+  metrics_generator:
+    enabled: true
+    registry:
+      external_labels:
+        source: tempo
+        # TODO(k3d): Change cluster name in production
+        cluster: k8s-local
+    storage:
+      path: /var/tempo/generator/wal
+      remote_write:
+        - url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/api/v1/write
+          send_exemplars: true
+    processor:
+      service_graphs:
+        enabled: true
+      span_metrics:
+        enabled: true
+
+# =============================================================================
+# Persistence
+# =============================================================================
 persistence:
   enabled: true
+  # TODO(production): Increase storage size based on trace volume
   size: 5Gi
 
-# Disable gateway, use internal
+# =============================================================================
+# Gateway
+# =============================================================================
 gateway:
   enabled: false
 
-# Enable ServiceMonitor for Prometheus scraping
+# =============================================================================
+# ServiceMonitor for Prometheus
+# =============================================================================
 serviceMonitor:
   enabled: true
+
+# =============================================================================
+# Resource Limits
+# =============================================================================
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

@@ -1,3 +1,9 @@
+# =============================================================================
+# Monorepo GitRepository and Kustomization for FluxCD
+# =============================================================================
+# This configures FluxCD to sync application deployments from the monorepo.
+# The monorepo contains nginx.local, handbooks.local, and other applications.
+# =============================================================================
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
 metadata:
@@ -7,7 +13,7 @@ spec:
   interval: 1m
   url: https://github.com/panicboat/monorepo.git
   ref:
-    # TODO: change to your branch
+    # TODO(k3d): Change branch for different environments
     branch: main
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
