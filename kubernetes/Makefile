@@ -263,9 +263,7 @@ phase4: gitops-setup gitops-enable gitops-status ## Complete Phase 4
 # Complete All Phases
 # =============================================================================
 .PHONY: up
-# TODO(k3d): phase4 is excluded during development to prevent FluxCD from
-# overwriting local changes. Enable phase4 for production GitOps workflow.
-up: hydrate phase1 phase2 phase3 ## Complete all phases (excluding phase4)
+up: hydrate phase1 phase2 phase3 phase4 ## Complete all phases (excluding phase4)
 	@echo "$(GREEN)🎉 All phases completed!$(NC)"
 
 .PHONY: down
