@@ -9,7 +9,7 @@ grafana:
   testFramework:
     enabled: false
 
-  # TODO(production): Use secure password management (e.g., Kubernetes secrets, Vault)
+  # TODO: (production) Use secure password management (e.g., Kubernetes secrets, Vault)
   adminPassword: "password"
 
   # -------------------------------------------------------------------------
@@ -91,7 +91,7 @@ prometheus:
     # -------------------------------------------------------------------------
     # Retention
     # -------------------------------------------------------------------------
-    # TODO(production): Increase retention for production
+    # TODO: (production) Increase retention for production
     retention: 2d
 
     # -------------------------------------------------------------------------
@@ -114,12 +114,12 @@ prometheus:
     # Storage
     # -------------------------------------------------------------------------
     storageSpec:
-      # TODO(production): Configure Thanos Sidecar and Object Storage for long-term metrics retention
+      # TODO: (production) Configure Thanos Sidecar and Object Storage for long-term metrics retention
       volumeClaimTemplate:
         spec:
           resources:
             requests:
-              # TODO(production): Increase storage size based on metrics volume
+              # TODO: (production) Increase storage size based on metrics volume
               storage: 2Gi
 
 # =============================================================================

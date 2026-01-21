@@ -9,7 +9,7 @@
 #   helmfile -e k3d template          # Generate manifests
 #   helmfile -e k3d apply             # Deploy to cluster
 #
-# TODO(production): Add production, staging environments
+# TODO: (production) Add production, staging environments
 # =============================================================================
 
 environments:
@@ -17,9 +17,9 @@ environments:
     values:
       - cluster:
           name: k8s-local
-          # TODO(k3d): k3d-specific settings
+          # TODO: (k3d) k3d-specific settings
           isLocal: true
-  # TODO(production): Uncomment and configure for production
+  # TODO: (production) Uncomment and configure for production
   # production:
   #   values:
   #     - cluster:

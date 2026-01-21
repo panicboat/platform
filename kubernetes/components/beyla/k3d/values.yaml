@@ -41,15 +41,17 @@ config:
     # -------------------------------------------------------------------------
     # Service Discovery
     # -------------------------------------------------------------------------
+    # Use Kubernetes namespace-based discovery for service name resolution
+    # Beyla will use the deployment/pod name as the service name
+    # TODO: If the namespaces to be traced increases, additional entries are required.
     discovery:
       services:
-        # TODO(k3d): Using open_ports discovery because k8s_namespace discovery
-        # requires Kubernetes API access which is unreliable in k3d hostNetwork mode.
-        # In production, use:
-        #   - k8s_namespace: "default"
-        #   - k8s_namespace: "your-app-namespace"
-        - name: "http-services"
+        - k8s_namespace: "default"
           open_ports: "80,443,8080,3000"
+        - k8s_namespace: "monitoring"
+          open_ports: "80,443,8080,3000,3100,9090"
+        - k8s_namespace: "flux-system"
+          open_ports: "80,443,8080,9292"
 
     # -------------------------------------------------------------------------
     # Route Configuration
@@ -62,9 +64,9 @@ config:
     # -------------------------------------------------------------------------
     attributes:
       kubernetes:
-        # TODO(k3d): Disabled because Beyla cannot reliably access Kubernetes API
-        # in k3d hostNetwork mode. Enable in production for rich K8s metadata.
-        enable: false
+        # Enable Kubernetes metadata for service name resolution
+        # Beyla will use deployment/pod names as service names
+        enable: true
 
     # -------------------------------------------------------------------------
     # Network Filter (optional - reduce noise)

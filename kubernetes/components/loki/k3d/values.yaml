@@ -4,7 +4,7 @@
 # =============================================================================
 # Deployment Mode
 # =============================================================================
-# TODO(production): Use "distributed" mode for high availability in production
+# TODO: (production) Use "distributed" mode for high availability in production
 deploymentMode: SingleBinary
 
 # =============================================================================
@@ -12,21 +12,21 @@ deploymentMode: SingleBinary
 # =============================================================================
 loki:
   # Disable multi-tenancy for simplicity in k3d
-  # TODO(production): Enable auth for multi-tenant environments
+  # TODO: (production) Enable auth for multi-tenant environments
   auth_enabled: false
 
   # -------------------------------------------------------------------------
   # Common Configuration
   # -------------------------------------------------------------------------
   commonConfig:
-    # TODO(production): Increase replication_factor to 3 for HA
+    # TODO: (production) Increase replication_factor to 3 for HA
     replication_factor: 1
 
   # -------------------------------------------------------------------------
   # Storage Configuration
   # -------------------------------------------------------------------------
   storage:
-    # TODO(production): Use S3 or MinIO for long-term storage
+    # TODO: (production) Use S3 or MinIO for long-term storage
     # Example for S3:
     #   type: s3
     #   s3:
@@ -75,11 +75,11 @@ loki:
 # Single Binary Mode Configuration
 # =============================================================================
 singleBinary:
-  # TODO(production): Increase replicas for HA
+  # TODO: (production) Increase replicas for HA
   replicas: 1
   persistence:
     enabled: true
-    # TODO(production): Increase storage size based on log volume
+    # TODO: (production) Increase storage size based on log volume
     size: 5Gi
   resources:
     requests:

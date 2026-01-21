@@ -12,7 +12,7 @@
 #   - http://nginx.local (from monorepo)
 #   - http://handbooks.local (from monorepo)
 #
-# TODO(production): Configure TLS termination and certificates
+# TODO: (production) Configure TLS termination and certificates
 # =============================================================================
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
@@ -36,7 +36,7 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
-    # TODO(production): Add HTTPS listener with TLS configuration
+    # TODO: (production) Add HTTPS listener with TLS configuration
     # - name: https
     #   protocol: HTTPS
     #   port: 443

@@ -62650,22 +62650,3 @@ spec:
     - path:
         type: PathPrefix
         value: /
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  labels:
-    app.kubernetes.io/name: loki
-  name: loki
-  namespace: monitoring
-spec:
-  endpoints:
-  - interval: 15s
-    port: http-metrics
-  namespaceSelector:
-    matchNames:
-    - monitoring
-  selector:
-    matchLabels:
-      app.kubernetes.io/instance: loki
-      app.kubernetes.io/name: loki

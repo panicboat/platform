@@ -32,9 +32,9 @@ data:
   relay: |
     exporters:
       debug:
-        sampling_initial: 5
-        sampling_thereafter: 200
-        verbosity: basic
+        sampling_initial: 2
+        sampling_thereafter: 500
+        verbosity: detailed
       otlp/tempo:
         endpoint: tempo.monitoring.svc.cluster.local:4317
         retry_on_failure:
@@ -69,6 +69,32 @@ data:
         send_batch_max_size: 1500
         send_batch_size: 1000
         timeout: 10s
+      k8sattributes:
+        auth_type: serviceAccount
+        extract:
+          labels:
+          - from: pod
+            key: app.kubernetes.io/name
+            tag_name: app
+          - from: pod
+            key: app.kubernetes.io/version
+            tag_name: version
+          metadata:
+          - k8s.namespace.name
+          - k8s.pod.name
+          - k8s.pod.uid
+          - k8s.deployment.name
+          - k8s.node.name
+        passthrough: false
+        pod_association:
+        - sources:
+          - from: resource_attribute
+            name: k8s.pod.ip
+        - sources:
+          - from: resource_attribute
+            name: k8s.pod.uid
+        - sources:
+          - from: connection
       memory_limiter:
         check_interval: 1s
         limit_mib: 400
@@ -85,16 +111,24 @@ data:
         log_statements:
         - context: log
           statements:
-          - set(resource.attributes["k8s.namespace.name"], body["kubernetes"]["namespace_name"])
-            where body["kubernetes"]["namespace_name"] != nil
-          - set(resource.attributes["k8s.pod.name"], body["kubernetes"]["pod_name"]) where
-            body["kubernetes"]["pod_name"] != nil
-          - set(resource.attributes["k8s.container.name"], body["kubernetes"]["container_name"])
-            where body["kubernetes"]["container_name"] != nil
-          - set(resource.attributes["service.name"], body["kubernetes"]["pod_name"]) where
-            body["kubernetes"]["pod_name"] != nil and resource.attributes["service.name"]
+          - set(resource.attributes["k8s.pod.ip"], attributes["kubernetes"]["pod_ip"])
+            where attributes["kubernetes"]["pod_ip"] != nil and resource.attributes["k8s.pod.ip"]
             == nil
-          - set(body, body["log"]) where body["log"] != nil
+          - set(resource.attributes["k8s.pod.uid"], attributes["kubernetes"]["pod_id"])
+            where attributes["kubernetes"]["pod_id"] != nil and resource.attributes["k8s.pod.uid"]
+            == nil
+          - set(resource.attributes["k8s.namespace.name"], attributes["kubernetes"]["namespace_name"])
+            where attributes["kubernetes"]["namespace_name"] != nil and resource.attributes["k8s.namespace.name"]
+            == nil
+          - set(resource.attributes["k8s.pod.name"], attributes["kubernetes"]["pod_name"])
+            where attributes["kubernetes"]["pod_name"] != nil and resource.attributes["k8s.pod.name"]
+            == nil
+          - set(resource.attributes["k8s.container.name"], attributes["kubernetes"]["container_name"])
+            where attributes["kubernetes"]["container_name"] != nil and resource.attributes["k8s.container.name"]
+            == nil
+          - set(resource.attributes["service.name"], attributes["kubernetes"]["pod_name"])
+            where attributes["kubernetes"]["pod_name"] != nil and resource.attributes["service.name"]
+            == nil
     receivers:
       jaeger:
         protocols:
@@ -132,6 +166,8 @@ data:
           processors:
           - memory_limiter
           - transform/logs
+          - k8sattributes
+          - resource
           - batch
           receivers:
           - otlp
@@ -140,6 +176,7 @@ data:
           - prometheus
           processors:
           - memory_limiter
+          - k8sattributes
           - resource
           - batch
           receivers:
@@ -147,9 +184,9 @@ data:
         traces:
           exporters:
           - otlp/tempo
-          - debug
           processors:
           - memory_limiter
+          - k8sattributes
           - resource
           - batch
           receivers:
@@ -162,6 +199,64 @@ data:
                 prometheus:
                   host: ${env:MY_POD_IP}
                   port: 8888
+---
+# Source: opentelemetry-collector/templates/clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: opentelemetry-collector
+  labels:
+    helm.sh/chart: opentelemetry-collector-0.143.0
+    app.kubernetes.io/name: opentelemetry-collector
+    app.kubernetes.io/instance: opentelemetry-collector
+    app.kubernetes.io/version: "0.143.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: opentelemetry-collector
+    app.kubernetes.io/component: standalone-collector
+rules:
+  - apiGroups:
+    - ""
+    resources:
+    - pods
+    - namespaces
+    - nodes
+    verbs:
+    - get
+    - watch
+    - list
+  - apiGroups:
+    - apps
+    resources:
+    - deployments
+    - replicasets
+    - daemonsets
+    - statefulsets
+    verbs:
+    - get
+    - watch
+    - list
+---
+# Source: opentelemetry-collector/templates/clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: opentelemetry-collector
+  labels:
+    helm.sh/chart: opentelemetry-collector-0.143.0
+    app.kubernetes.io/name: opentelemetry-collector
+    app.kubernetes.io/instance: opentelemetry-collector
+    app.kubernetes.io/version: "0.143.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: opentelemetry-collector
+    app.kubernetes.io/component: standalone-collector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: opentelemetry-collector
+subjects:
+- kind: ServiceAccount
+  name: opentelemetry-collector
+  namespace: opentelemetry-system
 ---
 # Source: opentelemetry-collector/templates/service.yaml
 apiVersion: v1
@@ -248,7 +343,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 092737554f0afd8fbc2c46eb495265800e77123ae2599c960abbd2786ac0a41e
+        checksum/config: d6328038b4641680872735935b97941a22362ad759544a15426458a78487b1a9
         
       labels:
         app.kubernetes.io/name: opentelemetry-collector
@@ -352,5 +447,3 @@ spec:
       component: standalone-collector
   endpoints:
     - port: metrics
-
----

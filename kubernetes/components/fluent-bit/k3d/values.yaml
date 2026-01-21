@@ -26,7 +26,7 @@ config:
   # -------------------------------------------------------------------------
   # Inputs
   # -------------------------------------------------------------------------
-  # TODO(k3d): Systemd input is disabled to prevent /etc/machine-id mount errors in k3d
+  # TODO: (k3d) Systemd input is disabled to prevent /etc/machine-id mount errors in k3d
   # In production (EKS), you may want to enable systemd input for system logs
   inputs: |
     [INPUT]
@@ -75,6 +75,8 @@ config:
         Retry_Limit 3
         add_label cluster k8s-local
         add_label app fluent-bit
+        # Send Kubernetes metadata as OTLP resource attributes
+        logs_body_key_attributes true
 
 # =============================================================================
 # Resource Limits

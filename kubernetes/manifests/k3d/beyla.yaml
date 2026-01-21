@@ -33,11 +33,15 @@ data:
   beyla-config.yml: |
     attributes:
       kubernetes:
-        enable: false
+        enable: true
     discovery:
       services:
-      - name: http-services
+      - k8s_namespace: default
         open_ports: 80,443,8080,3000
+      - k8s_namespace: monitoring
+        open_ports: 80,443,8080,3000,3100,9090
+      - k8s_namespace: flux-system
+        open_ports: 80,443,8080,9292
     filter:
       network:
         k8s_dst_owner_name:
@@ -151,7 +155,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 59e12b053a5dd156f943b26bfb8eaab6b23d658d749aaf0afbd37fe1851c74c7
+        checksum/config: a2e3960b2dc627d0e1b0a48553f952c6f8f31197e27c2fdf0853abe6e71dc52b
       labels:
         helm.sh/chart: beyla-1.10.4
         app.kubernetes.io/name: beyla
@@ -219,4 +223,3 @@ spec:
       app.kubernetes.io/version: "2.8.4"
       app.kubernetes.io/managed-by: Helm
       app.kubernetes.io/part-of: beyla
-

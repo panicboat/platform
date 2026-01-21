@@ -54,24 +54,56 @@ config:
     resource:
       attributes:
         - key: cluster.name
-          # TODO(k3d): Change to actual cluster name in production
+          # TODO: (k3d) Change to actual cluster name in production
           value: k8s-local
           action: upsert
     memory_limiter:
       check_interval: 1s
       limit_mib: 400
       spike_limit_mib: 100
-    # Transform processor to extract Kubernetes metadata from log body
+    # Kubernetes attributes processor - extracts metadata from K8s API
+    k8sattributes:
+      auth_type: "serviceAccount"
+      passthrough: false
+      extract:
+        metadata:
+          - k8s.namespace.name
+          - k8s.pod.name
+          - k8s.pod.uid
+          - k8s.deployment.name
+          - k8s.node.name
+        labels:
+          - tag_name: app
+            key: app.kubernetes.io/name
+            from: pod
+          - tag_name: version
+            key: app.kubernetes.io/version
+            from: pod
+      pod_association:
+        - sources:
+            - from: resource_attribute
+              name: k8s.pod.ip
+        - sources:
+            - from: resource_attribute
+              name: k8s.pod.uid
+        - sources:
+            - from: connection
+    # Transform processor to map Fluent Bit kubernetes metadata to OTEL semantic conventions
+    # Fluent Bit sends kubernetes metadata as a nested Map: attributes["kubernetes"]["namespace_name"]
+    # This processor MUST run BEFORE k8sattributes to set the correct pod identification
     transform/logs:
       error_mode: ignore
       log_statements:
         - context: log
           statements:
-            - set(resource.attributes["k8s.namespace.name"], body["kubernetes"]["namespace_name"]) where body["kubernetes"]["namespace_name"] != nil
-            - set(resource.attributes["k8s.pod.name"], body["kubernetes"]["pod_name"]) where body["kubernetes"]["pod_name"] != nil
-            - set(resource.attributes["k8s.container.name"], body["kubernetes"]["container_name"]) where body["kubernetes"]["container_name"] != nil
-            - set(resource.attributes["service.name"], body["kubernetes"]["pod_name"]) where body["kubernetes"]["pod_name"] != nil and resource.attributes["service.name"] == nil
-            - set(body, body["log"]) where body["log"] != nil
+            # Map Fluent Bit kubernetes metadata (nested Map) to OTEL resource attributes
+            # Set k8s.pod.ip first so k8sattributes can look up the correct pod
+            - set(resource.attributes["k8s.pod.ip"], attributes["kubernetes"]["pod_ip"]) where attributes["kubernetes"]["pod_ip"] != nil and resource.attributes["k8s.pod.ip"] == nil
+            - set(resource.attributes["k8s.pod.uid"], attributes["kubernetes"]["pod_id"]) where attributes["kubernetes"]["pod_id"] != nil and resource.attributes["k8s.pod.uid"] == nil
+            - set(resource.attributes["k8s.namespace.name"], attributes["kubernetes"]["namespace_name"]) where attributes["kubernetes"]["namespace_name"] != nil and resource.attributes["k8s.namespace.name"] == nil
+            - set(resource.attributes["k8s.pod.name"], attributes["kubernetes"]["pod_name"]) where attributes["kubernetes"]["pod_name"] != nil and resource.attributes["k8s.pod.name"] == nil
+            - set(resource.attributes["k8s.container.name"], attributes["kubernetes"]["container_name"]) where attributes["kubernetes"]["container_name"] != nil and resource.attributes["k8s.container.name"] == nil
+            - set(resource.attributes["service.name"], attributes["kubernetes"]["pod_name"]) where attributes["kubernetes"]["pod_name"] != nil and resource.attributes["service.name"] == nil
 
   # ---------------------------------------------------------------------------
   # Exporters
@@ -85,9 +117,9 @@ config:
       enable_open_metrics: true
     # Debug exporter for troubleshooting
     debug:
-      verbosity: basic
-      sampling_initial: 5
-      sampling_thereafter: 200
+      verbosity: detailed
+      sampling_initial: 2
+      sampling_thereafter: 500
     # Loki exporter for logs
     otlphttp/loki:
       endpoint: "http://loki.monitoring.svc.cluster.local:3100/otlp"
@@ -128,17 +160,20 @@ config:
       # Metrics pipeline
       metrics:
         receivers: [otlp]
-        processors: [memory_limiter, resource, batch]
+        processors: [memory_limiter, k8sattributes, resource, batch]
         exporters: [prometheus]
       # Traces pipeline
       traces:
         receivers: [otlp]
-        processors: [memory_limiter, resource, batch]
-        exporters: [otlp/tempo, debug]
+        processors: [memory_limiter, k8sattributes, resource, batch]
+        exporters: [otlp/tempo]
       # Logs pipeline
+      # NOTE: transform/logs must run BEFORE k8sattributes to set resource attributes
+      # from Fluent Bit's kubernetes metadata. Otherwise, k8sattributes uses the
+      # sender's (Fluent Bit DaemonSet) namespace instead of the actual log source.
       logs:
         receivers: [otlp]
-        processors: [memory_limiter, transform/logs, batch]
+        processors: [memory_limiter, transform/logs, k8sattributes, resource, batch]
         exporters: [otlphttp/loki]
 
 # =============================================================================
@@ -176,3 +211,16 @@ resources:
   requests:
     cpu: 128m
     memory: 256Mi
+
+# =============================================================================
+# RBAC Configuration for k8sattributes processor
+# =============================================================================
+clusterRole:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["pods", "namespaces", "nodes"]
+      verbs: ["get", "watch", "list"]
+    - apiGroups: ["apps"]
+      resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+      verbs: ["get", "watch", "list"]

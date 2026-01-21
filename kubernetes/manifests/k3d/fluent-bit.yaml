@@ -83,6 +83,8 @@ data:
         Retry_Limit 3
         add_label cluster k8s-local
         add_label app fluent-bit
+        # Send Kubernetes metadata as OTLP resource attributes
+        logs_body_key_attributes true
 ---
 # Source: fluent-bit/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -172,7 +174,7 @@ spec:
         app.kubernetes.io/name: fluent-bit
         app.kubernetes.io/instance: fluent-bit
       annotations:
-        checksum/config: 99b58e065e14e4329515e6ff4b4031c2ba77b235790a05c74f6b2a854cdd86c5
+        checksum/config: 6b28f577fc6187ada3c2d5753af723624f641d67a64b8f2be9dbde424edf8feb
     spec:
       
       serviceAccountName: fluent-bit

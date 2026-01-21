@@ -3,7 +3,7 @@
 # =============================================================================
 # This ConfigMap provides DNS configuration for the k3d cluster.
 #
-# TODO(k3d): This configuration uses external DNS forwarders (8.8.8.8, etc.)
+# TODO: (k3d) This configuration uses external DNS forwarders (8.8.8.8, etc.)
 # because k3d can have issues with host DNS resolution.
 # In production (EKS), CoreDNS uses the VPC DNS resolver automatically.
 # =============================================================================
@@ -26,7 +26,7 @@ data:
             ttl 30
         }
         prometheus :9153
-        # TODO(k3d): Using public DNS forwarders for k3d compatibility
+        # TODO: (k3d) Using public DNS forwarders for k3d compatibility
         # In production, this would use the VPC DNS resolver
         forward . 8.8.8.8 8.8.4.4 1.1.1.1 {
             max_concurrent 1000

@@ -13,7 +13,7 @@ spec:
   interval: 1m
   url: https://github.com/panicboat/monorepo.git
   ref:
-    # TODO(k3d): Change branch for different environments
+    # TODO: (k3d) Change branch for different environments
     branch: main
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1

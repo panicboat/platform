@@ -20,7 +20,7 @@
 #                                  -> Prometheus (metrics)
 #   All data visualized in Grafana
 #
-# TODO(production): For EKS deployment, create separate environment configs
+# TODO: (production) For EKS deployment, create separate environment configs
 # =============================================================================
 
 # =============================================================================

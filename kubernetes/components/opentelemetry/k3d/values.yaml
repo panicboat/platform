@@ -13,7 +13,7 @@
 # =============================================================================
 admissionWebhooks:
   certManager:
-    # TODO(production): Use cert-manager for production TLS certificates
+    # TODO: (production) Use cert-manager for production TLS certificates
     enabled: false
   autoGenerateCert:
     enabled: true
