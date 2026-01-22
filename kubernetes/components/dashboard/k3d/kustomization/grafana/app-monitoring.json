@@ -162,7 +162,7 @@
           "datasource": { "type": "tempo", "uid": "tempo" },
           "limit": 20,
           "queryType": "traceql",
-          "query": "{resource.service.name =~ \"${service:regex}\"}",
+          "query": "{resource.service.name =~ \"${service:regex}\" && resource.k8s.namespace.name =~ \"${namespace:regex}\"}",
           "refId": "A",
           "tableType": "traces"
         }
