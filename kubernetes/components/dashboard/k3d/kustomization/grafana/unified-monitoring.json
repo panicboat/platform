@@ -134,26 +134,71 @@
     },
     {
       "datasource": { "type": "tempo", "uid": "tempo" },
+      "description": "Click a trace to view details below",
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "links": [
+            {
+              "title": "View Trace",
+              "url": "/d/unified-monitoring/unified-monitoring?var-traceId=${__data.fields.traceID}&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Trace Service" },
+            "properties": [{ "id": "custom.width", "value": 200 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Duration" },
+            "properties": [{ "id": "unit", "value": "ns" }, { "id": "custom.width", "value": 100 }]
+          }
+        ]
+      },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 5 },
       "id": 9,
-      "options": { "query": "" },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "Start time" }]
+      },
       "targets": [
         {
           "datasource": { "type": "tempo", "uid": "tempo" },
           "limit": 20,
-          "queryType": "traceqlSearch",
+          "queryType": "traceql",
+          "query": "{resource.service.name =~ \"${service:regex}\"}",
           "refId": "A",
-          "tableType": "traces",
-          "filters": [
-            { "id": "service-name", "tag": "service.name", "operator": "=~", "value": ["$service"], "valueType": "string", "scope": "resource" }
-          ]
+          "tableType": "traces"
         }
       ],
-      "title": "Recent Traces",
+      "title": "Trace Search Results",
+      "transformations": [],
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 13 },
+      "id": 21,
+      "options": {},
+      "targets": [
+        {
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "query": "${traceId}",
+          "queryType": "traceql",
+          "refId": "A"
+        }
+      ],
+      "title": "Trace Detail",
       "type": "traces"
     },
     {
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
       "id": 10,
       "title": "Application Metrics",
       "type": "row"
@@ -169,7 +214,7 @@
           "unit": "reqps"
         }
       },
-      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 14 },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 26 },
       "id": 11,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
       "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\"}[1m])) by (http_route)", "legendFormat": "{{http_route}}", "refId": "A" }],
@@ -187,7 +232,7 @@
           "unit": "s"
         }
       },
-      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 14 },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 26 },
       "id": 12,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
       "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\"}[1m])) by (le, http_route))", "legendFormat": "{{http_route}}", "refId": "A" }],
@@ -195,7 +240,7 @@
       "type": "timeseries"
     },
     {
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 20 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
       "id": 13,
       "title": "Resource Usage",
       "type": "row"
@@ -211,7 +256,7 @@
           "unit": "percent"
         }
       },
-      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 21 },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 33 },
       "id": 14,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
       "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "100 * sum(rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}[5m])) by (pod) / sum(kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"cpu\"}) by (pod)", "legendFormat": "{{pod}}", "refId": "A" }],
@@ -229,7 +274,7 @@
           "unit": "percent"
         }
       },
-      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 21 },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 33 },
       "id": 15,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
       "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "100 * sum(container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}) by (pod) / sum(kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"memory\"}) by (pod)", "legendFormat": "{{pod}}", "refId": "A" }],
@@ -237,7 +282,7 @@
       "type": "timeseries"
     },
     {
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 39 },
       "id": 16,
       "title": "Network",
       "type": "row"
@@ -253,7 +298,7 @@
           "unit": "Bps"
         }
       },
-      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 28 },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 40 },
       "id": 17,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
       "targets": [
@@ -274,7 +319,7 @@
           "unit": "short"
         }
       },
-      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 28 },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 40 },
       "id": 18,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
       "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(hubble_drop_total{source_namespace=~\"$namespace\"}[5m])) by (reason)", "legendFormat": "{{reason}}", "refId": "A" }],
@@ -282,14 +327,14 @@
       "type": "timeseries"
     },
     {
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 46 },
       "id": 19,
       "title": "Logs",
       "type": "row"
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 35 },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 47 },
       "id": 20,
       "options": {
         "dedupStrategy": "none",
@@ -366,6 +411,17 @@
         "hide": 0,
         "label": "Search",
         "name": "search",
+        "options": [{ "selected": true, "text": "", "value": "" }],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": { "selected": false, "text": "", "value": "" },
+        "description": "Trace ID to display in the Trace Detail panel",
+        "hide": 0,
+        "label": "Trace ID",
+        "name": "traceId",
         "options": [{ "selected": true, "text": "", "value": "" }],
         "query": "",
         "skipUrlSync": false,

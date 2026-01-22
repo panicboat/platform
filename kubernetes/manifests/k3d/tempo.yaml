@@ -73,8 +73,29 @@ data:
     query_frontend:
           {}
     overrides:
-          defaults: {}
+          defaults:
+            metrics_generator:
+              processors:
+              - service-graphs
+              - span-metrics
           per_tenant_override_config: /conf/overrides.yaml
+    metrics_generator:
+      processor:
+            service_graphs:
+              max_items: 10000
+              wait: 10s
+            span_metrics:
+              enable_target_info: true
+      registry:
+            external_labels:
+              cluster: k8s-local
+              source: tempo
+      storage:
+        path: "/tmp/tempo"
+        remote_write:
+          - url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/api/v1/write
+      traces_storage:
+        path: "/tmp/traces"
 ---
 # Source: tempo/templates/service.yaml
 apiVersion: v1
@@ -164,7 +185,7 @@ spec:
         app.kubernetes.io/name: tempo
         app.kubernetes.io/instance: tempo
       annotations:
-        checksum/config: 7f37caaaf6e332659f2620558efa02ba02cde7a295700ab04f3051ac6f4829c6
+        checksum/config: 3850dedd6d70a165767967d22ea23b25a28d000ff94e42281e15e2a64de5ea72
     spec:
       serviceAccountName: tempo
       automountServiceAccountToken: true
@@ -226,6 +247,8 @@ spec:
           name: tempo-conf
         - mountPath: /var/tempo
           name: storage
+        - mountPath: /tmp
+          name: tmp
       securityContext:
         fsGroup: 10001
         runAsGroup: 10001
@@ -235,6 +258,8 @@ spec:
       - configMap:
           name: tempo
         name: tempo-conf
+      - name: tmp
+        emptyDir: {}
   updateStrategy:
     type:
       RollingUpdate

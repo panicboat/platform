@@ -124,33 +124,78 @@
     },
     {
       "datasource": { "type": "tempo", "uid": "tempo" },
+      "description": "Click a trace to view details below",
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "links": [
+            {
+              "title": "View Trace",
+              "url": "/d/app-monitoring/application-monitoring?var-traceId=${__data.fields.traceID}&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Trace Service" },
+            "properties": [{ "id": "custom.width", "value": 200 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Duration" },
+            "properties": [{ "id": "unit", "value": "ns" }, { "id": "custom.width", "value": 100 }]
+          }
+        ]
+      },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 6 },
       "id": 7,
-      "options": { "query": "" },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "Start time" }]
+      },
       "targets": [
         {
           "datasource": { "type": "tempo", "uid": "tempo" },
           "limit": 20,
-          "queryType": "traceqlSearch",
+          "queryType": "traceql",
+          "query": "{resource.service.name =~ \"${service:regex}\"}",
           "refId": "A",
-          "tableType": "traces",
-          "filters": [
-            { "id": "service-name", "tag": "service.name", "operator": "=~", "value": ["$service"], "valueType": "string", "scope": "resource" }
-          ]
+          "tableType": "traces"
         }
       ],
-      "title": "Recent Traces",
+      "title": "Trace Search Results",
+      "transformations": [],
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 14 },
+      "id": 13,
+      "options": {},
+      "targets": [
+        {
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "query": "${traceId}",
+          "queryType": "traceql",
+          "refId": "A"
+        }
+      ],
+      "title": "Trace Detail",
       "type": "traces"
     },
     {
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
       "id": 8,
       "title": "Logs",
       "type": "row"
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 15 },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 27 },
       "id": 9,
       "options": {
         "dedupStrategy": "none",
@@ -173,7 +218,7 @@
       "type": "logs"
     },
     {
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 37 },
       "id": 10,
       "title": "Metrics",
       "type": "row"
@@ -189,7 +234,7 @@
           "unit": "reqps"
         }
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 38 },
       "id": 11,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
       "targets": [
@@ -214,7 +259,7 @@
           "unit": "s"
         }
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 38 },
       "id": 12,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
       "targets": [
@@ -289,6 +334,17 @@
         "hide": 0,
         "label": "Search",
         "name": "search",
+        "options": [{ "selected": true, "text": "", "value": "" }],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": { "selected": false, "text": "", "value": "" },
+        "description": "Trace ID to display in the Trace Detail panel",
+        "hide": 0,
+        "label": "Trace ID",
+        "name": "traceId",
         "options": [{ "selected": true, "text": "", "value": "" }],
         "query": "",
         "skipUrlSync": false,

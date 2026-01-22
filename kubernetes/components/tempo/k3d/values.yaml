@@ -51,23 +51,31 @@ tempo:
   # -------------------------------------------------------------------------
   # Metrics Generator (for trace-to-metrics)
   # -------------------------------------------------------------------------
-  metrics_generator:
+  # NOTE: Helm chart uses camelCase for top-level keys
+  metricsGenerator:
     enabled: true
+    remoteWriteUrl: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
     registry:
       external_labels:
         source: tempo
         # TODO: (k3d) Change cluster name in production
         cluster: k8s-local
-    storage:
-      path: /var/tempo/generator/wal
-      remote_write:
-        - url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/api/v1/write
-          send_exemplars: true
     processor:
       service_graphs:
-        enabled: true
+        wait: 10s
+        max_items: 10000
       span_metrics:
-        enabled: true
+        enable_target_info: true
+
+  # -------------------------------------------------------------------------
+  # Overrides (required to enable metrics generator processors)
+  # -------------------------------------------------------------------------
+  overrides:
+    defaults:
+      metrics_generator:
+        processors:
+          - service-graphs
+          - span-metrics
 
 # =============================================================================
 # Persistence
