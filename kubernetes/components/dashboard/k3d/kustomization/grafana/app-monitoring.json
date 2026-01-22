@@ -188,14 +188,37 @@
       "type": "traces"
     },
     {
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "description": "Service dependencies based on trace data",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 26 },
+      "id": 14,
+      "options": {
+        "nodes": {
+          "mainStatUnit": "ms"
+        },
+        "edges": {
+          "mainStatUnit": "r/sec"
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "queryType": "serviceMap",
+          "refId": "A"
+        }
+      ],
+      "title": "Service Graph",
+      "type": "nodeGraph"
+    },
+    {
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 38 },
       "id": 8,
       "title": "Logs",
       "type": "row"
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 27 },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 39 },
       "id": 9,
       "options": {
         "dedupStrategy": "none",
@@ -218,7 +241,7 @@
       "type": "logs"
     },
     {
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 37 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 49 },
       "id": 10,
       "title": "Metrics",
       "type": "row"
@@ -234,7 +257,7 @@
           "unit": "reqps"
         }
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 38 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 50 },
       "id": 11,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
       "targets": [
@@ -259,7 +282,7 @@
           "unit": "s"
         }
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 38 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 50 },
       "id": 12,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
       "targets": [

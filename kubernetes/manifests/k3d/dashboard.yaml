@@ -192,14 +192,37 @@ data:
           "type": "traces"
         },
         {
-          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "description": "Service dependencies based on trace data",
+          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 26 },
+          "id": 14,
+          "options": {
+            "nodes": {
+              "mainStatUnit": "ms"
+            },
+            "edges": {
+              "mainStatUnit": "r/sec"
+            }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "tempo", "uid": "tempo" },
+              "queryType": "serviceMap",
+              "refId": "A"
+            }
+          ],
+          "title": "Service Graph",
+          "type": "nodeGraph"
+        },
+        {
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 38 },
           "id": 8,
           "title": "Logs",
           "type": "row"
         },
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 27 },
+          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 39 },
           "id": 9,
           "options": {
             "dedupStrategy": "none",
@@ -222,7 +245,7 @@ data:
           "type": "logs"
         },
         {
-          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 37 },
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 49 },
           "id": 10,
           "title": "Metrics",
           "type": "row"
@@ -238,7 +261,7 @@ data:
               "unit": "reqps"
             }
           },
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 38 },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 50 },
           "id": 11,
           "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
           "targets": [
@@ -263,7 +286,7 @@ data:
               "unit": "s"
             }
           },
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 38 },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 50 },
           "id": 12,
           "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
           "targets": [
@@ -984,7 +1007,30 @@ data:
           "type": "traces"
         },
         {
-          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "description": "Service dependencies based on trace data",
+          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 25 },
+          "id": 22,
+          "options": {
+            "nodes": {
+              "mainStatUnit": "ms"
+            },
+            "edges": {
+              "mainStatUnit": "r/sec"
+            }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "tempo", "uid": "tempo" },
+              "queryType": "serviceMap",
+              "refId": "A"
+            }
+          ],
+          "title": "Service Graph",
+          "type": "nodeGraph"
+        },
+        {
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 37 },
           "id": 10,
           "title": "Application Metrics",
           "type": "row"
@@ -1000,7 +1046,7 @@ data:
               "unit": "reqps"
             }
           },
-          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 26 },
+          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 38 },
           "id": 11,
           "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
           "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\"}[1m])) by (http_route)", "legendFormat": "{{http_route}}", "refId": "A" }],
@@ -1018,7 +1064,7 @@ data:
               "unit": "s"
             }
           },
-          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 26 },
+          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 38 },
           "id": 12,
           "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
           "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\"}[1m])) by (le, http_route))", "legendFormat": "{{http_route}}", "refId": "A" }],
@@ -1026,7 +1072,7 @@ data:
           "type": "timeseries"
         },
         {
-          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 44 },
           "id": 13,
           "title": "Resource Usage",
           "type": "row"
@@ -1042,7 +1088,7 @@ data:
               "unit": "percent"
             }
           },
-          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 33 },
+          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 45 },
           "id": 14,
           "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
           "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "100 * sum(rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}[5m])) by (pod) / sum(kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"cpu\"}) by (pod)", "legendFormat": "{{pod}}", "refId": "A" }],
@@ -1060,7 +1106,7 @@ data:
               "unit": "percent"
             }
           },
-          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 33 },
+          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 45 },
           "id": 15,
           "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
           "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "100 * sum(container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}) by (pod) / sum(kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"memory\"}) by (pod)", "legendFormat": "{{pod}}", "refId": "A" }],
@@ -1068,7 +1114,7 @@ data:
           "type": "timeseries"
         },
         {
-          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 39 },
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 51 },
           "id": 16,
           "title": "Network",
           "type": "row"
@@ -1084,7 +1130,7 @@ data:
               "unit": "Bps"
             }
           },
-          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 40 },
+          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 52 },
           "id": 17,
           "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
           "targets": [
@@ -1105,7 +1151,7 @@ data:
               "unit": "short"
             }
           },
-          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 40 },
+          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 52 },
           "id": 18,
           "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
           "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(hubble_drop_total{source_namespace=~\"$namespace\"}[5m])) by (reason)", "legendFormat": "{{reason}}", "refId": "A" }],
@@ -1113,14 +1159,14 @@ data:
           "type": "timeseries"
         },
         {
-          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 46 },
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 58 },
           "id": 19,
           "title": "Logs",
           "type": "row"
         },
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 47 },
+          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 59 },
           "id": 20,
           "options": {
             "dedupStrategy": "none",
