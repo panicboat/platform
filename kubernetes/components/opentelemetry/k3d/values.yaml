@@ -25,7 +25,7 @@ manager:
   # Default collector image for operator-managed collectors
   collectorImage:
     repository: otel/opentelemetry-collector-contrib
-    tag: 0.144.0
+    tag: 0.145.0
 
   # Enable ServiceMonitor for Prometheus scraping
   serviceMonitor:
