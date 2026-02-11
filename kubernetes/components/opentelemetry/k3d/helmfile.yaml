@@ -12,6 +12,6 @@ releases:
   - name: opentelemetry-operator
     namespace: opentelemetry-operator-system
     chart: opentelemetry/opentelemetry-operator
-    version: "0.105.0"
+    version: "0.105.1"
     values:
       - values.yaml
