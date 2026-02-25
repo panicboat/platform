@@ -18,6 +18,6 @@ releases:
   - name: opentelemetry-collector
     namespace: opentelemetry-system
     chart: opentelemetry/opentelemetry-collector
-    version: "0.145.0"
+    version: "0.146.0"
     values:
       - values.yaml
