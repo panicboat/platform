@@ -6,7 +6,7 @@ metadata:
   name: tempo
   namespace: monitoring
   labels:
-    helm.sh/chart: tempo-1.24.3
+    helm.sh/chart: tempo-1.24.4
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
     app.kubernetes.io/version: "2.6.1"
@@ -20,7 +20,7 @@ metadata:
   name: tempo
   namespace: monitoring
   labels:
-    helm.sh/chart: tempo-1.24.3
+    helm.sh/chart: tempo-1.24.4
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
     app.kubernetes.io/version: "2.6.1"
@@ -104,7 +104,7 @@ metadata:
   name: tempo
   namespace: monitoring
   labels:
-    helm.sh/chart: tempo-1.24.3
+    helm.sh/chart: tempo-1.24.4
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
     app.kubernetes.io/version: "2.6.1"
@@ -167,7 +167,7 @@ metadata:
   name: tempo
   namespace: monitoring
   labels:
-    helm.sh/chart: tempo-1.24.3
+    helm.sh/chart: tempo-1.24.4
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
     app.kubernetes.io/version: "2.6.1"
@@ -185,7 +185,7 @@ spec:
         app.kubernetes.io/name: tempo
         app.kubernetes.io/instance: tempo
       annotations:
-        checksum/config: 3850dedd6d70a165767967d22ea23b25a28d000ff94e42281e15e2a64de5ea72
+        checksum/config: 4666f5b4fa61553182d55cc9ae1d056ff5a781ec0ceeaed66184ae08abeb0400
     spec:
       serviceAccountName: tempo
       automountServiceAccountToken: true
@@ -286,12 +286,12 @@ metadata:
   namespace: monitoring
   labels:
     app: tempo
-    chart: tempo-1.24.3
+    chart: tempo-1.24.4
     heritage: Helm
 spec:
   selector:
     matchLabels:
-      helm.sh/chart: tempo-1.24.3
+      helm.sh/chart: tempo-1.24.4
       app.kubernetes.io/name: tempo
       app.kubernetes.io/instance: tempo
       app.kubernetes.io/version: "2.6.1"

@@ -144,3 +144,17 @@ kube-state-metrics:
     - pods=[*]
     - deployments=[*]
     - statefulsets=[*]
+
+# =============================================================================
+# Prometheus Operator
+# Disable admission webhooks (and the cert-gen Job) in k3d. The cert-gen Job
+# in chart v82.x fails with an RBAC error patching ValidatingWebhookConfiguration,
+# and PrometheusRule webhook validation is unnecessary for local dev.
+# =============================================================================
+prometheusOperator:
+  admissionWebhooks:
+    enabled: false
+    patch:
+      enabled: false
+  tls:
+    enabled: false
