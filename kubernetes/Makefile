@@ -93,6 +93,14 @@ hydrate: ## Hydrate manifests from Helmfile and Kustomize (usage: make hydrate E
 		echo "- $$component.yaml" >> manifests/$(ENV)/kustomization.yaml; \
 	done
 	@echo "- 00-namespaces.yaml" >> manifests/$(ENV)/kustomization.yaml
+	@echo "$(BLUE)💧 Reverting cert-only changes (helm regenerates these on each run)...$(NC)"
+	@for f in manifests/$(ENV)/*.yaml; do \
+		[ "$$(basename $$f)" = "kustomization.yaml" ] && continue; \
+		git ls-files --error-unmatch "$$f" >/dev/null 2>&1 || continue; \
+		if git diff --quiet -I '^[[:space:]]*(ca\.crt|ca\.key|tls\.crt|tls\.key|caBundle):' -- "$$f"; then \
+			git checkout -- "$$f"; \
+		fi; \
+	done
 	@echo "$(GREEN)✅ Manifests hydrated$(NC)"
 
 # =============================================================================
