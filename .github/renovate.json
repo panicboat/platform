@@ -43,6 +43,14 @@
       "description": "✅ Minor/Patch updates - enable automerge",
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "automerge": true
+    },
+
+    {
+      "description": "🚫 Cilium - pinned to 1.18.x. 1.19+ removes --enable-node-port/host-port/external-ips opt-outs and breaks k3d serverlb -> api server 6443 connectivity.",
+      "matchPackageNames": ["cilium"],
+      "matchManagers": ["helmv3", "helm-values", "helmfile"],
+      "allowedVersions": "< 1.19.0",
+      "enabled": false
     }
   ]
 }

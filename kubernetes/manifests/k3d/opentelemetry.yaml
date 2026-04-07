@@ -7,9 +7,9 @@ metadata:
   name: opentelemetry-operator
   namespace: opentelemetry-operator-system
   labels:
-    helm.sh/chart: opentelemetry-operator-0.102.0
+    helm.sh/chart: opentelemetry-operator-0.109.0
     app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.141.0"
+    app.kubernetes.io/version: "0.148.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-operator
     app.kubernetes.io/instance: opentelemetry-operator
@@ -20,7 +20,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.1
   creationTimestamp: null
   labels:
     app.kubernetes.io/name: opentelemetry-operator
@@ -547,6 +547,23 @@ spec:
                               type: string
                           required:
                           - fieldPath
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        fileKeyRef:
+                          properties:
+                            key:
+                              type: string
+                            optional:
+                              default: false
+                              type: boolean
+                            path:
+                              type: string
+                            volumeName:
+                              type: string
+                          required:
+                          - key
+                          - path
+                          - volumeName
                           type: object
                           x-kubernetes-map-type: atomic
                         resourceFieldRef:
@@ -1582,6 +1599,25 @@ spec:
                                     type: array
                                     x-kubernetes-list-type: atomic
                                 type: object
+                              podCertificate:
+                                properties:
+                                  certificateChainPath:
+                                    type: string
+                                  credentialBundlePath:
+                                    type: string
+                                  keyPath:
+                                    type: string
+                                  keyType:
+                                    type: string
+                                  maxExpirationSeconds:
+                                    format: int32
+                                    type: integer
+                                  signerName:
+                                    type: string
+                                required:
+                                - keyType
+                                - signerName
+                                type: object
                               secret:
                                 properties:
                                   items:
@@ -1796,7 +1832,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.1
   creationTimestamp: null
   labels:
     app.kubernetes.io/name: opentelemetry-operator
@@ -1876,6 +1912,23 @@ spec:
                                     type: string
                                 required:
                                 - fieldPath
+                                type: object
+                                x-kubernetes-map-type: atomic
+                              fileKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  optional:
+                                    default: false
+                                    type: boolean
+                                  path:
+                                    type: string
+                                  volumeName:
+                                    type: string
+                                required:
+                                - key
+                                - path
+                                - volumeName
                                 type: object
                                 x-kubernetes-map-type: atomic
                               resourceFieldRef:
@@ -2067,6 +2120,8 @@ spec:
                               - port
                               type: object
                           type: object
+                        stopSignal:
+                          type: string
                       type: object
                     livenessProbe:
                       properties:
@@ -2304,6 +2359,29 @@ spec:
                       type: object
                     restartPolicy:
                       type: string
+                    restartPolicyRules:
+                      items:
+                        properties:
+                          action:
+                            type: string
+                          exitCodes:
+                            properties:
+                              operator:
+                                type: string
+                              values:
+                                items:
+                                  format: int32
+                                  type: integer
+                                type: array
+                                x-kubernetes-list-type: set
+                            required:
+                            - operator
+                            type: object
+                        required:
+                        - action
+                        type: object
+                      type: array
+                      x-kubernetes-list-type: atomic
                     securityContext:
                       properties:
                         allowPrivilegeEscalation:
@@ -3001,6 +3079,23 @@ spec:
                           - fieldPath
                           type: object
                           x-kubernetes-map-type: atomic
+                        fileKeyRef:
+                          properties:
+                            key:
+                              type: string
+                            optional:
+                              default: false
+                              type: boolean
+                            path:
+                              type: string
+                            volumeName:
+                              type: string
+                          required:
+                          - key
+                          - path
+                          - volumeName
+                          type: object
+                          x-kubernetes-map-type: atomic
                         resourceFieldRef:
                           properties:
                             containerName:
@@ -3070,6 +3165,10 @@ spec:
                 type: object
               hostNetwork:
                 type: boolean
+              hostPID:
+                type: boolean
+              hostUsers:
+                type: boolean
               image:
                 type: string
               imagePullPolicy:
@@ -3117,6 +3216,23 @@ spec:
                                     type: string
                                 required:
                                 - fieldPath
+                                type: object
+                                x-kubernetes-map-type: atomic
+                              fileKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  optional:
+                                    default: false
+                                    type: boolean
+                                  path:
+                                    type: string
+                                  volumeName:
+                                    type: string
+                                required:
+                                - key
+                                - path
+                                - volumeName
                                 type: object
                                 x-kubernetes-map-type: atomic
                               resourceFieldRef:
@@ -3308,6 +3424,8 @@ spec:
                               - port
                               type: object
                           type: object
+                        stopSignal:
+                          type: string
                       type: object
                     livenessProbe:
                       properties:
@@ -3545,6 +3663,29 @@ spec:
                       type: object
                     restartPolicy:
                       type: string
+                    restartPolicyRules:
+                      items:
+                        properties:
+                          action:
+                            type: string
+                          exitCodes:
+                            properties:
+                              operator:
+                                type: string
+                              values:
+                                items:
+                                  format: int32
+                                  type: integer
+                                type: array
+                                x-kubernetes-list-type: set
+                            required:
+                            - operator
+                            type: object
+                        required:
+                        - action
+                        type: object
+                      type: array
+                      x-kubernetes-list-type: atomic
                     securityContext:
                       properties:
                         allowPrivilegeEscalation:
@@ -3883,6 +4024,89 @@ spec:
                         - port
                         type: object
                     type: object
+                  stopSignal:
+                    type: string
+                type: object
+              livenessProbe:
+                properties:
+                  exec:
+                    properties:
+                      command:
+                        items:
+                          type: string
+                        type: array
+                        x-kubernetes-list-type: atomic
+                    type: object
+                  failureThreshold:
+                    format: int32
+                    type: integer
+                  grpc:
+                    properties:
+                      port:
+                        format: int32
+                        type: integer
+                      service:
+                        default: ""
+                        type: string
+                    required:
+                    - port
+                    type: object
+                  httpGet:
+                    properties:
+                      host:
+                        type: string
+                      httpHeaders:
+                        items:
+                          properties:
+                            name:
+                              type: string
+                            value:
+                              type: string
+                          required:
+                          - name
+                          - value
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      path:
+                        type: string
+                      port:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        x-kubernetes-int-or-string: true
+                      scheme:
+                        type: string
+                    required:
+                    - port
+                    type: object
+                  initialDelaySeconds:
+                    format: int32
+                    type: integer
+                  periodSeconds:
+                    format: int32
+                    type: integer
+                  successThreshold:
+                    format: int32
+                    type: integer
+                  tcpSocket:
+                    properties:
+                      host:
+                        type: string
+                      port:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        x-kubernetes-int-or-string: true
+                    required:
+                    - port
+                    type: object
+                  terminationGracePeriodSeconds:
+                    format: int64
+                    type: integer
+                  timeoutSeconds:
+                    format: int32
+                    type: integer
                 type: object
               managementState:
                 default: managed
@@ -4077,6 +4301,37 @@ spec:
                     type: array
                   enabled:
                     type: boolean
+                  evaluationInterval:
+                    default: 30s
+                    format: duration
+                    type: string
+                  podMonitorNamespaceSelector:
+                    default: {}
+                    properties:
+                      matchExpressions:
+                        items:
+                          properties:
+                            key:
+                              type: string
+                            operator:
+                              type: string
+                            values:
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        type: object
+                    type: object
+                    x-kubernetes-map-type: atomic
                   podMonitorSelector:
                     properties:
                       matchExpressions:
@@ -4103,7 +4358,67 @@ spec:
                         type: object
                     type: object
                     x-kubernetes-map-type: atomic
+                  probeNamespaceSelector:
+                    default: {}
+                    properties:
+                      matchExpressions:
+                        items:
+                          properties:
+                            key:
+                              type: string
+                            operator:
+                              type: string
+                            values:
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        type: object
+                    type: object
+                    x-kubernetes-map-type: atomic
                   probeSelector:
+                    properties:
+                      matchExpressions:
+                        items:
+                          properties:
+                            key:
+                              type: string
+                            operator:
+                              type: string
+                            values:
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        type: object
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  scrapeClasses:
+                    items:
+                      type: object
+                    type: array
+                    x-kubernetes-list-type: atomic
+                    x-kubernetes-preserve-unknown-fields: true
+                  scrapeConfigNamespaceSelector:
+                    default: {}
                     properties:
                       matchExpressions:
                         items:
@@ -4159,6 +4474,37 @@ spec:
                     default: 30s
                     format: duration
                     type: string
+                  scrapeProtocols:
+                    items:
+                      type: string
+                    type: array
+                  serviceMonitorNamespaceSelector:
+                    default: {}
+                    properties:
+                      matchExpressions:
+                        items:
+                          properties:
+                            key:
+                              type: string
+                            operator:
+                              type: string
+                            values:
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        type: object
+                    type: object
+                    x-kubernetes-map-type: atomic
                   serviceMonitorSelector:
                     properties:
                       matchExpressions:
@@ -4185,6 +4531,87 @@ spec:
                         type: object
                     type: object
                     x-kubernetes-map-type: atomic
+                type: object
+              readinessProbe:
+                properties:
+                  exec:
+                    properties:
+                      command:
+                        items:
+                          type: string
+                        type: array
+                        x-kubernetes-list-type: atomic
+                    type: object
+                  failureThreshold:
+                    format: int32
+                    type: integer
+                  grpc:
+                    properties:
+                      port:
+                        format: int32
+                        type: integer
+                      service:
+                        default: ""
+                        type: string
+                    required:
+                    - port
+                    type: object
+                  httpGet:
+                    properties:
+                      host:
+                        type: string
+                      httpHeaders:
+                        items:
+                          properties:
+                            name:
+                              type: string
+                            value:
+                              type: string
+                          required:
+                          - name
+                          - value
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      path:
+                        type: string
+                      port:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        x-kubernetes-int-or-string: true
+                      scheme:
+                        type: string
+                    required:
+                    - port
+                    type: object
+                  initialDelaySeconds:
+                    format: int32
+                    type: integer
+                  periodSeconds:
+                    format: int32
+                    type: integer
+                  successThreshold:
+                    format: int32
+                    type: integer
+                  tcpSocket:
+                    properties:
+                      host:
+                        type: string
+                      port:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        x-kubernetes-int-or-string: true
+                    required:
+                    - port
+                    type: object
+                  terminationGracePeriodSeconds:
+                    format: int64
+                    type: integer
+                  timeoutSeconds:
+                    format: int32
+                    type: integer
                 type: object
               replicas:
                 default: 1
@@ -5014,6 +5441,25 @@ spec:
                                     type: array
                                     x-kubernetes-list-type: atomic
                                 type: object
+                              podCertificate:
+                                properties:
+                                  certificateChainPath:
+                                    type: string
+                                  credentialBundlePath:
+                                    type: string
+                                  keyPath:
+                                    type: string
+                                  keyType:
+                                    type: string
+                                  maxExpirationSeconds:
+                                    format: int32
+                                    type: integer
+                                  signerName:
+                                    type: string
+                                required:
+                                - keyType
+                                - signerName
+                                type: object
                               secret:
                                 properties:
                                   items:
@@ -5228,7 +5674,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: none
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.1
   creationTimestamp: null
   labels:
     app.kubernetes.io/name: opentelemetry-operator
@@ -5243,7 +5689,7 @@ spec:
           namespace: opentelemetry-operator-system
           path: /convert
           port: 443
-        caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQUpJVnluVGdlM1NMbXVJMWdLWTRNcnN3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBeE1qSXdNVEF6TlRsYUZ3MHlOekF4TWpJd01UQXpOVGxhTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRRGJNUTlUL3oyWEUrUU53WWR5QkVWeklWczd1TkIzeWNvUkZvU2lyS2lJb3FpUgpYWUlEMll5dnFSbE9Edi9HcGlrcWVJanVRMzVtL1p2YU9tUGxrYmtES0dacTRIZEczMUcyWW8rYlR4SlNkOXBzClRpTkxnWnNjYTFsenYrNHhzRWdlMjM2dFpqbjZRUklVTStKcjNxYWdwUkFQNUtmUUVocThtZllnQzlNMWtJeSsKODBqQllvRjJjbmVISnRLem5PbGluNU9TQlpQd09uMzVZSm1Bcys5NWV0YUtreGRXV3RkVXJYVU9oUURuMTArbwphcktqdU5GaThzRnRYbTRSeFFZTy9SMDl5TjJWWFNKS3NaaGRvL1RGUG45LzF1RUNSZElLaXdrNmkvVFAwTkFNClJNN1RPbnBJcWx0ZVNmckxjL3hYSTk3NkZSL1o1UERZWS84Y2NGSm5BZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVV0Y3UxNmhkSkRFcCtXaUYxZlptNnJpcWNUS0V3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFDdVlzNjZxUmxVdmhRL1Jod3ZWZzRhQWpkMTZZT3g1eG5JblRheFo2SVU5eTd3aXpzcEYKTk1FcEhKQjUycCtVM0xFR05pdmVQMUtlSkIxMzMxNDVyMngweUVWL3QxMEhJZlBLcjU2YVNpTHlpK0VLeE4wMgpjdUNyMHBQNklWclBjQ0tMMzlDMTNwYjZVS095Z080aHlHTkhsT09kNVk0dDhYMW9wVjNKTTc5RzJ6YjN5bDZLCjBkRHpzZzA0ckdoYWs4OVhhUHlReDVlMTU5Nlh2dTRvbVhZOTN1bmZ2MjQ1azh5cndPM2oyZ1ROcDJhM1oxUDcKZStybVVkbGdhNDVKK05iOTFvb2N6Q2I1akpPNXQ3eU4rT0c5OGI1M1ptWE5IZXlMNFRMQUx0S2hHeWJSRm53agpqUUFiSnZrbkJrMDgwckhvZnZaWCtkNGFlL2NOWGFEdXhBcz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+        caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQVAyc2MwelN3WWFENThmU0RzNFc3Q3d3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBME1EY3hOalE1TURaYUZ3MHlOekEwTURjeE5qUTVNRFphTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRREtJSzROd0d4S2l6SHdNUVZDS241QUhHNGlRQUFvUVdzRkdoTDd2RmJIdzBMWgpCMmtwVW9nN012YlNDbjVVVHNNZVhmK21rSE1KRG50Q2VoeDBqalhwYUNaVHQ3TTBWZVAyMUZsMFVnd1hIZWNICkwxMnEvREYzeG1mOXYzSVZ4cHVwTitlRCtiKzFRYUVCOU1PUE1iMzg1eTYzaGx2eHRSdE4yVmJncjFLZmhVbTQKYTFwVHBnUjZ6bTg0NTJ1RnFkWTBwanRhVVUvRWhzZFJTVUw1YktpWUJXYm5QaHhHZE9BZGFXUzZOMTNqV0Q5cQp1TFY2aWY3dDltRUpTN0pKWGtFYkE2UGR0OXlvUUxyMGdwVndIRXAyN25EWHU2VXVYK1Z1Qm1jM1NQVDZjZVNuCmU3NGVmOVlJUUphNy9Dd1VCdTFla2dhYzl5WG5BK0dyQmZiVUJFZFpBZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVVJbmgxaTZlUTcycGVwUHc5YTYxWG96anRQVFl3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFMMm5JQ1ErTkRsK0NlUjNLQk1EMmxXdXRPNVJLZG9IZDdGQnVqcXFWc3RhN0p3Mmp6RXYKUWRLcG5vQ3pYdGgwK3FPQWl6TkhCQ2hGUDdGWUtBNGQ0VDg0ODczTEZTZWNiaDNOd2JDUGRSb0pNdzlwUjhObQplTkQ1bjdyTE1zaDhOcWRKWGVoSmdtOFBiZmF3bzJDMTk5Y3R6VUoxSFlYUEJEZFg0RU8zc29DN2NYbXNQZ05LCmV2T2ZYaFdhTkhDNTdsN0gwV2NMYk1IWU9LNGkvV0RhMmdwUzNnbHd5MGE2cWR1aU5yTUVScjVTUmF6dHBxZkkKVVlCMWxyOUE2UFA5RWlSVTdja0E1NnBFT1Y1NU5wVnpPbnl2ZStwQ056WnFKemdpTUZPbGlRVjFaS3N0WnMyZwpUR2JwT0plNjhxVVZFRUt1dmlIcG05WW5UdHlEODRNaExjdz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
       conversionReviewVersions:
       - v1alpha1
       - v1beta1
@@ -5338,6 +5784,23 @@ spec:
                                     type: string
                                 required:
                                 - fieldPath
+                                type: object
+                                x-kubernetes-map-type: atomic
+                              fileKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  optional:
+                                    default: false
+                                    type: boolean
+                                  path:
+                                    type: string
+                                  volumeName:
+                                    type: string
+                                required:
+                                - key
+                                - path
+                                - volumeName
                                 type: object
                                 x-kubernetes-map-type: atomic
                               resourceFieldRef:
@@ -5529,6 +5992,8 @@ spec:
                               - port
                               type: object
                           type: object
+                        stopSignal:
+                          type: string
                       type: object
                     livenessProbe:
                       properties:
@@ -5766,6 +6231,29 @@ spec:
                       type: object
                     restartPolicy:
                       type: string
+                    restartPolicyRules:
+                      items:
+                        properties:
+                          action:
+                            type: string
+                          exitCodes:
+                            properties:
+                              operator:
+                                type: string
+                              values:
+                                items:
+                                  format: int32
+                                  type: integer
+                                type: array
+                                x-kubernetes-list-type: set
+                            required:
+                            - operator
+                            type: object
+                        required:
+                        - action
+                        type: object
+                      type: array
+                      x-kubernetes-list-type: atomic
                     securityContext:
                       properties:
                         allowPrivilegeEscalation:
@@ -6447,6 +6935,12 @@ spec:
                           stabilizationWindowSeconds:
                             format: int32
                             type: integer
+                          tolerance:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
                         type: object
                       scaleUp:
                         properties:
@@ -6473,6 +6967,12 @@ spec:
                           stabilizationWindowSeconds:
                             format: int32
                             type: integer
+                          tolerance:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
                         type: object
                     type: object
                   maxReplicas:
@@ -6620,6 +7120,23 @@ spec:
                               type: string
                           required:
                           - fieldPath
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        fileKeyRef:
+                          properties:
+                            key:
+                              type: string
+                            optional:
+                              default: false
+                              type: boolean
+                            path:
+                              type: string
+                            volumeName:
+                              type: string
+                          required:
+                          - key
+                          - path
+                          - volumeName
                           type: object
                           x-kubernetes-map-type: atomic
                         resourceFieldRef:
@@ -6773,6 +7290,23 @@ spec:
                                     type: string
                                 required:
                                 - fieldPath
+                                type: object
+                                x-kubernetes-map-type: atomic
+                              fileKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  optional:
+                                    default: false
+                                    type: boolean
+                                  path:
+                                    type: string
+                                  volumeName:
+                                    type: string
+                                required:
+                                - key
+                                - path
+                                - volumeName
                                 type: object
                                 x-kubernetes-map-type: atomic
                               resourceFieldRef:
@@ -6964,6 +7498,8 @@ spec:
                               - port
                               type: object
                           type: object
+                        stopSignal:
+                          type: string
                       type: object
                     livenessProbe:
                       properties:
@@ -7201,6 +7737,29 @@ spec:
                       type: object
                     restartPolicy:
                       type: string
+                    restartPolicyRules:
+                      items:
+                        properties:
+                          action:
+                            type: string
+                          exitCodes:
+                            properties:
+                              operator:
+                                type: string
+                              values:
+                                items:
+                                  format: int32
+                                  type: integer
+                                type: array
+                                x-kubernetes-list-type: set
+                            required:
+                            - operator
+                            type: object
+                        required:
+                        - action
+                        type: object
+                      type: array
+                      x-kubernetes-list-type: atomic
                     securityContext:
                       properties:
                         allowPrivilegeEscalation:
@@ -7532,6 +8091,8 @@ spec:
                         - port
                         type: object
                     type: object
+                  stopSignal:
+                    type: string
                 type: object
               livenessProbe:
                 properties:
@@ -8311,6 +8872,23 @@ spec:
                               - fieldPath
                               type: object
                               x-kubernetes-map-type: atomic
+                            fileKeyRef:
+                              properties:
+                                key:
+                                  type: string
+                                optional:
+                                  default: false
+                                  type: boolean
+                                path:
+                                  type: string
+                                volumeName:
+                                  type: string
+                              required:
+                              - key
+                              - path
+                              - volumeName
+                              type: object
+                              x-kubernetes-map-type: atomic
                             resourceFieldRef:
                               properties:
                                 containerName:
@@ -8464,6 +9042,12 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
+                      scrapeClasses:
+                        items:
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
+                        x-kubernetes-preserve-unknown-fields: true
                       scrapeInterval:
                         default: 30s
                         format: duration
@@ -9570,6 +10154,25 @@ spec:
                                     type: array
                                     x-kubernetes-list-type: atomic
                                 type: object
+                              podCertificate:
+                                properties:
+                                  certificateChainPath:
+                                    type: string
+                                  credentialBundlePath:
+                                    type: string
+                                  keyPath:
+                                    type: string
+                                  keyType:
+                                    type: string
+                                  maxExpirationSeconds:
+                                    format: int32
+                                    type: integer
+                                  signerName:
+                                    type: string
+                                required:
+                                - keyType
+                                - signerName
+                                type: object
                               secret:
                                 properties:
                                   items:
@@ -9875,6 +10478,23 @@ spec:
                                 - fieldPath
                                 type: object
                                 x-kubernetes-map-type: atomic
+                              fileKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  optional:
+                                    default: false
+                                    type: boolean
+                                  path:
+                                    type: string
+                                  volumeName:
+                                    type: string
+                                required:
+                                - key
+                                - path
+                                - volumeName
+                                type: object
+                                x-kubernetes-map-type: atomic
                               resourceFieldRef:
                                 properties:
                                   containerName:
@@ -10064,6 +10684,8 @@ spec:
                               - port
                               type: object
                           type: object
+                        stopSignal:
+                          type: string
                       type: object
                     livenessProbe:
                       properties:
@@ -10301,6 +10923,29 @@ spec:
                       type: object
                     restartPolicy:
                       type: string
+                    restartPolicyRules:
+                      items:
+                        properties:
+                          action:
+                            type: string
+                          exitCodes:
+                            properties:
+                              operator:
+                                type: string
+                              values:
+                                items:
+                                  format: int32
+                                  type: integer
+                                type: array
+                                x-kubernetes-list-type: set
+                            required:
+                            - operator
+                            type: object
+                        required:
+                        - action
+                        type: object
+                      type: array
+                      x-kubernetes-list-type: atomic
                     securityContext:
                       properties:
                         allowPrivilegeEscalation:
@@ -10982,6 +11627,12 @@ spec:
                           stabilizationWindowSeconds:
                             format: int32
                             type: integer
+                          tolerance:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
                         type: object
                       scaleUp:
                         properties:
@@ -11008,6 +11659,12 @@ spec:
                           stabilizationWindowSeconds:
                             format: int32
                             type: integer
+                          tolerance:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
                         type: object
                     type: object
                   maxReplicas:
@@ -11239,6 +11896,23 @@ spec:
                           - fieldPath
                           type: object
                           x-kubernetes-map-type: atomic
+                        fileKeyRef:
+                          properties:
+                            key:
+                              type: string
+                            optional:
+                              default: false
+                              type: boolean
+                            path:
+                              type: string
+                            volumeName:
+                              type: string
+                          required:
+                          - key
+                          - path
+                          - volumeName
+                          type: object
+                          x-kubernetes-map-type: atomic
                         resourceFieldRef:
                           properties:
                             containerName:
@@ -11299,6 +11973,10 @@ spec:
                   type: object
                 type: array
               hostNetwork:
+                type: boolean
+              hostPID:
+                type: boolean
+              hostUsers:
                 type: boolean
               image:
                 type: string
@@ -11390,6 +12068,23 @@ spec:
                                     type: string
                                 required:
                                 - fieldPath
+                                type: object
+                                x-kubernetes-map-type: atomic
+                              fileKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  optional:
+                                    default: false
+                                    type: boolean
+                                  path:
+                                    type: string
+                                  volumeName:
+                                    type: string
+                                required:
+                                - key
+                                - path
+                                - volumeName
                                 type: object
                                 x-kubernetes-map-type: atomic
                               resourceFieldRef:
@@ -11581,6 +12276,8 @@ spec:
                               - port
                               type: object
                           type: object
+                        stopSignal:
+                          type: string
                       type: object
                     livenessProbe:
                       properties:
@@ -11818,6 +12515,29 @@ spec:
                       type: object
                     restartPolicy:
                       type: string
+                    restartPolicyRules:
+                      items:
+                        properties:
+                          action:
+                            type: string
+                          exitCodes:
+                            properties:
+                              operator:
+                                type: string
+                              values:
+                                items:
+                                  format: int32
+                                  type: integer
+                                type: array
+                                x-kubernetes-list-type: set
+                            required:
+                            - operator
+                            type: object
+                        required:
+                        - action
+                        type: object
+                      type: array
+                      x-kubernetes-list-type: atomic
                     securityContext:
                       properties:
                         allowPrivilegeEscalation:
@@ -12156,6 +12876,8 @@ spec:
                         - port
                         type: object
                     type: object
+                  stopSignal:
+                    type: string
                 type: object
               livenessProbe:
                 properties:
@@ -12267,6 +12989,12 @@ spec:
                     type: array
                     x-kubernetes-list-type: atomic
                 type: object
+              podManagementPolicy:
+                default: Parallel
+                enum:
+                - OrderedReady
+                - Parallel
+                type: string
               podSecurityContext:
                 properties:
                   appArmorProfile:
@@ -13038,6 +13766,23 @@ spec:
                               - fieldPath
                               type: object
                               x-kubernetes-map-type: atomic
+                            fileKeyRef:
+                              properties:
+                                key:
+                                  type: string
+                                optional:
+                                  default: false
+                                  type: boolean
+                                path:
+                                  type: string
+                                volumeName:
+                                  type: string
+                              required:
+                              - key
+                              - path
+                              - volumeName
+                              type: object
+                              x-kubernetes-map-type: atomic
                             resourceFieldRef:
                               properties:
                                 containerName:
@@ -13202,6 +13947,37 @@ spec:
                         type: array
                       enabled:
                         type: boolean
+                      evaluationInterval:
+                        default: 30s
+                        format: duration
+                        type: string
+                      podMonitorNamespaceSelector:
+                        default: {}
+                        properties:
+                          matchExpressions:
+                            items:
+                              properties:
+                                key:
+                                  type: string
+                                operator:
+                                  type: string
+                                values:
+                                  items:
+                                    type: string
+                                  type: array
+                                  x-kubernetes-list-type: atomic
+                              required:
+                              - key
+                              - operator
+                              type: object
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          matchLabels:
+                            additionalProperties:
+                              type: string
+                            type: object
+                        type: object
+                        x-kubernetes-map-type: atomic
                       podMonitorSelector:
                         properties:
                           matchExpressions:
@@ -13228,7 +14004,67 @@ spec:
                             type: object
                         type: object
                         x-kubernetes-map-type: atomic
+                      probeNamespaceSelector:
+                        default: {}
+                        properties:
+                          matchExpressions:
+                            items:
+                              properties:
+                                key:
+                                  type: string
+                                operator:
+                                  type: string
+                                values:
+                                  items:
+                                    type: string
+                                  type: array
+                                  x-kubernetes-list-type: atomic
+                              required:
+                              - key
+                              - operator
+                              type: object
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          matchLabels:
+                            additionalProperties:
+                              type: string
+                            type: object
+                        type: object
+                        x-kubernetes-map-type: atomic
                       probeSelector:
+                        properties:
+                          matchExpressions:
+                            items:
+                              properties:
+                                key:
+                                  type: string
+                                operator:
+                                  type: string
+                                values:
+                                  items:
+                                    type: string
+                                  type: array
+                                  x-kubernetes-list-type: atomic
+                              required:
+                              - key
+                              - operator
+                              type: object
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          matchLabels:
+                            additionalProperties:
+                              type: string
+                            type: object
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      scrapeClasses:
+                        items:
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
+                        x-kubernetes-preserve-unknown-fields: true
+                      scrapeConfigNamespaceSelector:
+                        default: {}
                         properties:
                           matchExpressions:
                             items:
@@ -13284,6 +14120,37 @@ spec:
                         default: 30s
                         format: duration
                         type: string
+                      scrapeProtocols:
+                        items:
+                          type: string
+                        type: array
+                      serviceMonitorNamespaceSelector:
+                        default: {}
+                        properties:
+                          matchExpressions:
+                            items:
+                              properties:
+                                key:
+                                  type: string
+                                operator:
+                                  type: string
+                                values:
+                                  items:
+                                    type: string
+                                  type: array
+                                  x-kubernetes-list-type: atomic
+                              required:
+                              - key
+                              - operator
+                              type: object
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          matchLabels:
+                            additionalProperties:
+                              type: string
+                            type: object
+                        type: object
+                        x-kubernetes-map-type: atomic
                       serviceMonitorSelector:
                         properties:
                           matchExpressions:
@@ -14390,6 +15257,25 @@ spec:
                                     type: array
                                     x-kubernetes-list-type: atomic
                                 type: object
+                              podCertificate:
+                                properties:
+                                  certificateChainPath:
+                                    type: string
+                                  credentialBundlePath:
+                                    type: string
+                                  keyPath:
+                                    type: string
+                                  keyType:
+                                    type: string
+                                  maxExpirationSeconds:
+                                    format: int32
+                                    type: integer
+                                  signerName:
+                                    type: string
+                                required:
+                                - keyType
+                                - signerName
+                                type: object
                               secret:
                                 properties:
                                   items:
@@ -14635,7 +15521,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.1
   creationTimestamp: null
   labels:
     app.kubernetes.io/name: opentelemetry-operator
@@ -14711,6 +15597,23 @@ spec:
                               - fieldPath
                               type: object
                               x-kubernetes-map-type: atomic
+                            fileKeyRef:
+                              properties:
+                                key:
+                                  type: string
+                                optional:
+                                  default: false
+                                  type: boolean
+                                path:
+                                  type: string
+                                volumeName:
+                                  type: string
+                              required:
+                              - key
+                              - path
+                              - volumeName
+                              type: object
+                              x-kubernetes-map-type: atomic
                             resourceFieldRef:
                               properties:
                                 containerName:
@@ -14777,6 +15680,23 @@ spec:
                                   type: string
                               required:
                               - fieldPath
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            fileKeyRef:
+                              properties:
+                                key:
+                                  type: string
+                                optional:
+                                  default: false
+                                  type: boolean
+                                path:
+                                  type: string
+                                volumeName:
+                                  type: string
+                              required:
+                              - key
+                              - path
+                              - volumeName
                               type: object
                               x-kubernetes-map-type: atomic
                             resourceFieldRef:
@@ -15008,6 +15928,23 @@ spec:
                               - fieldPath
                               type: object
                               x-kubernetes-map-type: atomic
+                            fileKeyRef:
+                              properties:
+                                key:
+                                  type: string
+                                optional:
+                                  default: false
+                                  type: boolean
+                                path:
+                                  type: string
+                                volumeName:
+                                  type: string
+                              required:
+                              - key
+                              - path
+                              - volumeName
+                              type: object
+                              x-kubernetes-map-type: atomic
                             resourceFieldRef:
                               properties:
                                 containerName:
@@ -15228,6 +16165,23 @@ spec:
                           - fieldPath
                           type: object
                           x-kubernetes-map-type: atomic
+                        fileKeyRef:
+                          properties:
+                            key:
+                              type: string
+                            optional:
+                              default: false
+                              type: boolean
+                            path:
+                              type: string
+                            volumeName:
+                              type: string
+                          required:
+                          - key
+                          - path
+                          - volumeName
+                          type: object
+                          x-kubernetes-map-type: atomic
                         resourceFieldRef:
                           properties:
                             containerName:
@@ -15312,6 +16266,23 @@ spec:
                                   type: string
                               required:
                               - fieldPath
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            fileKeyRef:
+                              properties:
+                                key:
+                                  type: string
+                                optional:
+                                  default: false
+                                  type: boolean
+                                path:
+                                  type: string
+                                volumeName:
+                                  type: string
+                              required:
+                              - key
+                              - path
+                              - volumeName
                               type: object
                               x-kubernetes-map-type: atomic
                             resourceFieldRef:
@@ -15536,6 +16507,23 @@ spec:
                                   type: string
                               required:
                               - fieldPath
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            fileKeyRef:
+                              properties:
+                                key:
+                                  type: string
+                                optional:
+                                  default: false
+                                  type: boolean
+                                path:
+                                  type: string
+                                volumeName:
+                                  type: string
+                              required:
+                              - key
+                              - path
+                              - volumeName
                               type: object
                               x-kubernetes-map-type: atomic
                             resourceFieldRef:
@@ -15772,6 +16760,23 @@ spec:
                               - fieldPath
                               type: object
                               x-kubernetes-map-type: atomic
+                            fileKeyRef:
+                              properties:
+                                key:
+                                  type: string
+                                optional:
+                                  default: false
+                                  type: boolean
+                                path:
+                                  type: string
+                                volumeName:
+                                  type: string
+                              required:
+                              - key
+                              - path
+                              - volumeName
+                              type: object
+                              x-kubernetes-map-type: atomic
                             resourceFieldRef:
                               properties:
                                 containerName:
@@ -15838,6 +16843,23 @@ spec:
                                   type: string
                               required:
                               - fieldPath
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            fileKeyRef:
+                              properties:
+                                key:
+                                  type: string
+                                optional:
+                                  default: false
+                                  type: boolean
+                                path:
+                                  type: string
+                                volumeName:
+                                  type: string
+                              required:
+                              - key
+                              - path
+                              - volumeName
                               type: object
                               x-kubernetes-map-type: atomic
                             resourceFieldRef:
@@ -16060,6 +17082,23 @@ spec:
                                   type: string
                               required:
                               - fieldPath
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            fileKeyRef:
+                              properties:
+                                key:
+                                  type: string
+                                optional:
+                                  default: false
+                                  type: boolean
+                                path:
+                                  type: string
+                                volumeName:
+                                  type: string
+                              required:
+                              - key
+                              - path
+                              - volumeName
                               type: object
                               x-kubernetes-map-type: atomic
                             resourceFieldRef:
@@ -16297,6 +17336,23 @@ spec:
                               - fieldPath
                               type: object
                               x-kubernetes-map-type: atomic
+                            fileKeyRef:
+                              properties:
+                                key:
+                                  type: string
+                                optional:
+                                  default: false
+                                  type: boolean
+                                path:
+                                  type: string
+                                volumeName:
+                                  type: string
+                              required:
+                              - key
+                              - path
+                              - volumeName
+                              type: object
+                              x-kubernetes-map-type: atomic
                             resourceFieldRef:
                               properties:
                                 containerName:
@@ -16530,9 +17586,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    helm.sh/chart: opentelemetry-operator-0.102.0
+    helm.sh/chart: opentelemetry-operator-0.109.0
     app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.141.0"
+    app.kubernetes.io/version: "0.148.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-operator
     app.kubernetes.io/instance: opentelemetry-operator
@@ -16691,7 +17747,7 @@ rules:
   - apiGroups:
       - ""
     resources:
-      - nodes/proxy
+      - nodes/pods
     verbs:
       - get
   - apiGroups:
@@ -16718,6 +17774,13 @@ rules:
       - get
       - list
       - update
+  - apiGroups:
+      - discovery.k8s.io
+    resources:
+      - endpointslices
+    verbs:
+      - get
+      - list
   - apiGroups:
       - events.k8s.io
     resources:
@@ -16892,9 +17955,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    helm.sh/chart: opentelemetry-operator-0.102.0
+    helm.sh/chart: opentelemetry-operator-0.109.0
     app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.141.0"
+    app.kubernetes.io/version: "0.148.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-operator
     app.kubernetes.io/instance: opentelemetry-operator
@@ -16911,9 +17974,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    helm.sh/chart: opentelemetry-operator-0.102.0
+    helm.sh/chart: opentelemetry-operator-0.109.0
     app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.141.0"
+    app.kubernetes.io/version: "0.148.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-operator
     app.kubernetes.io/instance: opentelemetry-operator
@@ -16932,9 +17995,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   labels:
-    helm.sh/chart: opentelemetry-operator-0.102.0
+    helm.sh/chart: opentelemetry-operator-0.109.0
     app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.141.0"
+    app.kubernetes.io/version: "0.148.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-operator
     app.kubernetes.io/instance: opentelemetry-operator
@@ -16954,9 +18017,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   labels:
-    helm.sh/chart: opentelemetry-operator-0.102.0
+    helm.sh/chart: opentelemetry-operator-0.109.0
     app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.141.0"
+    app.kubernetes.io/version: "0.148.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-operator
     app.kubernetes.io/instance: opentelemetry-operator
@@ -16976,9 +18039,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   labels:
-    helm.sh/chart: opentelemetry-operator-0.102.0
+    helm.sh/chart: opentelemetry-operator-0.109.0
     app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.141.0"
+    app.kubernetes.io/version: "0.148.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-operator
     app.kubernetes.io/instance: opentelemetry-operator
@@ -17175,9 +18238,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   labels:
-    helm.sh/chart: opentelemetry-operator-0.102.0
+    helm.sh/chart: opentelemetry-operator-0.109.0
     app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.141.0"
+    app.kubernetes.io/version: "0.148.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-operator
     app.kubernetes.io/instance: opentelemetry-operator
@@ -17198,9 +18261,9 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    helm.sh/chart: opentelemetry-operator-0.102.0
+    helm.sh/chart: opentelemetry-operator-0.109.0
     app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.141.0"
+    app.kubernetes.io/version: "0.148.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-operator
     app.kubernetes.io/instance: opentelemetry-operator
@@ -17226,9 +18289,9 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    helm.sh/chart: opentelemetry-operator-0.102.0
+    helm.sh/chart: opentelemetry-operator-0.109.0
     app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.141.0"
+    app.kubernetes.io/version: "0.148.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-operator
     app.kubernetes.io/instance: opentelemetry-operator
@@ -17249,9 +18312,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    helm.sh/chart: opentelemetry-operator-0.102.0
+    helm.sh/chart: opentelemetry-operator-0.109.0
     app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.141.0"
+    app.kubernetes.io/version: "0.148.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-operator
     app.kubernetes.io/instance: opentelemetry-operator
@@ -17270,9 +18333,9 @@ spec:
       annotations:
         kubectl.kubernetes.io/default-container: manager
       labels:
-        helm.sh/chart: opentelemetry-operator-0.102.0
+        helm.sh/chart: opentelemetry-operator-0.109.0
         app.kubernetes.io/name: opentelemetry-operator
-        app.kubernetes.io/version: "0.141.0"
+        app.kubernetes.io/version: "0.148.0"
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/part-of: opentelemetry-operator
         app.kubernetes.io/instance: opentelemetry-operator
@@ -17283,10 +18346,11 @@ spec:
       containers:
         - args:
             - --metrics-addr=0.0.0.0:8080
+            - --metrics-secure=false
             - --enable-leader-election
             - --health-probe-addr=:8081
             - --webhook-port=9443
-            - --collector-image=otel/opentelemetry-collector-contrib:0.144.0
+            - --collector-image=otel/opentelemetry-collector-contrib:0.149.0
           command:
             - /manager
           env:
@@ -17296,7 +18360,7 @@ spec:
                   fieldPath: spec.serviceAccountName
             - name: ENABLE_WEBHOOKS
               value: "true"
-          image: "ghcr.io/open-telemetry/opentelemetry-operator/opentelemetry-operator:0.141.0"
+          image: "ghcr.io/open-telemetry/opentelemetry-operator/opentelemetry-operator:0.148.0"
           name: manager
           imagePullPolicy: IfNotPresent
           ports:
@@ -17376,9 +18440,9 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   labels:
-    helm.sh/chart: opentelemetry-operator-0.102.0
+    helm.sh/chart: opentelemetry-operator-0.109.0
     app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.141.0"
+    app.kubernetes.io/version: "0.148.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-operator
     app.kubernetes.io/instance: opentelemetry-operator
@@ -17388,7 +18452,7 @@ webhooks:
   - admissionReviewVersions:
       - v1
     clientConfig:
-      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQUpJVnluVGdlM1NMbXVJMWdLWTRNcnN3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBeE1qSXdNVEF6TlRsYUZ3MHlOekF4TWpJd01UQXpOVGxhTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRRGJNUTlUL3oyWEUrUU53WWR5QkVWeklWczd1TkIzeWNvUkZvU2lyS2lJb3FpUgpYWUlEMll5dnFSbE9Edi9HcGlrcWVJanVRMzVtL1p2YU9tUGxrYmtES0dacTRIZEczMUcyWW8rYlR4SlNkOXBzClRpTkxnWnNjYTFsenYrNHhzRWdlMjM2dFpqbjZRUklVTStKcjNxYWdwUkFQNUtmUUVocThtZllnQzlNMWtJeSsKODBqQllvRjJjbmVISnRLem5PbGluNU9TQlpQd09uMzVZSm1Bcys5NWV0YUtreGRXV3RkVXJYVU9oUURuMTArbwphcktqdU5GaThzRnRYbTRSeFFZTy9SMDl5TjJWWFNKS3NaaGRvL1RGUG45LzF1RUNSZElLaXdrNmkvVFAwTkFNClJNN1RPbnBJcWx0ZVNmckxjL3hYSTk3NkZSL1o1UERZWS84Y2NGSm5BZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVV0Y3UxNmhkSkRFcCtXaUYxZlptNnJpcWNUS0V3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFDdVlzNjZxUmxVdmhRL1Jod3ZWZzRhQWpkMTZZT3g1eG5JblRheFo2SVU5eTd3aXpzcEYKTk1FcEhKQjUycCtVM0xFR05pdmVQMUtlSkIxMzMxNDVyMngweUVWL3QxMEhJZlBLcjU2YVNpTHlpK0VLeE4wMgpjdUNyMHBQNklWclBjQ0tMMzlDMTNwYjZVS095Z080aHlHTkhsT09kNVk0dDhYMW9wVjNKTTc5RzJ6YjN5bDZLCjBkRHpzZzA0ckdoYWs4OVhhUHlReDVlMTU5Nlh2dTRvbVhZOTN1bmZ2MjQ1azh5cndPM2oyZ1ROcDJhM1oxUDcKZStybVVkbGdhNDVKK05iOTFvb2N6Q2I1akpPNXQ3eU4rT0c5OGI1M1ptWE5IZXlMNFRMQUx0S2hHeWJSRm53agpqUUFiSnZrbkJrMDgwckhvZnZaWCtkNGFlL2NOWGFEdXhBcz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQVAyc2MwelN3WWFENThmU0RzNFc3Q3d3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBME1EY3hOalE1TURaYUZ3MHlOekEwTURjeE5qUTVNRFphTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRREtJSzROd0d4S2l6SHdNUVZDS241QUhHNGlRQUFvUVdzRkdoTDd2RmJIdzBMWgpCMmtwVW9nN012YlNDbjVVVHNNZVhmK21rSE1KRG50Q2VoeDBqalhwYUNaVHQ3TTBWZVAyMUZsMFVnd1hIZWNICkwxMnEvREYzeG1mOXYzSVZ4cHVwTitlRCtiKzFRYUVCOU1PUE1iMzg1eTYzaGx2eHRSdE4yVmJncjFLZmhVbTQKYTFwVHBnUjZ6bTg0NTJ1RnFkWTBwanRhVVUvRWhzZFJTVUw1YktpWUJXYm5QaHhHZE9BZGFXUzZOMTNqV0Q5cQp1TFY2aWY3dDltRUpTN0pKWGtFYkE2UGR0OXlvUUxyMGdwVndIRXAyN25EWHU2VXVYK1Z1Qm1jM1NQVDZjZVNuCmU3NGVmOVlJUUphNy9Dd1VCdTFla2dhYzl5WG5BK0dyQmZiVUJFZFpBZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVVJbmgxaTZlUTcycGVwUHc5YTYxWG96anRQVFl3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFMMm5JQ1ErTkRsK0NlUjNLQk1EMmxXdXRPNVJLZG9IZDdGQnVqcXFWc3RhN0p3Mmp6RXYKUWRLcG5vQ3pYdGgwK3FPQWl6TkhCQ2hGUDdGWUtBNGQ0VDg0ODczTEZTZWNiaDNOd2JDUGRSb0pNdzlwUjhObQplTkQ1bjdyTE1zaDhOcWRKWGVoSmdtOFBiZmF3bzJDMTk5Y3R6VUoxSFlYUEJEZFg0RU8zc29DN2NYbXNQZ05LCmV2T2ZYaFdhTkhDNTdsN0gwV2NMYk1IWU9LNGkvV0RhMmdwUzNnbHd5MGE2cWR1aU5yTUVScjVTUmF6dHBxZkkKVVlCMWxyOUE2UFA5RWlSVTdja0E1NnBFT1Y1NU5wVnpPbnl2ZStwQ056WnFKemdpTUZPbGlRVjFaS3N0WnMyZwpUR2JwT0plNjhxVVZFRUt1dmlIcG05WW5UdHlEODRNaExjdz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
       service:
         name: opentelemetry-operator-webhook
         namespace: opentelemetry-operator-system
@@ -17412,7 +18476,7 @@ webhooks:
   - admissionReviewVersions:
       - v1
     clientConfig:
-      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQUpJVnluVGdlM1NMbXVJMWdLWTRNcnN3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBeE1qSXdNVEF6TlRsYUZ3MHlOekF4TWpJd01UQXpOVGxhTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRRGJNUTlUL3oyWEUrUU53WWR5QkVWeklWczd1TkIzeWNvUkZvU2lyS2lJb3FpUgpYWUlEMll5dnFSbE9Edi9HcGlrcWVJanVRMzVtL1p2YU9tUGxrYmtES0dacTRIZEczMUcyWW8rYlR4SlNkOXBzClRpTkxnWnNjYTFsenYrNHhzRWdlMjM2dFpqbjZRUklVTStKcjNxYWdwUkFQNUtmUUVocThtZllnQzlNMWtJeSsKODBqQllvRjJjbmVISnRLem5PbGluNU9TQlpQd09uMzVZSm1Bcys5NWV0YUtreGRXV3RkVXJYVU9oUURuMTArbwphcktqdU5GaThzRnRYbTRSeFFZTy9SMDl5TjJWWFNKS3NaaGRvL1RGUG45LzF1RUNSZElLaXdrNmkvVFAwTkFNClJNN1RPbnBJcWx0ZVNmckxjL3hYSTk3NkZSL1o1UERZWS84Y2NGSm5BZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVV0Y3UxNmhkSkRFcCtXaUYxZlptNnJpcWNUS0V3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFDdVlzNjZxUmxVdmhRL1Jod3ZWZzRhQWpkMTZZT3g1eG5JblRheFo2SVU5eTd3aXpzcEYKTk1FcEhKQjUycCtVM0xFR05pdmVQMUtlSkIxMzMxNDVyMngweUVWL3QxMEhJZlBLcjU2YVNpTHlpK0VLeE4wMgpjdUNyMHBQNklWclBjQ0tMMzlDMTNwYjZVS095Z080aHlHTkhsT09kNVk0dDhYMW9wVjNKTTc5RzJ6YjN5bDZLCjBkRHpzZzA0ckdoYWs4OVhhUHlReDVlMTU5Nlh2dTRvbVhZOTN1bmZ2MjQ1azh5cndPM2oyZ1ROcDJhM1oxUDcKZStybVVkbGdhNDVKK05iOTFvb2N6Q2I1akpPNXQ3eU4rT0c5OGI1M1ptWE5IZXlMNFRMQUx0S2hHeWJSRm53agpqUUFiSnZrbkJrMDgwckhvZnZaWCtkNGFlL2NOWGFEdXhBcz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQVAyc2MwelN3WWFENThmU0RzNFc3Q3d3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBME1EY3hOalE1TURaYUZ3MHlOekEwTURjeE5qUTVNRFphTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRREtJSzROd0d4S2l6SHdNUVZDS241QUhHNGlRQUFvUVdzRkdoTDd2RmJIdzBMWgpCMmtwVW9nN012YlNDbjVVVHNNZVhmK21rSE1KRG50Q2VoeDBqalhwYUNaVHQ3TTBWZVAyMUZsMFVnd1hIZWNICkwxMnEvREYzeG1mOXYzSVZ4cHVwTitlRCtiKzFRYUVCOU1PUE1iMzg1eTYzaGx2eHRSdE4yVmJncjFLZmhVbTQKYTFwVHBnUjZ6bTg0NTJ1RnFkWTBwanRhVVUvRWhzZFJTVUw1YktpWUJXYm5QaHhHZE9BZGFXUzZOMTNqV0Q5cQp1TFY2aWY3dDltRUpTN0pKWGtFYkE2UGR0OXlvUUxyMGdwVndIRXAyN25EWHU2VXVYK1Z1Qm1jM1NQVDZjZVNuCmU3NGVmOVlJUUphNy9Dd1VCdTFla2dhYzl5WG5BK0dyQmZiVUJFZFpBZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVVJbmgxaTZlUTcycGVwUHc5YTYxWG96anRQVFl3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFMMm5JQ1ErTkRsK0NlUjNLQk1EMmxXdXRPNVJLZG9IZDdGQnVqcXFWc3RhN0p3Mmp6RXYKUWRLcG5vQ3pYdGgwK3FPQWl6TkhCQ2hGUDdGWUtBNGQ0VDg0ODczTEZTZWNiaDNOd2JDUGRSb0pNdzlwUjhObQplTkQ1bjdyTE1zaDhOcWRKWGVoSmdtOFBiZmF3bzJDMTk5Y3R6VUoxSFlYUEJEZFg0RU8zc29DN2NYbXNQZ05LCmV2T2ZYaFdhTkhDNTdsN0gwV2NMYk1IWU9LNGkvV0RhMmdwUzNnbHd5MGE2cWR1aU5yTUVScjVTUmF6dHBxZkkKVVlCMWxyOUE2UFA5RWlSVTdja0E1NnBFT1Y1NU5wVnpPbnl2ZStwQ056WnFKemdpTUZPbGlRVjFaS3N0WnMyZwpUR2JwT0plNjhxVVZFRUt1dmlIcG05WW5UdHlEODRNaExjdz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
       service:
         name: opentelemetry-operator-webhook
         namespace: opentelemetry-operator-system
@@ -17436,7 +18500,7 @@ webhooks:
   - admissionReviewVersions:
       - v1
     clientConfig:
-      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQUpJVnluVGdlM1NMbXVJMWdLWTRNcnN3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBeE1qSXdNVEF6TlRsYUZ3MHlOekF4TWpJd01UQXpOVGxhTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRRGJNUTlUL3oyWEUrUU53WWR5QkVWeklWczd1TkIzeWNvUkZvU2lyS2lJb3FpUgpYWUlEMll5dnFSbE9Edi9HcGlrcWVJanVRMzVtL1p2YU9tUGxrYmtES0dacTRIZEczMUcyWW8rYlR4SlNkOXBzClRpTkxnWnNjYTFsenYrNHhzRWdlMjM2dFpqbjZRUklVTStKcjNxYWdwUkFQNUtmUUVocThtZllnQzlNMWtJeSsKODBqQllvRjJjbmVISnRLem5PbGluNU9TQlpQd09uMzVZSm1Bcys5NWV0YUtreGRXV3RkVXJYVU9oUURuMTArbwphcktqdU5GaThzRnRYbTRSeFFZTy9SMDl5TjJWWFNKS3NaaGRvL1RGUG45LzF1RUNSZElLaXdrNmkvVFAwTkFNClJNN1RPbnBJcWx0ZVNmckxjL3hYSTk3NkZSL1o1UERZWS84Y2NGSm5BZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVV0Y3UxNmhkSkRFcCtXaUYxZlptNnJpcWNUS0V3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFDdVlzNjZxUmxVdmhRL1Jod3ZWZzRhQWpkMTZZT3g1eG5JblRheFo2SVU5eTd3aXpzcEYKTk1FcEhKQjUycCtVM0xFR05pdmVQMUtlSkIxMzMxNDVyMngweUVWL3QxMEhJZlBLcjU2YVNpTHlpK0VLeE4wMgpjdUNyMHBQNklWclBjQ0tMMzlDMTNwYjZVS095Z080aHlHTkhsT09kNVk0dDhYMW9wVjNKTTc5RzJ6YjN5bDZLCjBkRHpzZzA0ckdoYWs4OVhhUHlReDVlMTU5Nlh2dTRvbVhZOTN1bmZ2MjQ1azh5cndPM2oyZ1ROcDJhM1oxUDcKZStybVVkbGdhNDVKK05iOTFvb2N6Q2I1akpPNXQ3eU4rT0c5OGI1M1ptWE5IZXlMNFRMQUx0S2hHeWJSRm53agpqUUFiSnZrbkJrMDgwckhvZnZaWCtkNGFlL2NOWGFEdXhBcz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQVAyc2MwelN3WWFENThmU0RzNFc3Q3d3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBME1EY3hOalE1TURaYUZ3MHlOekEwTURjeE5qUTVNRFphTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRREtJSzROd0d4S2l6SHdNUVZDS241QUhHNGlRQUFvUVdzRkdoTDd2RmJIdzBMWgpCMmtwVW9nN012YlNDbjVVVHNNZVhmK21rSE1KRG50Q2VoeDBqalhwYUNaVHQ3TTBWZVAyMUZsMFVnd1hIZWNICkwxMnEvREYzeG1mOXYzSVZ4cHVwTitlRCtiKzFRYUVCOU1PUE1iMzg1eTYzaGx2eHRSdE4yVmJncjFLZmhVbTQKYTFwVHBnUjZ6bTg0NTJ1RnFkWTBwanRhVVUvRWhzZFJTVUw1YktpWUJXYm5QaHhHZE9BZGFXUzZOMTNqV0Q5cQp1TFY2aWY3dDltRUpTN0pKWGtFYkE2UGR0OXlvUUxyMGdwVndIRXAyN25EWHU2VXVYK1Z1Qm1jM1NQVDZjZVNuCmU3NGVmOVlJUUphNy9Dd1VCdTFla2dhYzl5WG5BK0dyQmZiVUJFZFpBZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVVJbmgxaTZlUTcycGVwUHc5YTYxWG96anRQVFl3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFMMm5JQ1ErTkRsK0NlUjNLQk1EMmxXdXRPNVJLZG9IZDdGQnVqcXFWc3RhN0p3Mmp6RXYKUWRLcG5vQ3pYdGgwK3FPQWl6TkhCQ2hGUDdGWUtBNGQ0VDg0ODczTEZTZWNiaDNOd2JDUGRSb0pNdzlwUjhObQplTkQ1bjdyTE1zaDhOcWRKWGVoSmdtOFBiZmF3bzJDMTk5Y3R6VUoxSFlYUEJEZFg0RU8zc29DN2NYbXNQZ05LCmV2T2ZYaFdhTkhDNTdsN0gwV2NMYk1IWU9LNGkvV0RhMmdwUzNnbHd5MGE2cWR1aU5yTUVScjVTUmF6dHBxZkkKVVlCMWxyOUE2UFA5RWlSVTdja0E1NnBFT1Y1NU5wVnpPbnl2ZStwQ056WnFKemdpTUZPbGlRVjFaS3N0WnMyZwpUR2JwT0plNjhxVVZFRUt1dmlIcG05WW5UdHlEODRNaExjdz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
       service:
         name: opentelemetry-operator-webhook
         namespace: opentelemetry-operator-system
@@ -17462,9 +18526,9 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   labels:
-    helm.sh/chart: opentelemetry-operator-0.102.0
+    helm.sh/chart: opentelemetry-operator-0.109.0
     app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.141.0"
+    app.kubernetes.io/version: "0.148.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-operator
     app.kubernetes.io/instance: opentelemetry-operator
@@ -17474,7 +18538,7 @@ webhooks:
   - admissionReviewVersions:
       - v1
     clientConfig:
-      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQUpJVnluVGdlM1NMbXVJMWdLWTRNcnN3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBeE1qSXdNVEF6TlRsYUZ3MHlOekF4TWpJd01UQXpOVGxhTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRRGJNUTlUL3oyWEUrUU53WWR5QkVWeklWczd1TkIzeWNvUkZvU2lyS2lJb3FpUgpYWUlEMll5dnFSbE9Edi9HcGlrcWVJanVRMzVtL1p2YU9tUGxrYmtES0dacTRIZEczMUcyWW8rYlR4SlNkOXBzClRpTkxnWnNjYTFsenYrNHhzRWdlMjM2dFpqbjZRUklVTStKcjNxYWdwUkFQNUtmUUVocThtZllnQzlNMWtJeSsKODBqQllvRjJjbmVISnRLem5PbGluNU9TQlpQd09uMzVZSm1Bcys5NWV0YUtreGRXV3RkVXJYVU9oUURuMTArbwphcktqdU5GaThzRnRYbTRSeFFZTy9SMDl5TjJWWFNKS3NaaGRvL1RGUG45LzF1RUNSZElLaXdrNmkvVFAwTkFNClJNN1RPbnBJcWx0ZVNmckxjL3hYSTk3NkZSL1o1UERZWS84Y2NGSm5BZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVV0Y3UxNmhkSkRFcCtXaUYxZlptNnJpcWNUS0V3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFDdVlzNjZxUmxVdmhRL1Jod3ZWZzRhQWpkMTZZT3g1eG5JblRheFo2SVU5eTd3aXpzcEYKTk1FcEhKQjUycCtVM0xFR05pdmVQMUtlSkIxMzMxNDVyMngweUVWL3QxMEhJZlBLcjU2YVNpTHlpK0VLeE4wMgpjdUNyMHBQNklWclBjQ0tMMzlDMTNwYjZVS095Z080aHlHTkhsT09kNVk0dDhYMW9wVjNKTTc5RzJ6YjN5bDZLCjBkRHpzZzA0ckdoYWs4OVhhUHlReDVlMTU5Nlh2dTRvbVhZOTN1bmZ2MjQ1azh5cndPM2oyZ1ROcDJhM1oxUDcKZStybVVkbGdhNDVKK05iOTFvb2N6Q2I1akpPNXQ3eU4rT0c5OGI1M1ptWE5IZXlMNFRMQUx0S2hHeWJSRm53agpqUUFiSnZrbkJrMDgwckhvZnZaWCtkNGFlL2NOWGFEdXhBcz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQVAyc2MwelN3WWFENThmU0RzNFc3Q3d3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBME1EY3hOalE1TURaYUZ3MHlOekEwTURjeE5qUTVNRFphTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRREtJSzROd0d4S2l6SHdNUVZDS241QUhHNGlRQUFvUVdzRkdoTDd2RmJIdzBMWgpCMmtwVW9nN012YlNDbjVVVHNNZVhmK21rSE1KRG50Q2VoeDBqalhwYUNaVHQ3TTBWZVAyMUZsMFVnd1hIZWNICkwxMnEvREYzeG1mOXYzSVZ4cHVwTitlRCtiKzFRYUVCOU1PUE1iMzg1eTYzaGx2eHRSdE4yVmJncjFLZmhVbTQKYTFwVHBnUjZ6bTg0NTJ1RnFkWTBwanRhVVUvRWhzZFJTVUw1YktpWUJXYm5QaHhHZE9BZGFXUzZOMTNqV0Q5cQp1TFY2aWY3dDltRUpTN0pKWGtFYkE2UGR0OXlvUUxyMGdwVndIRXAyN25EWHU2VXVYK1Z1Qm1jM1NQVDZjZVNuCmU3NGVmOVlJUUphNy9Dd1VCdTFla2dhYzl5WG5BK0dyQmZiVUJFZFpBZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVVJbmgxaTZlUTcycGVwUHc5YTYxWG96anRQVFl3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFMMm5JQ1ErTkRsK0NlUjNLQk1EMmxXdXRPNVJLZG9IZDdGQnVqcXFWc3RhN0p3Mmp6RXYKUWRLcG5vQ3pYdGgwK3FPQWl6TkhCQ2hGUDdGWUtBNGQ0VDg0ODczTEZTZWNiaDNOd2JDUGRSb0pNdzlwUjhObQplTkQ1bjdyTE1zaDhOcWRKWGVoSmdtOFBiZmF3bzJDMTk5Y3R6VUoxSFlYUEJEZFg0RU8zc29DN2NYbXNQZ05LCmV2T2ZYaFdhTkhDNTdsN0gwV2NMYk1IWU9LNGkvV0RhMmdwUzNnbHd5MGE2cWR1aU5yTUVScjVTUmF6dHBxZkkKVVlCMWxyOUE2UFA5RWlSVTdja0E1NnBFT1Y1NU5wVnpPbnl2ZStwQ056WnFKemdpTUZPbGlRVjFaS3N0WnMyZwpUR2JwT0plNjhxVVZFRUt1dmlIcG05WW5UdHlEODRNaExjdz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
       service:
         name: opentelemetry-operator-webhook
         namespace: opentelemetry-operator-system
@@ -17498,7 +18562,7 @@ webhooks:
   - admissionReviewVersions:
       - v1
     clientConfig:
-      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQUpJVnluVGdlM1NMbXVJMWdLWTRNcnN3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBeE1qSXdNVEF6TlRsYUZ3MHlOekF4TWpJd01UQXpOVGxhTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRRGJNUTlUL3oyWEUrUU53WWR5QkVWeklWczd1TkIzeWNvUkZvU2lyS2lJb3FpUgpYWUlEMll5dnFSbE9Edi9HcGlrcWVJanVRMzVtL1p2YU9tUGxrYmtES0dacTRIZEczMUcyWW8rYlR4SlNkOXBzClRpTkxnWnNjYTFsenYrNHhzRWdlMjM2dFpqbjZRUklVTStKcjNxYWdwUkFQNUtmUUVocThtZllnQzlNMWtJeSsKODBqQllvRjJjbmVISnRLem5PbGluNU9TQlpQd09uMzVZSm1Bcys5NWV0YUtreGRXV3RkVXJYVU9oUURuMTArbwphcktqdU5GaThzRnRYbTRSeFFZTy9SMDl5TjJWWFNKS3NaaGRvL1RGUG45LzF1RUNSZElLaXdrNmkvVFAwTkFNClJNN1RPbnBJcWx0ZVNmckxjL3hYSTk3NkZSL1o1UERZWS84Y2NGSm5BZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVV0Y3UxNmhkSkRFcCtXaUYxZlptNnJpcWNUS0V3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFDdVlzNjZxUmxVdmhRL1Jod3ZWZzRhQWpkMTZZT3g1eG5JblRheFo2SVU5eTd3aXpzcEYKTk1FcEhKQjUycCtVM0xFR05pdmVQMUtlSkIxMzMxNDVyMngweUVWL3QxMEhJZlBLcjU2YVNpTHlpK0VLeE4wMgpjdUNyMHBQNklWclBjQ0tMMzlDMTNwYjZVS095Z080aHlHTkhsT09kNVk0dDhYMW9wVjNKTTc5RzJ6YjN5bDZLCjBkRHpzZzA0ckdoYWs4OVhhUHlReDVlMTU5Nlh2dTRvbVhZOTN1bmZ2MjQ1azh5cndPM2oyZ1ROcDJhM1oxUDcKZStybVVkbGdhNDVKK05iOTFvb2N6Q2I1akpPNXQ3eU4rT0c5OGI1M1ptWE5IZXlMNFRMQUx0S2hHeWJSRm53agpqUUFiSnZrbkJrMDgwckhvZnZaWCtkNGFlL2NOWGFEdXhBcz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQVAyc2MwelN3WWFENThmU0RzNFc3Q3d3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBME1EY3hOalE1TURaYUZ3MHlOekEwTURjeE5qUTVNRFphTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRREtJSzROd0d4S2l6SHdNUVZDS241QUhHNGlRQUFvUVdzRkdoTDd2RmJIdzBMWgpCMmtwVW9nN012YlNDbjVVVHNNZVhmK21rSE1KRG50Q2VoeDBqalhwYUNaVHQ3TTBWZVAyMUZsMFVnd1hIZWNICkwxMnEvREYzeG1mOXYzSVZ4cHVwTitlRCtiKzFRYUVCOU1PUE1iMzg1eTYzaGx2eHRSdE4yVmJncjFLZmhVbTQKYTFwVHBnUjZ6bTg0NTJ1RnFkWTBwanRhVVUvRWhzZFJTVUw1YktpWUJXYm5QaHhHZE9BZGFXUzZOMTNqV0Q5cQp1TFY2aWY3dDltRUpTN0pKWGtFYkE2UGR0OXlvUUxyMGdwVndIRXAyN25EWHU2VXVYK1Z1Qm1jM1NQVDZjZVNuCmU3NGVmOVlJUUphNy9Dd1VCdTFla2dhYzl5WG5BK0dyQmZiVUJFZFpBZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVVJbmgxaTZlUTcycGVwUHc5YTYxWG96anRQVFl3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFMMm5JQ1ErTkRsK0NlUjNLQk1EMmxXdXRPNVJLZG9IZDdGQnVqcXFWc3RhN0p3Mmp6RXYKUWRLcG5vQ3pYdGgwK3FPQWl6TkhCQ2hGUDdGWUtBNGQ0VDg0ODczTEZTZWNiaDNOd2JDUGRSb0pNdzlwUjhObQplTkQ1bjdyTE1zaDhOcWRKWGVoSmdtOFBiZmF3bzJDMTk5Y3R6VUoxSFlYUEJEZFg0RU8zc29DN2NYbXNQZ05LCmV2T2ZYaFdhTkhDNTdsN0gwV2NMYk1IWU9LNGkvV0RhMmdwUzNnbHd5MGE2cWR1aU5yTUVScjVTUmF6dHBxZkkKVVlCMWxyOUE2UFA5RWlSVTdja0E1NnBFT1Y1NU5wVnpPbnl2ZStwQ056WnFKemdpTUZPbGlRVjFaS3N0WnMyZwpUR2JwT0plNjhxVVZFRUt1dmlIcG05WW5UdHlEODRNaExjdz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
       service:
         name: opentelemetry-operator-webhook
         namespace: opentelemetry-operator-system
@@ -17521,7 +18585,7 @@ webhooks:
   - admissionReviewVersions:
       - v1
     clientConfig:
-      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQUpJVnluVGdlM1NMbXVJMWdLWTRNcnN3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBeE1qSXdNVEF6TlRsYUZ3MHlOekF4TWpJd01UQXpOVGxhTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRRGJNUTlUL3oyWEUrUU53WWR5QkVWeklWczd1TkIzeWNvUkZvU2lyS2lJb3FpUgpYWUlEMll5dnFSbE9Edi9HcGlrcWVJanVRMzVtL1p2YU9tUGxrYmtES0dacTRIZEczMUcyWW8rYlR4SlNkOXBzClRpTkxnWnNjYTFsenYrNHhzRWdlMjM2dFpqbjZRUklVTStKcjNxYWdwUkFQNUtmUUVocThtZllnQzlNMWtJeSsKODBqQllvRjJjbmVISnRLem5PbGluNU9TQlpQd09uMzVZSm1Bcys5NWV0YUtreGRXV3RkVXJYVU9oUURuMTArbwphcktqdU5GaThzRnRYbTRSeFFZTy9SMDl5TjJWWFNKS3NaaGRvL1RGUG45LzF1RUNSZElLaXdrNmkvVFAwTkFNClJNN1RPbnBJcWx0ZVNmckxjL3hYSTk3NkZSL1o1UERZWS84Y2NGSm5BZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVV0Y3UxNmhkSkRFcCtXaUYxZlptNnJpcWNUS0V3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFDdVlzNjZxUmxVdmhRL1Jod3ZWZzRhQWpkMTZZT3g1eG5JblRheFo2SVU5eTd3aXpzcEYKTk1FcEhKQjUycCtVM0xFR05pdmVQMUtlSkIxMzMxNDVyMngweUVWL3QxMEhJZlBLcjU2YVNpTHlpK0VLeE4wMgpjdUNyMHBQNklWclBjQ0tMMzlDMTNwYjZVS095Z080aHlHTkhsT09kNVk0dDhYMW9wVjNKTTc5RzJ6YjN5bDZLCjBkRHpzZzA0ckdoYWs4OVhhUHlReDVlMTU5Nlh2dTRvbVhZOTN1bmZ2MjQ1azh5cndPM2oyZ1ROcDJhM1oxUDcKZStybVVkbGdhNDVKK05iOTFvb2N6Q2I1akpPNXQ3eU4rT0c5OGI1M1ptWE5IZXlMNFRMQUx0S2hHeWJSRm53agpqUUFiSnZrbkJrMDgwckhvZnZaWCtkNGFlL2NOWGFEdXhBcz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQVAyc2MwelN3WWFENThmU0RzNFc3Q3d3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBME1EY3hOalE1TURaYUZ3MHlOekEwTURjeE5qUTVNRFphTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRREtJSzROd0d4S2l6SHdNUVZDS241QUhHNGlRQUFvUVdzRkdoTDd2RmJIdzBMWgpCMmtwVW9nN012YlNDbjVVVHNNZVhmK21rSE1KRG50Q2VoeDBqalhwYUNaVHQ3TTBWZVAyMUZsMFVnd1hIZWNICkwxMnEvREYzeG1mOXYzSVZ4cHVwTitlRCtiKzFRYUVCOU1PUE1iMzg1eTYzaGx2eHRSdE4yVmJncjFLZmhVbTQKYTFwVHBnUjZ6bTg0NTJ1RnFkWTBwanRhVVUvRWhzZFJTVUw1YktpWUJXYm5QaHhHZE9BZGFXUzZOMTNqV0Q5cQp1TFY2aWY3dDltRUpTN0pKWGtFYkE2UGR0OXlvUUxyMGdwVndIRXAyN25EWHU2VXVYK1Z1Qm1jM1NQVDZjZVNuCmU3NGVmOVlJUUphNy9Dd1VCdTFla2dhYzl5WG5BK0dyQmZiVUJFZFpBZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVVJbmgxaTZlUTcycGVwUHc5YTYxWG96anRQVFl3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFMMm5JQ1ErTkRsK0NlUjNLQk1EMmxXdXRPNVJLZG9IZDdGQnVqcXFWc3RhN0p3Mmp6RXYKUWRLcG5vQ3pYdGgwK3FPQWl6TkhCQ2hGUDdGWUtBNGQ0VDg0ODczTEZTZWNiaDNOd2JDUGRSb0pNdzlwUjhObQplTkQ1bjdyTE1zaDhOcWRKWGVoSmdtOFBiZmF3bzJDMTk5Y3R6VUoxSFlYUEJEZFg0RU8zc29DN2NYbXNQZ05LCmV2T2ZYaFdhTkhDNTdsN0gwV2NMYk1IWU9LNGkvV0RhMmdwUzNnbHd5MGE2cWR1aU5yTUVScjVTUmF6dHBxZkkKVVlCMWxyOUE2UFA5RWlSVTdja0E1NnBFT1Y1NU5wVnpPbnl2ZStwQ056WnFKemdpTUZPbGlRVjFaS3N0WnMyZwpUR2JwT0plNjhxVVZFRUt1dmlIcG05WW5UdHlEODRNaExjdz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
       service:
         name: opentelemetry-operator-webhook
         namespace: opentelemetry-operator-system
@@ -17545,7 +18609,7 @@ webhooks:
   - admissionReviewVersions:
       - v1
     clientConfig:
-      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQUpJVnluVGdlM1NMbXVJMWdLWTRNcnN3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBeE1qSXdNVEF6TlRsYUZ3MHlOekF4TWpJd01UQXpOVGxhTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRRGJNUTlUL3oyWEUrUU53WWR5QkVWeklWczd1TkIzeWNvUkZvU2lyS2lJb3FpUgpYWUlEMll5dnFSbE9Edi9HcGlrcWVJanVRMzVtL1p2YU9tUGxrYmtES0dacTRIZEczMUcyWW8rYlR4SlNkOXBzClRpTkxnWnNjYTFsenYrNHhzRWdlMjM2dFpqbjZRUklVTStKcjNxYWdwUkFQNUtmUUVocThtZllnQzlNMWtJeSsKODBqQllvRjJjbmVISnRLem5PbGluNU9TQlpQd09uMzVZSm1Bcys5NWV0YUtreGRXV3RkVXJYVU9oUURuMTArbwphcktqdU5GaThzRnRYbTRSeFFZTy9SMDl5TjJWWFNKS3NaaGRvL1RGUG45LzF1RUNSZElLaXdrNmkvVFAwTkFNClJNN1RPbnBJcWx0ZVNmckxjL3hYSTk3NkZSL1o1UERZWS84Y2NGSm5BZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVV0Y3UxNmhkSkRFcCtXaUYxZlptNnJpcWNUS0V3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFDdVlzNjZxUmxVdmhRL1Jod3ZWZzRhQWpkMTZZT3g1eG5JblRheFo2SVU5eTd3aXpzcEYKTk1FcEhKQjUycCtVM0xFR05pdmVQMUtlSkIxMzMxNDVyMngweUVWL3QxMEhJZlBLcjU2YVNpTHlpK0VLeE4wMgpjdUNyMHBQNklWclBjQ0tMMzlDMTNwYjZVS095Z080aHlHTkhsT09kNVk0dDhYMW9wVjNKTTc5RzJ6YjN5bDZLCjBkRHpzZzA0ckdoYWs4OVhhUHlReDVlMTU5Nlh2dTRvbVhZOTN1bmZ2MjQ1azh5cndPM2oyZ1ROcDJhM1oxUDcKZStybVVkbGdhNDVKK05iOTFvb2N6Q2I1akpPNXQ3eU4rT0c5OGI1M1ptWE5IZXlMNFRMQUx0S2hHeWJSRm53agpqUUFiSnZrbkJrMDgwckhvZnZaWCtkNGFlL2NOWGFEdXhBcz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQVAyc2MwelN3WWFENThmU0RzNFc3Q3d3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBME1EY3hOalE1TURaYUZ3MHlOekEwTURjeE5qUTVNRFphTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRREtJSzROd0d4S2l6SHdNUVZDS241QUhHNGlRQUFvUVdzRkdoTDd2RmJIdzBMWgpCMmtwVW9nN012YlNDbjVVVHNNZVhmK21rSE1KRG50Q2VoeDBqalhwYUNaVHQ3TTBWZVAyMUZsMFVnd1hIZWNICkwxMnEvREYzeG1mOXYzSVZ4cHVwTitlRCtiKzFRYUVCOU1PUE1iMzg1eTYzaGx2eHRSdE4yVmJncjFLZmhVbTQKYTFwVHBnUjZ6bTg0NTJ1RnFkWTBwanRhVVUvRWhzZFJTVUw1YktpWUJXYm5QaHhHZE9BZGFXUzZOMTNqV0Q5cQp1TFY2aWY3dDltRUpTN0pKWGtFYkE2UGR0OXlvUUxyMGdwVndIRXAyN25EWHU2VXVYK1Z1Qm1jM1NQVDZjZVNuCmU3NGVmOVlJUUphNy9Dd1VCdTFla2dhYzl5WG5BK0dyQmZiVUJFZFpBZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVVJbmgxaTZlUTcycGVwUHc5YTYxWG96anRQVFl3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFMMm5JQ1ErTkRsK0NlUjNLQk1EMmxXdXRPNVJLZG9IZDdGQnVqcXFWc3RhN0p3Mmp6RXYKUWRLcG5vQ3pYdGgwK3FPQWl6TkhCQ2hGUDdGWUtBNGQ0VDg0ODczTEZTZWNiaDNOd2JDUGRSb0pNdzlwUjhObQplTkQ1bjdyTE1zaDhOcWRKWGVoSmdtOFBiZmF3bzJDMTk5Y3R6VUoxSFlYUEJEZFg0RU8zc29DN2NYbXNQZ05LCmV2T2ZYaFdhTkhDNTdsN0gwV2NMYk1IWU9LNGkvV0RhMmdwUzNnbHd5MGE2cWR1aU5yTUVScjVTUmF6dHBxZkkKVVlCMWxyOUE2UFA5RWlSVTdja0E1NnBFT1Y1NU5wVnpPbnl2ZStwQ056WnFKemdpTUZPbGlRVjFaS3N0WnMyZwpUR2JwT0plNjhxVVZFRUt1dmlIcG05WW5UdHlEODRNaExjdz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
       service:
         name: opentelemetry-operator-webhook
         namespace: opentelemetry-operator-system
@@ -17573,9 +18637,9 @@ metadata:
   name: opentelemetry-operator
   namespace: opentelemetry-operator-system
   labels:
-    helm.sh/chart: opentelemetry-operator-0.102.0
+    helm.sh/chart: opentelemetry-operator-0.109.0
     app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.141.0"
+    app.kubernetes.io/version: "0.148.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-operator
     app.kubernetes.io/instance: opentelemetry-operator
@@ -17600,9 +18664,9 @@ metadata:
     helm.sh/hook: pre-install,pre-upgrade
     helm.sh/hook-delete-policy: before-hook-creation
   labels:
-    helm.sh/chart: opentelemetry-operator-0.102.0
+    helm.sh/chart: opentelemetry-operator-0.109.0
     app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.141.0"
+    app.kubernetes.io/version: "0.148.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-operator
     app.kubernetes.io/instance: opentelemetry-operator
@@ -17610,7 +18674,7 @@ metadata:
   name: opentelemetry-operator-controller-manager-service-cert
   namespace: opentelemetry-operator-system
 data:
-  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR5VENDQXJHZ0F3SUJBZ0lSQU5iWDJnRVhlMFR5KzlGSmREMEZsTmt3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBeE1qSXdNVEF6TlRsYUZ3MHlOekF4TWpJd01UQXpOVGxhTUNFeEh6QWRCZ05WQkFNVEZtOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJd2dnRWlNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0SUJEd0F3Z2dFS0FvSUIKQVFEYW0rSm00S0wyYWNNMmJPaG55RmlSNUVRLytwc01GaFRsM2VLZkNzQzdzMk1XYVY3bmZiY0x4MCtEazV4bAp0ak4rSlB2ZVNBeDFRSkppWHNmcmgvYzNna3RsY2lCK2Z5bVhqa2doTDhlNHd0SVZVYmkyQkIwUXJUMnFHckdiCis1M29ncERwbUN0SFE4cExDUjRsYWFJaDBHdTV2bXVwUnNoeDNwRll6UmhqT1ZQM29oeWZpY1cxc2VjeWo2bnQKczNnNHE0UDNhbnhYcEpxZmZucVl5aFRNNFplQ0pZZDRuOS9pTGh2VHdyd3pycWNyV2JEWVFzVjgzRlh0ckNJVgpvYllCT2RTcUx5eFJFdjBEWnZiT1J6MktZVVFBY3hoTHVGdm1FbTBWVEtUL0IrZFZvZjVEa1ZkRjF6cVVqai9OCk41TTBnaW1mRCt4WksyME1PcWtVbEIxckFnTUJBQUdqZ2U4d2dld3dEZ1lEVlIwUEFRSC9CQVFEQWdXZ01CMEcKQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBTUJnTlZIUk1CQWY4RUFqQUFNQjhHQTFVZApJd1FZTUJhQUZMWEx0ZW9YU1F4S2Zsb2hkWDJadXE0cW5FeWhNSUdMQmdOVkhSRUVnWU13Z1lDQ1BHOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGQyVmlhRzl2YXk1dmNHVnVkR1ZzWlcxbGRISjVMVzl3WlhKaGRHOXkKTFhONWMzUmxiWUpBYjNCbGJuUmxiR1Z0WlhSeWVTMXZjR1Z5WVhSdmNpMTNaV0pvYjI5ckxtOXdaVzUwWld4bApiV1YwY25rdGIzQmxjbUYwYjNJdGMzbHpkR1Z0TG5OMll6QU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FRRUFLazNyCjdtdWFpdzFKT2VQY0hWMy9lSDkyWnhXMnhBajNNeGJHemRsSWlZT3FhV2ZtOTY1eEt6VndjN1lnK29hWWtkSnIKY1lnSG9CRmJCaUYwbkQzcTF5aFBSVU9EdGdXR054c1hubkp3KzBzS3kwTms3ZWNpdHIrajlTbjEyQm5UWmJoaQphR0xXTmU0NUVEdzFkTUhxVVFoV1A0QXpYbXJTSlNER1ZNUHkrdzRSTkFyYUJDbzdVdkRJQWZrQVlhQVYrZVFJCnRvS0lwY3V0Ukp3b1VwbW9WY0JNaUh3MHpaS3A2N1Q0c0JGWUFsOEJXTkRqbmNFY2RuczFXM1MvajhKS0hXYkYKenNUL21wRFh6elorb0NiRHRwSTl0ZUhvdnZmaGpJaFJiZFJodDZlcXNSYjlZemJNTStuS2tYZTNqNGlFUEpEdgpaM21ucFh6eWN2eGZZbkxqa1E9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  tls.key: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb2dJQkFBS0NBUUVBMnB2aVp1Q2k5bW5ETm16b1o4aFlrZVJFUC9xYkRCWVU1ZDNpbndyQXU3TmpGbWxlCjUzMjNDOGRQZzVPY1piWXpmaVQ3M2tnTWRVQ1NZbDdINjRmM040SkxaWElnZm44cGw0NUlJUy9IdU1MU0ZWRzQKdGdRZEVLMDlxaHF4bS91ZDZJS1E2WmdyUjBQS1N3a2VKV21pSWRCcnViNXJxVWJJY2Q2UldNMFlZemxUOTZJYwpuNG5GdGJIbk1vK3A3Yk40T0t1RDkycDhWNlNhbjM1Nm1Nb1V6T0dYZ2lXSGVKL2Y0aTRiMDhLOE02Nm5LMW13CjJFTEZmTnhWN2F3aUZhRzJBVG5VcWk4c1VSTDlBMmIyemtjOWltRkVBSE1ZUzdoYjVoSnRGVXlrL3dmblZhSCsKUTVGWFJkYzZsSTQvelRlVE5JSXBudy9zV1N0dEREcXBGSlFkYXdJREFRQUJBb0lCQURsNHdQazE5bkhjMVQ4QwpPOGxKRVF2dDNJbUxhMmF1aVhqek1BaUs3YWVMSGpJK3FuNG1mVkNCNmlRWDB3YWtjMzRtMy9hTXI0WEYzNVl2Ci85UXFqekpQTlY0cXRtTTdNQ2FSZCtJTnF5Nm1QVS93aDZTR2lWT2dqL1VnQm5DUkltOEZvRzVoSElPa1RWTVQKeHhLajVrV0lnMEcyVDV5VnFNM1M2eGhTOXlYaWFGTTJpYnFEQVVScjFSL0ZYY2N1V3J3K1QrWXZSemFubEtaRQpjMGlxNURyOGMzTkRhOFE5MEtKR3N5eENIalJmUWUvSnFZbTlyZzYrOVNUZUcwbkUraDJlODczekIyUmo4Sjl4ClhhSG1zbnA5TkcxZDFFZnRkclNJYkRWajlFOHV0WGFDM1o1ZHlWbnprZFAvMGdvK3ltVjh5Mmw2Wm4rVDRMN0YKYldIZWdrMENnWUVBM240OXRjcEF4SUsxVFdsUUtHSkhteXdFT2JkUE83WWxNUmV3ZHoxMGh4SWUwU3hyaVl0egpQTVBjcVc5d3B4Y3VKQjV5OEpSUk1YaEN3SDBOa256UVB4NXdPWXBXV0svL0I0V1laODNzWWZpWmltWkhkV2xOCm53RlYwcUxBOC94Q1NRNW5MdS96aUIydGtSZVlEdGhjNkljUUtPMnlnVDBxSDcwckhSUHh5SzBDZ1lFQSs0ZmwKVjZQTnhDMXZpVFBxWGh0bFRDRE8xeTVMMVQ1eXhWSExKdktyaitMRGtoTkVmaFZ5UjVOU1lqZ2tqTW1EQ21pRQpDdjBweUZBSTlJNjUwczlkeGI2WmFsRUo0RVpYV1NtSDkwdDVKOG9ZL0dkZnJyY1lHQ2tIM1RjNHc4Q2hWdmhrCis2a0FMcTh6K0RMWXVnMXN2azBXT1pEc3U5OGx5Qlp3Mjg4Z3lYY0NnWUJiVnlaTWNHamdnK3ljaUNTaFA1KzQKQTMwRW1NM05iTHllQitTcFB6Q01seExSdXRPM0Z1bkxRM2xla2VLRXBrNktBM29hYkRsYy9zc2dyUFlhY21VbgoxSDRzRVMvYm52MHJBRnlPR1FyM09aRUhNWEFhc28xc1BxY1dIenpwcldFbER1V3JibFRqUjVQTzRnbko1bWRXCkNzVEdtTGJVdWVDR1FTbm0rUjRrelFLQmdFcmVLVXFMekN4dlpicU9CRjJjZyt0RC9LMFo3Nko2WXdrT2pveDYKUU15a0w1Z2tPZ2ZaZEZtUHBUN3MvUndXd3ZWdkpKWnN3bW9JUUpJaWhYY1ZHQkZLNlRrM0E5eUlzMmtycm5mUwpOQzYrdmU4ckNkVGtWTHlrUWQzN21ON1RVSEtsbnRFMWZZTm56TzA4blR2TDBTbFhvcHpoNFVVT1o1MkY2SFBVCjFDcURBb0dBS3hGWm9IM2tXY3dQN0RHT3Nadm9RRVlnYjlxblpZN2NkYlQzaXJ2RzF5bm4vNUpkUWozWGMxaEkKZGxKQ25uMXFjaS9sa0xTc1JNU1krOGE4aWZyaUVHS1YxWHcxY3UyZmZsN09GY29DRDF0OEJWMk5ZRDYxZGxUagpMR3JiUkMwWXJ4d3hlM0h5UUlVUE9ZVm84Qjg2Q3ZmOXJLK0F0MzFBYXc0a3N3L0o0RE09Ci0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-  ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQUpJVnluVGdlM1NMbXVJMWdLWTRNcnN3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBeE1qSXdNVEF6TlRsYUZ3MHlOekF4TWpJd01UQXpOVGxhTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRRGJNUTlUL3oyWEUrUU53WWR5QkVWeklWczd1TkIzeWNvUkZvU2lyS2lJb3FpUgpYWUlEMll5dnFSbE9Edi9HcGlrcWVJanVRMzVtL1p2YU9tUGxrYmtES0dacTRIZEczMUcyWW8rYlR4SlNkOXBzClRpTkxnWnNjYTFsenYrNHhzRWdlMjM2dFpqbjZRUklVTStKcjNxYWdwUkFQNUtmUUVocThtZllnQzlNMWtJeSsKODBqQllvRjJjbmVISnRLem5PbGluNU9TQlpQd09uMzVZSm1Bcys5NWV0YUtreGRXV3RkVXJYVU9oUURuMTArbwphcktqdU5GaThzRnRYbTRSeFFZTy9SMDl5TjJWWFNKS3NaaGRvL1RGUG45LzF1RUNSZElLaXdrNmkvVFAwTkFNClJNN1RPbnBJcWx0ZVNmckxjL3hYSTk3NkZSL1o1UERZWS84Y2NGSm5BZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVV0Y3UxNmhkSkRFcCtXaUYxZlptNnJpcWNUS0V3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFDdVlzNjZxUmxVdmhRL1Jod3ZWZzRhQWpkMTZZT3g1eG5JblRheFo2SVU5eTd3aXpzcEYKTk1FcEhKQjUycCtVM0xFR05pdmVQMUtlSkIxMzMxNDVyMngweUVWL3QxMEhJZlBLcjU2YVNpTHlpK0VLeE4wMgpjdUNyMHBQNklWclBjQ0tMMzlDMTNwYjZVS095Z080aHlHTkhsT09kNVk0dDhYMW9wVjNKTTc5RzJ6YjN5bDZLCjBkRHpzZzA0ckdoYWs4OVhhUHlReDVlMTU5Nlh2dTRvbVhZOTN1bmZ2MjQ1azh5cndPM2oyZ1ROcDJhM1oxUDcKZStybVVkbGdhNDVKK05iOTFvb2N6Q2I1akpPNXQ3eU4rT0c5OGI1M1ptWE5IZXlMNFRMQUx0S2hHeWJSRm53agpqUUFiSnZrbkJrMDgwckhvZnZaWCtkNGFlL2NOWGFEdXhBcz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR5VENDQXJHZ0F3SUJBZ0lSQU9qbkJxUWdsL3piWU12a014bnZiTGN3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBME1EY3hOalE1TURaYUZ3MHlOekEwTURjeE5qUTVNRFphTUNFeEh6QWRCZ05WQkFNVEZtOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJd2dnRWlNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0SUJEd0F3Z2dFS0FvSUIKQVFERkJVckxBQVhBNDJZck9rMEJXc0IvS3ljbHZzbVpPVVlicUpCYlpONHNwV3hSYndXT0xMV0FDdy9IMGE1NQpnTElZUXJzZ21IZHlaeWJqalFqNDVZUTlIQUZESTU2MWJtSmFtdlBaa1B3ajRRNFV1R2N1QXNKT2lqd29OaXE3CmJERzdXVmluT3hldHlSUDJ2TitwQzloOVIxS1MvcWozeCtyNUZxbHh6dUVJZHZLUENqSkpVcDZWUG94VUtvY1MKYzBTdXFPQXo4NTUxODhnaEZua1BMZ29PV0tpUE95KytUdDJpKzZ3MzVWdGJOWjRZTnE0eDF6d3B0N1pEUm0yRApEWVIrK09nLzcvZDkzVk5nU0M0NXdjODkrZ3NSY0JjbWRkUHFLdzBvR0lTWHo3ZU9kOVczTE0yOE1xOUVjTXFsCjRld3lMUDNNSVZIRjA3SlZFNENvdi9lWEFnTUJBQUdqZ2U4d2dld3dEZ1lEVlIwUEFRSC9CQVFEQWdXZ01CMEcKQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBTUJnTlZIUk1CQWY4RUFqQUFNQjhHQTFVZApJd1FZTUJhQUZDSjRkWXVua085cVhxVDhQV3V0VjZNNDdUMDJNSUdMQmdOVkhSRUVnWU13Z1lDQ1BHOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGQyVmlhRzl2YXk1dmNHVnVkR1ZzWlcxbGRISjVMVzl3WlhKaGRHOXkKTFhONWMzUmxiWUpBYjNCbGJuUmxiR1Z0WlhSeWVTMXZjR1Z5WVhSdmNpMTNaV0pvYjI5ckxtOXdaVzUwWld4bApiV1YwY25rdGIzQmxjbUYwYjNJdGMzbHpkR1Z0TG5OMll6QU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FRRUFvSk5IClJtT3h1SWovSjR6YXZMM0IwdWIwdWl3VVRLMzBFdWJPTm9RRkxoSGpGWjA2Mk1EQlhnUFBnVzFxbEwxcGpRcDAKL0Z0VjdyU1VSOXFHYUY2WUJxOUpxUDRjTFU0L2hSNHN6dHR6SEpmZGJXdlRNQnc2VnphTlNIVUc3bkFTcVRWOApodUlacWZkZ2RHWG9WazZFLzdwd2FQUUJLV1QrRkFDY3NmdHBYaG5rR3pQK29oSzUySUpLOEJsTHhFK0ZGalMrCktGU1FlWWsyME1Bb2xRZFNyWFd4dlZhYWN5OVV3c1NyMnRmNEZJc3JEL3oxTVljbHFscU5RanI1MFRVRTVPcisKUFI0NnYzL2s2dnIveGdKWmlqMnRLRFlPMXN4cHNCb1MxUXM2NUlWVTlDT3pmOUJ0V1l2TG9VVTJhcGRHSURsVwpiYWVVM1JxTklZUXFvV2U4N3c9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+  tls.key: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb2dJQkFBS0NBUUVBeFFWS3l3QUZ3T05tS3pwTkFWckFmeXNuSmI3Sm1UbEdHNmlRVzJUZUxLVnNVVzhGCmppeTFnQXNQeDlHdWVZQ3lHRUs3SUpoM2NtY200NDBJK09XRVBSd0JReU9ldFc1aVdwcnoyWkQ4SStFT0ZMaG4KTGdMQ1RvbzhLRFlxdTJ3eHUxbFlwenNYcmNrVDlyemZxUXZZZlVkU2t2Nm85OGZxK1JhcGNjN2hDSGJ5andveQpTVktlbFQ2TVZDcUhFbk5FcnFqZ00vT2VkZlBJSVJaNUR5NEtEbGlvanpzdnZrN2RvdnVzTitWYld6V2VHRGF1Ck1kYzhLYmUyUTBadGd3MkVmdmpvUCsvM2ZkMVRZRWd1T2NIUFBmb0xFWEFYSm5YVDZpc05LQmlFbDgrM2puZlYKdHl6TnZES3ZSSERLcGVIc01pejl6Q0ZSeGRPeVZST0FxTC8zbHdJREFRQUJBb0lCQUFzTGJ6UTdmREN2RlNqYwpOWVpPblRDS09uUjd1OWM5ekpzSWhvNWQydWZPMGM3RnFUZ3FRTng4bTl4Y1J1cFdsMHV0ZVRDZmZxYTFROWU4CllTNnV4bGxPUGhrU2h3UUhWWjBvNE1wMENvemRqcU00aGZxZ2JmZm1rb2lOV1p0T1UraVZFYjNvbmRhQXIrYnEKeGozUVJVa2JBbHRUeWxleVozVnZEYkRmNDVUL3NtbGtEQTlSdGVLejlhSHFuejdZamxjbVFrMDNhOUxCdDJVSwo3L2c2REIyNEJNMjFpd3p4Q3ZpUjFDbUNjRzVMeE1NQnRCTUoyVkVwZ2xEUWZtYlZmTjQ2b0dWRDFaZTRMZTVkCi95NGU5RUdhNFE2NEZYSEEzcHZHTWtuSGpSdWNXWG04dWc4K2p5QmRvdUo1SkJzVnRpN0JhdWV1anpITlpMZDUKMkkvMVJwa0NnWUVBN29KMkx5VlZSaVMzSndGRmZVL3JuOEJZdUtKVEdVNFVLT3JsdzRwNDNuTnpITU5CYWMrZQp5MDA4eFBzSGlZeUpwTE5KRG9vZWt5WlhaUThQbTBITnVsTFZ6NFlvWVBDTnVSZGhyWUFoeHdtb09tVWxDQ3JkCkh3LzlaK1NwWm5OQUN0SHZQWmU2eE4zOCtGc3k4cXBvellTazVhTy9RM01Tb1VRMkN5SzRaYThDZ1lFQTAzZjEKZzFJVUdsVUxMak40eXJHd0c5cklHWEkvaXU4UFlLUW9mR0g0Zml3UFlYM2VCM1JIdGI0SmNFTWhkTERGbGJYeQp5NWZJb2xaR0NRR1J6V09rOGZIclVvcFd3NWNCWjBnK1V6cTB6akt4alZWdEpGU1Q3QXNXUEVielAwa2VZNGZqCnZtb1dEUmlNa3pFdG5BcUpjUHJrSWFRdUp3VlJualRRNHRGR2Jwa0NnWUJVQlZONjhrempBK1lkY0g0NVVlRXcKaXNMMmNBQ1VKb1JGa2RKVkd6L1BKWjZFb0dnM3pUTWtiVlllRWt5cWNQN0FMWVJzQWM0WmltVTVMYUFTMHBDVgp0YjZxZDVsYjVRSVlGUnVNMGxtVDAxd1hEakNJZXdrZ2V6S0syZXV2TXFSNTYxQzdRdXRCbE80YjA0elVIYUlECjNGbDJxRU9sa0RFYzdIbVpYS2JXOHdLQmdBK3JPODNYTHhZa1p3ZXRXSzNzTEpoanhaL2REMGhFSG1lU3drMDEKRlN5RUp6K2FDL0dSZEI3TFRmZTdnYWNiMGdnZHl6ZTZyMnNYNldpUmJUUkN4ZDRIaHVBK3o5NytPV1JsdmZoOAp5UmplT0xtNE1yWVdiajkzTXRhVWkwR05NV3Mram1sMWd0ekZqT1Q3Sjk0QUNkOE5PQW9tR0NWY0I0Z3BjYkRjCndOTkJBb0dBQmVNRzU4dGNaRTBzT01JMFNtZENHeDlqOENxTkl5bnVham55R2JiVTlXcUQ5VmNrY1BaWkJlTzUKS1dMQmRPVGNvSkRJdnE0NVdTL1FjM0NPWWVselA1dWkzZnVwZi9qOGNIcjloN2h1b1JvWWZ2dGtXN3pMUmsxaQp4RUhnc1hRT1hSMTBKYkVOZ2pjbjlrWVZ2bDJiUjhFZlEycHV1VkQ3eUFvVTJDbzNLUEE9Ci0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
+  ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURSakNDQWk2Z0F3SUJBZ0lSQVAyc2MwelN3WWFENThmU0RzNFc3Q3d3RFFZSktvWklodmNOQVFFTEJRQXcKTFRFck1Da0dBMVVFQXhNaWIzQmxiblJsYkdWdFpYUnllUzF2Y0dWeVlYUnZjaTF2Y0dWeVlYUnZjaTFqWVRBZQpGdzB5TmpBME1EY3hOalE1TURaYUZ3MHlOekEwTURjeE5qUTVNRFphTUMweEt6QXBCZ05WQkFNVEltOXdaVzUwClpXeGxiV1YwY25rdGIzQmxjbUYwYjNJdGIzQmxjbUYwYjNJdFkyRXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUEKQTRJQkR3QXdnZ0VLQW9JQkFRREtJSzROd0d4S2l6SHdNUVZDS241QUhHNGlRQUFvUVdzRkdoTDd2RmJIdzBMWgpCMmtwVW9nN012YlNDbjVVVHNNZVhmK21rSE1KRG50Q2VoeDBqalhwYUNaVHQ3TTBWZVAyMUZsMFVnd1hIZWNICkwxMnEvREYzeG1mOXYzSVZ4cHVwTitlRCtiKzFRYUVCOU1PUE1iMzg1eTYzaGx2eHRSdE4yVmJncjFLZmhVbTQKYTFwVHBnUjZ6bTg0NTJ1RnFkWTBwanRhVVUvRWhzZFJTVUw1YktpWUJXYm5QaHhHZE9BZGFXUzZOMTNqV0Q5cQp1TFY2aWY3dDltRUpTN0pKWGtFYkE2UGR0OXlvUUxyMGdwVndIRXAyN25EWHU2VXVYK1Z1Qm1jM1NQVDZjZVNuCmU3NGVmOVlJUUphNy9Dd1VCdTFla2dhYzl5WG5BK0dyQmZiVUJFZFpBZ01CQUFHallUQmZNQTRHQTFVZER3RUIKL3dRRUF3SUNwREFkQmdOVkhTVUVGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFILwpCQVV3QXdFQi96QWRCZ05WSFE0RUZnUVVJbmgxaTZlUTcycGVwUHc5YTYxWG96anRQVFl3RFFZSktvWklodmNOCkFRRUxCUUFEZ2dFQkFMMm5JQ1ErTkRsK0NlUjNLQk1EMmxXdXRPNVJLZG9IZDdGQnVqcXFWc3RhN0p3Mmp6RXYKUWRLcG5vQ3pYdGgwK3FPQWl6TkhCQ2hGUDdGWUtBNGQ0VDg0ODczTEZTZWNiaDNOd2JDUGRSb0pNdzlwUjhObQplTkQ1bjdyTE1zaDhOcWRKWGVoSmdtOFBiZmF3bzJDMTk5Y3R6VUoxSFlYUEJEZFg0RU8zc29DN2NYbXNQZ05LCmV2T2ZYaFdhTkhDNTdsN0gwV2NMYk1IWU9LNGkvV0RhMmdwUzNnbHd5MGE2cWR1aU5yTUVScjVTUmF6dHBxZkkKVVlCMWxyOUE2UFA5RWlSVTdja0E1NnBFT1Y1NU5wVnpPbnl2ZStwQ056WnFKemdpTUZPbGlRVjFaS3N0WnMyZwpUR2JwT0plNjhxVVZFRUt1dmlIcG05WW5UdHlEODRNaExjdz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
 
