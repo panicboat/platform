@@ -16,9 +16,9 @@ output "bedrock_policy_arn" {
 }
 
 
-output "bedrock_models" {
-  description = "List of allowed Bedrock Claude models"
-  value       = var.bedrock_models
+output "bedrock_inference_profiles" {
+  description = "List of allowed Bedrock cross-region inference profiles"
+  value       = var.bedrock_inference_profiles
 }
 
 output "claude_model_region" {
@@ -29,9 +29,9 @@ output "claude_model_region" {
 output "github_actions_configuration" {
   description = "Configuration object for GitHub Actions"
   value = {
-    role_arn            = aws_iam_role.claude_code_action_role.arn
-    aws_region          = var.aws_region
-    claude_model_region = var.claude_model_region
-    bedrock_models      = var.bedrock_models
+    role_arn                   = aws_iam_role.claude_code_action_role.arn
+    aws_region                 = var.aws_region
+    claude_model_region        = var.claude_model_region
+    bedrock_inference_profiles = var.bedrock_inference_profiles
   }
 }
