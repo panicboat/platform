@@ -86,6 +86,18 @@ variable "bedrock_inference_profiles" {
         "us-west-2",
       ]
     },
+    {
+      profile_id = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+      model_id   = "anthropic.claude-haiku-4-5-20251001-v1:0"
+      source_regions = [
+        "ca-central-1",
+        "ca-west-1",
+        "us-east-1",
+        "us-east-2",
+        "us-west-1",
+        "us-west-2",
+      ]
+    },
   ]
 }
 
