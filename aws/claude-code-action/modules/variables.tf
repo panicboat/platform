@@ -24,7 +24,7 @@ variable "github_org" {
 variable "github_repos" {
   description = "List of GitHub repository names"
   type        = list(string)
-  default     = ["monorepo"]
+  default     = []
 }
 
 variable "aws_region" {
@@ -54,11 +54,38 @@ variable "additional_iam_policies" {
   default     = []
 }
 
-variable "bedrock_models" {
-  description = "List of Bedrock Claude model IDs to allow access to"
-  type        = list(string)
+variable "bedrock_inference_profiles" {
+  description = "List of Bedrock cross-region inference profiles to allow access to. Each entry defines the inference profile ID, the underlying foundation model ID, and the source regions the profile routes to."
+  type = list(object({
+    profile_id     = string
+    model_id       = string
+    source_regions = list(string)
+  }))
   default = [
-    "anthropic.claude-3-7-sonnet-20250219-v1:0"
+    {
+      profile_id = "us.anthropic.claude-sonnet-4-6"
+      model_id   = "anthropic.claude-sonnet-4-6"
+      source_regions = [
+        "ca-central-1",
+        "ca-west-1",
+        "us-east-1",
+        "us-east-2",
+        "us-west-1",
+        "us-west-2",
+      ]
+    },
+    {
+      profile_id = "us.anthropic.claude-opus-4-6-v1"
+      model_id   = "anthropic.claude-opus-4-6-v1"
+      source_regions = [
+        "ca-central-1",
+        "ca-west-1",
+        "us-east-1",
+        "us-east-2",
+        "us-west-1",
+        "us-west-2",
+      ]
+    },
   ]
 }
 

@@ -23,12 +23,12 @@ inputs = {
   environment  = include.env.locals.environment
 
   # GitHub configuration
-  github_org   = "panicboat"  # Update this with your GitHub organization
+  github_org   = "panicboat" # Update this with your GitHub organization
   github_repos = include.env.locals.github_repos
 
   # AWS configuration
-  aws_region           = include.env.locals.aws_region
-  claude_model_region  = include.env.locals.claude_model_region
+  aws_region          = include.env.locals.aws_region
+  claude_model_region = include.env.locals.claude_model_region
 
   # OIDC configuration
   oidc_provider_arn = include.env.locals.oidc_provider_arn
@@ -37,16 +37,13 @@ inputs = {
   max_session_duration    = include.env.locals.max_session_duration
   additional_iam_policies = include.env.locals.additional_iam_policies
 
-  # Bedrock configuration
-  bedrock_models = include.env.locals.bedrock_models
-
   # Tags
   common_tags = merge(
     include.env.locals.environment_tags,
     {
-      Project     = "claude-code-action"
-      ManagedBy   = "terragrunt"
-      Repository  = "panicboat/monorepo"
+      Project    = "claude-code-action"
+      ManagedBy  = "terragrunt"
+      Repository = "panicboat/monorepo"
     }
   )
 }
