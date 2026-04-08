@@ -57,7 +57,7 @@ resource "aws_iam_role" "claude_code_action_role" {
   tags = merge(var.common_tags, {
     Name        = "${var.project_name}-${var.environment}-github-actions-role"
     GitHubOrg   = var.github_org
-    GitHubRepos = join(",", var.github_repos)
+    GitHubRepos = join("+", var.github_repos)
     Purpose     = "claude-code-action-bedrock"
   })
 }
