@@ -43,3 +43,6 @@ pids
 # Kubernetes and Helm files
 Chart.lock
 charts/
+
+# Git worktrees
+.worktrees/
