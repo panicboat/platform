@@ -15,18 +15,15 @@ locals {
 
   # ARNs of the underlying foundation models in every source region the profile
   # may route to. Both the profile ARN and the FM ARNs must be allowed or
-  # InvokeModel returns AccessDenied.
+  # InvokeModel returns AccessDenied, but the FM ARNs are only granted when the
+  # request is routed through an approved inference profile (see the
+  # bedrock:InferenceProfileArn condition below).
   foundation_model_arns = flatten([
     for p in var.bedrock_inference_profiles : [
       for r in p.source_regions :
       "arn:aws:bedrock:${r}::foundation-model/${p.model_id}"
     ]
   ])
-
-  bedrock_invoke_resources = concat(
-    local.inference_profile_arns,
-    local.foundation_model_arns,
-  )
 }
 
 # IAM Role for Claude Code Action
@@ -79,7 +76,20 @@ resource "aws_iam_policy" "bedrock_claude_policy" {
           "bedrock:InvokeModel",
           "bedrock:InvokeModelWithResponseStream"
         ]
-        Resource = local.bedrock_invoke_resources
+        Resource = local.inference_profile_arns
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream"
+        ]
+        Resource = local.foundation_model_arns
+        Condition = {
+          StringEquals = {
+            "bedrock:InferenceProfileArn" = local.inference_profile_arns
+          }
+        }
       },
       {
         Effect = "Allow"
