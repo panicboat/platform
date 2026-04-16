@@ -59,7 +59,7 @@ EKS の VPC CNI が Pod ごとに ENI IP を消費するため、private サブ�
 ### Key Module Inputs
 
 ```hcl
-name = "${var.project_name}-${var.environment}"
+name = "vpc-${var.environment}"
 cidr = var.vpc_cidr                    # "10.0.0.0/16"
 azs  = var.availability_zones          # ["ap-northeast-1a", "ap-northeast-1c", "ap-northeast-1d"]
 
@@ -85,10 +85,10 @@ create_database_nat_gateway_route      = false
 ```
 aws/vpc/
 ├── Makefile                        # 既存サービスの Makefile を踏襲（ENV=production）
-├── root.hcl                        # aws/claude-code/root.hcl と同パターン、project_name = "vpc"
+├── root.hcl                        # aws/claude-code/root.hcl と同パターン。project_name local は tag 用途のみで module inputs には渡さない
 ├── modules/
-│   ├── main.tf                     # module "vpc" { source = "terraform-aws-modules/vpc/aws" ... }
-│   ├── variables.tf                # vpc_cidr, availability_zones, *_subnet_cidrs, single_nat_gateway
+│   ├── main.tf                     # module "vpc" { source = "terraform-aws-modules/vpc/aws" ... }。リソース名は "vpc-${var.environment}" を直接使用
+│   ├── variables.tf                # vpc_cidr, availability_zones, *_subnet_cidrs, single_nat_gateway（project_name は宣言しない）
 │   ├── outputs.tf                  # 下記 Outputs を参照
 │   └── terraform.tf                # terraform >= 1.14.8, aws ~> 6.40 (既存サービスと揃える)
 └── envs/
