@@ -2,39 +2,39 @@
 
 ## Purpose
 
-Establish a production VPC in `ap-northeast-1` that will host future workloads (EKS / ECS clusters, RDS, etc.). This is the foundational network for the account and supersedes the default VPC that was removed on 2026-04-16.
+`ap-northeast-1` に production VPC を構築する。将来的に EKS / ECS クラスタや RDS 等のワークロードをホストする基盤ネットワークであり、2026-04-16 に削除したデフォルト VPC の後継となる。
 
 ## Scope
 
-- New Terragrunt service at `aws/vpc/` following the existing `aws/{service}/modules + envs/{env}` convention used by `claude-code`, `claude-code-action`, and `github-oidc-auth`.
-- `production` environment only for now. `develop` / `staging` can be added later by copying `envs/production/`.
-- VPC, subnets (3 tiers x 3 AZ), IGW, single NAT Gateway, route tables, DB subnet group.
+- `aws/{service}/modules + envs/{env}` の既存構成慣習（`claude-code`, `claude-code-action`, `github-oidc-auth` で採用済み）に沿って `aws/vpc/` を新設する。
+- 当面は `production` 環境のみを用意する。`develop` / `staging` が必要になった時点で `envs/production/` を複製して対応する。
+- 含めるリソース: VPC、サブネット（3 tier × 3 AZ）、IGW、単一 NAT Gateway、ルートテーブル、DB サブネットグループ。
 
 ## Out of Scope
 
-- EKS, ECS, RDS resources themselves (separate services).
-- VPC endpoints (S3, ECR, etc.) — add on demand when a workload needs them.
-- Transit Gateway / VPC peering.
-- Flow logs — to be added later if an audit requirement arises.
-- Subnet tags for EKS (`kubernetes.io/role/elb`, `kubernetes.io/role/internal-elb`) — added by the EKS module, not here.
+- EKS / ECS / RDS 等のワークロード本体（別サービスとして切り出す）。
+- VPC endpoint（S3, ECR 等）。必要になったワークロード側で追加する。
+- Transit Gateway / VPC peering。
+- VPC Flow Logs。監査要件が出た段階で追加する。
+- EKS 用のサブネットタグ（`kubernetes.io/role/elb`, `kubernetes.io/role/internal-elb`）は EKS モジュール側で付与する。
 
 ## Architecture
 
-### Network layout
+### Network Layout
 
 | Tier | AZ 1a | AZ 1c | AZ 1d | Route |
 |---|---|---|---|---|
 | Public | `10.0.0.0/24` | `10.0.1.0/24` | `10.0.2.0/24` | IGW |
-| Database (isolated) | `10.0.10.0/24` | `10.0.11.0/24` | `10.0.12.0/24` | **no default route** |
+| Database (isolated) | `10.0.10.0/24` | `10.0.11.0/24` | `10.0.12.0/24` | **default route なし** |
 | Private (compute) | `10.0.32.0/19` | `10.0.64.0/19` | `10.0.96.0/19` | NAT GW |
 
 - **VPC CIDR**: `10.0.0.0/16`
-- **IGW**: 1, attached to VPC; public subnets route `0.0.0.0/0` to it.
-- **NAT GW**: 1 shared NAT Gateway placed in public-1a. All three private subnets route `0.0.0.0/0` to it. Trade-off accepted: AZ 1a outage breaks egress for private subnets in 1c/1d.
-- **Database subnets**: fully isolated. Their dedicated route table has no default route. External egress (for secrets rotation etc.) is deliberately not provided here; add VPC endpoints later if needed.
-- **DNS**: `enable_dns_support = true`, `enable_dns_hostnames = true` (EKS requirement).
+- **IGW**: VPC に 1 つアタッチ。public サブネットは `0.0.0.0/0` を IGW へ向ける。
+- **NAT GW**: public-1a に単一配置し、3 つの private サブネットすべてが `0.0.0.0/0` を共有 NAT に向ける。AZ 1a 障害時には 1c / 1d の private サブネットも egress できなくなるトレードオフを許容する。
+- **Database subnet**: 完全 isolated。専用ルートテーブルに default route を持たせない。シークレットローテーション等で外部通信が必要になったら VPC endpoint を後追いで追加する。
+- **DNS**: `enable_dns_support = true`, `enable_dns_hostnames = true`（EKS 要件）。
 
-### CIDR allocation (10.0.0.0/16)
+### CIDR Allocation (10.0.0.0/16)
 
 ```
 10.0.0.0/24   - 10.0.2.0/24    public   (3 x /24)
@@ -47,16 +47,16 @@ Establish a production VPC in `ap-northeast-1` that will host future workloads (
 10.0.128.0/17                  reserved
 ```
 
-Private subnets are sized `/19` (8192 IPs each) to accommodate EKS VPC CNI (one ENI IP per pod).
+EKS の VPC CNI が Pod ごとに ENI IP を消費するため、private サブネットは `/19`（各 8192 IP）と広めに確保する。
 
 ## Implementation
 
 ### Module
 
-- Source: [`terraform-aws-modules/vpc/aws`](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws) version `~> 6.0`.
-- Chosen over raw `aws_vpc`/`aws_subnet` resources for brevity and edge-case coverage; this is a conscious departure from the raw-resource convention used by the other three services in this repo.
+- source: [`terraform-aws-modules/vpc/aws`](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws) `~> 6.0`。
+- 既存 3 サービス（raw リソース定義）とは実装方針が異なるが、本サービスでは記述量削減とエッジケース吸収のため意識的にモジュール利用に切り替える。
 
-### Key module inputs
+### Key Module Inputs
 
 ```hcl
 name = "${var.project_name}-${var.environment}"
@@ -84,16 +84,16 @@ create_database_nat_gateway_route      = false
 
 ```
 aws/vpc/
-├── Makefile                        # copy of existing services' Makefile (ENV=production)
-├── root.hcl                        # same pattern as aws/claude-code/root.hcl; project_name = "vpc"
+├── Makefile                        # 既存サービスの Makefile を踏襲（ENV=production）
+├── root.hcl                        # aws/claude-code/root.hcl と同パターン、project_name = "vpc"
 ├── modules/
 │   ├── main.tf                     # module "vpc" { source = "terraform-aws-modules/vpc/aws" ... }
 │   ├── variables.tf                # vpc_cidr, availability_zones, *_subnet_cidrs, single_nat_gateway
-│   ├── outputs.tf                  # see below
-│   └── terraform.tf                # terraform >= 1.14.8, aws ~> 6.40 (matches existing services)
+│   ├── outputs.tf                  # 下記 Outputs を参照
+│   └── terraform.tf                # terraform >= 1.14.8, aws ~> 6.40 (既存サービスと揃える)
 └── envs/
     └── production/
-        ├── terragrunt.hcl          # include root + env; terraform.source = "../../modules"
+        ├── terragrunt.hcl          # include root + env、terraform.source = "../../modules"
         └── env.hcl                 # environment = "production", aws_region = "ap-northeast-1"
 ```
 
@@ -102,29 +102,30 @@ aws/vpc/
 - `vpc_id`, `vpc_cidr_block`
 - `public_subnet_ids`, `private_subnet_ids`, `database_subnet_ids`
 - `public_subnet_cidrs`, `private_subnet_cidrs`, `database_subnet_cidrs`
-- `database_subnet_group_name` (for RDS module consumers)
-- `nat_public_ips` (IP allowlisting)
+- `database_subnet_group_name`（RDS モジュール側が参照しやすいように）
+- `nat_public_ips`（IP allowlist 用）
 - `availability_zones`
 
 ### State
 
-Reuses the existing shared backend (see `aws/claude-code/root.hcl`):
+既存の共有バックエンド（`aws/claude-code/root.hcl` 参照）を再利用する。
+
 - Bucket: `terragrunt-state-<account_id>`
 - Key: `platform/vpc/production/terraform.tfstate`
 - Lock table: `terragrunt-state-locks`
 
 ## Data Flow / Failure Modes
 
-- Public subnets: egress and ingress via IGW.
-- Private subnets: egress via NAT GW. Single-NAT trade-off: AZ 1a failure severs egress for all private subnets. Acceptable given cost priority; revisit by flipping `single_nat_gateway = false` if availability requirements tighten.
-- Database subnets: no internet path by design. RDS/ElastiCache placed here must be reached from private subnets within the same VPC. Cross-region replication or SaaS-triggered rotation requires adding a VPC endpoint later.
+- Public サブネット: IGW 経由で ingress / egress。
+- Private サブネット: NAT GW 経由で egress。単一 NAT のため AZ 1a 障害で全 private サブネットの egress が停止する。コスト優先で許容するが、可用性要件が上がれば `single_nat_gateway = false` に切り替えて再検討する。
+- Database サブネット: 仕様として internet 経路を持たない。RDS / ElastiCache は同一 VPC 内の private サブネットからアクセスする前提。クロスリージョンレプリケーションや SaaS 起因のローテーションが必要になったら VPC endpoint を後追いで追加する。
 
 ## Testing
 
-- `terragrunt validate` in `envs/production/`.
-- `terragrunt plan` review before apply.
-- Post-apply verification: `aws ec2 describe-vpcs`, `describe-subnets`, `describe-nat-gateways`, `describe-route-tables` to confirm the expected topology.
+- `envs/production/` で `terragrunt validate` を実行する。
+- `terragrunt plan` の結果をレビューしてから apply する。
+- Apply 後は `aws ec2 describe-vpcs`, `describe-subnets`, `describe-nat-gateways`, `describe-route-tables` でトポロジを確認する。
 
 ## Dependencies
 
-- `workflow-config.yaml` already enables the `production` environment (uncommitted edit on this branch). This is required for CI to target the new service's production stack.
+- `workflow-config.yaml` で `production` 環境が有効化されていること（本ブランチ上に未コミットの編集として存在）。これが CI 側で本サービスの production stack をターゲットにするための前提条件となる。
