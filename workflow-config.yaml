@@ -11,8 +11,8 @@ environments:
 
   - environment: production
     aws_region: ap-northeast-1
-    iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-develop-github-actions-role
-    iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-develop-github-actions-role
+    iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-production-github-actions-role
+    iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-production-github-actions-role
 
 directory_conventions:
   - root: "aws/{service}"
