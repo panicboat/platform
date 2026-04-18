@@ -33,9 +33,7 @@ locals {
 
   # Production-specific resource tags
   additional_tags = {
-    CostCenter = "production"
+    Purpose    = "github-actions"
     Owner      = "panicboat"
-    Purpose    = "github-actions-production"
-    Critical   = "true"
   }
 }
