@@ -11,7 +11,7 @@ on:
 
 permissions:
   id-token: write
-  contents: write
+  contents: write # kubernetes-executor pushes hydrated manifests
   pull-requests: write
 
 concurrency:
@@ -60,6 +60,9 @@ jobs:
     strategy:
       matrix:
         target: ${{ fromJson(needs.deploy-trigger.outputs.targets) }}
+        exclude:
+          - target:
+              stack: kubernetes
       fail-fast: false
     uses: ./.github/workflows/reusable--terragrunt-executor.yaml
     with:

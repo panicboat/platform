@@ -60,14 +60,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet kubernetes/manifests/${{ inputs.environment }}/; then
+          git add kubernetes/manifests/${{ inputs.environment }}/
+          if git diff --cached --quiet; then
             echo "No changes to commit"
+            git reset HEAD kubernetes/manifests/${{ inputs.environment }}/
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           else
-            git add kubernetes/manifests/${{ inputs.environment }}/
-            git commit -m "chore(kubernetes/manifests/${{ inputs.environment }}): hydrate manifests
-
-          Signed-off-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+            git commit -s -m "chore(kubernetes/manifests/${{ inputs.environment }}): hydrate manifests"
             git push
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
@@ -102,7 +101,7 @@ jobs:
             done
 
             # Write to file to avoid argument length issues
-            echo "$BODY" > /tmp/pr-comment-body.md
+            printf '%s\n' "$BODY" > /tmp/pr-comment-body.md
             echo "body_file=/tmp/pr-comment-body.md" >> "$GITHUB_OUTPUT"
             echo "has_diff=true" >> "$GITHUB_OUTPUT"
           fi
