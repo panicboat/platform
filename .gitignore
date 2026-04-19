@@ -45,4 +45,4 @@ Chart.lock
 charts/
 
 # Git worktrees
-.worktrees/
+.claude/worktrees/
