@@ -1,0 +1,97 @@
+name: 'Reusable - Kubernetes Executor'
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: 'Target environment for hydration (e.g., k3d)'
+      app-id:
+        required: true
+        type: string
+        description: 'GitHub App ID for authentication'
+    secrets:
+      private-key:
+        required: true
+        description: 'GitHub App private key for authentication'
+
+jobs:
+  execute-kubernetes:
+    name: 'Execute Kubernetes'
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3.1.1
+        with:
+          app-id: ${{ inputs.app-id }}
+          private-key: ${{ secrets.private-key }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Get PR information
+        id: pr-info
+        uses: jwalton/gh-find-current-pr@v1
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          state: all
+        continue-on-error: true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Setup aqua
+        uses: aquaproj/aqua-installer@v4.0.0
+        with:
+          aqua_version: v2.48.2
+
+      - name: Hydrate manifests
+        run: make -C kubernetes hydrate ENV=${{ inputs.environment }}
+
+      - name: Commit and push hydrated manifests
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: 'chore(kubernetes/manifests/${{ inputs.environment }}): hydrate manifests'
+          commit_options: '--signoff'
+          file_pattern: 'kubernetes/manifests/${{ inputs.environment }}/'
+          commit_user_name: 'github-actions[bot]'
+          commit_user_email: 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Extract base manifests
+        run: |
+          BASE_DIR=/tmp/base
+          SRC=kubernetes/manifests/${{ inputs.environment }}
+          mkdir -p "$BASE_DIR"
+          git rev-parse --verify "origin/main:${SRC}" >/dev/null 2>&1 || exit 0
+          while IFS= read -r file; do
+            rel="${file#"${SRC}/"}"
+            mkdir -p "$BASE_DIR/$(dirname "$rel")"
+            git show "origin/main:${file}" > "$BASE_DIR/${rel}"
+          done < <(git ls-tree -r --name-only origin/main "${SRC}/")
+
+      - name: Generate diff
+        id: diff
+        uses: int128/diff-action@v2
+        with:
+          base: /tmp/base
+          head: kubernetes/manifests/${{ inputs.environment }}
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Post PR comment
+        if: steps.pr-info.outputs.number != ''
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          number: ${{ steps.pr-info.outputs.number }}
+          header: kubernetes-diff-${{ inputs.environment }}
+          message: |
+            ## Kubernetes Manifests Diff (`${{ inputs.environment }}`)
+            ${{ steps.diff.outputs.comment-body || '**No manifest changes**' }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
