@@ -10,3 +10,4 @@ packages:
   - name: helm/helm@v3.17.3
   - name: kubernetes-sigs/kustomize@kustomize/v5.6.0
   - name: nektos/act@v0.2.74
+  - name: rhysd/actionlint@v1.7.7
