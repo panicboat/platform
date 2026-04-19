@@ -35,7 +35,7 @@
 | Stack | Path Convention | Tooling |
 |-------|-----------------|---------|
 | AWS Infrastructure | `aws/{service}/envs/{environment}` | Terragrunt 0.83.2 + OpenTofu 1.6.0 (`gruntwork-io/terragrunt-action@v3.2.0`) |
-| Kubernetes Platform | `kubernetes/clusters/{cluster}`, `kubernetes/components/*` | Kustomize / Flux CD |
+| Kubernetes Platform | `kubernetes/components/{service}/{environment}` | Helmfile + Kustomize hydration (`reusable--kubernetes-executor.yaml`) / Flux CD |
 | GitHub Repo Settings | `github/github-repository` | Terraform |
 
 ### Environments
@@ -55,13 +55,17 @@ Terragrunt remote state is consolidated in S3 bucket `terragrunt-state-559744160
 ```mermaid
 flowchart LR
   Trigger[PR / push main] --> Resolver[label-resolver<br/>workflow-config.yaml]
-  Resolver --> Executor[reusable--terragrunt-executor.yaml]
-  Executor -->|PR| Plan[terragrunt plan<br/>iam_role_plan]
-  Executor -->|merge to main| Apply[terragrunt apply<br/>iam_role_apply]
+  Resolver -->|stack: terragrunt| TG[reusable--terragrunt-executor]
+  TG -->|PR| Plan[terragrunt plan]
+  TG -->|merge to main| Apply[terragrunt apply]
   Plan --> PRComment[(PR comment)]
   Apply --> AWS[(AWS)]
   Apply --> OIDC[github-oidc-auth<br/>IAM roles]
-  OIDC -.->|AssumeRole| Executor
+  OIDC -.->|AssumeRole| TG
+  Resolver -->|stack: kubernetes| K8s[reusable--kubernetes-executor]
+  K8s -->|hydrate| Commit[auto-commit manifests]
+  K8s -->|diff| K8sComment[(PR comment)]
+  Commit --> FluxCD[Flux CD sync]
 ```
 
 AWS authentication uses GitHub OIDC. `aws/github-oidc-auth/envs/{environment}` issues per-environment IAM roles (plan / apply), which other stacks assume to deploy.
@@ -73,6 +77,7 @@ AWS authentication uses GitHub OIDC. `aws/github-oidc-auth/envs/{environment}` i
   - **platform repo**: syncs `./kubernetes/clusters/k3d` — deploys shared platform components (Cilium, CoreDNS, Prometheus-Operator, Grafana, Loki, Tempo, OpenTelemetry, Beyla, etc.).
   - **monorepo**: syncs `./clusters/develop` — deploys application workloads (reconciled every 10 minutes).
 - Platform and Monorepo are loosely coupled via Flux.
+- When `kubernetes/components/` changes in a PR, the CI pipeline automatically runs `make hydrate` and commits the rendered manifests. The diff against `main` is posted as a PR comment for review.
 
 ### Claude Code Integration
 
