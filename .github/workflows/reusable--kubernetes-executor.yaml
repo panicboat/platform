@@ -67,11 +67,15 @@ jobs:
 
       - name: Extract base manifests
         run: |
-          mkdir -p /tmp/base
-          git show origin/main:kubernetes/manifests/${{ inputs.environment }}/kustomization.yaml > /dev/null 2>&1 || exit 0
-          for file in $(git ls-tree --name-only origin/main kubernetes/manifests/${{ inputs.environment }}/); do
-            git show "origin/main:${file}" > "/tmp/base/$(basename "$file")"
-          done
+          BASE_DIR=/tmp/base
+          SRC=kubernetes/manifests/${{ inputs.environment }}
+          mkdir -p "$BASE_DIR"
+          git rev-parse --verify "origin/main:${SRC}" >/dev/null 2>&1 || exit 0
+          while IFS= read -r file; do
+            rel="${file#"${SRC}/"}"
+            mkdir -p "$BASE_DIR/$(dirname "$rel")"
+            git show "origin/main:${file}" > "$BASE_DIR/${rel}"
+          done < <(git ls-tree -r --name-only origin/main "${SRC}/")
 
       - name: Generate diff
         id: diff

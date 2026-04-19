@@ -40,7 +40,7 @@ packages:
   - name: helmfile/helmfile@v0.169.2
   - name: helm/helm@v3.17.3
   - name: kubernetes-sigs/kustomize@kustomize/v5.6.0
-  - name: nektos/act@v0.2.74
+  - name: nektos/act@v0.2.87
 ```
 
 > Note: バージョンは作成時点の最新を指定。Renovate が自動更新する。
