@@ -24,8 +24,7 @@ locals {
   # Environment-specific tags
   environment_tags = {
     Environment = local.environment
-    Purpose     = "claude-code-local"
-    CostCenter  = "engineering"
+    Purpose     = "claude-code"
     Owner       = "panicboat"
   }
 }

@@ -33,8 +33,7 @@ locals {
 
   # Staging-specific resource tags
   additional_tags = {
-    CostCenter = "staging"
+    Purpose    = "github-actions"
     Owner      = "panicboat"
-    Purpose    = "github-actions-staging"
   }
 }
