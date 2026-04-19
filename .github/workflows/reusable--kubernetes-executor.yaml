@@ -1,0 +1,118 @@
+name: 'Reusable - Kubernetes Executor'
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: 'Target environment for hydration (e.g., k3d)'
+      app-id:
+        required: true
+        type: string
+        description: 'GitHub App ID for authentication'
+    secrets:
+      private-key:
+        required: true
+        description: 'GitHub App private key for authentication'
+
+jobs:
+  execute-kubernetes:
+    name: 'Execute Kubernetes'
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3.1.1
+        with:
+          app-id: ${{ inputs.app-id }}
+          private-key: ${{ secrets.private-key }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Get PR information
+        id: pr-info
+        uses: jwalton/gh-find-current-pr@v1
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          state: all
+        continue-on-error: true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Setup aqua
+        uses: aquaproj/aqua-installer@v4.0.0
+        with:
+          aqua_version: v2.48.2
+
+      - name: Hydrate manifests
+        run: make -C kubernetes hydrate ENV=${{ inputs.environment }}
+
+      - name: Commit and push hydrated manifests
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet kubernetes/manifests/${{ inputs.environment }}/; then
+            echo "No changes to commit"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            git add kubernetes/manifests/${{ inputs.environment }}/
+            git commit -m "chore(kubernetes/manifests/${{ inputs.environment }}): hydrate manifests
+
+          Signed-off-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+            git push
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+        id: commit
+
+      - name: Generate diff
+        id: diff
+        run: |
+          DIFF=$(git diff origin/main...HEAD -- kubernetes/manifests/${{ inputs.environment }}/)
+          if [ -z "$DIFF" ]; then
+            echo "body=**No manifest changes** for \`${{ inputs.environment }}\`." >> "$GITHUB_OUTPUT"
+          else
+            # Build per-file summary with collapsible sections
+            BODY="## Kubernetes Manifests Diff (\`${{ inputs.environment }}\`)"
+            BODY="${BODY}
+
+          "
+            for file in $(git diff --name-only origin/main...HEAD -- kubernetes/manifests/${{ inputs.environment }}/); do
+              BASENAME=$(basename "$file")
+              STAT=$(git diff --stat origin/main...HEAD -- "$file" | tail -1 | sed 's/^ *//')
+              FILE_DIFF=$(git diff origin/main...HEAD -- "$file")
+              BODY="${BODY}<details>
+          <summary><code>${BASENAME}</code> (${STAT})</summary>
+
+          \`\`\`diff
+          ${FILE_DIFF}
+          \`\`\`
+
+          </details>
+
+          "
+            done
+
+            # Write to file to avoid argument length issues
+            echo "$BODY" > /tmp/pr-comment-body.md
+            echo "body_file=/tmp/pr-comment-body.md" >> "$GITHUB_OUTPUT"
+            echo "has_diff=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post PR comment
+        if: steps.pr-info.outputs.number != ''
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          number: ${{ steps.pr-info.outputs.number }}
+          header: kubernetes-diff-${{ inputs.environment }}
+          path: ${{ steps.diff.outputs.body_file || '' }}
+          message: ${{ steps.diff.outputs.body || '' }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
