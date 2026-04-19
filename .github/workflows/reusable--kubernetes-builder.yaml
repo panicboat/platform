@@ -1,4 +1,4 @@
-name: 'Reusable - Kubernetes Executor'
+name: 'Reusable - Kubernetes Builder'
 
 on:
   workflow_call:
@@ -17,8 +17,8 @@ on:
         description: 'GitHub App private key for authentication'
 
 jobs:
-  execute-kubernetes:
-    name: 'Execute Kubernetes'
+  kustomize-build:
+    name: 'Kustomize Build'
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:

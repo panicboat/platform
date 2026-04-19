@@ -86,7 +86,7 @@ jobs:
           - target:
               stack: terragrunt
       fail-fast: false
-    uses: ./.github/workflows/reusable--kubernetes-executor.yaml
+    uses: ./.github/workflows/reusable--kubernetes-builder.yaml
     with:
       environment: ${{ matrix.target.environment }}
       app-id: ${{ vars.APP_ID }}

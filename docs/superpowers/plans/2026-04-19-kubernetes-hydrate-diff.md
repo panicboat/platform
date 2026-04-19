@@ -15,7 +15,7 @@
 | 区分 | ファイル | 責務 |
 |------|---------|------|
 | 新規 | `aqua.yaml` | helmfile / helm / kustomize / act のバージョン定義 |
-| 新規 | `.github/workflows/reusable--kubernetes-executor.yaml` | hydrate + diff の reusable workflow |
+| 新規 | `.github/workflows/reusable--kubernetes-builder.yaml` | hydrate + diff の reusable workflow |
 | 変更 | `.github/workflows/auto-label--deploy-trigger.yaml` | `deploy-kubernetes` job 追加 |
 | 変更 | `README.md` | Deployment セクションに kubernetes パイプライン追加 |
 
@@ -62,10 +62,10 @@ git commit -s -m "feat: add aqua.yaml for tool version management"
 
 ---
 
-### Task 2: reusable--kubernetes-executor.yaml の作成
+### Task 2: reusable--kubernetes-builder.yaml の作成
 
 **Files:**
-- Create: `.github/workflows/reusable--kubernetes-executor.yaml`
+- Create: `.github/workflows/reusable--kubernetes-builder.yaml`
 
 - [ ] **Step 1: reusable workflow のスケルトンを作成する**
 
@@ -192,13 +192,13 @@ jobs:
 
 - [ ] **Step 2: YAML の構文を検証する**
 
-Run: `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/reusable--kubernetes-executor.yaml'))"`
+Run: `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/reusable--kubernetes-builder.yaml'))"`
 Expected: エラーなし
 
 - [ ] **Step 3: コミットする**
 
 ```bash
-git add .github/workflows/reusable--kubernetes-executor.yaml
+git add .github/workflows/reusable--kubernetes-builder.yaml
 git commit -s -m "feat: add reusable kubernetes executor workflow"
 ```
 
@@ -227,7 +227,7 @@ git commit -s -m "feat: add reusable kubernetes executor workflow"
           - target:
               stack: terragrunt
       fail-fast: false
-    uses: ./.github/workflows/reusable--kubernetes-executor.yaml
+    uses: ./.github/workflows/reusable--kubernetes-builder.yaml
     with:
       environment: ${{ matrix.target.environment }}
       app-id: ${{ vars.APP_ID }}
@@ -283,7 +283,7 @@ git commit -s -m "feat: add kubernetes executor job to deploy trigger"
 
 変更後:
 ```markdown
-| Kubernetes Platform | `kubernetes/components/{service}/{environment}` | Helmfile + Kustomize hydration (`reusable--kubernetes-executor.yaml`) / Flux CD |
+| Kubernetes Platform | `kubernetes/components/{service}/{environment}` | Helmfile + Kustomize hydration (`reusable--kubernetes-builder.yaml`) / Flux CD |
 ```
 
 - [ ] **Step 2: Pipeline Flow の mermaid に kubernetes 分岐を追加する**
@@ -312,7 +312,7 @@ flowchart LR
   Apply --> AWS[(AWS)]
   Apply --> OIDC[github-oidc-auth<br/>IAM roles]
   OIDC -.->|AssumeRole| TG
-  Resolver -->|stack: kubernetes| K8s[reusable--kubernetes-executor]
+  Resolver -->|stack: kubernetes| K8s[reusable--kubernetes-builder]
   K8s -->|hydrate| Commit[auto-commit manifests]
   K8s -->|diff| K8sComment[(PR comment)]
   Commit --> FluxCD[Flux CD sync]
@@ -342,7 +342,7 @@ git commit -s -m "docs: add kubernetes hydrate/diff pipeline to deployment secti
 
 - [ ] **Step 1: reusable workflow の YAML lint を実行する**
 
-Run: `actionlint .github/workflows/reusable--kubernetes-executor.yaml .github/workflows/auto-label--deploy-trigger.yaml`
+Run: `actionlint .github/workflows/reusable--kubernetes-builder.yaml .github/workflows/auto-label--deploy-trigger.yaml`
 
 > `actionlint` が未インストールの場合は `aqua.yaml` に追加:
 > ```yaml
@@ -355,7 +355,7 @@ Expected: エラーなし（warning は許容）
 
 ```bash
 act workflow_call \
-  -W .github/workflows/reusable--kubernetes-executor.yaml \
+  -W .github/workflows/reusable--kubernetes-builder.yaml \
   --input environment=k3d \
   --input app-id=dummy \
   -s private-key=dummy \

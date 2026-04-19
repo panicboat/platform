@@ -35,7 +35,7 @@
 | Stack | Path Convention | Tooling |
 |-------|-----------------|---------|
 | AWS Infrastructure | `aws/{service}/envs/{environment}` | Terragrunt 0.83.2 + OpenTofu 1.6.0 (`gruntwork-io/terragrunt-action@v3.2.0`) |
-| Kubernetes Platform | `kubernetes/components/{service}/{environment}` | Helmfile + Kustomize hydration (`reusable--kubernetes-executor.yaml`) / Flux CD |
+| Kubernetes Platform | `kubernetes/components/{service}/{environment}` | Helmfile + Kustomize hydration (`reusable--kubernetes-builder.yaml`) / Flux CD |
 | GitHub Repo Settings | `github/github-repository` | Terraform |
 
 ### Environments
@@ -62,7 +62,7 @@ flowchart LR
   Apply --> AWS[(AWS)]
   Apply --> OIDC[github-oidc-auth<br/>IAM roles]
   OIDC -.->|AssumeRole| TG
-  Resolver -->|stack: kubernetes| K8s[reusable--kubernetes-executor]
+  Resolver -->|stack: kubernetes| K8s[reusable--kubernetes-builder]
   K8s -->|hydrate| Commit[auto-commit manifests]
   K8s -->|diff| K8sComment[(PR comment)]
   Commit --> FluxCD[Flux CD sync]
