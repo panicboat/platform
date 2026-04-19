@@ -9,5 +9,6 @@ packages:
   - name: helmfile/helmfile@v0.169.2
   - name: helm/helm@v3.17.3
   - name: kubernetes-sigs/kustomize@kustomize/v5.6.0
+  - name: homeport/dyff@v1.11.2
   - name: nektos/act@v0.2.74
   - name: rhysd/actionlint@v1.7.7

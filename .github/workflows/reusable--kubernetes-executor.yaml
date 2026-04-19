@@ -57,53 +57,51 @@ jobs:
         run: make -C kubernetes hydrate ENV=${{ inputs.environment }}
 
       - name: Commit and push hydrated manifests
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add kubernetes/manifests/${{ inputs.environment }}/
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-            git reset HEAD kubernetes/manifests/${{ inputs.environment }}/
-            echo "has_changes=false" >> "$GITHUB_OUTPUT"
-          else
-            git commit -s -m "chore(kubernetes/manifests/${{ inputs.environment }}): hydrate manifests"
-            git push
-            echo "has_changes=true" >> "$GITHUB_OUTPUT"
-          fi
-        id: commit
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: 'chore(kubernetes/manifests/${{ inputs.environment }}): hydrate manifests'
+          commit_options: '--signoff'
+          file_pattern: 'kubernetes/manifests/${{ inputs.environment }}/'
+          commit_user_name: 'github-actions[bot]'
+          commit_user_email: 'github-actions[bot]@users.noreply.github.com'
 
-      - name: Generate diff
+      - name: Generate diff with dyff
         id: diff
         run: |
-          DIFF=$(git diff origin/main...HEAD -- kubernetes/manifests/${{ inputs.environment }}/)
-          if [ -z "$DIFF" ]; then
-            echo "body=**No manifest changes** for \`${{ inputs.environment }}\`." >> "$GITHUB_OUTPUT"
-          else
-            # Build per-file summary with collapsible sections
-            BODY="## Kubernetes Manifests Diff (\`${{ inputs.environment }}\`)"
-            BODY="${BODY}
+          ENV="${{ inputs.environment }}"
+          MANIFEST_DIR="kubernetes/manifests/${ENV}"
+          BODY="## Kubernetes Manifests Diff (\`${ENV}\`)"
+          HAS_DIFF=false
 
-          "
-            for file in $(git diff --name-only origin/main...HEAD -- kubernetes/manifests/${{ inputs.environment }}/); do
-              BASENAME=$(basename "$file")
-              STAT=$(git diff --stat origin/main...HEAD -- "$file" | tail -1 | sed 's/^ *//')
-              FILE_DIFF=$(git diff origin/main...HEAD -- "$file")
-              BODY="${BODY}<details>
-          <summary><code>${BASENAME}</code> (${STAT})</summary>
+          for file in "${MANIFEST_DIR}"/*.yaml; do
+            [ -f "$file" ] || continue
+            BASENAME=$(basename "$file")
+            [ "$BASENAME" = "kustomization.yaml" ] && continue
 
-          \`\`\`diff
+            # Get main branch version (empty if file is new)
+            git show "origin/main:${file}" > /tmp/base.yaml 2>/dev/null || : > /tmp/base.yaml
+
+            FILE_DIFF=$(dyff between --omit-header /tmp/base.yaml "$file" 2>/dev/null || true)
+            if [ -n "$FILE_DIFF" ]; then
+              HAS_DIFF=true
+              BODY="${BODY}
+
+          <details>
+          <summary><code>${BASENAME}</code></summary>
+
+          \`\`\`
           ${FILE_DIFF}
           \`\`\`
 
-          </details>
+          </details>"
+            fi
+          done
 
-          "
-            done
-
-            # Write to file to avoid argument length issues
+          if [ "$HAS_DIFF" = false ]; then
+            echo "body=**No manifest changes** for \`${ENV}\`." >> "$GITHUB_OUTPUT"
+          else
             printf '%s\n' "$BODY" > /tmp/pr-comment-body.md
             echo "body_file=/tmp/pr-comment-body.md" >> "$GITHUB_OUTPUT"
-            echo "has_diff=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Post PR comment
