@@ -65,44 +65,21 @@ jobs:
           commit_user_name: 'github-actions[bot]'
           commit_user_email: 'github-actions[bot]@users.noreply.github.com'
 
-      - name: Generate diff with dyff
-        id: diff
+      - name: Extract base manifests
         run: |
-          ENV="${{ inputs.environment }}"
-          MANIFEST_DIR="kubernetes/manifests/${ENV}"
-          BODY="## Kubernetes Manifests Diff (\`${ENV}\`)"
-          HAS_DIFF=false
-
-          for file in "${MANIFEST_DIR}"/*.yaml; do
-            [ -f "$file" ] || continue
-            BASENAME=$(basename "$file")
-            [ "$BASENAME" = "kustomization.yaml" ] && continue
-
-            # Get main branch version (empty if file is new)
-            git show "origin/main:${file}" > /tmp/base.yaml 2>/dev/null || : > /tmp/base.yaml
-
-            FILE_DIFF=$(dyff between --omit-header /tmp/base.yaml "$file" 2>/dev/null || true)
-            if [ -n "$FILE_DIFF" ]; then
-              HAS_DIFF=true
-              BODY="${BODY}
-
-          <details>
-          <summary><code>${BASENAME}</code></summary>
-
-          \`\`\`
-          ${FILE_DIFF}
-          \`\`\`
-
-          </details>"
-            fi
+          mkdir -p /tmp/base
+          git show origin/main:kubernetes/manifests/${{ inputs.environment }}/kustomization.yaml > /dev/null 2>&1 || exit 0
+          for file in $(git ls-tree --name-only origin/main kubernetes/manifests/${{ inputs.environment }}/); do
+            git show "origin/main:${file}" > "/tmp/base/$(basename "$file")"
           done
 
-          if [ "$HAS_DIFF" = false ]; then
-            echo "body=**No manifest changes** for \`${ENV}\`." >> "$GITHUB_OUTPUT"
-          else
-            printf '%s\n' "$BODY" > /tmp/pr-comment-body.md
-            echo "body_file=/tmp/pr-comment-body.md" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Generate diff
+        id: diff
+        uses: int128/diff-action@v2
+        with:
+          base: /tmp/base
+          head: kubernetes/manifests/${{ inputs.environment }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Post PR comment
         if: steps.pr-info.outputs.number != ''
@@ -110,6 +87,7 @@ jobs:
         with:
           number: ${{ steps.pr-info.outputs.number }}
           header: kubernetes-diff-${{ inputs.environment }}
-          path: ${{ steps.diff.outputs.body_file || '' }}
-          message: ${{ steps.diff.outputs.body || '' }}
+          message: |
+            ## Kubernetes Manifests Diff (`${{ inputs.environment }}`)
+            ${{ steps.diff.outputs.comment-body || '**No manifest changes**' }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
