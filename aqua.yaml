@@ -1,0 +1,12 @@
+---
+# aqua - Declarative CLI Version Manager
+# https://aquaproj.github.io/
+registries:
+  - type: standard
+    ref: v4.311.0 # renovate: github_release aquaproj/aqua-registry
+
+packages:
+  - name: helmfile/helmfile@v0.169.2
+  - name: helm/helm@v3.17.3
+  - name: kubernetes-sigs/kustomize@kustomize/v5.6.0
+  - name: nektos/act@v0.2.74
