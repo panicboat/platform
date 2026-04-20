@@ -12,7 +12,10 @@
 ```
 platform/aws/bedrock-claude/
 ├── modules/
-│   ├── main.tf        # CLI ロール + Actions ロール + Bedrock ポリシー
+│   ├── main.tf           # data sources と locals（ARN 計算）
+│   ├── role_cli.tf       # CLI IAM ロール + ポリシーアタッチ
+│   ├── role_actions.tf   # Actions IAM ロール + ポリシーアタッチ
+│   ├── policy_bedrock.tf # 共有 Bedrock ポリシー
 │   ├── variables.tf
 │   └── outputs.tf
 ├── envs/
