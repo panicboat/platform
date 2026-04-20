@@ -1,7 +1,7 @@
 # terraform.tf - Terraform and provider configuration
 
 terraform {
-  required_version = ">= 1.6.0"
+  required_version = ">= 1.11.6"
 
   required_providers {
     aws = {
