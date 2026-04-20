@@ -1,4 +1,9 @@
 environments:
+  - environment: k3d
+    aws_region: ap-northeast-1
+    iam_role_plan: ''
+    iam_role_apply: ''
+
   - environment: develop
     aws_region: us-east-1
     iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-develop-github-actions-role
