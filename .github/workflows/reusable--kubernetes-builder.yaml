@@ -52,6 +52,8 @@ jobs:
         uses: aquaproj/aqua-installer@v4.0.4
         with:
           aqua_version: v2.48.2
+        env:
+          AQUA_CONFIG: .github/aqua.yaml
 
       - name: Hydrate manifests
         run: make -C kubernetes hydrate ENV=${{ inputs.environment }}
