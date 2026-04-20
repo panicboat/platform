@@ -30,11 +30,9 @@ platform/aws/bedrock-claude/
 
 | リソース | 名前パターン | 用途 |
 |----------|-------------|------|
-| CLI IAM ロール | `{project}-{env}-claude-code-role`（既存名を維持） | ローカル開発（IAM user が `sts:AssumeRole`） |
-| Actions IAM ロール | `{project}-{env}-github-actions-role`（既存名を維持） | CI/CD（GitHub OIDC が `sts:AssumeRoleWithWebIdentity`） |
-| Bedrock ポリシー | `{project}-{env}-bedrock-claude-policy`（新規作成） | 両ロールにアタッチ |
-
-> **Note:** ロール名は既存名を維持することでロールの再作成を回避する。名前を変える場合はポリシーアタッチの再作成が発生し、一時的にアクセス不可になる。
+| CLI IAM ロール | `{project}-{env}-cli-role` | ローカル開発（IAM user が `sts:AssumeRole`） |
+| Actions IAM ロール | `{project}-{env}-github-actions-role` | CI/CD（GitHub OIDC が `sts:AssumeRoleWithWebIdentity`） |
+| Bedrock ポリシー | `{project}-{env}-bedrock-claude-policy` | 両ロールにアタッチ |
 
 ### Bedrock ポリシー
 
@@ -125,21 +123,18 @@ inputs = {
 
 ## Migration
 
-既存ロールを `terraform import` で新 state に取り込む。リソースの再作成は不要。
+旧リソースを destroy してから新モジュールで apply する（破壊と創造）。
 
 ```bash
-# CLI ロール（claude-code から）
-terraform import 'module.bedrock_claude.aws_iam_role.cli_role' \
-  <project>-<env>-cli-role
+# 1. 旧リソースを削除
+cd platform/aws/claude-code/envs/develop && terragrunt destroy
+cd platform/aws/claude-code-action/envs/develop && terragrunt destroy
 
-# Actions ロール（claude-code-action から）
-terraform import 'module.bedrock_claude.aws_iam_role.actions_role' \
-  <project>-<env>-github-actions-role
-
-# Bedrock ポリシー（新規作成 または 旧ポリシーを import）
-terraform import 'module.bedrock_claude.aws_iam_policy.bedrock_policy' \
-  arn:aws:iam::<account-id>:policy/<policy-name>
+# 2. 新モジュールを作成
+cd platform/aws/bedrock-claude/envs/develop && terragrunt apply
 ```
+
+apply 後に `workflow-config.yaml` の `iam_role_plan` / `iam_role_apply` を新しい Actions ロール ARN に更新する。
 
 Remote state キー: `platform/bedrock-claude/${local.environment}/terraform.tfstate`
 
@@ -154,9 +149,8 @@ Remote state キー: `platform/bedrock-claude/${local.environment}/terraform.tfs
 
 ## Error Handling
 
-- `terraform import` 前に `terraform plan` で差分ゼロを確認してから apply
-- ポリシーが重複した場合は旧ポリシーを先に削除してから import
-- ロール名が変わる場合はアプリケーション側の参照（`workflow-config.yaml` の `iam_role_*`）も更新する
+- destroy 前に `terraform plan` で削除対象リソースを確認する
+- destroy から apply までの間は一時的にロールが存在しない（GitHub Actions は失敗する）ので、メンテナンス時間を設けて実施する
 
 ## Testing
 
