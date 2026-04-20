@@ -123,18 +123,21 @@ inputs = {
 
 ## Migration
 
-旧リソースを destroy してから新モジュールで apply する（破壊と創造）。
+新モジュールを先に apply してから旧リソースを destroy する（ダウンタイムなし）。
 
 ```bash
-# 1. 旧リソースを削除
+# 1. 新モジュールを作成
+cd platform/aws/bedrock-claude/envs/develop && terragrunt apply
+
+# 2. workflow-config.yaml の iam_role_* を新しい Actions ロール ARN に更新 → マージ
+
+# 3. 旧リソースを削除
 cd platform/aws/claude-code/envs/develop && terragrunt destroy
 cd platform/aws/claude-code-action/envs/develop && terragrunt destroy
 
-# 2. 新モジュールを作成
-cd platform/aws/bedrock-claude/envs/develop && terragrunt apply
+# 4. 旧ディレクトリを削除
+rm -rf platform/aws/claude-code platform/aws/claude-code-action
 ```
-
-apply 後に `workflow-config.yaml` の `iam_role_plan` / `iam_role_apply` を新しい Actions ロール ARN に更新する。
 
 Remote state キー: `platform/bedrock-claude/${local.environment}/terraform.tfstate`
 
@@ -149,8 +152,8 @@ Remote state キー: `platform/bedrock-claude/${local.environment}/terraform.tfs
 
 ## Error Handling
 
-- destroy 前に `terraform plan` で削除対象リソースを確認する
-- destroy から apply までの間は一時的にロールが存在しない（GitHub Actions は失敗する）ので、メンテナンス時間を設けて実施する
+- apply 前に `terraform plan` で作成対象リソースを確認する
+- 新ロールの apply → `workflow-config.yaml` 更新 → 旧リソース destroy の順で実施することでダウンタイムなしに移行できる
 
 ## Testing
 
