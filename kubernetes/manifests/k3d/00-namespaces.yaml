@@ -10,16 +10,6 @@ metadata:
     app.kubernetes.io/name: opentelemetry-collector
 ---
 # =============================================================================
-# OpenTelemetry Operator Namespace
-# =============================================================================
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: opentelemetry-operator-system
-  labels:
-    app.kubernetes.io/name: opentelemetry-operator
----
-# =============================================================================
 # Monitoring Namespace
 # =============================================================================
 # This namespace contains the full observability stack:
@@ -37,3 +27,13 @@ metadata:
   name: monitoring
   labels:
     app.kubernetes.io/name: monitoring
+---
+# =============================================================================
+# OpenTelemetry Operator Namespace
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: opentelemetry-operator-system
+  labels:
+    app.kubernetes.io/name: opentelemetry-operator
