@@ -19,8 +19,10 @@ platform/aws/bedrock-claude/
 │   └── outputs.tf
 ├── envs/
 │   └── develop/
-│       ├── env.hcl
-│       └── terragrunt.hcl
+│       ├── env.hcl         # 共通（environment、aws_region、max_session_duration など）
+│       ├── cli.hcl         # trusted_principal_arns
+│       ├── actions.hcl     # github_repos、oidc_provider_arn
+│       └── terragrunt.hcl  # 3つを include して inputs に展開
 └── root.hcl
 ```
 
@@ -93,6 +95,32 @@ GitHub Actions:
     source_regions = ["us-east-1", "us-east-2"]
   },
 ]
+```
+
+## Terragrunt Configuration
+
+`terragrunt.hcl` は 3つの hcl ファイルを `include` して `inputs` に展開する。
+
+```hcl
+include "root"    { path = find_in_parent_folders("root.hcl") }
+include "env"     { path = "env.hcl";     expose = true }
+include "cli"     { path = "cli.hcl";     expose = true }
+include "actions" { path = "actions.hcl"; expose = true }
+
+inputs = {
+  project_name   = "bedrock-claude"
+  environment    = include.env.locals.environment
+  aws_region     = include.env.locals.aws_region
+  # ...共通変数...
+
+  # CLI ロール用
+  trusted_principal_arns = include.cli.locals.trusted_principal_arns
+
+  # Actions ロール用
+  github_org        = "panicboat"
+  github_repos      = include.actions.locals.github_repos
+  oidc_provider_arn = include.actions.locals.oidc_provider_arn
+}
 ```
 
 ## Migration
