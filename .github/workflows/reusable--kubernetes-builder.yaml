@@ -61,6 +61,8 @@ jobs:
 
       - name: Hydrate manifests
         run: make -C kubernetes hydrate ENV=${{ inputs.environment }}
+        env:
+          AQUA_CONFIG: ${{ github.workspace }}/.github/aqua.yaml
 
       - name: Commit and push hydrated manifests
         uses: stefanzweifel/git-auto-commit-action@v7
