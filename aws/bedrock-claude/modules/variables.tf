@@ -1,3 +1,5 @@
+# variables.tf - Variables for bedrock-claude module
+
 variable "project_name" {
   description = "Name of the project"
   type        = string
