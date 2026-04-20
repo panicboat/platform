@@ -3,6 +3,10 @@ name: 'Reusable - Kubernetes Builder'
 on:
   workflow_call:
     inputs:
+      service-name:
+        required: true
+        type: string
+        description: 'Service name for identification'
       environment:
         required: true
         type: string
@@ -67,33 +71,11 @@ jobs:
           commit_user_name: 'github-actions[bot]'
           commit_user_email: 'github-actions[bot]@users.noreply.github.com'
 
-      - name: Extract base manifests
-        run: |
-          BASE_DIR=/tmp/base
-          SRC=kubernetes/manifests/${{ inputs.environment }}
-          mkdir -p "$BASE_DIR"
-          git rev-parse --verify "origin/main:${SRC}" >/dev/null 2>&1 || exit 0
-          while IFS= read -r file; do
-            rel="${file#"${SRC}/"}"
-            mkdir -p "$BASE_DIR/$(dirname "$rel")"
-            git show "origin/main:${file}" > "$BASE_DIR/${rel}"
-          done < <(git ls-tree -r --name-only origin/main "${SRC}/")
-
-      - name: Generate diff
-        id: diff
-        uses: int128/diff-action@v2
+      - name: Kubernetes Diff
+        uses: panicboat/deploy-actions/kubernetes@main
         with:
-          base: /tmp/base
-          head: kubernetes/manifests/${{ inputs.environment }}
-          token: ${{ steps.app-token.outputs.token }}
-
-      - name: Post PR comment
-        if: steps.pr-info.outputs.number != ''
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          number: ${{ steps.pr-info.outputs.number }}
-          header: kubernetes-diff-${{ inputs.environment }}
-          message: |
-            ## Kubernetes Manifests Diff (`${{ inputs.environment }}`)
-            ${{ steps.diff.outputs.comment-body || '**No manifest changes**' }}
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          github-token: ${{ steps.app-token.outputs.token }}
+          service-name: ${{ inputs.service-name }}
+          environment: ${{ inputs.environment }}
+          path: kubernetes/manifests/${{ inputs.environment }}
+          pr-number: ${{ steps.pr-info.outputs.number }}
