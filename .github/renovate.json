@@ -51,6 +51,13 @@
       "matchManagers": ["helmv3", "helm-values", "helmfile"],
       "allowedVersions": "< 1.19.0",
       "enabled": false
+    },
+
+    {
+      "description": "Track OpenTofu releases instead of Terraform for required_version",
+      "matchDepTypes": ["required_version"],
+      "matchDepNames": ["hashicorp/terraform"],
+      "overridePackageName": "opentofu/opentofu"
     }
   ]
 }
