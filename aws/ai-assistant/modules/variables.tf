@@ -72,8 +72,8 @@ variable "bedrock_inference_profiles" {
   }))
   default = [
     {
-      profile_id = "us.anthropic.claude-sonnet-4-6"
-      model_id   = "anthropic.claude-sonnet-4-6"
+      profile_id = "us.anthropic.claude-sonnet-*"
+      model_id   = "anthropic.claude-sonnet-*"
       source_regions = [
         "us-east-1",
         "us-east-2",
@@ -81,8 +81,8 @@ variable "bedrock_inference_profiles" {
       ]
     },
     {
-      profile_id = "us.anthropic.claude-opus-4-7"
-      model_id   = "anthropic.claude-opus-4-7"
+      profile_id = "us.anthropic.claude-opus-*"
+      model_id   = "anthropic.claude-opus-*"
       source_regions = [
         "us-east-1",
         "us-east-2",
@@ -90,8 +90,8 @@ variable "bedrock_inference_profiles" {
       ]
     },
     {
-      profile_id = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
-      model_id   = "anthropic.claude-haiku-4-5-20251001-v1:0"
+      profile_id = "us.anthropic.claude-haiku-*"
+      model_id   = "anthropic.claude-haiku-*"
       source_regions = [
         "us-east-1",
         "us-east-2",
