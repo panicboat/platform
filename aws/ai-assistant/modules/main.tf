@@ -25,7 +25,7 @@ locals {
 
 # Shared IAM Policy for Bedrock Claude Access
 resource "aws_iam_policy" "bedrock_claude_policy" {
-  name        = "${var.project_name}-${var.environment}-bedrock-claude-policy"
+  name        = "${var.project_name}-${var.environment}-ai-assistant-policy"
   description = "Policy for Bedrock Claude model access via cross-region inference profiles"
 
   policy = jsonencode({
@@ -71,7 +71,7 @@ resource "aws_iam_policy" "bedrock_claude_policy" {
   })
 
   tags = merge(var.common_tags, {
-    Name    = "${var.project_name}-${var.environment}-bedrock-claude-policy"
+    Name    = "${var.project_name}-${var.environment}-ai-assistant-policy"
     Purpose = "bedrock-claude-access"
   })
 }

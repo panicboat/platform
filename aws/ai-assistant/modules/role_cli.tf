@@ -19,7 +19,7 @@ resource "aws_iam_role" "cli_role" {
 
   tags = merge(var.common_tags, {
     Name    = "${var.project_name}-${var.environment}-cli-role"
-    Purpose = "bedrock-claude-cli"
+    Purpose = "ai-assistant-cli"
   })
 }
 

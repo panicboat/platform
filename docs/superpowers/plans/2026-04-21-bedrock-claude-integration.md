@@ -836,6 +836,8 @@ git commit -s -m "feat: update Actions role ARN to ai-assistant-develop-github-a
 
 ### Task 11: Destroy old modules and delete legacy directories
 
+> **Note:** This task is deferred to a separate follow-up PR after runtime validation of the new `ai-assistant` module (confirm `aws sts assume-role` and GitHub Actions OIDC work correctly before destroying the old resources).
+
 - [ ] **Step 1: 旧 claude-code-action を destroy**
 
 ```bash
@@ -894,8 +896,7 @@ gh pr create \
 
 ## Migration
 1. `aws/ai-assistant/envs/develop` で `terragrunt apply` 済み
-2. 旧モジュールを `terragrunt destroy` 済み
-3. 旧ディレクトリを削除済み
+2. 旧モジュールの destroy と旧ディレクトリ削除は runtime 検証後の follow-up PR で実施
 
 ## Test plan
 - [ ] `terragrunt plan` で差分ゼロを確認

@@ -31,7 +31,7 @@ resource "aws_iam_role" "actions_role" {
     Name        = "${var.project_name}-${var.environment}-github-actions-role"
     GitHubOrg   = var.github_org
     GitHubRepos = join("+", var.github_repos)
-    Purpose     = "bedrock-claude-github-actions"
+    Purpose     = "ai-assistant-github-actions"
   })
 }
 
