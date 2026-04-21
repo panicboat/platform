@@ -1,8 +1,8 @@
-# bedrock-claude Module Integration Design
+# ai-assistant Module Integration Design
 
 ## Overview
 
-`aws/claude-code` と `aws/claude-code-action` の2つの Terraform モジュールを、`aws/bedrock-claude` に統合する。
+`aws/claude-code` と `aws/claude-code-action` の2つの Terraform モジュールを、`aws/ai-assistant` に統合する。
 統合後は旧ディレクトリを削除する。
 
 ## Architecture
@@ -10,7 +10,7 @@
 ### モジュール構成
 
 ```
-platform/aws/bedrock-claude/
+platform/aws/ai-assistant/
 ├── modules/
 │   ├── main.tf           # data sources、locals（ARN 計算）、共有 Bedrock ポリシー
 │   ├── role_cli.tf       # CLI IAM ロール + ポリシーアタッチ
@@ -32,7 +32,7 @@ platform/aws/bedrock-claude/
 |----------|-------------|------|
 | CLI IAM ロール | `{project}-{env}-cli-role` | ローカル開発（IAM user が `sts:AssumeRole`） |
 | Actions IAM ロール | `{project}-{env}-github-actions-role` | CI/CD（GitHub OIDC が `sts:AssumeRoleWithWebIdentity`） |
-| Bedrock ポリシー | `{project}-{env}-bedrock-claude-policy` | 両ロールにアタッチ |
+| Bedrock ポリシー | `{project}-{env}-ai-assistant-policy` | 両ロールにアタッチ |
 
 ### Bedrock ポリシー
 
@@ -106,7 +106,7 @@ include "cli"     { path = "cli.hcl";     expose = true }
 include "actions" { path = "actions.hcl"; expose = true }
 
 inputs = {
-  project_name   = "bedrock-claude"
+  project_name   = "ai-assistant"
   environment    = include.env.locals.environment
   aws_region     = include.env.locals.aws_region
   # ...共通変数...
@@ -127,7 +127,7 @@ inputs = {
 
 ```bash
 # 1. 新モジュールを作成
-cd platform/aws/bedrock-claude/envs/develop && terragrunt apply
+cd platform/aws/ai-assistant/envs/develop && terragrunt apply
 
 # 2. workflow-config.yaml の iam_role_* を新しい Actions ロール ARN に更新 → マージ
 
@@ -139,7 +139,7 @@ cd platform/aws/claude-code-action/envs/develop && terragrunt destroy
 rm -rf platform/aws/claude-code platform/aws/claude-code-action
 ```
 
-Remote state キー: `platform/bedrock-claude/${local.environment}/terraform.tfstate`
+Remote state キー: `platform/ai-assistant/${local.environment}/terraform.tfstate`
 
 ## Deletion of Legacy Directories
 

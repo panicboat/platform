@@ -24,7 +24,7 @@ terraform {
 }
 
 inputs = {
-  project_name = "bedrock-claude"
+  project_name = "ai-assistant"
   environment  = include.env.locals.environment
 
   # AWS configuration
@@ -47,7 +47,7 @@ inputs = {
   common_tags = merge(
     include.env.locals.environment_tags,
     {
-      Project    = "bedrock-claude"
+      Project    = "ai-assistant"
       ManagedBy  = "terragrunt"
       Repository = "panicboat/platform"
     }

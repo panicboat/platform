@@ -1,10 +1,10 @@
-# bedrock-claude Integration Implementation Plan
+# ai-assistant Integration Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** `aws/claude-code` と `aws/claude-code-action` を `aws/bedrock-claude` に統合し、CLI ロールと Actions ロールを1つのモジュールで管理する。
+**Goal:** `aws/claude-code` と `aws/claude-code-action` を `aws/ai-assistant` に統合し、CLI ロールと Actions ロールを1つのモジュールで管理する。
 
-**Architecture:** 単一 Terraform モジュール (`aws/bedrock-claude/modules/`) が CLI 用 IAM ロール（`sts:AssumeRole`）と GitHub Actions 用 IAM ロール（`sts:AssumeRoleWithWebIdentity`）の両方を作成する。Bedrock ポリシーは共有して両ロールにアタッチする。Terragrunt 設定は `env.hcl`（共通）・`cli.hcl`（CLI設定）・`actions.hcl`（Actions設定）に分割し、`terragrunt.hcl` で結合する。
+**Architecture:** 単一 Terraform モジュール (`aws/ai-assistant/modules/`) が CLI 用 IAM ロール（`sts:AssumeRole`）と GitHub Actions 用 IAM ロール（`sts:AssumeRoleWithWebIdentity`）の両方を作成する。Bedrock ポリシーは共有して両ロールにアタッチする。Terragrunt 設定は `env.hcl`（共通）・`cli.hcl`（CLI設定）・`actions.hcl`（Actions設定）に分割し、`terragrunt.hcl` で結合する。
 
 **Tech Stack:** Terraform, Terragrunt, AWS IAM, AWS Bedrock
 
@@ -14,16 +14,16 @@
 
 | ファイル | 操作 | 内容 |
 |---------|------|------|
-| `aws/bedrock-claude/modules/variables.tf` | 新規作成 | 全変数定義 |
-| `aws/bedrock-claude/modules/main.tf` | 新規作成 | data sources・locals・共有 Bedrock ポリシー |
-| `aws/bedrock-claude/modules/role_cli.tf` | 新規作成 | CLI IAM ロール + ポリシーアタッチ |
-| `aws/bedrock-claude/modules/role_actions.tf` | 新規作成 | Actions IAM ロール + ポリシーアタッチ |
-| `aws/bedrock-claude/modules/outputs.tf` | 新規作成 | 出力定義 |
-| `aws/bedrock-claude/root.hcl` | 新規作成 | Terragrunt ルート設定・remote state |
-| `aws/bedrock-claude/envs/develop/env.hcl` | 新規作成 | 共通環境変数 |
-| `aws/bedrock-claude/envs/develop/cli.hcl` | 新規作成 | CLI ロール設定 |
-| `aws/bedrock-claude/envs/develop/actions.hcl` | 新規作成 | Actions ロール設定 |
-| `aws/bedrock-claude/envs/develop/terragrunt.hcl` | 新規作成 | 3つの hcl を include して inputs に展開 |
+| `aws/ai-assistant/modules/variables.tf` | 新規作成 | 全変数定義 |
+| `aws/ai-assistant/modules/main.tf` | 新規作成 | data sources・locals・共有 Bedrock ポリシー |
+| `aws/ai-assistant/modules/role_cli.tf` | 新規作成 | CLI IAM ロール + ポリシーアタッチ |
+| `aws/ai-assistant/modules/role_actions.tf` | 新規作成 | Actions IAM ロール + ポリシーアタッチ |
+| `aws/ai-assistant/modules/outputs.tf` | 新規作成 | 出力定義 |
+| `aws/ai-assistant/root.hcl` | 新規作成 | Terragrunt ルート設定・remote state |
+| `aws/ai-assistant/envs/develop/env.hcl` | 新規作成 | 共通環境変数 |
+| `aws/ai-assistant/envs/develop/cli.hcl` | 新規作成 | CLI ロール設定 |
+| `aws/ai-assistant/envs/develop/actions.hcl` | 新規作成 | Actions ロール設定 |
+| `aws/ai-assistant/envs/develop/terragrunt.hcl` | 新規作成 | 3つの hcl を include して inputs に展開 |
 | `aws/claude-code/` | 削除 | 旧モジュール（Task 11 で destroy 後に削除） |
 | `aws/claude-code-action/` | 削除 | 旧モジュール（Task 11 で destroy 後に削除） |
 
@@ -32,15 +32,15 @@
 ### Task 1: Create `modules/variables.tf`
 
 **Files:**
-- Create: `aws/bedrock-claude/modules/variables.tf`
+- Create: `aws/ai-assistant/modules/variables.tf`
 
 - [ ] **Step 1: ディレクトリを作成してファイルを書く**
 
 ```bash
-mkdir -p aws/bedrock-claude/modules
+mkdir -p aws/ai-assistant/modules
 ```
 
-`aws/bedrock-claude/modules/variables.tf`:
+`aws/ai-assistant/modules/variables.tf`:
 
 ```hcl
 variable "project_name" {
@@ -147,7 +147,7 @@ variable "claude_model_region" {
 - [ ] **Step 2: フォーマット確認**
 
 ```bash
-terraform fmt -check aws/bedrock-claude/modules/variables.tf
+terraform fmt -check aws/ai-assistant/modules/variables.tf
 ```
 
 Expected: 出力なし（差分なし）
@@ -155,8 +155,8 @@ Expected: 出力なし（差分なし）
 - [ ] **Step 3: Commit**
 
 ```bash
-git add aws/bedrock-claude/modules/variables.tf
-git commit -s -m "feat: add bedrock-claude variables.tf"
+git add aws/ai-assistant/modules/variables.tf
+git commit -s -m "feat: add ai-assistant variables.tf"
 ```
 
 ---
@@ -164,11 +164,11 @@ git commit -s -m "feat: add bedrock-claude variables.tf"
 ### Task 2: Create `modules/main.tf`
 
 **Files:**
-- Create: `aws/bedrock-claude/modules/main.tf`
+- Create: `aws/ai-assistant/modules/main.tf`
 
 - [ ] **Step 1: ファイルを書く**
 
-`aws/bedrock-claude/modules/main.tf`:
+`aws/ai-assistant/modules/main.tf`:
 
 ```hcl
 # main.tf - Data sources, locals, and shared Bedrock policy
@@ -198,7 +198,7 @@ locals {
 
 # Shared IAM Policy for Bedrock Claude Access
 resource "aws_iam_policy" "bedrock_claude_policy" {
-  name        = "${var.project_name}-${var.environment}-bedrock-claude-policy"
+  name        = "${var.project_name}-${var.environment}-ai-assistant-policy"
   description = "Policy for Bedrock Claude model access via cross-region inference profiles"
 
   policy = jsonencode({
@@ -245,8 +245,8 @@ resource "aws_iam_policy" "bedrock_claude_policy" {
   })
 
   tags = merge(var.common_tags, {
-    Name    = "${var.project_name}-${var.environment}-bedrock-claude-policy"
-    Purpose = "bedrock-claude-access"
+    Name    = "${var.project_name}-${var.environment}-ai-assistant-policy"
+    Purpose = "ai-assistant-access"
   })
 }
 ```
@@ -254,7 +254,7 @@ resource "aws_iam_policy" "bedrock_claude_policy" {
 - [ ] **Step 2: フォーマット確認**
 
 ```bash
-terraform fmt -check aws/bedrock-claude/modules/main.tf
+terraform fmt -check aws/ai-assistant/modules/main.tf
 ```
 
 Expected: 出力なし
@@ -262,8 +262,8 @@ Expected: 出力なし
 - [ ] **Step 3: Commit**
 
 ```bash
-git add aws/bedrock-claude/modules/main.tf
-git commit -s -m "feat: add bedrock-claude shared Bedrock policy in main.tf"
+git add aws/ai-assistant/modules/main.tf
+git commit -s -m "feat: add ai-assistant shared Bedrock policy in main.tf"
 ```
 
 ---
@@ -271,11 +271,11 @@ git commit -s -m "feat: add bedrock-claude shared Bedrock policy in main.tf"
 ### Task 3: Create `modules/role_cli.tf`
 
 **Files:**
-- Create: `aws/bedrock-claude/modules/role_cli.tf`
+- Create: `aws/ai-assistant/modules/role_cli.tf`
 
 - [ ] **Step 1: ファイルを書く**
 
-`aws/bedrock-claude/modules/role_cli.tf`:
+`aws/ai-assistant/modules/role_cli.tf`:
 
 ```hcl
 # role_cli.tf - CLI IAM role for local development
@@ -299,7 +299,7 @@ resource "aws_iam_role" "cli_role" {
 
   tags = merge(var.common_tags, {
     Name    = "${var.project_name}-${var.environment}-cli-role"
-    Purpose = "bedrock-claude-cli"
+    Purpose = "ai-assistant-cli"
   })
 }
 
@@ -318,7 +318,7 @@ resource "aws_iam_role_policy_attachment" "cli_additional_policies" {
 - [ ] **Step 2: フォーマット確認**
 
 ```bash
-terraform fmt -check aws/bedrock-claude/modules/role_cli.tf
+terraform fmt -check aws/ai-assistant/modules/role_cli.tf
 ```
 
 Expected: 出力なし
@@ -326,7 +326,7 @@ Expected: 出力なし
 - [ ] **Step 3: Commit**
 
 ```bash
-git add aws/bedrock-claude/modules/role_cli.tf
+git add aws/ai-assistant/modules/role_cli.tf
 git commit -s -m "feat: add CLI IAM role in role_cli.tf"
 ```
 
@@ -335,11 +335,11 @@ git commit -s -m "feat: add CLI IAM role in role_cli.tf"
 ### Task 4: Create `modules/role_actions.tf`
 
 **Files:**
-- Create: `aws/bedrock-claude/modules/role_actions.tf`
+- Create: `aws/ai-assistant/modules/role_actions.tf`
 
 - [ ] **Step 1: ファイルを書く**
 
-`aws/bedrock-claude/modules/role_actions.tf`:
+`aws/ai-assistant/modules/role_actions.tf`:
 
 ```hcl
 # role_actions.tf - GitHub Actions IAM role for CI/CD
@@ -375,7 +375,7 @@ resource "aws_iam_role" "actions_role" {
     Name        = "${var.project_name}-${var.environment}-github-actions-role"
     GitHubOrg   = var.github_org
     GitHubRepos = join("+", var.github_repos)
-    Purpose     = "bedrock-claude-github-actions"
+    Purpose     = "ai-assistant-github-actions"
   })
 }
 
@@ -394,7 +394,7 @@ resource "aws_iam_role_policy_attachment" "actions_additional_policies" {
 - [ ] **Step 2: フォーマット確認**
 
 ```bash
-terraform fmt -check aws/bedrock-claude/modules/role_actions.tf
+terraform fmt -check aws/ai-assistant/modules/role_actions.tf
 ```
 
 Expected: 出力なし
@@ -402,7 +402,7 @@ Expected: 出力なし
 - [ ] **Step 3: Commit**
 
 ```bash
-git add aws/bedrock-claude/modules/role_actions.tf
+git add aws/ai-assistant/modules/role_actions.tf
 git commit -s -m "feat: add Actions IAM role in role_actions.tf"
 ```
 
@@ -411,11 +411,11 @@ git commit -s -m "feat: add Actions IAM role in role_actions.tf"
 ### Task 5: Create `modules/outputs.tf` and validate module
 
 **Files:**
-- Create: `aws/bedrock-claude/modules/outputs.tf`
+- Create: `aws/ai-assistant/modules/outputs.tf`
 
 - [ ] **Step 1: ファイルを書く**
 
-`aws/bedrock-claude/modules/outputs.tf`:
+`aws/ai-assistant/modules/outputs.tf`:
 
 ```hcl
 # outputs.tf
@@ -479,7 +479,7 @@ output "github_actions_configuration" {
 - [ ] **Step 2: フォーマット確認**
 
 ```bash
-terraform fmt -check aws/bedrock-claude/modules/outputs.tf
+terraform fmt -check aws/ai-assistant/modules/outputs.tf
 ```
 
 Expected: 出力なし
@@ -487,7 +487,7 @@ Expected: 出力なし
 - [ ] **Step 3: モジュール全体を validate**
 
 ```bash
-cd aws/bedrock-claude/modules && terraform init -backend=false && terraform validate
+cd aws/ai-assistant/modules && terraform init -backend=false && terraform validate
 ```
 
 Expected:
@@ -498,8 +498,8 @@ Success! The configuration is valid.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add aws/bedrock-claude/modules/outputs.tf
-git commit -s -m "feat: add outputs.tf for bedrock-claude module"
+git add aws/ai-assistant/modules/outputs.tf
+git commit -s -m "feat: add outputs.tf for ai-assistant module"
 ```
 
 ---
@@ -507,17 +507,17 @@ git commit -s -m "feat: add outputs.tf for bedrock-claude module"
 ### Task 6: Create `root.hcl`
 
 **Files:**
-- Create: `aws/bedrock-claude/root.hcl`
+- Create: `aws/ai-assistant/root.hcl`
 
 - [ ] **Step 1: ファイルを書く**
 
-`aws/bedrock-claude/root.hcl`:
+`aws/ai-assistant/root.hcl`:
 
 ```hcl
-# root.hcl - Root Terragrunt configuration for bedrock-claude
+# root.hcl - Root Terragrunt configuration for ai-assistant
 
 locals {
-  project_name = "bedrock-claude"
+  project_name = "ai-assistant"
 
   # Parse environment from the directory path
   # This assumes environments are in envs/<environment>/ directories
@@ -529,7 +529,7 @@ locals {
     Environment = local.environment
     ManagedBy   = "terragrunt"
     Repository  = "panicboat/platform"
-    Component   = "bedrock-claude"
+    Component   = "ai-assistant"
     Team        = "panicboat"
   }
 }
@@ -543,7 +543,7 @@ remote_state {
   }
   config = {
     bucket         = "terragrunt-state-${get_aws_account_id()}"
-    key            = "platform/bedrock-claude/${local.environment}/terraform.tfstate"
+    key            = "platform/ai-assistant/${local.environment}/terraform.tfstate"
     region         = "ap-northeast-1"
     dynamodb_table = "terragrunt-state-locks"
     encrypt        = true
@@ -562,7 +562,7 @@ inputs = {
 - [ ] **Step 2: フォーマット確認**
 
 ```bash
-terragrunt hcl fmt --check --file aws/bedrock-claude/root.hcl
+terragrunt hcl fmt --check --file aws/ai-assistant/root.hcl
 ```
 
 Expected: 出力なし
@@ -570,8 +570,8 @@ Expected: 出力なし
 - [ ] **Step 3: Commit**
 
 ```bash
-git add aws/bedrock-claude/root.hcl
-git commit -s -m "feat: add bedrock-claude root.hcl with remote state config"
+git add aws/ai-assistant/root.hcl
+git commit -s -m "feat: add ai-assistant root.hcl with remote state config"
 ```
 
 ---
@@ -579,17 +579,17 @@ git commit -s -m "feat: add bedrock-claude root.hcl with remote state config"
 ### Task 7: Create `envs/develop/env.hcl`, `cli.hcl`, `actions.hcl`
 
 **Files:**
-- Create: `aws/bedrock-claude/envs/develop/env.hcl`
-- Create: `aws/bedrock-claude/envs/develop/cli.hcl`
-- Create: `aws/bedrock-claude/envs/develop/actions.hcl`
+- Create: `aws/ai-assistant/envs/develop/env.hcl`
+- Create: `aws/ai-assistant/envs/develop/cli.hcl`
+- Create: `aws/ai-assistant/envs/develop/actions.hcl`
 
 - [ ] **Step 1: ディレクトリを作成して env.hcl を書く**
 
 ```bash
-mkdir -p aws/bedrock-claude/envs/develop
+mkdir -p aws/ai-assistant/envs/develop
 ```
 
-`aws/bedrock-claude/envs/develop/env.hcl`:
+`aws/ai-assistant/envs/develop/env.hcl`:
 
 ```hcl
 # env.hcl - Common environment configuration for develop
@@ -604,7 +604,7 @@ locals {
 
   environment_tags = {
     Environment = local.environment
-    Purpose     = "bedrock-claude"
+    Purpose     = "ai-assistant"
     Owner       = "panicboat"
   }
 }
@@ -612,7 +612,7 @@ locals {
 
 - [ ] **Step 2: cli.hcl を書く**
 
-`aws/bedrock-claude/envs/develop/cli.hcl`:
+`aws/ai-assistant/envs/develop/cli.hcl`:
 
 ```hcl
 # cli.hcl - CLI role configuration for develop
@@ -626,7 +626,7 @@ locals {
 
 - [ ] **Step 3: actions.hcl を書く**
 
-`aws/bedrock-claude/envs/develop/actions.hcl`:
+`aws/ai-assistant/envs/develop/actions.hcl`:
 
 ```hcl
 # actions.hcl - GitHub Actions role configuration for develop
@@ -641,9 +641,9 @@ locals {
 - [ ] **Step 4: フォーマット確認**
 
 ```bash
-terragrunt hcl fmt --check --file aws/bedrock-claude/envs/develop/env.hcl
-terragrunt hcl fmt --check --file aws/bedrock-claude/envs/develop/cli.hcl
-terragrunt hcl fmt --check --file aws/bedrock-claude/envs/develop/actions.hcl
+terragrunt hcl fmt --check --file aws/ai-assistant/envs/develop/env.hcl
+terragrunt hcl fmt --check --file aws/ai-assistant/envs/develop/cli.hcl
+terragrunt hcl fmt --check --file aws/ai-assistant/envs/develop/actions.hcl
 ```
 
 Expected: いずれも出力なし
@@ -651,9 +651,9 @@ Expected: いずれも出力なし
 - [ ] **Step 5: Commit**
 
 ```bash
-git add aws/bedrock-claude/envs/develop/env.hcl \
-        aws/bedrock-claude/envs/develop/cli.hcl \
-        aws/bedrock-claude/envs/develop/actions.hcl
+git add aws/ai-assistant/envs/develop/env.hcl \
+        aws/ai-assistant/envs/develop/cli.hcl \
+        aws/ai-assistant/envs/develop/actions.hcl
 git commit -s -m "feat: add develop environment hcl config files"
 ```
 
@@ -662,11 +662,11 @@ git commit -s -m "feat: add develop environment hcl config files"
 ### Task 8: Create `envs/develop/terragrunt.hcl` and validate
 
 **Files:**
-- Create: `aws/bedrock-claude/envs/develop/terragrunt.hcl`
+- Create: `aws/ai-assistant/envs/develop/terragrunt.hcl`
 
 - [ ] **Step 1: ファイルを書く**
 
-`aws/bedrock-claude/envs/develop/terragrunt.hcl`:
+`aws/ai-assistant/envs/develop/terragrunt.hcl`:
 
 ```hcl
 # terragrunt.hcl - develop environment
@@ -695,7 +695,7 @@ terraform {
 }
 
 inputs = {
-  project_name = "bedrock-claude"
+  project_name = "ai-assistant"
   environment  = include.env.locals.environment
 
   # AWS configuration
@@ -718,7 +718,7 @@ inputs = {
   common_tags = merge(
     include.env.locals.environment_tags,
     {
-      Project    = "bedrock-claude"
+      Project    = "ai-assistant"
       ManagedBy  = "terragrunt"
       Repository = "panicboat/platform"
     }
@@ -729,7 +729,7 @@ inputs = {
 - [ ] **Step 2: フォーマット確認**
 
 ```bash
-terragrunt hcl fmt --check --file aws/bedrock-claude/envs/develop/terragrunt.hcl
+terragrunt hcl fmt --check --file aws/ai-assistant/envs/develop/terragrunt.hcl
 ```
 
 Expected: 出力なし
@@ -737,7 +737,7 @@ Expected: 出力なし
 - [ ] **Step 3: Terragrunt 全体を validate**
 
 ```bash
-cd aws/bedrock-claude/envs/develop && terragrunt validate
+cd aws/ai-assistant/envs/develop && terragrunt validate
 ```
 
 Expected:
@@ -748,7 +748,7 @@ Success! The configuration is valid.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add aws/bedrock-claude/envs/develop/terragrunt.hcl
+git add aws/ai-assistant/envs/develop/terragrunt.hcl
 git commit -s -m "feat: add develop terragrunt.hcl"
 ```
 
@@ -761,7 +761,7 @@ git commit -s -m "feat: add develop terragrunt.hcl"
 - [ ] **Step 1: plan を実行して作成リソースを確認**
 
 ```bash
-cd aws/bedrock-claude/envs/develop && terragrunt plan
+cd aws/ai-assistant/envs/develop && terragrunt plan
 ```
 
 Expected: 以下3リソースの作成が表示される
@@ -780,9 +780,9 @@ Plan: 5 to add, 0 to change, 0 to destroy.
 - [ ] **Step 2: plan の差分に予期しないリソースがないことを確認**
 
 destroy や change がゼロであること、作成されるリソース名が以下であることを確認する:
-- `bedrock-claude-develop-bedrock-claude-policy`
-- `bedrock-claude-develop-cli-role`
-- `bedrock-claude-develop-github-actions-role`
+- `ai-assistant-develop-ai-assistant-policy`
+- `ai-assistant-develop-cli-role`
+- `ai-assistant-develop-github-actions-role`
 
 ---
 
@@ -794,7 +794,7 @@ destroy や change がゼロであること、作成されるリソース名が�
 - [ ] **Step 1: apply を実行**
 
 ```bash
-cd aws/bedrock-claude/envs/develop && terragrunt apply
+cd aws/ai-assistant/envs/develop && terragrunt apply
 ```
 
 Expected:
@@ -806,7 +806,7 @@ Apply complete! Resources: 5 added, 0 changed, 0 destroyed.
 
 ```bash
 aws sts assume-role \
-  --role-arn "arn:aws:iam::559744160976:role/bedrock-claude-develop-cli-role" \
+  --role-arn "arn:aws:iam::559744160976:role/ai-assistant-develop-cli-role" \
   --role-session-name test-session
 ```
 
@@ -815,12 +815,12 @@ Expected: `AssumedRoleUser` を含む JSON レスポンス
 - [ ] **Step 3: Actions ロール ARN を確認して参照先を更新**
 
 ```bash
-cd aws/bedrock-claude/envs/develop && terragrunt output actions_role_arn
+cd aws/ai-assistant/envs/develop && terragrunt output actions_role_arn
 ```
 
 Expected:
 ```
-"arn:aws:iam::559744160976:role/bedrock-claude-develop-github-actions-role"
+"arn:aws:iam::559744160976:role/ai-assistant-develop-github-actions-role"
 ```
 
 GitHub Actions ワークフローで Claude Code Action に渡している `AWS_ROLE_ARN`（シークレット or ワークフロー YAML 内）を上記 ARN に更新する。
@@ -829,7 +829,7 @@ GitHub Actions ワークフローで Claude Code Action に渡している `AWS_
 
 ```bash
 git add <changed-files>
-git commit -s -m "feat: update Actions role ARN to bedrock-claude-develop-github-actions-role"
+git commit -s -m "feat: update Actions role ARN to ai-assistant-develop-github-actions-role"
 ```
 
 ---
@@ -877,23 +877,23 @@ git commit -s -m "chore: remove legacy claude-code and claude-code-action module
 - [ ] **Step 1: ブランチを push**
 
 ```bash
-git push -u origin feat/bedrock-claude-integration
+git push -u origin feat/ai-assistant-integration
 ```
 
 - [ ] **Step 2: PR を作成**
 
 ```bash
 gh pr create \
-  --title "feat: integrate claude-code and claude-code-action into bedrock-claude" \
+  --title "feat: integrate claude-code and claude-code-action into ai-assistant" \
   --body "$(cat <<'EOF'
 ## Summary
-- `aws/claude-code` と `aws/claude-code-action` を `aws/bedrock-claude` に統合
+- `aws/claude-code` と `aws/claude-code-action` を `aws/ai-assistant` に統合
 - CLI ロール（`sts:AssumeRole`）と Actions ロール（`sts:AssumeRoleWithWebIdentity`）を単一モジュールで管理
 - Terragrunt 設定を `env.hcl`・`cli.hcl`・`actions.hcl` に分割
 - `bedrock:InferenceProfileArn` 条件キーを `StringLike` に統一（旧 `StringEquals` バグを修正）
 
 ## Migration
-1. `aws/bedrock-claude/envs/develop` で `terragrunt apply` 済み
+1. `aws/ai-assistant/envs/develop` で `terragrunt apply` 済み
 2. 旧モジュールを `terragrunt destroy` 済み
 3. 旧ディレクトリを削除済み
 

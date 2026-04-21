@@ -1,9 +1,9 @@
-# root.hcl - Root Terragrunt configuration for bedrock-claude
+# root.hcl - Root Terragrunt configuration for ai-assistant
 # This file contains common settings shared across all environments
 
 locals {
   # Project metadata
-  project_name = "bedrock-claude"
+  project_name = "ai-assistant"
 
   # Parse environment from the directory path
   # This assumes environments are in envs/<environment>/ directories
@@ -16,7 +16,7 @@ locals {
     Environment = local.environment
     ManagedBy   = "terragrunt"
     Repository  = "panicboat/platform"
-    Component   = "bedrock-claude"
+    Component   = "ai-assistant"
     Team        = "panicboat"
   }
 }
@@ -32,8 +32,8 @@ remote_state {
     # Shared bucket for all platform services
     bucket = "terragrunt-state-${get_aws_account_id()}"
 
-    # Service-specific path: bedrock-claude/<environment>/terraform.tfstate
-    key    = "platform/bedrock-claude/${local.environment}/terraform.tfstate"
+    # Service-specific path: ai-assistant/<environment>/terraform.tfstate
+    key    = "platform/ai-assistant/${local.environment}/terraform.tfstate"
     region = "ap-northeast-1"
 
     # Shared DynamoDB table for state locking across all services
