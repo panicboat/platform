@@ -36,5 +36,5 @@ jobs:
         uses: panicboat/deploy-actions/claude-code-action@main
         with:
           token: ${{ steps.app-token.outputs.token }}
-          aws-role-arn: arn:aws:iam::559744160976:role/claude-code-action-develop-github-actions-role
+          aws-role-arn: arn:aws:iam::559744160976:role/ai-assistant-develop-github-actions-role
           trigger-phrase: "@claude"
