@@ -1,5 +1,9 @@
 # terragrunt.hcl - develop environment
 
+locals {
+  project_name = "ai-assistant"
+}
+
 include "root" {
   path = find_in_parent_folders("root.hcl")
 }
@@ -24,7 +28,7 @@ terraform {
 }
 
 inputs = {
-  project_name = "ai-assistant"
+  project_name = local.project_name
   environment  = include.env.locals.environment
 
   # AWS configuration
@@ -47,7 +51,7 @@ inputs = {
   common_tags = merge(
     include.env.locals.environment_tags,
     {
-      Project    = "ai-assistant"
+      Project    = local.project_name
       ManagedBy  = "terragrunt"
       Repository = "panicboat/platform"
     }

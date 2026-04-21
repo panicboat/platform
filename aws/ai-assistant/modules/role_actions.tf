@@ -41,7 +41,7 @@ resource "aws_iam_role_policy_attachment" "actions_bedrock_policy" {
 }
 
 resource "aws_iam_role_policy_attachment" "actions_additional_policies" {
-  count      = length(var.additional_iam_policies)
+  for_each   = toset(var.additional_iam_policies)
   role       = aws_iam_role.actions_role.name
-  policy_arn = var.additional_iam_policies[count.index]
+  policy_arn = each.value
 }

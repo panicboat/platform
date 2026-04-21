@@ -1,4 +1,4 @@
-# variables.tf - Variables for bedrock-claude module
+# variables.tf - Variables for ai-assistant module
 
 variable "project_name" {
   description = "Name of the project"
@@ -25,6 +25,10 @@ variable "aws_region" {
 variable "trusted_principal_arns" {
   description = "List of AWS principal ARNs allowed to assume the CLI role"
   type        = list(string)
+  validation {
+    condition     = length(var.trusted_principal_arns) > 0
+    error_message = "At least one trusted principal ARN must be specified."
+  }
 }
 
 variable "github_org" {
@@ -73,6 +77,7 @@ variable "bedrock_inference_profiles" {
       source_regions = [
         "us-east-1",
         "us-east-2",
+        "us-west-2",
       ]
     },
     {
@@ -81,6 +86,7 @@ variable "bedrock_inference_profiles" {
       source_regions = [
         "us-east-1",
         "us-east-2",
+        "us-west-2",
       ]
     },
     {
@@ -89,6 +95,7 @@ variable "bedrock_inference_profiles" {
       source_regions = [
         "us-east-1",
         "us-east-2",
+        "us-west-2",
       ]
     },
   ]

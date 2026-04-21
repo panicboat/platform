@@ -35,22 +35,3 @@ output "claude_model_region" {
   value       = var.claude_model_region
 }
 
-output "cli_configuration" {
-  description = "Configuration for local Claude Code CLI"
-  value = {
-    role_arn                   = aws_iam_role.cli_role.arn
-    aws_region                 = var.aws_region
-    claude_model_region        = var.claude_model_region
-    bedrock_inference_profiles = var.bedrock_inference_profiles
-  }
-}
-
-output "github_actions_configuration" {
-  description = "Configuration for GitHub Actions"
-  value = {
-    role_arn                   = aws_iam_role.actions_role.arn
-    aws_region                 = var.aws_region
-    claude_model_region        = var.claude_model_region
-    bedrock_inference_profiles = var.bedrock_inference_profiles
-  }
-}

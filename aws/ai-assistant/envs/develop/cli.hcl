@@ -2,6 +2,6 @@
 
 locals {
   trusted_principal_arns = [
-    "arn:aws:iam::559744160976:user/panicboat",
+    "arn:aws:iam::${get_aws_account_id()}:user/panicboat",
   ]
 }

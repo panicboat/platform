@@ -15,12 +15,12 @@ locals {
   # InvokeModel returns AccessDenied, but the FM ARNs are only granted when the
   # request is routed through an approved inference profile (see the
   # bedrock:InferenceProfileArn condition below).
-  foundation_model_arns = flatten([
+  foundation_model_arns = distinct(flatten([
     for p in var.bedrock_inference_profiles : [
       for r in p.source_regions :
       "arn:aws:bedrock:${r}::foundation-model/${p.model_id}"
     ]
-  ])
+  ]))
 }
 
 # Shared IAM Policy for Bedrock Claude Access
@@ -63,8 +63,7 @@ resource "aws_iam_policy" "bedrock_claude_policy" {
       {
         Effect = "Allow"
         Action = [
-          "aws-marketplace:ViewSubscriptions",
-          "aws-marketplace:Subscribe"
+          "aws-marketplace:ViewSubscriptions"
         ]
         Resource = "*"
       }
