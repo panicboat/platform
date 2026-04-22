@@ -37,4 +37,3 @@ jobs:
         uses: panicboat/deploy-actions/claude-code-action@main
         with:
           token: ${{ steps.app-token.outputs.token }}
-          trigger-phrase: "@claude"
