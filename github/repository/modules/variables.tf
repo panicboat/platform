@@ -32,7 +32,7 @@ variable "github_token" {
 }
 
 variable "repositories" {
-  description = "Map of repository configurations"
+  description = "Map of repository configurations. visibility must be one of: public, private, internal"
   type = map(object({
     name        = string
     description = string
