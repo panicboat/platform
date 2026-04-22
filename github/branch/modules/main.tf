@@ -21,6 +21,8 @@ locals {
         required_linear_history         = branch.required_linear_history
         require_conversation_resolution = branch.require_conversation_resolution
         require_signed_commits          = branch.require_signed_commits
+        # TODO: restrict_pushes is accepted in variables but not yet applied.
+        # GitHub Provider v6 uses push_restrictions block — implement when needed.
       }
     }
   ]...)

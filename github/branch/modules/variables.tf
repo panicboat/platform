@@ -26,7 +26,7 @@ variable "github_token" {
 }
 
 variable "repositories" {
-  description = "Map of branch protection configurations per repository. visibility must be one of: public, private, internal"
+  description = "Map of branch protection configurations per repository"
   type = map(object({
     name = string
     branch_protection = map(object({
