@@ -16,5 +16,5 @@ inputs = {
     monorepo = local.monorepo.locals.repository
     platform = local.platform.locals.repository
   }
-  github_token = get_env("GITHUB_TOKEN", "")
+  github_token = get_env("GITHUB_TOKEN")
 }

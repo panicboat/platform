@@ -1,5 +1,3 @@
-data "aws_caller_identity" "current" {}
-
 resource "github_repository" "repository" {
   for_each = var.repositories
 
