@@ -1,10 +1,11 @@
-# github/github-repository Refactoring Design
+# github/repository Refactoring Design
 
 ## Overview
 
-`github/github-repository` 配下の `envs/` と `modules/` を整理するリファクタリング。
+`github/github-repository` を `github/repository` にリネームしつつ、配下の `envs/` と `modules/` を整理するリファクタリング。
 
 現状の課題：
+- ディレクトリ名 `github-repository` が `github/` 配下に置かれており `github-` プレフィックスが冗長
 - `envs/monorepo/terragrunt.hcl` と `envs/platform/terragrunt.hcl` の内容が完全に重複している
 - `modules/main.tf` にリポジトリ作成・ブランチ保護・CloudWatch ログの3つの関心事が混在している
 - `envs/{env}` の `{env}` が実際にはリポジトリ名（monorepo/platform）であり `workflow-config.yaml` の環境定義と整合していない
@@ -14,35 +15,41 @@
 ### Before
 
 ```
-envs/
-  monorepo/
-    terragrunt.hcl   # 全リポジトリで同一内容（重複）
-    env.hcl
-  platform/
-    terragrunt.hcl   # 全リポジトリで同一内容（重複）
-    env.hcl
-modules/
-  main.tf            # 3つの関心事が混在
-  variables.tf
-  outputs.tf
-  terraform.tf
+github/
+  github-repository/
+    root.hcl
+    envs/
+      monorepo/
+        terragrunt.hcl   # 全リポジトリで同一内容（重複）
+        env.hcl
+      platform/
+        terragrunt.hcl   # 全リポジトリで同一内容（重複）
+        env.hcl
+    modules/
+      main.tf            # 3つの関心事が混在
+      variables.tf
+      outputs.tf
+      terraform.tf
 ```
 
 ### After
 
 ```
-envs/
-  develop/
-    terragrunt.hcl   # 単一実行単位
-    monorepo.hcl     # リポジトリ設定
-    platform.hcl     # リポジトリ設定
-modules/
-  terraform.tf
-  variables.tf         # repositories = map(object({...})) に変更
-  repository.tf        # github_repository
-  branch_protection.tf # github_branch_protection
-  logging.tf           # aws_cloudwatch_log_group
-  outputs.tf
+github/
+  repository/            # github-repository → repository にリネーム
+    root.hcl
+    envs/
+      develop/
+        terragrunt.hcl   # 単一実行単位
+        monorepo.hcl     # リポジトリ設定
+        platform.hcl     # リポジトリ設定
+    modules/
+      terraform.tf
+      variables.tf         # repositories = map(object({...})) に変更
+      repository.tf        # github_repository
+      branch_protection.tf # github_branch_protection
+      logging.tf           # aws_cloudwatch_log_group
+      outputs.tf
 ```
 
 ## Module Interface
@@ -163,6 +170,32 @@ inputs = {
 }
 ```
 
+## root.hcl の変更
+
+ディレクトリリネームに伴い `root.hcl` の以下の値を変更する：
+
+```hcl
+# 変更前
+locals {
+  project_name = "github-repository"
+}
+remote_state {
+  config = {
+    key = "platform/github-repository/${local.environment}/terraform.tfstate"
+  }
+}
+
+# 変更後
+locals {
+  project_name = "repository"
+}
+remote_state {
+  config = {
+    key = "platform/repository/${local.environment}/terraform.tfstate"
+  }
+}
+```
+
 ## State Migration
 
 ### 現状の state ファイル
@@ -175,7 +208,7 @@ platform/github-repository/platform/terraform.tfstate
 ### 移行後の state ファイル
 
 ```
-platform/github-repository/develop/terraform.tfstate
+platform/repository/develop/terraform.tfstate
 ```
 
 ### 移行手順
