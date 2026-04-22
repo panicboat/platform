@@ -2,7 +2,7 @@
 
 ## Overview
 
-`github/github-repository` を `github/repository` にリネームしつつ、配下の `envs/` と `modules/` を整理するリファクタリング。
+`github/github-repository` を `github/repository` と `github/branch` の2サービスに分割しつつ、`envs/` と `modules/` を整理するリファクタリング。
 
 現状の課題：
 - ディレクトリ名 `github-repository` が `github/` 配下に置かれており `github-` プレフィックスが冗長
@@ -20,13 +20,13 @@ github/
     root.hcl
     envs/
       monorepo/
-        terragrunt.hcl   # 全リポジトリで同一内容（重複）
+        terragrunt.hcl
         env.hcl
       platform/
-        terragrunt.hcl   # 全リポジトリで同一内容（重複）
+        terragrunt.hcl
         env.hcl
     modules/
-      main.tf            # 3つの関心事が混在
+      main.tf            # github_repository + github_branch_protection + aws_cloudwatch_log_group が混在
       variables.tf
       outputs.tf
       terraform.tf
@@ -36,27 +36,38 @@ github/
 
 ```
 github/
-  repository/            # github-repository → repository にリネーム
+  repository/            # github_repository + aws_cloudwatch_log_group
     root.hcl
     envs/
       develop/
-        terragrunt.hcl   # 単一実行単位
-        monorepo.hcl     # リポジトリ設定
-        platform.hcl     # リポジトリ設定
+        terragrunt.hcl
+        monorepo.hcl
+        platform.hcl
     modules/
       terraform.tf
-      variables.tf         # repositories = map(object({...})) に変更
-      repository.tf        # github_repository
-      branch_protection.tf # github_branch_protection
-      logging.tf           # aws_cloudwatch_log_group
+      variables.tf
+      repository.tf      # github_repository
+      logging.tf         # aws_cloudwatch_log_group
+      outputs.tf
+  branch/                # github_branch_protection
+    root.hcl
+    envs/
+      develop/
+        terragrunt.hcl
+        monorepo.hcl
+        platform.hcl
+    modules/
+      terraform.tf
+      variables.tf
+      branch_protection.tf  # github_branch_protection
       outputs.tf
 ```
 
 ## Module Interface
 
-### variables.tf
+### github/repository
 
-`repository_config`（単一オブジェクト）を `repositories`（map）に変更する。
+`variables.tf` はリポジトリ設定のみ（ブランチ保護を含まない）。
 
 ```hcl
 variable "repositories" {
@@ -70,6 +81,19 @@ variable "repositories" {
       wiki     = bool
       projects = bool
     })
+  }))
+}
+```
+
+### github/branch
+
+`variables.tf` はリポジトリ名とブランチ保護ルールのみ。
+
+```hcl
+variable "repositories" {
+  description = "Map of branch protection configurations per repository"
+  type = map(object({
+    name = string
     branch_protection = map(object({
       pattern                         = optional(string)
       required_reviews                = number
@@ -89,24 +113,23 @@ variable "repositories" {
 }
 ```
 
-### リソースの for_each
+### github/branch の branch_protection.tf
+
+`data "github_repository"` でリポジトリの `node_id` を取得する。
 
 ```hcl
-# repository.tf
-resource "github_repository" "repository" {
-  for_each    = var.repositories
-  name        = each.value.name
-  description = each.value.description
-  visibility  = each.value.visibility
-  ...
+data "github_repository" "repo" {
+  for_each = var.repositories
+  name     = each.value.name
 }
 
-# branch_protection.tf
 locals {
   branch_protection_rules = merge([
     for repo_key, repo in var.repositories : {
       for branch_key, branch in repo.branch_protection :
-      "${repo_key}-${branch_key}" => merge(branch, { repository_node_id = github_repository.repository[repo_key].node_id })
+      "${repo_key}-${branch_key}" => merge(branch, {
+        repository_node_id = data.github_repository.repo[repo_key].node_id
+      })
     }
   ]...)
 }
@@ -120,7 +143,7 @@ resource "github_branch_protection" "branches" {
 
 ## Data Flow
 
-### envs/develop/monorepo.hcl
+### github/repository/envs/develop/monorepo.hcl
 
 ```hcl
 locals {
@@ -133,6 +156,16 @@ locals {
       wiki     = false
       projects = true
     }
+  }
+}
+```
+
+### github/branch/envs/develop/monorepo.hcl
+
+```hcl
+locals {
+  repository = {
+    name = "monorepo"
     branch_protection = {
       main = {
         required_reviews                = 0
@@ -153,7 +186,7 @@ locals {
 }
 ```
 
-### envs/develop/terragrunt.hcl
+### envs/develop/terragrunt.hcl（両サービス共通パターン）
 
 ```hcl
 locals {
@@ -172,26 +205,26 @@ inputs = {
 
 ## root.hcl の変更
 
-ディレクトリリネームに伴い `root.hcl` の以下の値を変更する：
+各サービスの `root.hcl` で `project_name` と state キーを変更する。
 
 ```hcl
-# 変更前
-locals {
-  project_name = "github-repository"
-}
-remote_state {
-  config = {
-    key = "platform/github-repository/${local.environment}/terraform.tfstate"
-  }
-}
-
-# 変更後
+# github/repository/root.hcl
 locals {
   project_name = "repository"
 }
 remote_state {
   config = {
     key = "platform/repository/${local.environment}/terraform.tfstate"
+  }
+}
+
+# github/branch/root.hcl
+locals {
+  project_name = "branch"
+}
+remote_state {
+  config = {
+    key = "platform/branch/${local.environment}/terraform.tfstate"
   }
 }
 ```
@@ -208,27 +241,30 @@ platform/github-repository/platform/terraform.tfstate
 ### 移行後の state ファイル
 
 ```
-platform/repository/develop/terraform.tfstate
+platform/repository/develop/terraform.tfstate   # github_repository + aws_cloudwatch_log_group
+platform/branch/develop/terraform.tfstate        # github_branch_protection
 ```
 
 ### 移行手順
 
 1. 新構造のコードを適用する前に `terraform state mv` で各リソースを移行する
-2. `monorepo` state から新 state へ移行：
+2. `monorepo` state から `platform/repository/develop` へ：
    - `github_repository.repository` → `github_repository.repository["monorepo"]`
-   - `github_branch_protection.branches["main"]` → `github_branch_protection.branches["monorepo-main"]`
    - `aws_cloudwatch_log_group.github_repository_logs` → `aws_cloudwatch_log_group.github_repository_logs["monorepo"]`
-3. `platform` state から新 state へ移行：
+3. `platform` state から `platform/repository/develop` へ：
    - `github_repository.repository` → `github_repository.repository["platform"]`
-   - `github_branch_protection.branches["main"]` → `github_branch_protection.branches["platform-main"]`
    - `aws_cloudwatch_log_group.github_repository_logs` → `aws_cloudwatch_log_group.github_repository_logs["platform"]`
-4. 移行後に `terraform plan` で差分ゼロを確認
-5. 旧 state ファイルを削除
+4. `monorepo` state から `platform/branch/develop` へ：
+   - `github_branch_protection.branches["main"]` → `github_branch_protection.branches["monorepo-main"]`
+5. `platform` state から `platform/branch/develop` へ：
+   - `github_branch_protection.branches["main"]` → `github_branch_protection.branches["platform-main"]`
+6. 移行後に各サービスで `terraform plan` を実行し差分ゼロを確認
+7. 旧 state ファイルを削除
 
 `moved` ブロックは異なる state ファイル間の移行に対応していないため使用しない。
 
 ## Success Criteria
 
-- `terraform plan` で差分がゼロになること
+- `terraform plan` で差分がゼロになること（`github/repository`・`github/branch` 両サービス）
 - 既存リソース（GitHub リポジトリ・ブランチ保護・CloudWatch ログ）が削除・再作成されないこと
-- 新しいリポジトリの追加が `envs/develop/` に `.hcl` ファイルを1つ追加するだけで完結すること
+- 新しいリポジトリの追加が各サービスの `envs/develop/` に `.hcl` ファイルを1つ追加するだけで完結すること
