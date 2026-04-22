@@ -46,8 +46,7 @@ github/
     modules/
       terraform.tf
       variables.tf
-      repository.tf      # github_repository
-      logging.tf         # aws_cloudwatch_log_group
+      main.tf            # github_repository + aws_cloudwatch_log_group
       outputs.tf
   branch/                # github_branch_protection
     root.hcl
@@ -59,7 +58,7 @@ github/
     modules/
       terraform.tf
       variables.tf
-      branch_protection.tf  # github_branch_protection
+      main.tf            # github_branch_protection
       outputs.tf
 ```
 
@@ -113,7 +112,7 @@ variable "repositories" {
 }
 ```
 
-### github/branch の branch_protection.tf
+### github/branch の main.tf
 
 `data "github_repository"` でリポジトリの `node_id` を取得する。
 
