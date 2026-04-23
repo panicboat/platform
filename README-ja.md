@@ -18,7 +18,7 @@
 │   ├── clusters/k3d/          # Flux bootstrap (flux-system, repositories)
 │   ├── components/            # Cilium, Prometheus, Loki, Tempo, OTel, Beyla, etc.
 │   └── manifests/k3d/         # Rendered manifests for the k3d cluster
-├── github/github-repository/  # Terraform for GitHub repo settings
+├── github/repository/         # Terraform for GitHub repo settings
 ├── docs/
 └── workflow-config.yaml       # Environments and deployment targets
 ```
@@ -36,7 +36,7 @@
 |-------|-----------------|---------|
 | AWS Infrastructure | `aws/{service}/envs/{environment}` | Terragrunt 0.83.2 + OpenTofu 1.6.0 (`gruntwork-io/terragrunt-action@v3.2.0`) |
 | Kubernetes Platform | `kubernetes/components/{service}/{environment}` | Helmfile + Kustomize hydration (`reusable--kubernetes-builder.yaml`) / Flux CD |
-| GitHub Repo Settings | `github/github-repository` | Terraform |
+| GitHub Repo Settings | `github/repository` | Terraform |
 
 ### Environments
 
