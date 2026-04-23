@@ -1,10 +1,12 @@
+# variables.tf - Input variables for GitHub Repository Management module
+
 variable "project_name" {
   description = "Name of the project"
   type        = string
 }
 
 variable "environment" {
-  description = "Deployment environment"
+  description = "Repository name (e.g., monorepo, generated-manifests)"
   type        = string
 }
 
@@ -31,18 +33,35 @@ variable "github_token" {
   sensitive   = true
 }
 
-variable "repositories" {
-  description = "Map of repository configurations. visibility must be one of: public, private, internal"
-  type = map(object({
+variable "repository_config" {
+  description = "Repository configuration object"
+  type = object({
     name        = string
     description = string
     visibility  = string
+
     features = object({
       issues   = bool
       wiki     = bool
       projects = bool
     })
-  }))
+
+    branch_protection = map(object({
+      pattern                         = optional(string) # Pattern for branch matching (null means use key as exact branch name)
+      required_reviews                = number
+      dismiss_stale_reviews           = bool
+      require_code_owner_reviews      = bool
+      restrict_pushes                 = bool
+      require_last_push_approval      = bool
+      required_status_checks          = list(string)
+      enforce_admins                  = bool
+      allow_force_pushes              = bool
+      allow_deletions                 = bool
+      required_linear_history         = bool
+      require_conversation_resolution = bool
+      require_signed_commits          = bool
+    }))
+  })
 }
 
 variable "log_retention_days" {
