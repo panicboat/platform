@@ -20,6 +20,11 @@ directory_conventions:
       - name: terragrunt
         directory: "envs/{environment}"
 
+  - root: "github/{service}"
+    stacks:
+      - name: terragrunt
+        directory: "envs/{environment}"
+
   - root: "kubernetes/components/{service}"
     stacks:
       - name: kubernetes
