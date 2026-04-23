@@ -1,21 +1,9 @@
-# repo.hcl - Configuration for panicboat/monorepo repository
-
 locals {
-  repository_config = {
-    name        = "monorepo"
-    description = "Monorepo for multiple services and infrastructure configurations"
-    visibility  = "public"
-
-    # Repository features
-    features = {
-      issues   = true
-      wiki     = false
-      projects = true
-    }
-
-    # Branch protection rules
+  repository = {
+    name = "monorepo"
     branch_protection = {
       main = {
+        pattern                         = null
         required_reviews                = 0
         dismiss_stale_reviews           = true
         require_code_owner_reviews      = false

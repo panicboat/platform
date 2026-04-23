@@ -1,33 +1,21 @@
-# Makefile for GitHub Repository Management
+ENV ?= develop
 
-# Default values
-ENV ?= monorepo
-
-# Colors for output
-RED := \033[0;31m
-GREEN := \033[0;32m
+RED    := \033[0;31m
+GREEN  := \033[0;32m
 YELLOW := \033[0;33m
-BLUE := \033[0;34m
-NC := \033[0m # No Color
+BLUE   := \033[0;34m
+NC     := \033[0m
 
-.PHONY: help init plan apply destroy validate fmt check clean
+.PHONY: help init plan apply destroy validate fmt check clean show output refresh
 
-help: ## Show this help message
+help:
 	@echo "GitHub Repository Management - Terragrunt Commands"
 	@echo ""
-	@echo "Usage: make <target> [ENV=<repository>]"
+	@echo "Usage: make <target> [ENV=<environment>]"
 	@echo ""
-	@echo "Available targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(BLUE)%-15s$(NC) %s\n", $$1, $$2}'
 	@echo ""
-	@echo "Available environments:"
-	@echo "  - monorepo"
-	@echo "  - generated-manifests"
-	@echo "  - kubernetes-clusters"
-	@echo ""
-	@echo "Examples:"
-	@echo "  make plan ENV=monorepo"
-	@echo "  make apply ENV=generated-manifests"
+	@echo "Available environments: develop"
 
 init: ## Initialize Terragrunt
 	@echo "$(YELLOW)Initializing Terragrunt for $(ENV)...$(NC)"

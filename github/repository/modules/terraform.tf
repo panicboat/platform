@@ -1,7 +1,5 @@
-# terraform.tf - Terraform configuration for GitHub Repository Management
-
 terraform {
-  required_version = ">= 1.14.8"
+  required_version = ">= 1.11.6"
 
   required_providers {
     aws = {
@@ -15,7 +13,6 @@ terraform {
   }
 }
 
-# AWS Provider configuration
 provider "aws" {
   region = var.aws_region
 
@@ -24,7 +21,6 @@ provider "aws" {
   }
 }
 
-# GitHub Provider configuration
 provider "github" {
   owner = var.github_org
   token = var.github_token

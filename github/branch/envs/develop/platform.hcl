@@ -1,21 +1,9 @@
-# repo.hcl - Configuration for panicboat/platform repository
-
 locals {
-  repository_config = {
-    name        = "platform"
-    description = "Platform for multiple services and infrastructure configurations"
-    visibility  = "public"
-
-    # Repository features
-    features = {
-      issues   = true
-      wiki     = false
-      projects = true
-    }
-
-    # Branch protection rules
+  repository = {
+    name = "platform"
     branch_protection = {
       main = {
+        pattern                         = null
         required_reviews                = 0
         dismiss_stale_reviews           = true
         require_code_owner_reviews      = false
