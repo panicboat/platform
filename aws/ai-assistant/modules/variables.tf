@@ -72,7 +72,7 @@ variable "bedrock_inference_profiles" {
   }))
   default = [
     {
-      profile_id = "us.anthropic.claude-sonnet-*"
+      profile_id = "global.anthropic.claude-sonnet-*"
       model_id   = "anthropic.claude-sonnet-*"
       source_regions = [
         "us-east-1",
@@ -81,7 +81,7 @@ variable "bedrock_inference_profiles" {
       ]
     },
     {
-      profile_id = "us.anthropic.claude-opus-*"
+      profile_id = "global.anthropic.claude-opus-*"
       model_id   = "anthropic.claude-opus-*"
       source_regions = [
         "us-east-1",
@@ -90,7 +90,7 @@ variable "bedrock_inference_profiles" {
       ]
     },
     {
-      profile_id = "us.anthropic.claude-haiku-*"
+      profile_id = "global.anthropic.claude-haiku-*"
       model_id   = "anthropic.claude-haiku-*"
       source_regions = [
         "us-east-1",
