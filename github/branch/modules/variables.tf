@@ -26,23 +26,40 @@ variable "github_token" {
 }
 
 variable "repositories" {
-  description = "Map of branch protection configurations per repository"
+  description = "Map of repository ruleset configurations per repository"
   type = map(object({
     name = string
     branch_protection = map(object({
-      pattern                         = optional(string)
+      # Ruleset name. Defaults to "<repo_key>-<rule_key>" when null.
+      name = optional(string)
+
+      # Branch selection. GitHub fileset syntax (fnmatch).
+      # Use ["~DEFAULT_BRANCH"] to target the default branch only.
+      include_refs = list(string)
+      exclude_refs = optional(list(string), [])
+
+      # Pull request requirements
       required_reviews                = number
       dismiss_stale_reviews           = bool
       require_code_owner_reviews      = bool
-      restrict_pushes                 = bool
       require_last_push_approval      = bool
-      required_status_checks          = list(string)
-      enforce_admins                  = bool
-      allow_force_pushes              = bool
-      allow_deletions                 = bool
-      required_linear_history         = bool
       require_conversation_resolution = bool
-      require_signed_commits          = bool
+
+      # Status checks
+      required_status_checks        = list(string)
+      strict_required_status_checks = bool
+
+      # Commit/history requirements
+      required_linear_history = bool
+      require_signed_commits  = bool
+
+      # Push/delete controls
+      allow_force_pushes = bool
+      allow_deletions    = bool
+
+      # When true, organization admins can bypass this ruleset.
+      # Set false to enforce rules for everyone (legacy enforce_admins=true equivalent).
+      admin_bypass = bool
     }))
   }))
 }
