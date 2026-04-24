@@ -75,6 +75,27 @@ help: ## Show help
 # =============================================================================
 # Phase 0: Hydrate Manifests
 # =============================================================================
+.PHONY: hydrate-component
+hydrate-component: ## Hydrate single component (usage: make hydrate-component COMPONENT=cilium ENV=k3d)
+	@set -euo pipefail; \
+	component_dir="components/$(COMPONENT)/$(ENV)"; \
+	out_dir="manifests/$(ENV)/$(COMPONENT)"; \
+	mkdir -p "$$out_dir"; \
+	: > "$$out_dir/manifest.yaml"; \
+	if [ -f "$$component_dir/helmfile.yaml" ]; then \
+		helmfile -f "$$component_dir/helmfile.yaml" template --include-crds --skip-tests >> "$$out_dir/manifest.yaml"; \
+	fi; \
+	if [ -d "$$component_dir/kustomization" ]; then \
+		echo "---" >> "$$out_dir/manifest.yaml"; \
+		kustomize build "$$component_dir/kustomization" >> "$$out_dir/manifest.yaml"; \
+	fi; \
+	printf "resources:\n  - manifest.yaml\n" > "$$out_dir/kustomization.yaml"; \
+	if git ls-files --error-unmatch "$$out_dir/manifest.yaml" >/dev/null 2>&1; then \
+		if git diff --quiet -I '^[[:space:]]*(ca\.crt|ca\.key|tls\.crt|tls\.key|caBundle):' -- "$$out_dir/manifest.yaml"; then \
+			git checkout -- "$$out_dir/manifest.yaml"; \
+		fi; \
+	fi
+
 .PHONY: hydrate
 hydrate: ## Hydrate manifests from Helmfile and Kustomize (usage: make hydrate ENV=k3d)
 	@echo "$(BLUE)💧 Hydrating manifests for $(ENV)...$(NC)"
