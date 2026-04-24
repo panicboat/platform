@@ -4,7 +4,7 @@ locals {
   # - required_reviews = 0 to allow self-merge (GitHub disallows self-approval)
   # - Review-related toggles disabled since there is no second reviewer
   # - Admin bypass disabled to prevent accidental direct pushes
-  # - Signed commits required; local GPG/SSH signing is part of the workflow
+  # - Signed commits not required; revisit once SSH/GPG signing is set up locally
   branch_protection = {
     main = {
       name                            = null
@@ -18,7 +18,7 @@ locals {
       required_status_checks          = ["CI Gatekeeper"]
       strict_required_status_checks   = false
       required_linear_history         = true
-      require_signed_commits          = true
+      require_signed_commits          = false
       allow_force_pushes              = false
       allow_deletions                 = false
       admin_bypass                    = false
