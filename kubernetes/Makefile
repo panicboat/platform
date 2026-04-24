@@ -166,7 +166,7 @@ cilium-install: ## Install Cilium CNI
 	@if kubectl get ds cilium -n kube-system >/dev/null 2>&1; then \
 		echo "$(YELLOW)⚠️  Cilium already installed$(NC)"; \
 	else \
-		kubectl apply -f manifests/k3d/cilium.yaml; \
+		kubectl apply -f manifests/k3d/cilium/manifest.yaml; \
 		echo "$(BLUE)⏳ Waiting for Cilium to be ready...$(NC)"; \
 		kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=cilium-operator -n kube-system --timeout=300s >/dev/null; \
 		kubectl wait --for=condition=ready pod -l k8s-app=cilium -n kube-system --timeout=300s >/dev/null; \
@@ -236,10 +236,10 @@ flux-status: ## Check FluxCD status
 components-install: ## Install all infrastructure components
 	@echo "$(BLUE)🏗️ Installing infrastructure components...$(NC)"
 	@echo "$(BLUE)Creating namespaces...$(NC)"
-	@kubectl apply -f manifests/k3d/00-namespaces.yaml
+	@kubectl apply -f manifests/k3d/00-namespaces/namespaces.yaml
 	@sleep 2
 	@echo "$(BLUE)Installing Prometheus Operator CRDs...$(NC)"
-	@kubectl apply --server-side --force-conflicts -f manifests/k3d/prometheus-operator.yaml >/dev/null 2>&1 || true
+	@kubectl apply --server-side --force-conflicts -f manifests/k3d/prometheus-operator/manifest.yaml >/dev/null 2>&1 || true
 	@sleep 15
 	@echo "$(BLUE)Installing all components...$(NC)"
 	@kubectl apply --server-side --force-conflicts -k manifests/k3d >/dev/null
