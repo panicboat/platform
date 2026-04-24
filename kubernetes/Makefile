@@ -120,31 +120,15 @@ hydrate-index: ## Regenerate manifests/$(ENV) index and cleanup orphans (usage: 
 	} > "$$env_dir/kustomization.yaml"
 
 .PHONY: hydrate
-hydrate: ## Hydrate manifests from Helmfile and Kustomize (usage: make hydrate ENV=k3d)
+hydrate: ## Hydrate all components (usage: make hydrate ENV=k3d)
 	@echo "$(BLUE)💧 Hydrating manifests for $(ENV)...$(NC)"
 	@rm -rf manifests/$(ENV)/*
 	@mkdir -p manifests/$(ENV)
-	@echo "$(BLUE)💧 Hydrating namespaces...$(NC)"
-	@find components -name namespace.yaml -print0 | xargs -0 -I{} sh -c 'echo "---"; cat {}' > manifests/$(ENV)/00-namespaces.yaml
-	@echo "$(BLUE)💧 Hydrating components...$(NC)"
-	@echo "resources:" > manifests/$(ENV)/kustomization.yaml
 	@for component in $$(ls -d components/*/$(ENV) 2>/dev/null | cut -d'/' -f2 | sort -u); do \
-		component_dir="components/$$component/$(ENV)"; \
 		echo "Hydrating $$component..."; \
-		: > manifests/$(ENV)/$$component.yaml; \
-		[ -f "$$component_dir/helmfile.yaml" ] && helmfile -f "$$component_dir/helmfile.yaml" template --include-crds --skip-tests >> manifests/$(ENV)/$$component.yaml; \
-		[ -d "$$component_dir/kustomization" ] && { echo "---"; kustomize build "$$component_dir/kustomization"; } >> manifests/$(ENV)/$$component.yaml; \
-		echo "- $$component.yaml" >> manifests/$(ENV)/kustomization.yaml; \
+		$(MAKE) hydrate-component COMPONENT=$$component ENV=$(ENV); \
 	done
-	@echo "- 00-namespaces.yaml" >> manifests/$(ENV)/kustomization.yaml
-	@echo "$(BLUE)💧 Reverting cert-only changes (helm regenerates these on each run)...$(NC)"
-	@for f in manifests/$(ENV)/*.yaml; do \
-		[ "$$(basename $$f)" = "kustomization.yaml" ] && continue; \
-		git ls-files --error-unmatch "$$f" >/dev/null 2>&1 || continue; \
-		if git diff --quiet -I '^[[:space:]]*(ca\.crt|ca\.key|tls\.crt|tls\.key|caBundle):' -- "$$f"; then \
-			git checkout -- "$$f"; \
-		fi; \
-	done
+	@$(MAKE) hydrate-index ENV=$(ENV)
 	@echo "$(GREEN)✅ Manifests hydrated$(NC)"
 
 # =============================================================================
