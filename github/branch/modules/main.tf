@@ -4,52 +4,82 @@ data "github_repository" "repo" {
 }
 
 locals {
-  branch_protection_rules = merge([
+  rulesets = merge([
     for repo_key, repo in var.repositories : {
-      for branch_key, branch in repo.branch_protection :
-      "${repo_key}-${branch_key}" => {
-        repository_node_id              = data.github_repository.repo[repo_key].node_id
-        pattern                         = branch.pattern != null ? branch.pattern : branch_key
-        required_reviews                = branch.required_reviews
-        dismiss_stale_reviews           = branch.dismiss_stale_reviews
-        require_code_owner_reviews      = branch.require_code_owner_reviews
-        require_last_push_approval      = branch.require_last_push_approval
-        required_status_checks          = branch.required_status_checks
-        enforce_admins                  = branch.enforce_admins
-        allow_force_pushes              = branch.allow_force_pushes
-        allow_deletions                 = branch.allow_deletions
-        required_linear_history         = branch.required_linear_history
-        require_conversation_resolution = branch.require_conversation_resolution
-        require_signed_commits          = branch.require_signed_commits
-        # TODO: restrict_pushes is accepted in variables but not yet applied.
-        # GitHub Provider v6 uses push_restrictions block — implement when needed.
+      for rule_key, rule in repo.branch_protection :
+      "${repo_key}-${rule_key}" => {
+        repository                      = data.github_repository.repo[repo_key].name
+        name                            = rule.name != null ? rule.name : "${repo_key}-${rule_key}"
+        include_refs                    = rule.include_refs
+        exclude_refs                    = rule.exclude_refs
+        required_reviews                = rule.required_reviews
+        dismiss_stale_reviews           = rule.dismiss_stale_reviews
+        require_code_owner_reviews      = rule.require_code_owner_reviews
+        require_last_push_approval      = rule.require_last_push_approval
+        require_conversation_resolution = rule.require_conversation_resolution
+        required_status_checks          = rule.required_status_checks
+        strict_required_status_checks   = rule.strict_required_status_checks
+        required_linear_history         = rule.required_linear_history
+        require_signed_commits          = rule.require_signed_commits
+        allow_force_pushes              = rule.allow_force_pushes
+        allow_deletions                 = rule.allow_deletions
+        admin_bypass                    = rule.admin_bypass
       }
     }
   ]...)
 }
 
-resource "github_branch_protection" "branches" {
-  for_each = local.branch_protection_rules
+resource "github_repository_ruleset" "branches" {
+  for_each = local.rulesets
 
-  repository_id = each.value.repository_node_id
-  pattern       = each.value.pattern
+  name        = each.value.name
+  repository  = each.value.repository
+  target      = "branch"
+  enforcement = "active"
 
-  required_pull_request_reviews {
-    required_approving_review_count = each.value.required_reviews
-    dismiss_stale_reviews           = each.value.dismiss_stale_reviews
-    require_code_owner_reviews      = each.value.require_code_owner_reviews
-    require_last_push_approval      = each.value.require_last_push_approval
+  conditions {
+    ref_name {
+      include = each.value.include_refs
+      exclude = each.value.exclude_refs
+    }
   }
 
-  required_status_checks {
-    strict   = false
-    contexts = each.value.required_status_checks
+  # Admin bypass: when true, organization admins can bypass the ruleset.
+  # Leave bypass_actors empty to enforce rules for everyone (legacy enforce_admins=true equivalent).
+  dynamic "bypass_actors" {
+    for_each = each.value.admin_bypass ? [1] : []
+    content {
+      actor_id    = 5 # OrganizationAdmin
+      actor_type  = "OrganizationAdmin"
+      bypass_mode = "always"
+    }
   }
 
-  enforce_admins                  = each.value.enforce_admins
-  allows_force_pushes             = each.value.allow_force_pushes
-  allows_deletions                = each.value.allow_deletions
-  required_linear_history         = each.value.required_linear_history
-  require_conversation_resolution = each.value.require_conversation_resolution
-  require_signed_commits          = each.value.require_signed_commits
+  rules {
+    # Requiring a PR effectively blocks direct pushes to the branch,
+    # replacing the legacy restrict_pushes setting.
+    pull_request {
+      required_approving_review_count   = each.value.required_reviews
+      dismiss_stale_reviews_on_push     = each.value.dismiss_stale_reviews
+      require_code_owner_review         = each.value.require_code_owner_reviews
+      require_last_push_approval        = each.value.require_last_push_approval
+      required_review_thread_resolution = each.value.require_conversation_resolution
+    }
+
+    required_status_checks {
+      strict_required_status_checks_policy = each.value.strict_required_status_checks
+
+      dynamic "required_check" {
+        for_each = each.value.required_status_checks
+        content {
+          context = required_check.value
+        }
+      }
+    }
+
+    deletion                = !each.value.allow_deletions
+    non_fast_forward        = !each.value.allow_force_pushes
+    required_linear_history = each.value.required_linear_history
+    required_signatures     = each.value.require_signed_commits
+  }
 }
