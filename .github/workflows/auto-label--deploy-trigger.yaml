@@ -51,6 +51,44 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           config-path: 'workflow-config.yaml'
 
+  kubernetes-targets-group:
+    name: 'Group Kubernetes Targets by Environment'
+    needs: deploy-trigger
+    if: |
+      needs.deploy-trigger.outputs.has-targets == 'true' &&
+      contains(needs.deploy-trigger.outputs.targets, '"stack":"kubernetes"')
+    runs-on: ubuntu-latest
+    outputs:
+      environments: ${{ steps.group.outputs.environments }}
+    steps:
+      - name: Group by environment
+        id: group
+        env:
+          TARGETS: ${{ needs.deploy-trigger.outputs.targets }}
+        run: |
+          set -euo pipefail
+          grouped=$(echo "$TARGETS" | jq -c '
+            [.[] | select(.stack == "kubernetes")]
+            | group_by(.environment)
+            | map({environment: .[0].environment, services: [.[].service]})
+          ')
+          echo "environments=$grouped" >> "$GITHUB_OUTPUT"
+
+  deploy-kubernetes-hydrate:
+    name: 'Hydrate Kubernetes (${{ matrix.env.environment }})'
+    needs: kubernetes-targets-group
+    strategy:
+      matrix:
+        env: ${{ fromJson(needs.kubernetes-targets-group.outputs.environments) }}
+      fail-fast: false
+    uses: ./.github/workflows/reusable--kubernetes-hydrator.yaml
+    with:
+      environment: ${{ matrix.env.environment }}
+      services: ${{ toJson(matrix.env.services) }}
+      app-id: ${{ vars.APP_ID }}
+    secrets:
+      private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
   deploy-terragrunt:
     name: 'Deploy Terragrunt (${{ matrix.target.service }}:${{ matrix.target.environment }})'
     needs: deploy-trigger
@@ -75,7 +113,7 @@ jobs:
 
   deploy-kubernetes:
     name: 'Deploy Kubernetes (${{ matrix.target.service }}:${{ matrix.target.environment }})'
-    needs: deploy-trigger
+    needs: [deploy-trigger, deploy-kubernetes-hydrate]
     if: |
       needs.deploy-trigger.outputs.has-targets == 'true' &&
       contains(needs.deploy-trigger.outputs.targets, '"stack":"kubernetes"')
@@ -96,7 +134,7 @@ jobs:
 
   deployment-summary:
     name: 'Deployment Summary'
-    needs: [deploy-trigger, deploy-terragrunt, deploy-kubernetes]
+    needs: [deploy-trigger, deploy-terragrunt, deploy-kubernetes-hydrate, deploy-kubernetes]
     if: always() && needs.deploy-trigger.outputs.has-targets == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -110,3 +148,4 @@ jobs:
           echo "Targets: ${{ needs.deploy-trigger.outputs.targets }}"
           echo "Terragrunt Job Status: ${{ needs.deploy-terragrunt.result }}"
           echo "Kubernetes Job Status: ${{ needs.deploy-kubernetes.result }}"
+          echo "Kubernetes Hydrate Job Status: ${{ needs.deploy-kubernetes-hydrate.result }}"
