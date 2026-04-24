@@ -124,7 +124,7 @@ make phase2
 ```bash
 make phase3
 ```
-- FluxCD が `manifests/k3d` を同期
+- FluxCD が `manifests/k3d`（コンポーネント別サブディレクトリ）を同期
 - Hydration 済みマニフェスト（Helm + Kustomize）の一括適用
 - Namespace, CRD, アプリケーションの順序制御（Flux Kustomization依存）
 
@@ -169,7 +169,9 @@ make down            # クラスター完全削除
 
 ### 個別操作
 ```bash
-make hydrate         # マニフェスト生成 (components -> manifests)
+make hydrate                              # 全コンポーネント生成 (components -> manifests)
+make hydrate-component COMPONENT=<name> ENV=<env>  # 単一コンポーネントのみ再生成（CI 用）
+make hydrate-index ENV=<env>              # 集約ファイル再生成 + orphan 削除（CI 用）
 make gateway-install # Gateway API CRDs
 make cilium-install  # Cilium Bootstrap
 make status          # クラスター状態確認

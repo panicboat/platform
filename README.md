@@ -17,7 +17,7 @@
 ├── kubernetes/
 │   ├── clusters/k3d/          # Flux bootstrap (flux-system, repositories)
 │   ├── components/            # Cilium, Prometheus, Loki, Tempo, OTel, Beyla, etc.
-│   └── manifests/k3d/         # Rendered manifests for the k3d cluster
+│   └── manifests/k3d/         # Rendered manifests (per-component subdirectories)
 ├── github/repository/         # Terraform for GitHub repo settings
 ├── docs/
 └── workflow-config.yaml       # Environments and deployment targets
