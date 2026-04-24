@@ -96,6 +96,29 @@ hydrate-component: ## Hydrate single component (usage: make hydrate-component CO
 		fi; \
 	fi
 
+.PHONY: hydrate-index
+hydrate-index: ## Regenerate manifests/$(ENV) index and cleanup orphans (usage: make hydrate-index ENV=k3d)
+	@set -euo pipefail; \
+	env_dir="manifests/$(ENV)"; \
+	mkdir -p "$$env_dir/00-namespaces"; \
+	find components -maxdepth 2 -name namespace.yaml | sort | \
+		xargs -I{} sh -c 'echo "---"; cat "{}"' > "$$env_dir/00-namespaces/namespaces.yaml"; \
+	printf "resources:\n  - namespaces.yaml\n" > "$$env_dir/00-namespaces/kustomization.yaml"; \
+	for dir in $$(ls -d "$$env_dir"/*/ 2>/dev/null); do \
+		name=$$(basename "$$dir"); \
+		if [ "$$name" = "00-namespaces" ]; then continue; fi; \
+		if [ ! -d "components/$$name/$(ENV)" ]; then \
+			rm -rf "$$dir"; \
+		fi; \
+	done; \
+	{ \
+		echo "resources:"; \
+		echo "  - ./00-namespaces"; \
+		for dir in $$(ls -d "$$env_dir"/*/ 2>/dev/null | grep -v "/00-namespaces/$$" | sort); do \
+			echo "  - ./$$(basename $$dir)"; \
+		done; \
+	} > "$$env_dir/kustomization.yaml"
+
 .PHONY: hydrate
 hydrate: ## Hydrate manifests from Helmfile and Kustomize (usage: make hydrate ENV=k3d)
 	@echo "$(BLUE)💧 Hydrating manifests for $(ENV)...$(NC)"
