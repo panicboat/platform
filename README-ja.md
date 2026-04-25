@@ -99,11 +99,11 @@ flowchart LR
   Group --> Hydrator
   Hydrator -->|make hydrate-component<br/>+ hydrate-index| Commit
   Hydrator -->|index diff| IndexComment
-  Commit -->|no diff| Builder
+  Commit --> Builder
   Builder --> CompComment
   Mainpush -.->|polls every 1min| FluxCD
   FluxCD --> Cluster
-  Commit -.->|on diff: synchronize event| Dispatcher
+  Commit -.->|on diff: re-fires synchronize| Dispatcher
 ```
 
 AWS 認証は GitHub OIDC 経由。`aws/github-oidc-auth/envs/{environment}` が各環境の IAM Role (plan / apply) を発行し、他の stack はそのロールを引いてデプロイする。

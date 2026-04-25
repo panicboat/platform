@@ -99,11 +99,11 @@ flowchart LR
   Group --> Hydrator
   Hydrator -->|make hydrate-component<br/>+ hydrate-index| Commit
   Hydrator -->|index diff| IndexComment
-  Commit -->|no diff| Builder
+  Commit --> Builder
   Builder --> CompComment
   Mainpush -.->|polls every 1min| FluxCD
   FluxCD --> Cluster
-  Commit -.->|on diff: synchronize event| Dispatcher
+  Commit -.->|on diff: re-fires synchronize| Dispatcher
 ```
 
 AWS authentication uses GitHub OIDC. `aws/github-oidc-auth/envs/{environment}` issues per-environment IAM roles (plan / apply), which other stacks assume to deploy.
