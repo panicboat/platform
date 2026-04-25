@@ -2,7 +2,7 @@
 locals {
   # Environment metadata
   environment = "develop"
-  aws_region  = "ap-northeast-1"
+  aws_region  = "us-east-1"
 
   # GitHub configuration
   github_org  = "panicboat"
