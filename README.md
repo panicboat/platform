@@ -109,7 +109,7 @@ flowchart LR
   Mainpush -.->|polls every 1min| FluxCD
   FluxCD --> Cluster
   Commit -.->|App token push<br/>→ synchronize event| Dispatcher
-  Dispatcher -.->|no missing labels<br/>(manifests/ outside<br/>directory_conventions)| LoopEnd
+  Dispatcher -.->|no missing labels<br/>manifests/ outside<br/>directory_conventions| LoopEnd
 ```
 
 AWS authentication uses GitHub OIDC. `aws/github-oidc-auth/envs/{environment}` issues per-environment IAM roles (plan / apply), which other stacks assume to deploy.

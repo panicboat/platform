@@ -109,7 +109,7 @@ flowchart LR
   Mainpush -.->|polls every 1min| FluxCD
   FluxCD --> Cluster
   Commit -.->|App token push<br/>→ synchronize event| Dispatcher
-  Dispatcher -.->|no missing labels<br/>(manifests/ outside<br/>directory_conventions)| LoopEnd
+  Dispatcher -.->|no missing labels<br/>manifests/ outside<br/>directory_conventions| LoopEnd
 ```
 
 AWS 認証は GitHub OIDC 経由。`aws/github-oidc-auth/envs/{environment}` が各環境の IAM Role (plan / apply) を発行し、他の stack はそのロールを引いてデプロイする。
