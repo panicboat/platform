@@ -62,9 +62,12 @@ flowchart LR
   Apply --> AWS[(AWS)]
   Apply --> OIDC[github-oidc-auth<br/>IAM roles]
   OIDC -.->|AssumeRole| TG
-  Resolver -->|stack: kubernetes| K8s[reusable--kubernetes-builder]
-  K8s -->|hydrate| Commit[auto-commit manifests]
-  K8s -->|diff| K8sComment[(PR comment)]
+  Resolver -->|stack: kubernetes| Group[kubernetes-targets-group<br/>group by env]
+  Group --> Hydrator[reusable--kubernetes-hydrator<br/>matrix: env<br/>concurrency: hydrate-PR-env]
+  Hydrator -->|make hydrate-component<br/>+ hydrate-index| Commit[auto-commit manifests]
+  Hydrator -->|index diff| IndexComment[(PR comment<br/>kubernetes-index-env)]
+  Commit --> Builder[reusable--kubernetes-builder<br/>matrix: service x env<br/>diff only]
+  Builder --> CompComment[(PR comment<br/>kubernetes-service-env)]
   Commit --> FluxCD[Flux CD sync]
 ```
 
