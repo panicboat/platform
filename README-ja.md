@@ -93,8 +93,8 @@ flowchart LR
   Mainpush --> Trigger
   Trigger --> Resolver
   Resolver -->|stack: terragrunt| TG
-  TG -->|PR| Plan
-  TG -->|merge to main| Apply
+  TG -->|on pull_request| Plan
+  TG -->|on push main| Apply
   Plan --> PRComment
   Apply --> AWS
   Apply --> OIDC
@@ -105,7 +105,7 @@ flowchart LR
   Hydrator -->|index diff| IndexComment
   Commit --> Builder
   Builder --> CompComment
-  Mainpush --> FluxCD
+  Mainpush -.->|polls every 1min| FluxCD
   FluxCD --> Cluster
   Commit -.->|App token push<br/>fires synchronize<br/>loop terminates: manifests/<br/>not in directory_conventions| Dispatcher
 ```
