@@ -1,0 +1,19 @@
+# =============================================================================
+# Cilium Helmfile for develop
+# =============================================================================
+# Validation-only config to exercise CI pipeline (#209). Mirrors k3d.
+# =============================================================================
+environments:
+  develop:
+---
+repositories:
+  - name: cilium
+    url: https://helm.cilium.io/
+
+releases:
+  - name: cilium
+    namespace: kube-system
+    chart: cilium/cilium
+    version: "1.18.6"
+    values:
+      - values.yaml
