@@ -6,6 +6,8 @@
 #   - Network policies
 #   - Gateway API implementation
 #   - Hubble observability
+#
+# NOTE: Validation touch for #209 — exercises hydrate + builder pipeline.
 # =============================================================================
 environments:
   k3d:
