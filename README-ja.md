@@ -71,6 +71,11 @@ flowchart LR
   Commit --> FluxCD[Flux CD sync]
 ```
 
+> **Note: hydrator の auto-commit は本 workflow を再トリガーしない。**
+> hydrator は GitHub App token で push するため通常は `synchronize` イベントを発火させ `auto-label--label-dispatcher.yaml` が再走する。それでもループしないのは、`workflow-config.yaml` の `directory_conventions` が `kubernetes/components/{service}` のみをマッチ対象とし `kubernetes/manifests/**` は含まないため。auto-commit 後に dispatcher が再評価しても missing label は無く、`labeled` イベント不発 → `auto-label--deploy-trigger.yaml` は再起動しない。
+>
+> **不変条件**: `directory_conventions` に `kubernetes/manifests/**` を絶対に追加しないこと。追加すると `label-dispatcher → labeled → deploy-trigger → hydrator → push → label-dispatcher → …` の無限ループを引き起こす。
+
 AWS 認証は GitHub OIDC 経由。`aws/github-oidc-auth/envs/{environment}` が各環境の IAM Role (plan / apply) を発行し、他の stack はそのロールを引いてデプロイする。
 
 ### GitOps Sync (Flux CD)

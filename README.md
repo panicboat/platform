@@ -71,6 +71,11 @@ flowchart LR
   Commit --> FluxCD[Flux CD sync]
 ```
 
+> **Note: the hydrator's auto-commit does not re-trigger this workflow.**
+> The hydrator pushes via a GitHub App token, which normally fires a `synchronize` event and re-runs `auto-label--label-dispatcher.yaml`. The loop is broken because `directory_conventions` in `workflow-config.yaml` matches only `kubernetes/components/{service}` — never `kubernetes/manifests/**`. After the auto-commit the dispatcher finds no missing labels, no `labeled` event fires, and `auto-label--deploy-trigger.yaml` is not re-entered.
+>
+> **Invariant**: never add `kubernetes/manifests/**` to `directory_conventions`. Doing so would create an infinite loop: `label-dispatcher → labeled → deploy-trigger → hydrator → push → label-dispatcher → …`.
+
 AWS authentication uses GitHub OIDC. `aws/github-oidc-auth/envs/{environment}` issues per-environment IAM roles (plan / apply), which other stacks assume to deploy.
 
 ### GitOps Sync (Flux CD)
