@@ -63,15 +63,6 @@ flowchart LR
     Dispatcher[auto-label--label-dispatcher<br/>panicboat/deploy-actions/label-dispatcher]
     Trigger[auto-label--deploy-trigger<br/>on: pull_request labeled]
     Resolver[label-resolver]
-    LoopEnd([loop ends<br/>no labeled event])
-  end
-
-  subgraph Terragrunt
-    TG[reusable--terragrunt-executor]
-    Plan[terragrunt plan]
-    Apply[terragrunt apply]
-    OIDC[github-oidc-auth<br/>IAM roles]
-    PRComment[(PR comment)]
   end
 
   subgraph KubernetesCI [Kubernetes CI]
@@ -83,33 +74,36 @@ flowchart LR
     CompComment[(PR comment<br/>kubernetes-service-env)]
   end
 
+  subgraph Terragrunt
+    TG[reusable--terragrunt-executor]
+    Plan[terragrunt plan]
+    Apply[terragrunt apply]
+    PRComment[(PR comment)]
+  end
+
   subgraph Runtime
     AWS[(AWS)]
-    FluxCD[Flux CD<br/>polls main branch<br/>kubernetes/manifests/k3d]
-    Cluster[(k3d cluster)]
+    FluxCD[Flux CD<br/>polls main branch<br/>kubernetes/manifests/]
+    Cluster[(cluster)]
   end
 
   PRevent --> Dispatcher
-  Dispatcher -->|labels added<br/>per directory_conventions<br/>→ labeled event| Trigger
-  Mainpush --> Trigger
+  Dispatcher --> Trigger
   Trigger --> Resolver
   Resolver -->|stack: terragrunt| TG
   TG -->|on pull_request| Plan
   TG -->|on push main| Apply
   Plan --> PRComment
   Apply --> AWS
-  Apply --> OIDC
-  OIDC -.->|AssumeRole| TG
   Resolver -->|stack: kubernetes| Group
   Group --> Hydrator
   Hydrator -->|make hydrate-component<br/>+ hydrate-index| Commit
   Hydrator -->|index diff| IndexComment
-  Commit -->|hydrated manifests<br/>checked out by Builder| Builder
+  Commit -->|no diff| Builder
   Builder --> CompComment
   Mainpush -.->|polls every 1min| FluxCD
   FluxCD --> Cluster
-  Commit -.->|App token push<br/>→ synchronize event| Dispatcher
-  Dispatcher -.->|no missing labels<br/>manifests/ outside<br/>directory_conventions| LoopEnd
+  Commit -.->|on diff: synchronize event| Dispatcher
 ```
 
 AWS 認証は GitHub OIDC 経由。`aws/github-oidc-auth/envs/{environment}` が各環境の IAM Role (plan / apply) を発行し、他の stack はそのロールを引いてデプロイする。
