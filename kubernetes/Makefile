@@ -42,12 +42,12 @@ NC     := \033[0m
 # =============================================================================
 .PHONY: help
 help: ## Show help
-	@echo "$(BLUE)🚀 Kubernetes Platform Setup$(NC)"
+	@printf "$(BLUE)🚀 Kubernetes Platform Setup$(NC)\n"
 	@echo ""
-	@echo "$(BLUE)Quick Start:$(NC)"
+	@printf "$(BLUE)Quick Start:$(NC)\n"
 	@echo "  make down && make phase1 && make phase2 && make phase3"
 	@echo ""
-	@echo "$(BLUE)Phase 1: Foundation Setup$(NC)"
+	@printf "$(BLUE)Phase 1: Foundation Setup$(NC)\n"
 	@echo "  make phase1              - Complete Phase 1 (cluster, gateway-api, cilium, coredns)"
 	@echo "  make cluster-create      - Create k3d cluster"
 	@echo "  make gateway-install     - Install Gateway API CRDs"
@@ -55,21 +55,21 @@ help: ## Show help
 	@echo "  make coredns-update      - Fix CoreDNS configuration"
 	@echo "  make status              - Check cluster status"
 	@echo ""
-	@echo "$(BLUE)Phase 2: FluxCD Installation$(NC)"
+	@printf "$(BLUE)Phase 2: FluxCD Installation$(NC)\n"
 	@echo "  make phase2              - Complete Phase 2 (flux)"
 	@echo "  make flux-install        - Install FluxCD"
 	@echo "  make flux-status         - Check FluxCD status"
 	@echo ""
-	@echo "$(BLUE)Phase 3: Infrastructure Components$(NC)"
+	@printf "$(BLUE)Phase 3: Infrastructure Components$(NC)\n"
 	@echo "  make phase3              - Complete Phase 3 (observability stack)"
 	@echo "  - Prometheus, Grafana, Alertmanager"
 	@echo "  - Loki, Fluent-bit (logs)"
 	@echo "  - Tempo, Beyla, OTel Collector (traces)"
 	@echo ""
-	@echo "$(BLUE)Phase 4: GitOps Migration (Optional)$(NC)"
+	@printf "$(BLUE)Phase 4: GitOps Migration (Optional)$(NC)\n"
 	@echo "  make phase4              - Enable FluxCD GitOps management"
 	@echo ""
-	@echo "$(BLUE)Utilities:$(NC)"
+	@printf "$(BLUE)Utilities:$(NC)\n"
 	@echo "  make hydrate             - Generate manifests from Helmfile"
 	@echo "  make down                - Delete k3d cluster"
 
@@ -122,7 +122,7 @@ hydrate-index: ## Regenerate manifests/$(ENV) index and cleanup orphans (usage: 
 
 .PHONY: hydrate
 hydrate: ## Hydrate all components (usage: make hydrate ENV=local)
-	@echo "$(BLUE)💧 Hydrating manifests for $(ENV)...$(NC)"
+	@printf "$(BLUE)💧 Hydrating manifests for $(ENV)...$(NC)\n"
 	@rm -rf manifests/$(ENV)/*
 	@mkdir -p manifests/$(ENV)
 	@for component in $$(ls -d components/*/$(ENV) 2>/dev/null | cut -d'/' -f2 | sort -u); do \
@@ -130,16 +130,16 @@ hydrate: ## Hydrate all components (usage: make hydrate ENV=local)
 		$(MAKE) hydrate-component COMPONENT=$$component ENV=$(ENV); \
 	done
 	@$(MAKE) hydrate-index ENV=$(ENV)
-	@echo "$(GREEN)✅ Manifests hydrated$(NC)"
+	@printf "$(GREEN)✅ Manifests hydrated$(NC)\n"
 
 # =============================================================================
 # Phase 1: Foundation Setup
 # =============================================================================
 .PHONY: cluster-create
 cluster-create: ## Create k3d cluster
-	@echo "$(BLUE)🚀 Creating k3d cluster...$(NC)"
+	@printf "$(BLUE)🚀 Creating k3d cluster...$(NC)\n"
 	@if k3d cluster list 2>/dev/null | grep -q "^$(CLUSTER_NAME)"; then \
-		echo "$(YELLOW)⚠️  Cluster already exists$(NC)"; \
+		printf "$(YELLOW)⚠️  Cluster already exists$(NC)\n"; \
 	else \
 		export K3D_FIX_DNS=1 && \
 		export K3D_FIX_MOUNTS=1 && \
@@ -150,61 +150,61 @@ cluster-create: ## Create k3d cluster
 			--k3s-arg "--disable-network-policy@server:*" \
 			--k3s-arg "--flannel-backend=none@server:*" \
 			--k3s-arg "--resolv-conf=/etc/resolv.conf@server:*"; \
-		echo "$(GREEN)✅ Cluster created$(NC)"; \
+		printf "$(GREEN)✅ Cluster created$(NC)\n"; \
 	fi
 
 .PHONY: gateway-install
 gateway-install: ## Install Gateway API CRDs
-	@echo "$(BLUE)📦 Installing Gateway API CRDs...$(NC)"
+	@printf "$(BLUE)📦 Installing Gateway API CRDs...$(NC)\n"
 	@kubectl apply -k components/gateway-api/$(ENV)/kustomization >/dev/null
-	@echo "$(BLUE)⏳ Waiting for CRDs to be registered...$(NC)"
+	@printf "$(BLUE)⏳ Waiting for CRDs to be registered...$(NC)\n"
 	@kubectl wait --for=condition=Established crd/gatewayclasses.gateway.networking.k8s.io --timeout=60s >/dev/null
-	@echo "$(GREEN)✅ Gateway API CRDs installed$(NC)"
+	@printf "$(GREEN)✅ Gateway API CRDs installed$(NC)\n"
 
 .PHONY: cilium-install
 cilium-install: ## Install Cilium CNI
-	@echo "$(BLUE)📦 Installing Cilium...$(NC)"
+	@printf "$(BLUE)📦 Installing Cilium...$(NC)\n"
 	@if kubectl get ds cilium -n kube-system >/dev/null 2>&1; then \
-		echo "$(YELLOW)⚠️  Cilium already installed$(NC)"; \
+		printf "$(YELLOW)⚠️  Cilium already installed$(NC)\n"; \
 	else \
 		kubectl apply -f manifests/$(ENV)/cilium/manifest.yaml; \
-		echo "$(BLUE)⏳ Waiting for Cilium to be ready...$(NC)"; \
+		printf "$(BLUE)⏳ Waiting for Cilium to be ready...$(NC)\n"; \
 		kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=cilium-operator -n kube-system --timeout=300s >/dev/null; \
 		kubectl wait --for=condition=ready pod -l k8s-app=cilium -n kube-system --timeout=300s >/dev/null; \
-		echo "$(GREEN)✅ Cilium installed$(NC)"; \
+		printf "$(GREEN)✅ Cilium installed$(NC)\n"; \
 	fi
 
 .PHONY: coredns-update
 coredns-update: ## Fix CoreDNS configuration
-	@echo "$(BLUE)⏳ Waiting for k3s initialization...$(NC)"
+	@printf "$(BLUE)⏳ Waiting for k3s initialization...$(NC)\n"
 	@kubectl wait --for=condition=ready node --all --timeout=300s >/dev/null
 	@sleep 60
-	@echo "$(BLUE)🔧 Applying CoreDNS configuration...$(NC)"
+	@printf "$(BLUE)🔧 Applying CoreDNS configuration...$(NC)\n"
 	@kubectl apply -k components/coredns/$(ENV)/kustomization >/dev/null
 	@kubectl rollout restart deployment/coredns -n kube-system >/dev/null
 	@kubectl rollout status deployment/coredns -n kube-system --timeout=300s >/dev/null
-	@echo "$(BLUE)🧪 Testing DNS resolution...$(NC)"
+	@printf "$(BLUE)🧪 Testing DNS resolution...$(NC)\n"
 	@if kubectl run dns-test --image=busybox --restart=Never --command -- sh -c "nslookup google.com" >/dev/null 2>&1; then \
 		kubectl wait --for=condition=ready pod dns-test --timeout=30s >/dev/null 2>&1; \
-		echo "$(GREEN)✅ DNS resolution working$(NC)"; \
+		printf "$(GREEN)✅ DNS resolution working$(NC)\n"; \
 		kubectl delete pod dns-test >/dev/null 2>&1 || true; \
 	else \
-		echo "$(RED)❌ DNS resolution failed$(NC)"; \
+		printf "$(RED)❌ DNS resolution failed$(NC)\n"; \
 		kubectl delete pod dns-test >/dev/null 2>&1 || true; \
 		exit 1; \
 	fi
 
 .PHONY: status
 status: ## Check cluster status
-	@echo "$(BLUE)📊 Cluster Status$(NC)"
+	@printf "$(BLUE)📊 Cluster Status$(NC)\n"
 	@echo ""
-	@echo "$(BLUE)Nodes:$(NC)"
+	@printf "$(BLUE)Nodes:$(NC)\n"
 	@kubectl get nodes
 	@echo ""
-	@echo "$(BLUE)System Pods:$(NC)"
+	@printf "$(BLUE)System Pods:$(NC)\n"
 	@kubectl get pods -n kube-system
 	@echo ""
-	@echo "$(BLUE)Monitoring Pods:$(NC)"
+	@printf "$(BLUE)Monitoring Pods:$(NC)\n"
 	@kubectl get pods -n monitoring 2>/dev/null || echo "  (namespace not created yet)"
 
 # =============================================================================
@@ -212,99 +212,99 @@ status: ## Check cluster status
 # =============================================================================
 .PHONY: flux-install
 flux-install: ## Install FluxCD
-	@echo "$(BLUE)📦 Installing FluxCD...$(NC)"
+	@printf "$(BLUE)📦 Installing FluxCD...$(NC)\n"
 	@if kubectl get namespace flux-system >/dev/null 2>&1; then \
-		echo "$(YELLOW)⚠️  FluxCD already installed$(NC)"; \
+		printf "$(YELLOW)⚠️  FluxCD already installed$(NC)\n"; \
 	else \
 		flux install --namespace=flux-system --components-extra=image-reflector-controller,image-automation-controller >/dev/null; \
-		echo "$(GREEN)✅ FluxCD installed$(NC)"; \
+		printf "$(GREEN)✅ FluxCD installed$(NC)\n"; \
 	fi
-	@echo "$(BLUE)⏳ Waiting for FluxCD to be ready...$(NC)"
+	@printf "$(BLUE)⏳ Waiting for FluxCD to be ready...$(NC)\n"
 	@kubectl wait --for=condition=ready pod -l app=source-controller -n flux-system --timeout=300s >/dev/null
-	@echo "$(GREEN)✅ FluxCD is ready$(NC)"
+	@printf "$(GREEN)✅ FluxCD is ready$(NC)\n"
 
 .PHONY: flux-status
 flux-status: ## Check FluxCD status
-	@echo "$(BLUE)📊 FluxCD Status$(NC)"
+	@printf "$(BLUE)📊 FluxCD Status$(NC)\n"
 	@kubectl get pods -n flux-system
 	@echo ""
-	@flux get all -A 2>/dev/null || echo "$(YELLOW)No FluxCD resources found$(NC)"
+	@flux get all -A 2>/dev/null || printf "$(YELLOW)No FluxCD resources found$(NC)\n"
 
 # =============================================================================
 # Phase 3: Infrastructure Components
 # =============================================================================
 .PHONY: components-install
 components-install: ## Install all infrastructure components
-	@echo "$(BLUE)🏗️ Installing infrastructure components...$(NC)"
-	@echo "$(BLUE)Creating namespaces...$(NC)"
+	@printf "$(BLUE)🏗️ Installing infrastructure components...$(NC)\n"
+	@printf "$(BLUE)Creating namespaces...$(NC)\n"
 	@kubectl apply -f manifests/$(ENV)/00-namespaces/namespaces.yaml
 	@sleep 2
-	@echo "$(BLUE)Installing Prometheus Operator CRDs...$(NC)"
+	@printf "$(BLUE)Installing Prometheus Operator CRDs...$(NC)\n"
 	@kubectl apply --server-side --force-conflicts -f manifests/$(ENV)/prometheus-operator/manifest.yaml >/dev/null 2>&1 || true
 	@sleep 15
-	@echo "$(BLUE)Installing all components...$(NC)"
+	@printf "$(BLUE)Installing all components...$(NC)\n"
 	@kubectl apply --server-side --force-conflicts -k manifests/$(ENV) >/dev/null
-	@echo "$(GREEN)✅ Infrastructure components installed$(NC)"
+	@printf "$(GREEN)✅ Infrastructure components installed$(NC)\n"
 	@echo ""
-	@echo "$(BLUE)📊 Access URLs (add to /etc/hosts -> 127.0.0.1):$(NC)"
+	@printf "$(BLUE)📊 Access URLs (add to /etc/hosts -> 127.0.0.1):$(NC)\n"
 	@echo "  - Grafana:      http://grafana.local      (admin/password)"
 	@echo "  - Prometheus:   http://prometheus.local"
 	@echo "  - Alertmanager: http://alertmanager.local"
 	@echo "  - Hubble UI:    http://hubble.local"
 	@echo ""
-	@echo "$(GREEN)✅ Components installed$(NC)"
+	@printf "$(GREEN)✅ Components installed$(NC)\n"
 
 # =============================================================================
 # Phase 4: GitOps Migration (Optional)
 # =============================================================================
 .PHONY: gitops-setup
 gitops-setup: ## Setup FluxCD GitOps management
-	@echo "$(BLUE)🔧 Setting up FluxCD GitOps...$(NC)"
-	@kubectl apply -k clusters/$(ENV)/flux-system || echo "$(YELLOW)⚠️  Push code to repository first$(NC)"
-	@echo "$(GREEN)✅ GitOps setup completed$(NC)"
+	@printf "$(BLUE)🔧 Setting up FluxCD GitOps...$(NC)\n"
+	@kubectl apply -k clusters/$(ENV)/flux-system || printf "$(YELLOW)⚠️  Push code to repository first$(NC)\n"
+	@printf "$(GREEN)✅ GitOps setup completed$(NC)\n"
 
 .PHONY: gitops-enable
 gitops-enable: ## Enable GitOps management for all components
-	@echo "$(BLUE)🔄 Enabling GitOps for all components...$(NC)"
-	@kubectl apply -k clusters/$(ENV) >/dev/null || echo "$(YELLOW)⚠️  GitOps migration failed$(NC)"
-	@echo "$(GREEN)✅ GitOps enabled$(NC)"
+	@printf "$(BLUE)🔄 Enabling GitOps for all components...$(NC)\n"
+	@kubectl apply -k clusters/$(ENV) >/dev/null || printf "$(YELLOW)⚠️  GitOps migration failed$(NC)\n"
+	@printf "$(GREEN)✅ GitOps enabled$(NC)\n"
 
 .PHONY: gitops-status
 gitops-status: ## Check GitOps status
-	@echo "$(BLUE)📊 GitOps Status$(NC)"
-	@flux get sources git -A || echo "$(YELLOW)No Git sources found$(NC)"
+	@printf "$(BLUE)📊 GitOps Status$(NC)\n"
+	@flux get sources git -A || printf "$(YELLOW)No Git sources found$(NC)\n"
 	@echo ""
-	@flux get kustomizations -A || echo "$(YELLOW)No Kustomizations found$(NC)"
+	@flux get kustomizations -A || printf "$(YELLOW)No Kustomizations found$(NC)\n"
 
 # =============================================================================
 # Complete Phases
 # =============================================================================
 .PHONY: phase1
 phase1: cluster-create gateway-install cilium-install coredns-update status ## Complete Phase 1
-	@echo "$(GREEN)🎉 Phase 1 Complete!$(NC)"
+	@printf "$(GREEN)🎉 Phase 1 Complete!$(NC)\n"
 
 .PHONY: phase2
 phase2: flux-install flux-status ## Complete Phase 2
-	@echo "$(GREEN)🎉 Phase 2 Complete!$(NC)"
+	@printf "$(GREEN)🎉 Phase 2 Complete!$(NC)\n"
 
 .PHONY: phase3
 phase3: components-install ## Complete Phase 3
-	@echo "$(GREEN)🎉 Phase 3 Complete!$(NC)"
+	@printf "$(GREEN)🎉 Phase 3 Complete!$(NC)\n"
 
 .PHONY: phase4
 phase4: gitops-setup gitops-enable gitops-status ## Complete Phase 4
-	@echo "$(GREEN)🎉 Phase 4 Complete!$(NC)"
-	@echo "$(BLUE)🔄 Full GitOps management enabled$(NC)"
+	@printf "$(GREEN)🎉 Phase 4 Complete!$(NC)\n"
+	@printf "$(BLUE)🔄 Full GitOps management enabled$(NC)\n"
 
 # =============================================================================
 # Complete All Phases
 # =============================================================================
 .PHONY: up
 up: hydrate phase1 phase2 phase3 phase4 ## Complete all phases (excluding phase4)
-	@echo "$(GREEN)🎉 All phases completed!$(NC)"
+	@printf "$(GREEN)🎉 All phases completed!$(NC)\n"
 
 .PHONY: down
 down: ## Delete k3d cluster
-	@echo "$(BLUE)🗑️  Deleting k3d cluster...$(NC)"
-	@k3d cluster delete $(CLUSTER_NAME) >/dev/null 2>&1 || echo "$(YELLOW)⚠️  Cluster not found$(NC)"
-	@echo "$(GREEN)✅ Cluster deleted$(NC)"
+	@printf "$(BLUE)🗑️  Deleting k3d cluster...$(NC)\n"
+	@k3d cluster delete $(CLUSTER_NAME) >/dev/null 2>&1 || printf "$(YELLOW)⚠️  Cluster not found$(NC)\n"
+	@printf "$(GREEN)✅ Cluster deleted$(NC)\n"
