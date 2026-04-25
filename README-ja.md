@@ -63,6 +63,7 @@ flowchart LR
     Dispatcher[auto-label--label-dispatcher<br/>panicboat/deploy-actions/label-dispatcher]
     Trigger[auto-label--deploy-trigger<br/>on: pull_request labeled]
     Resolver[label-resolver]
+    LoopEnd([loop ends<br/>no labeled event])
   end
 
   subgraph Terragrunt
@@ -89,7 +90,7 @@ flowchart LR
   end
 
   PRevent --> Dispatcher
-  Dispatcher -->|adds missing labels<br/>per workflow-config.yaml<br/>directory_conventions| Trigger
+  Dispatcher -->|labels added<br/>per directory_conventions<br/>→ labeled event| Trigger
   Mainpush --> Trigger
   Trigger --> Resolver
   Resolver -->|stack: terragrunt| TG
@@ -103,11 +104,12 @@ flowchart LR
   Group --> Hydrator
   Hydrator -->|make hydrate-component<br/>+ hydrate-index| Commit
   Hydrator -->|index diff| IndexComment
-  Commit --> Builder
+  Commit -->|hydrated manifests<br/>checked out by Builder| Builder
   Builder --> CompComment
   Mainpush -.->|polls every 1min| FluxCD
   FluxCD --> Cluster
-  Commit -.->|App token push<br/>fires synchronize<br/>loop terminates: manifests/<br/>not in directory_conventions| Dispatcher
+  Commit -.->|App token push<br/>→ synchronize event| Dispatcher
+  Dispatcher -.->|no missing labels<br/>(manifests/ outside<br/>directory_conventions)| LoopEnd
 ```
 
 AWS 認証は GitHub OIDC 経由。`aws/github-oidc-auth/envs/{environment}` が各環境の IAM Role (plan / apply) を発行し、他の stack はそのロールを引いてデプロイする。
