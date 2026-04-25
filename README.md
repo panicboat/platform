@@ -17,7 +17,7 @@
 ├── kubernetes/
 │   ├── clusters/k3d/          # Flux bootstrap (flux-system, repositories)
 │   ├── components/            # Cilium, Prometheus, Loki, Tempo, OTel, Beyla, etc.
-│   └── manifests/k3d/         # Rendered manifests for the k3d cluster
+│   └── manifests/k3d/         # Rendered manifests (per-component subdirectories)
 ├── github/repository/         # Terraform for GitHub repo settings
 ├── docs/
 └── workflow-config.yaml       # Environments and deployment targets
@@ -54,18 +54,56 @@ Terragrunt remote state is consolidated in S3 bucket `terragrunt-state-559744160
 
 ```mermaid
 flowchart LR
-  Trigger[PR / push main] --> Resolver[label-resolver<br/>workflow-config.yaml]
-  Resolver -->|stack: terragrunt| TG[reusable--terragrunt-executor]
-  TG -->|PR| Plan[terragrunt plan]
-  TG -->|merge to main| Apply[terragrunt apply]
-  Plan --> PRComment[(PR comment)]
-  Apply --> AWS[(AWS)]
-  Apply --> OIDC[github-oidc-auth<br/>IAM roles]
-  OIDC -.->|AssumeRole| TG
-  Resolver -->|stack: kubernetes| K8s[reusable--kubernetes-builder]
-  K8s -->|hydrate| Commit[auto-commit manifests]
-  K8s -->|diff| K8sComment[(PR comment)]
-  Commit --> FluxCD[Flux CD sync]
+  subgraph Triggers
+    PRevent[PR open/sync]
+    Mainpush[push main]
+  end
+
+  subgraph Labeling
+    Dispatcher[auto-label--label-dispatcher<br/>panicboat/deploy-actions/label-dispatcher]
+    Trigger[auto-label--deploy-trigger<br/>on: pull_request labeled]
+    Resolver[label-resolver]
+  end
+
+  subgraph KubernetesCI [Kubernetes CI]
+    Group[kubernetes-targets-group<br/>group by env]
+    Hydrator[reusable--kubernetes-hydrator<br/>matrix: env<br/>concurrency: hydrate-PR-env]
+    Commit[auto-commit<br/>kubernetes/manifests/]
+    Builder[reusable--kubernetes-builder<br/>matrix: service x env<br/>diff only]
+    IndexComment[(PR comment<br/>kubernetes-index-env)]
+    CompComment[(PR comment<br/>kubernetes-service-env)]
+  end
+
+  subgraph Terragrunt
+    TG[reusable--terragrunt-executor]
+    Plan[terragrunt plan]
+    Apply[terragrunt apply]
+    PRComment[(PR comment)]
+  end
+
+  subgraph Runtime
+    AWS[(AWS)]
+    FluxCD[Flux CD<br/>polls main branch<br/>kubernetes/manifests/]
+    Cluster[(cluster)]
+  end
+
+  PRevent --> Dispatcher
+  Dispatcher --> Trigger
+  Trigger --> Resolver
+  Resolver -->|stack: terragrunt| TG
+  TG -->|on pull_request| Plan
+  TG -->|on push main| Apply
+  Plan --> PRComment
+  Apply --> AWS
+  Resolver -->|stack: kubernetes| Group
+  Group --> Hydrator
+  Hydrator -->|make hydrate-component<br/>+ hydrate-index| Commit
+  Hydrator -->|index diff| IndexComment
+  Commit --> Builder
+  Builder --> CompComment
+  Mainpush -.->|polls every 1min| FluxCD
+  FluxCD --> Cluster
+  Commit -.->|on diff: re-fires synchronize| Dispatcher
 ```
 
 AWS authentication uses GitHub OIDC. `aws/github-oidc-auth/envs/{environment}` issues per-environment IAM roles (plan / apply), which other stacks assume to deploy.

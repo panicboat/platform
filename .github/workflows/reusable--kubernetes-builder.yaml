@@ -10,7 +10,7 @@ on:
       environment:
         required: true
         type: string
-        description: 'Target environment for hydration (e.g., k3d)'
+        description: 'Target environment (e.g., k3d)'
       app-id:
         required: true
         type: string
@@ -21,12 +21,12 @@ on:
         description: 'GitHub App private key for authentication'
 
 jobs:
-  kustomize-build:
-    name: 'Kustomize Build'
+  kustomize-diff:
+    name: 'Kustomize Diff'
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
     steps:
       - name: Generate GitHub App token
@@ -52,32 +52,11 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
-      - name: Setup aqua
-        uses: aquaproj/aqua-installer@v4.0.4
-        with:
-          aqua_version: v2.48.2
-        env:
-          AQUA_CONFIG: .github/aqua.yaml
-
-      - name: Hydrate manifests
-        run: make -C kubernetes hydrate ENV=${{ inputs.environment }}
-        env:
-          AQUA_CONFIG: ${{ github.workspace }}/.github/aqua.yaml
-
-      - name: Commit and push hydrated manifests
-        uses: stefanzweifel/git-auto-commit-action@v7
-        with:
-          commit_message: 'chore(kubernetes/manifests/${{ inputs.environment }}): hydrate manifests'
-          commit_options: '--signoff'
-          file_pattern: 'kubernetes/manifests/${{ inputs.environment }}/'
-          commit_user_name: 'github-actions[bot]'
-          commit_user_email: 'github-actions[bot]@users.noreply.github.com'
-
       - name: Kubernetes Diff
         uses: panicboat/deploy-actions/kubernetes@main
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           service-name: ${{ inputs.service-name }}
           environment: ${{ inputs.environment }}
-          path: kubernetes/manifests/${{ inputs.environment }}
+          path: kubernetes/manifests/${{ inputs.environment }}/${{ inputs.service-name }}
           pr-number: ${{ steps.pr-info.outputs.number }}

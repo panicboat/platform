@@ -1,0 +1,129 @@
+name: 'Reusable - Kubernetes Hydrator'
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: 'Target environment for hydration (e.g., k3d)'
+      services:
+        required: true
+        type: string
+        description: 'JSON array of service names to hydrate (e.g. ["coredns","cilium"])'
+      app-id:
+        required: true
+        type: string
+        description: 'GitHub App ID for authentication'
+    secrets:
+      private-key:
+        required: true
+        description: 'GitHub App private key for authentication'
+
+concurrency:
+  group: kubernetes-hydrate-${{ github.event.pull_request.number || github.ref }}-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  hydrate:
+    name: 'Hydrate'
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3.1.1
+        with:
+          app-id: ${{ inputs.app-id }}
+          private-key: ${{ secrets.private-key }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Get PR information
+        id: pr-info
+        uses: jwalton/gh-find-current-pr@v1
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          state: all
+        continue-on-error: true
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Setup aqua
+        uses: aquaproj/aqua-installer@v4.0.4
+        with:
+          aqua_version: v2.48.2
+        env:
+          AQUA_CONFIG: .github/aqua.yaml
+
+      - name: Hydrate changed components
+        env:
+          SERVICES_JSON: ${{ inputs.services }}
+          AQUA_CONFIG: ${{ github.workspace }}/.github/aqua.yaml
+        run: |
+          set -euo pipefail
+          for svc in $(echo "$SERVICES_JSON" | jq -r '.[]'); do
+            make -C kubernetes hydrate-component COMPONENT="$svc" ENV="${{ inputs.environment }}"
+          done
+
+      - name: Hydrate index
+        env:
+          AQUA_CONFIG: ${{ github.workspace }}/.github/aqua.yaml
+        run: make -C kubernetes hydrate-index ENV=${{ inputs.environment }}
+
+      - name: Commit and push hydrated manifests
+        id: auto-commit
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: 'chore(kubernetes/manifests/${{ inputs.environment }}): hydrate manifests'
+          commit_options: '--signoff'
+          file_pattern: 'kubernetes/manifests/${{ inputs.environment }}/'
+          commit_user_name: 'github-actions[bot]'
+          commit_user_email: 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Compute index diff
+        id: index-diff
+        if: steps.pr-info.outputs.number != ''
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          ENV: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          diff=$(git diff "$BASE_SHA" HEAD -- \
+            "kubernetes/manifests/$ENV/kustomization.yaml" \
+            "kubernetes/manifests/$ENV/00-namespaces/" || true)
+          {
+            echo 'diff<<EOF'
+            echo "$diff"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          if [ -n "$diff" ]; then
+            echo "has-diff=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-diff=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment index diff
+        if: steps.index-diff.outputs.has-diff == 'true' && steps.pr-info.outputs.number != ''
+        uses: thollander/actions-comment-pull-request@v3.0.1
+        with:
+          message: |
+            ## Kubernetes Index Diff
+
+            **Environment**: `${{ inputs.environment }}`
+
+            ```diff
+            ${{ steps.index-diff.outputs.diff }}
+            ```
+          comment-tag: 'kubernetes-index-${{ inputs.environment }}'
+          mode: upsert
+          pr-number: ${{ steps.pr-info.outputs.number }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        continue-on-error: true

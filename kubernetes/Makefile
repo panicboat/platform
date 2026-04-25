@@ -26,6 +26,7 @@
 # =============================================================================
 # Variables
 # =============================================================================
+SHELL := /bin/bash
 CLUSTER_NAME ?= k8s-local
 ENV ?= k3d
 
@@ -75,32 +76,60 @@ help: ## Show help
 # =============================================================================
 # Phase 0: Hydrate Manifests
 # =============================================================================
+.PHONY: hydrate-component
+hydrate-component: ## Hydrate single component (usage: make hydrate-component COMPONENT=cilium ENV=k3d)
+	@set -euo pipefail; \
+	component_dir="components/$(COMPONENT)/$(ENV)"; \
+	out_dir="manifests/$(ENV)/$(COMPONENT)"; \
+	mkdir -p "$$out_dir"; \
+	: > "$$out_dir/manifest.yaml"; \
+	if [ -f "$$component_dir/helmfile.yaml" ]; then \
+		helmfile -f "$$component_dir/helmfile.yaml" template --include-crds --skip-tests >> "$$out_dir/manifest.yaml"; \
+	fi; \
+	if [ -d "$$component_dir/kustomization" ]; then \
+		echo "---" >> "$$out_dir/manifest.yaml"; \
+		kustomize build "$$component_dir/kustomization" >> "$$out_dir/manifest.yaml"; \
+	fi; \
+	printf "resources:\n  - manifest.yaml\n" > "$$out_dir/kustomization.yaml"; \
+	if git ls-files --error-unmatch "$$out_dir/manifest.yaml" >/dev/null 2>&1; then \
+		if git diff --quiet -I '^[[:space:]]*(ca\.crt|ca\.key|tls\.crt|tls\.key|caBundle):' -- "$$out_dir/manifest.yaml"; then \
+			git checkout -- "$$out_dir/manifest.yaml"; \
+		fi; \
+	fi
+
+.PHONY: hydrate-index
+hydrate-index: ## Regenerate manifests/$(ENV) index and cleanup orphans (usage: make hydrate-index ENV=k3d)
+	@set -euo pipefail; \
+	env_dir="manifests/$(ENV)"; \
+	mkdir -p "$$env_dir/00-namespaces"; \
+	find components -maxdepth 2 -name namespace.yaml | sort | \
+		xargs -I{} sh -c 'echo "---"; cat "{}"' > "$$env_dir/00-namespaces/namespaces.yaml"; \
+	printf "resources:\n  - namespaces.yaml\n" > "$$env_dir/00-namespaces/kustomization.yaml"; \
+	for dir in $$(ls -d "$$env_dir"/*/ 2>/dev/null); do \
+		name=$$(basename "$$dir"); \
+		if [ "$$name" = "00-namespaces" ]; then continue; fi; \
+		if [ ! -d "components/$$name/$(ENV)" ]; then \
+			rm -rf "$$dir"; \
+		fi; \
+	done; \
+	{ \
+		echo "resources:"; \
+		echo "  - ./00-namespaces"; \
+		for dir in $$(ls -d "$$env_dir"/*/ 2>/dev/null | grep -v "/00-namespaces/$$" | sort); do \
+			echo "  - ./$$(basename $$dir)"; \
+		done; \
+	} > "$$env_dir/kustomization.yaml"
+
 .PHONY: hydrate
-hydrate: ## Hydrate manifests from Helmfile and Kustomize (usage: make hydrate ENV=k3d)
+hydrate: ## Hydrate all components (usage: make hydrate ENV=k3d)
 	@echo "$(BLUE)💧 Hydrating manifests for $(ENV)...$(NC)"
 	@rm -rf manifests/$(ENV)/*
 	@mkdir -p manifests/$(ENV)
-	@echo "$(BLUE)💧 Hydrating namespaces...$(NC)"
-	@find components -name namespace.yaml -print0 | xargs -0 -I{} sh -c 'echo "---"; cat {}' > manifests/$(ENV)/00-namespaces.yaml
-	@echo "$(BLUE)💧 Hydrating components...$(NC)"
-	@echo "resources:" > manifests/$(ENV)/kustomization.yaml
 	@for component in $$(ls -d components/*/$(ENV) 2>/dev/null | cut -d'/' -f2 | sort -u); do \
-		component_dir="components/$$component/$(ENV)"; \
 		echo "Hydrating $$component..."; \
-		: > manifests/$(ENV)/$$component.yaml; \
-		[ -f "$$component_dir/helmfile.yaml" ] && helmfile -f "$$component_dir/helmfile.yaml" template --include-crds --skip-tests >> manifests/$(ENV)/$$component.yaml; \
-		[ -d "$$component_dir/kustomization" ] && { echo "---"; kustomize build "$$component_dir/kustomization"; } >> manifests/$(ENV)/$$component.yaml; \
-		echo "- $$component.yaml" >> manifests/$(ENV)/kustomization.yaml; \
+		$(MAKE) hydrate-component COMPONENT=$$component ENV=$(ENV); \
 	done
-	@echo "- 00-namespaces.yaml" >> manifests/$(ENV)/kustomization.yaml
-	@echo "$(BLUE)💧 Reverting cert-only changes (helm regenerates these on each run)...$(NC)"
-	@for f in manifests/$(ENV)/*.yaml; do \
-		[ "$$(basename $$f)" = "kustomization.yaml" ] && continue; \
-		git ls-files --error-unmatch "$$f" >/dev/null 2>&1 || continue; \
-		if git diff --quiet -I '^[[:space:]]*(ca\.crt|ca\.key|tls\.crt|tls\.key|caBundle):' -- "$$f"; then \
-			git checkout -- "$$f"; \
-		fi; \
-	done
+	@$(MAKE) hydrate-index ENV=$(ENV)
 	@echo "$(GREEN)✅ Manifests hydrated$(NC)"
 
 # =============================================================================
@@ -138,7 +167,7 @@ cilium-install: ## Install Cilium CNI
 	@if kubectl get ds cilium -n kube-system >/dev/null 2>&1; then \
 		echo "$(YELLOW)⚠️  Cilium already installed$(NC)"; \
 	else \
-		kubectl apply -f manifests/k3d/cilium.yaml; \
+		kubectl apply -f manifests/k3d/cilium/manifest.yaml; \
 		echo "$(BLUE)⏳ Waiting for Cilium to be ready...$(NC)"; \
 		kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=cilium-operator -n kube-system --timeout=300s >/dev/null; \
 		kubectl wait --for=condition=ready pod -l k8s-app=cilium -n kube-system --timeout=300s >/dev/null; \
@@ -208,10 +237,10 @@ flux-status: ## Check FluxCD status
 components-install: ## Install all infrastructure components
 	@echo "$(BLUE)🏗️ Installing infrastructure components...$(NC)"
 	@echo "$(BLUE)Creating namespaces...$(NC)"
-	@kubectl apply -f manifests/k3d/00-namespaces.yaml
+	@kubectl apply -f manifests/k3d/00-namespaces/namespaces.yaml
 	@sleep 2
 	@echo "$(BLUE)Installing Prometheus Operator CRDs...$(NC)"
-	@kubectl apply --server-side --force-conflicts -f manifests/k3d/prometheus-operator.yaml >/dev/null 2>&1 || true
+	@kubectl apply --server-side --force-conflicts -f manifests/k3d/prometheus-operator/manifest.yaml >/dev/null 2>&1 || true
 	@sleep 15
 	@echo "$(BLUE)Installing all components...$(NC)"
 	@kubectl apply --server-side --force-conflicts -k manifests/k3d >/dev/null
