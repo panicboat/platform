@@ -71,7 +71,8 @@ flowchart LR
   Hydrator -->|index diff| IndexComment[(PR comment<br/>kubernetes-index-env)]
   Commit --> Builder[reusable--kubernetes-builder<br/>matrix: service x env<br/>diff only]
   Builder --> CompComment[(PR comment<br/>kubernetes-service-env)]
-  Commit --> FluxCD[Flux CD sync]
+  Mainpush --> FluxCD[Flux CD<br/>polls main branch<br/>kubernetes/manifests/k3d]
+  FluxCD --> Cluster[(k3d cluster)]
   Commit -.->|App token push<br/>fires synchronize<br/>loop terminates: manifests/<br/>not in directory_conventions| Dispatcher
 ```
 

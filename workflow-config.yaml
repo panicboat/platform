@@ -14,12 +14,6 @@ environments:
     iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-production-github-actions-role
     iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-production-github-actions-role
 
-# NOTE: Do NOT add "kubernetes/manifests/**" as a root here.
-# The kubernetes-hydrator workflow auto-commits to that path with a
-# GitHub App token. If label-dispatcher matches it, the resulting
-# label flips re-trigger deploy-trigger, which re-runs hydrate, which
-# pushes again — an infinite loop. Keep kubernetes/manifests/** outside
-# of directory_conventions.
 directory_conventions:
   - root: "aws/{service}"
     stacks:
