@@ -1,0 +1,91 @@
+# Beyla eBPF Auto-Instrumentation Configuration for local
+# Production-ready base configuration with local-specific overrides
+
+# =============================================================================
+# Preset Configuration
+# =============================================================================
+# "application" preset: Focuses on application-level metrics and traces
+preset: application
+
+# =============================================================================
+# Beyla Configuration
+# =============================================================================
+config:
+  data:
+    # -------------------------------------------------------------------------
+    # OTEL Traces Export
+    # -------------------------------------------------------------------------
+    otel_traces_export:
+      # Using ClusterIP DNS name - works with kube-proxy enabled in local
+      endpoint: http://opentelemetry-collector.opentelemetry-system.svc.cluster.local:4317
+      protocol: grpc
+      interval: 5s
+      max_export_batch_size: 512
+
+    # -------------------------------------------------------------------------
+    # OTEL Metrics Export
+    # -------------------------------------------------------------------------
+    otel_metrics_export:
+      # Using ClusterIP DNS name - works with kube-proxy enabled in local
+      endpoint: http://opentelemetry-collector.opentelemetry-system.svc.cluster.local:4317
+      protocol: grpc
+      interval: 30s
+
+    # -------------------------------------------------------------------------
+    # Prometheus Export (for ServiceMonitor scraping)
+    # -------------------------------------------------------------------------
+    prometheus_export:
+      port: 9090
+      path: /metrics
+
+    # -------------------------------------------------------------------------
+    # Service Discovery
+    # -------------------------------------------------------------------------
+    # Use Kubernetes namespace-based discovery for service name resolution
+    # Beyla will use the deployment/pod name as the service name
+    # TODO: If the namespaces to be traced increases, additional entries are required.
+    discovery:
+      services:
+        - k8s_namespace: "default"
+          open_ports: "80,443,8080,3000"
+        - k8s_namespace: "monitoring"
+          open_ports: "80,443,8080,3000,3100,9090"
+        - k8s_namespace: "flux-system"
+          open_ports: "80,443,8080,9292"
+
+    # -------------------------------------------------------------------------
+    # Route Configuration
+    # -------------------------------------------------------------------------
+    routes:
+      unmatched: heuristic
+
+    # -------------------------------------------------------------------------
+    # Kubernetes Attributes
+    # -------------------------------------------------------------------------
+    attributes:
+      kubernetes:
+        # Enable Kubernetes metadata for service name resolution
+        # Beyla will use deployment/pod names as service names
+        enable: true
+
+    # -------------------------------------------------------------------------
+    # Network Filter (optional - reduce noise)
+    # -------------------------------------------------------------------------
+    filter:
+      network:
+        k8s_dst_owner_name:
+          not_match: "{kube*,*prometheus*,*grafana-agent*}"
+        k8s_src_owner_name:
+          not_match: "{kube*,*prometheus*,*grafana-agent*}"
+
+# =============================================================================
+# Service Configuration
+# =============================================================================
+service:
+  enabled: true
+
+# =============================================================================
+# ServiceMonitor for Prometheus
+# =============================================================================
+serviceMonitor:
+  enabled: true

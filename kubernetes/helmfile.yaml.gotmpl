@@ -5,19 +5,19 @@
 # It defines environments and includes component-specific helmfiles.
 #
 # Usage:
-#   helmfile -e k3d list              # List all releases
-#   helmfile -e k3d template          # Generate manifests
-#   helmfile -e k3d apply             # Deploy to cluster
+#   helmfile -e local list              # List all releases
+#   helmfile -e local template          # Generate manifests
+#   helmfile -e local apply             # Deploy to cluster
 #
 # TODO: (production) Add production, staging environments
 # =============================================================================
 
 environments:
-  k3d:
+  local:
     values:
       - cluster:
           name: k8s-local
-          # TODO: (k3d) k3d-specific settings
+          # TODO: (local) local-specific settings
           isLocal: true
   # TODO: (production) Uncomment and configure for production
   # production:

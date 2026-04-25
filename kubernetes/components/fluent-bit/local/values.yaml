@@ -1,0 +1,107 @@
+# Fluent-bit Log Collector Configuration for local
+# Production-ready base configuration with local-specific overrides
+
+# =============================================================================
+# Volume Mounts for Log Collection
+# =============================================================================
+daemonSetVolumes:
+  - name: varlog
+    hostPath:
+      path: /var/log
+  - name: varlibdockercontainers
+    hostPath:
+      path: /var/lib/docker/containers
+
+daemonSetVolumeMounts:
+  - name: varlog
+    mountPath: /var/log
+  - name: varlibdockercontainers
+    mountPath: /var/lib/docker/containers
+    readOnly: true
+
+# =============================================================================
+# Fluent-bit Configuration
+# =============================================================================
+config:
+  # -------------------------------------------------------------------------
+  # Inputs
+  # -------------------------------------------------------------------------
+  # TODO: (local) Systemd input is disabled to prevent /etc/machine-id mount errors in k3d
+  # In production (EKS), you may want to enable systemd input for system logs
+  inputs: |
+    [INPUT]
+        Name tail
+        Path /var/log/containers/*.log
+        multiline.parser cri
+        Tag kube.*
+        Mem_Buf_Limit 5MB
+        Skip_Long_Lines On
+        Refresh_Interval 10
+
+  # -------------------------------------------------------------------------
+  # Filters
+  # -------------------------------------------------------------------------
+  filters: |
+    [FILTER]
+        Name kubernetes
+        Match kube.*
+        Merge_Log On
+        Keep_Log Off
+        K8S-Logging.Parser On
+        K8S-Logging.Exclude On
+        Labels On
+        Annotations Off
+        Buffer_Size 0
+
+    [FILTER]
+        Name modify
+        Match kube.*
+        Remove_wildcard annotation.
+        Remove time
+        Remove logtag
+
+  # -------------------------------------------------------------------------
+  # Outputs
+  # -------------------------------------------------------------------------
+  outputs: |
+    [OUTPUT]
+        Name opentelemetry
+        Match kube.*
+        Host opentelemetry-collector.opentelemetry-system.svc.cluster.local
+        Port 4318
+        Logs_uri /v1/logs
+        Log_response_payload True
+        Tls Off
+        Retry_Limit 3
+        add_label cluster k8s-local
+        add_label app fluent-bit
+        # Send Kubernetes metadata as OTLP resource attributes
+        logs_body_key_attributes true
+
+# =============================================================================
+# Resource Limits
+# =============================================================================
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+# =============================================================================
+# Tolerations (to run on all nodes including control plane)
+# =============================================================================
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+
+# =============================================================================
+# ServiceMonitor for Prometheus
+# =============================================================================
+serviceMonitor:
+  enabled: true

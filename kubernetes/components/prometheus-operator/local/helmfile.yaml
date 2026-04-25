@@ -1,0 +1,24 @@
+# =============================================================================
+# Kube-Prometheus-Stack Helmfile for local
+# =============================================================================
+# This chart installs:
+#   - Prometheus Operator
+#   - Prometheus
+#   - Alertmanager
+#   - Grafana
+#   - Various exporters and ServiceMonitors
+# =============================================================================
+environments:
+  local:
+---
+repositories:
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+
+releases:
+  - name: kube-prometheus-stack
+    namespace: monitoring
+    chart: prometheus-community/kube-prometheus-stack
+    version: "84.0.1"
+    values:
+      - values.yaml

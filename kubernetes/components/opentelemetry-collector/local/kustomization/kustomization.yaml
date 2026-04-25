@@ -1,0 +1,14 @@
+# =============================================================================
+# OpenTelemetry Collector Kustomization for local
+# =============================================================================
+# Adds hostPort to allow Beyla (hostNetwork) to connect via localhost:4317
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+patches:
+  - path: hostport-patch.yaml
+    target:
+      kind: Deployment
+      name: opentelemetry-collector
+      namespace: opentelemetry-system

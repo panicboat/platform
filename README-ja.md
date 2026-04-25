@@ -10,14 +10,13 @@
 .
 ├── .github/workflows/         # GitHub Actions (Terragrunt executor, deploy trigger, etc.)
 ├── aws/                       # Terragrunt stacks (module + envs/{environment})
-│   ├── claude-code/
-│   ├── claude-code-action/
+│   ├── ai-assistant/
 │   ├── github-oidc-auth/
 │   └── vpc/
 ├── kubernetes/
-│   ├── clusters/k3d/          # Flux bootstrap (flux-system, repositories)
+│   ├── clusters/local/        # Flux bootstrap (flux-system, repositories)
 │   ├── components/            # Cilium, Prometheus, Loki, Tempo, OTel, Beyla, etc.
-│   └── manifests/k3d/         # Rendered manifests (per-component subdirectories)
+│   └── manifests/local/       # Rendered manifests (per-component subdirectories)
 ├── github/repository/         # Terraform for GitHub repo settings
 ├── docs/
 └── workflow-config.yaml       # Environments and deployment targets
@@ -40,12 +39,12 @@
 
 ### Environments
 
-`workflow-config.yaml` で定義。現状 `develop` と `production` が有効、`staging` は予約済み（コメントアウト）。
+`workflow-config.yaml` で定義。`local`、`develop`、`production` が有効。
 
 | Environment | AWS Region | AWS Account | Status |
 |-------------|------------|-------------|--------|
+| local | - | - | Active (kubernetes only, k3d cluster) |
 | develop | us-east-1 | 559744160976 | Active |
-| staging | - | - | Reserved |
 | production | ap-northeast-1 | 559744160976 | Active |
 
 Terragrunt の remote state は S3 bucket `terragrunt-state-559744160976` + DynamoDB lock table `terragrunt-state-locks` に集約される。
@@ -110,17 +109,17 @@ AWS 認証は GitHub OIDC 経由。`aws/github-oidc-auth/envs/{environment}` が
 
 ### GitOps Sync (Flux CD)
 
-- `kubernetes/clusters/k3d/flux-system/gotk-sync.yaml` が Flux の bootstrap 構成。
+- `kubernetes/clusters/local/flux-system/gotk-sync.yaml` が Flux の bootstrap 構成。
 - 2 本の `GitRepository` を持つ（poll interval 1 分）:
-  - **platform repo**: `./kubernetes/clusters/k3d` を同期 → プラットフォーム共通コンポーネント（Cilium, CoreDNS, Prometheus-Operator, Grafana, Loki, Tempo, OpenTelemetry, Beyla など）を展開。
+  - **platform repo**: `./kubernetes/clusters/local` を同期 → プラットフォーム共通コンポーネント（Cilium, CoreDNS, Prometheus-Operator, Grafana, Loki, Tempo, OpenTelemetry, Beyla など）を展開。
   - **monorepo**: `./clusters/develop` を同期 → アプリケーションワークロードを展開（10 分間隔で reconcile）。
 - Platform と Monorepo は Flux を介して疎結合に接続される。
 - `kubernetes/components/` を変更する PR では CI が自動で `make hydrate` を実行し、レンダリング済みマニフェストをコミットする。`main` との差分は PR コメントとして投稿されレビューに供される。
 
 ### Claude Code Integration
 
-- `.github/workflows/claude-code-action.yaml` が `@claude` コメントで起動し、`claude-code-action` IAM ロール経由で AWS Bedrock の Claude を呼び出す。
-- `aws/claude-code-action/` と `aws/claude-code/` がそれぞれ Bedrock 呼び出し用 / 実行用 IAM を定義する。
+- `.github/workflows/claude-code-action.yaml` が `@claude` コメントで起動し、`ai-assistant` IAM ロール経由で AWS Bedrock の Claude を呼び出す。
+- `aws/ai-assistant/` が Bedrock 呼び出し用 / 実行用 IAM を定義する。
 
 ## 🔗 Related Repositories
 

@@ -10,7 +10,7 @@ on:
       environment:
         required: true
         type: string
-        description: 'Target environment (e.g., k3d)'
+        description: 'Target environment (e.g., local)'
       app-id:
         required: true
         type: string

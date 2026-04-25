@@ -1,5 +1,5 @@
 # =============================================================================
-# Kubernetes Platform Setup for k3d
+# Kubernetes Platform Setup for local
 # =============================================================================
 # This Makefile provides commands to set up and manage a local Kubernetes
 # cluster using k3d with a production-ready observability stack.
@@ -28,7 +28,7 @@
 # =============================================================================
 SHELL := /bin/bash
 CLUSTER_NAME ?= k8s-local
-ENV ?= k3d
+ENV ?= local
 
 # Colors for output
 GREEN  := \033[0;32m
@@ -77,7 +77,7 @@ help: ## Show help
 # Phase 0: Hydrate Manifests
 # =============================================================================
 .PHONY: hydrate-component
-hydrate-component: ## Hydrate single component (usage: make hydrate-component COMPONENT=cilium ENV=k3d)
+hydrate-component: ## Hydrate single component (usage: make hydrate-component COMPONENT=cilium ENV=local)
 	@set -euo pipefail; \
 	component_dir="components/$(COMPONENT)/$(ENV)"; \
 	out_dir="manifests/$(ENV)/$(COMPONENT)"; \
@@ -98,7 +98,7 @@ hydrate-component: ## Hydrate single component (usage: make hydrate-component CO
 	fi
 
 .PHONY: hydrate-index
-hydrate-index: ## Regenerate manifests/$(ENV) index and cleanup orphans (usage: make hydrate-index ENV=k3d)
+hydrate-index: ## Regenerate manifests/$(ENV) index and cleanup orphans (usage: make hydrate-index ENV=local)
 	@set -euo pipefail; \
 	env_dir="manifests/$(ENV)"; \
 	mkdir -p "$$env_dir/00-namespaces"; \
@@ -121,7 +121,7 @@ hydrate-index: ## Regenerate manifests/$(ENV) index and cleanup orphans (usage: 
 	} > "$$env_dir/kustomization.yaml"
 
 .PHONY: hydrate
-hydrate: ## Hydrate all components (usage: make hydrate ENV=k3d)
+hydrate: ## Hydrate all components (usage: make hydrate ENV=local)
 	@echo "$(BLUE)💧 Hydrating manifests for $(ENV)...$(NC)"
 	@rm -rf manifests/$(ENV)/*
 	@mkdir -p manifests/$(ENV)
@@ -156,7 +156,7 @@ cluster-create: ## Create k3d cluster
 .PHONY: gateway-install
 gateway-install: ## Install Gateway API CRDs
 	@echo "$(BLUE)📦 Installing Gateway API CRDs...$(NC)"
-	@kubectl apply -k components/gateway-api/k3d/kustomization >/dev/null
+	@kubectl apply -k components/gateway-api/$(ENV)/kustomization >/dev/null
 	@echo "$(BLUE)⏳ Waiting for CRDs to be registered...$(NC)"
 	@kubectl wait --for=condition=Established crd/gatewayclasses.gateway.networking.k8s.io --timeout=60s >/dev/null
 	@echo "$(GREEN)✅ Gateway API CRDs installed$(NC)"
@@ -167,7 +167,7 @@ cilium-install: ## Install Cilium CNI
 	@if kubectl get ds cilium -n kube-system >/dev/null 2>&1; then \
 		echo "$(YELLOW)⚠️  Cilium already installed$(NC)"; \
 	else \
-		kubectl apply -f manifests/k3d/cilium/manifest.yaml; \
+		kubectl apply -f manifests/$(ENV)/cilium/manifest.yaml; \
 		echo "$(BLUE)⏳ Waiting for Cilium to be ready...$(NC)"; \
 		kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=cilium-operator -n kube-system --timeout=300s >/dev/null; \
 		kubectl wait --for=condition=ready pod -l k8s-app=cilium -n kube-system --timeout=300s >/dev/null; \
@@ -180,7 +180,7 @@ coredns-update: ## Fix CoreDNS configuration
 	@kubectl wait --for=condition=ready node --all --timeout=300s >/dev/null
 	@sleep 60
 	@echo "$(BLUE)🔧 Applying CoreDNS configuration...$(NC)"
-	@kubectl apply -k components/coredns/k3d/kustomization >/dev/null
+	@kubectl apply -k components/coredns/$(ENV)/kustomization >/dev/null
 	@kubectl rollout restart deployment/coredns -n kube-system >/dev/null
 	@kubectl rollout status deployment/coredns -n kube-system --timeout=300s >/dev/null
 	@echo "$(BLUE)🧪 Testing DNS resolution...$(NC)"
@@ -237,13 +237,13 @@ flux-status: ## Check FluxCD status
 components-install: ## Install all infrastructure components
 	@echo "$(BLUE)🏗️ Installing infrastructure components...$(NC)"
 	@echo "$(BLUE)Creating namespaces...$(NC)"
-	@kubectl apply -f manifests/k3d/00-namespaces/namespaces.yaml
+	@kubectl apply -f manifests/$(ENV)/00-namespaces/namespaces.yaml
 	@sleep 2
 	@echo "$(BLUE)Installing Prometheus Operator CRDs...$(NC)"
-	@kubectl apply --server-side --force-conflicts -f manifests/k3d/prometheus-operator/manifest.yaml >/dev/null 2>&1 || true
+	@kubectl apply --server-side --force-conflicts -f manifests/$(ENV)/prometheus-operator/manifest.yaml >/dev/null 2>&1 || true
 	@sleep 15
 	@echo "$(BLUE)Installing all components...$(NC)"
-	@kubectl apply --server-side --force-conflicts -k manifests/k3d >/dev/null
+	@kubectl apply --server-side --force-conflicts -k manifests/$(ENV) >/dev/null
 	@echo "$(GREEN)✅ Infrastructure components installed$(NC)"
 	@echo ""
 	@echo "$(BLUE)📊 Access URLs (add to /etc/hosts -> 127.0.0.1):$(NC)"
@@ -260,13 +260,13 @@ components-install: ## Install all infrastructure components
 .PHONY: gitops-setup
 gitops-setup: ## Setup FluxCD GitOps management
 	@echo "$(BLUE)🔧 Setting up FluxCD GitOps...$(NC)"
-	@kubectl apply -k clusters/k3d/flux-system || echo "$(YELLOW)⚠️  Push code to repository first$(NC)"
+	@kubectl apply -k clusters/$(ENV)/flux-system || echo "$(YELLOW)⚠️  Push code to repository first$(NC)"
 	@echo "$(GREEN)✅ GitOps setup completed$(NC)"
 
 .PHONY: gitops-enable
 gitops-enable: ## Enable GitOps management for all components
 	@echo "$(BLUE)🔄 Enabling GitOps for all components...$(NC)"
-	@kubectl apply -k clusters/k3d >/dev/null || echo "$(YELLOW)⚠️  GitOps migration failed$(NC)"
+	@kubectl apply -k clusters/$(ENV) >/dev/null || echo "$(YELLOW)⚠️  GitOps migration failed$(NC)"
 	@echo "$(GREEN)✅ GitOps enabled$(NC)"
 
 .PHONY: gitops-status
