@@ -54,7 +54,10 @@ Terragrunt の remote state は S3 bucket `terragrunt-state-559744160976` + Dyna
 
 ```mermaid
 flowchart LR
-  Trigger[PR / push main] --> Resolver[label-resolver<br/>workflow-config.yaml]
+  PRevent[PR open/sync] --> Dispatcher[auto-label--label-dispatcher<br/>panicboat/deploy-actions/label-dispatcher]
+  Dispatcher -->|adds missing labels<br/>per workflow-config.yaml<br/>directory_conventions| Trigger[auto-label--deploy-trigger<br/>on: pull_request labeled]
+  Mainpush[push main] --> Trigger
+  Trigger --> Resolver[label-resolver]
   Resolver -->|stack: terragrunt| TG[reusable--terragrunt-executor]
   TG -->|PR| Plan[terragrunt plan]
   TG -->|merge to main| Apply[terragrunt apply]
@@ -64,17 +67,13 @@ flowchart LR
   OIDC -.->|AssumeRole| TG
   Resolver -->|stack: kubernetes| Group[kubernetes-targets-group<br/>group by env]
   Group --> Hydrator[reusable--kubernetes-hydrator<br/>matrix: env<br/>concurrency: hydrate-PR-env]
-  Hydrator -->|make hydrate-component<br/>+ hydrate-index| Commit[auto-commit manifests]
+  Hydrator -->|make hydrate-component<br/>+ hydrate-index| Commit[auto-commit<br/>kubernetes/manifests/]
   Hydrator -->|index diff| IndexComment[(PR comment<br/>kubernetes-index-env)]
   Commit --> Builder[reusable--kubernetes-builder<br/>matrix: service x env<br/>diff only]
   Builder --> CompComment[(PR comment<br/>kubernetes-service-env)]
   Commit --> FluxCD[Flux CD sync]
+  Commit -.->|App token push<br/>fires synchronize<br/>loop terminates: manifests/<br/>not in directory_conventions| Dispatcher
 ```
-
-> **Note: hydrator の auto-commit は本 workflow を再トリガーしない。**
-> hydrator は GitHub App token で push するため通常は `synchronize` イベントを発火させ `auto-label--label-dispatcher.yaml` が再走する。それでもループしないのは、`workflow-config.yaml` の `directory_conventions` が `kubernetes/components/{service}` のみをマッチ対象とし `kubernetes/manifests/**` は含まないため。auto-commit 後に dispatcher が再評価しても missing label は無く、`labeled` イベント不発 → `auto-label--deploy-trigger.yaml` は再起動しない。
->
-> **不変条件**: `directory_conventions` に `kubernetes/manifests/**` を絶対に追加しないこと。追加すると `label-dispatcher → labeled → deploy-trigger → hydrator → push → label-dispatcher → …` の無限ループを引き起こす。
 
 AWS 認証は GitHub OIDC 経由。`aws/github-oidc-auth/envs/{environment}` が各環境の IAM Role (plan / apply) を発行し、他の stack はそのロールを引いてデプロイする。
 

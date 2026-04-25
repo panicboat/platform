@@ -54,7 +54,10 @@ Terragrunt remote state is consolidated in S3 bucket `terragrunt-state-559744160
 
 ```mermaid
 flowchart LR
-  Trigger[PR / push main] --> Resolver[label-resolver<br/>workflow-config.yaml]
+  PRevent[PR open/sync] --> Dispatcher[auto-label--label-dispatcher<br/>panicboat/deploy-actions/label-dispatcher]
+  Dispatcher -->|adds missing labels<br/>per workflow-config.yaml<br/>directory_conventions| Trigger[auto-label--deploy-trigger<br/>on: pull_request labeled]
+  Mainpush[push main] --> Trigger
+  Trigger --> Resolver[label-resolver]
   Resolver -->|stack: terragrunt| TG[reusable--terragrunt-executor]
   TG -->|PR| Plan[terragrunt plan]
   TG -->|merge to main| Apply[terragrunt apply]
@@ -64,17 +67,13 @@ flowchart LR
   OIDC -.->|AssumeRole| TG
   Resolver -->|stack: kubernetes| Group[kubernetes-targets-group<br/>group by env]
   Group --> Hydrator[reusable--kubernetes-hydrator<br/>matrix: env<br/>concurrency: hydrate-PR-env]
-  Hydrator -->|make hydrate-component<br/>+ hydrate-index| Commit[auto-commit manifests]
+  Hydrator -->|make hydrate-component<br/>+ hydrate-index| Commit[auto-commit<br/>kubernetes/manifests/]
   Hydrator -->|index diff| IndexComment[(PR comment<br/>kubernetes-index-env)]
   Commit --> Builder[reusable--kubernetes-builder<br/>matrix: service x env<br/>diff only]
   Builder --> CompComment[(PR comment<br/>kubernetes-service-env)]
   Commit --> FluxCD[Flux CD sync]
+  Commit -.->|App token push<br/>fires synchronize<br/>loop terminates: manifests/<br/>not in directory_conventions| Dispatcher
 ```
-
-> **Note: the hydrator's auto-commit does not re-trigger this workflow.**
-> The hydrator pushes via a GitHub App token, which normally fires a `synchronize` event and re-runs `auto-label--label-dispatcher.yaml`. The loop is broken because `directory_conventions` in `workflow-config.yaml` matches only `kubernetes/components/{service}` — never `kubernetes/manifests/**`. After the auto-commit the dispatcher finds no missing labels, no `labeled` event fires, and `auto-label--deploy-trigger.yaml` is not re-entered.
->
-> **Invariant**: never add `kubernetes/manifests/**` to `directory_conventions`. Doing so would create an infinite loop: `label-dispatcher → labeled → deploy-trigger → hydrator → push → label-dispatcher → …`.
 
 AWS authentication uses GitHub OIDC. `aws/github-oidc-auth/envs/{environment}` issues per-environment IAM roles (plan / apply), which other stacks assume to deploy.
 
