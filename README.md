@@ -54,25 +54,59 @@ Terragrunt remote state is consolidated in S3 bucket `terragrunt-state-559744160
 
 ```mermaid
 flowchart LR
-  PRevent[PR open/sync] --> Dispatcher[auto-label--label-dispatcher<br/>panicboat/deploy-actions/label-dispatcher]
-  Dispatcher -->|adds missing labels<br/>per workflow-config.yaml<br/>directory_conventions| Trigger[auto-label--deploy-trigger<br/>on: pull_request labeled]
-  Mainpush[push main] --> Trigger
-  Trigger --> Resolver[label-resolver]
-  Resolver -->|stack: terragrunt| TG[reusable--terragrunt-executor]
-  TG -->|PR| Plan[terragrunt plan]
-  TG -->|merge to main| Apply[terragrunt apply]
-  Plan --> PRComment[(PR comment)]
-  Apply --> AWS[(AWS)]
-  Apply --> OIDC[github-oidc-auth<br/>IAM roles]
+  subgraph Triggers
+    PRevent[PR open/sync]
+    Mainpush[push main]
+  end
+
+  subgraph Labeling
+    Dispatcher[auto-label--label-dispatcher<br/>panicboat/deploy-actions/label-dispatcher]
+    Trigger[auto-label--deploy-trigger<br/>on: pull_request labeled]
+    Resolver[label-resolver]
+  end
+
+  subgraph Terragrunt
+    TG[reusable--terragrunt-executor]
+    Plan[terragrunt plan]
+    Apply[terragrunt apply]
+    OIDC[github-oidc-auth<br/>IAM roles]
+    PRComment[(PR comment)]
+  end
+
+  subgraph KubernetesCI [Kubernetes CI]
+    Group[kubernetes-targets-group<br/>group by env]
+    Hydrator[reusable--kubernetes-hydrator<br/>matrix: env<br/>concurrency: hydrate-PR-env]
+    Commit[auto-commit<br/>kubernetes/manifests/]
+    Builder[reusable--kubernetes-builder<br/>matrix: service x env<br/>diff only]
+    IndexComment[(PR comment<br/>kubernetes-index-env)]
+    CompComment[(PR comment<br/>kubernetes-service-env)]
+  end
+
+  subgraph Runtime
+    AWS[(AWS)]
+    FluxCD[Flux CD<br/>polls main branch<br/>kubernetes/manifests/k3d]
+    Cluster[(k3d cluster)]
+  end
+
+  PRevent --> Dispatcher
+  Dispatcher -->|adds missing labels<br/>per workflow-config.yaml<br/>directory_conventions| Trigger
+  Mainpush --> Trigger
+  Trigger --> Resolver
+  Resolver -->|stack: terragrunt| TG
+  TG -->|PR| Plan
+  TG -->|merge to main| Apply
+  Plan --> PRComment
+  Apply --> AWS
+  Apply --> OIDC
   OIDC -.->|AssumeRole| TG
-  Resolver -->|stack: kubernetes| Group[kubernetes-targets-group<br/>group by env]
-  Group --> Hydrator[reusable--kubernetes-hydrator<br/>matrix: env<br/>concurrency: hydrate-PR-env]
-  Hydrator -->|make hydrate-component<br/>+ hydrate-index| Commit[auto-commit<br/>kubernetes/manifests/]
-  Hydrator -->|index diff| IndexComment[(PR comment<br/>kubernetes-index-env)]
-  Commit --> Builder[reusable--kubernetes-builder<br/>matrix: service x env<br/>diff only]
-  Builder --> CompComment[(PR comment<br/>kubernetes-service-env)]
-  Mainpush --> FluxCD[Flux CD<br/>polls main branch<br/>kubernetes/manifests/k3d]
-  FluxCD --> Cluster[(k3d cluster)]
+  Resolver -->|stack: kubernetes| Group
+  Group --> Hydrator
+  Hydrator -->|make hydrate-component<br/>+ hydrate-index| Commit
+  Hydrator -->|index diff| IndexComment
+  Commit --> Builder
+  Builder --> CompComment
+  Mainpush --> FluxCD
+  FluxCD --> Cluster
   Commit -.->|App token push<br/>fires synchronize<br/>loop terminates: manifests/<br/>not in directory_conventions| Dispatcher
 ```
 
