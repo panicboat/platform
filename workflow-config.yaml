@@ -1,6 +1,9 @@
 environments:
   - environment: local
-    # local environment is kubernetes-only; no AWS fields
+    # local environment is kubernetes-only; AWS fields are placeholders
+    aws_region: ""
+    iam_role_plan: ""
+    iam_role_apply: ""
 
   - environment: develop
     aws_region: us-east-1
