@@ -59,14 +59,13 @@ jobs:
         continue-on-error: true
 
       - name: Execute Terragrunt
-        uses: panicboat/panicboat-actions/terragrunt@main
+        uses: panicboat/panicboat-actions/terragrunt-run@main
         with:
-          github-token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.app-token.outputs.token }}
           service-name: ${{ inputs.service-name }}
           environment: ${{ inputs.environment }}
           action-type: ${{ inputs.action-type }}
           iam-role: ${{ inputs.iam-role }}
           aws-region: ${{ inputs.aws-region }}
           working-directory: ${{ inputs.working-directory }}
-          repository: ${{ github.repository }}
           pr-number: ${{ steps.pr-info.outputs.number }}
