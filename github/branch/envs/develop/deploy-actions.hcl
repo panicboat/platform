@@ -3,6 +3,11 @@ locals {
 
   repository = {
     name              = "deploy-actions"
-    branch_protection = local.defaults.locals.branch_protection
+    branch_protection = {
+      main = merge(
+        local.defaults.locals.branch_protection.main,
+        {}
+      )
+    }
   }
 }

@@ -3,6 +3,13 @@ locals {
 
   repository = {
     name              = "monorepo"
-    branch_protection = local.defaults.locals.branch_protection
+    branch_protection = {
+      main = merge(
+        local.defaults.locals.branch_protection.main,
+        {
+          required_status_checks = ["CI Gatekeeper"]
+        }
+      )
+    }
   }
 }
