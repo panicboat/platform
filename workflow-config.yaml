@@ -1,11 +1,7 @@
 environments:
   - environment: local
-    # local environment is kubernetes-only; AWS fields are placeholders
+    # local environment is kubernetes-only
     stacks:
-      terragrunt:
-        aws_region: ""
-        iam_role_plan: ""
-        iam_role_apply: ""
       kubernetes: {}
 
   - environment: develop
