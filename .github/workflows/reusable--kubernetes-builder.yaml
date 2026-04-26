@@ -53,7 +53,7 @@ jobs:
           fetch-depth: 0
 
       - name: Kubernetes Diff
-        uses: panicboat/deploy-actions/kubernetes@main
+        uses: panicboat/panicboat-actions/kubernetes@main
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           service-name: ${{ inputs.service-name }}
