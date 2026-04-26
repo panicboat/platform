@@ -2,7 +2,7 @@
 
 locals {
   environment          = "develop"
-  aws_region           = "ap-northeast-1"
+  aws_region           = "us-east-1"
   claude_model_region  = "us-west-2"
   max_session_duration = 7200 # 2 hours for development work
 

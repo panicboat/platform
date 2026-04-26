@@ -1,0 +1,20 @@
+# =============================================================================
+# Beyla Helmfile for local
+# =============================================================================
+# Beyla is an eBPF-based auto-instrumentation tool that captures traces and
+# metrics without code changes.
+# =============================================================================
+environments:
+  local:
+---
+repositories:
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
+
+releases:
+  - name: beyla
+    namespace: monitoring
+    chart: grafana/beyla
+    version: "1.16.5"
+    values:
+      - values.yaml

@@ -124,7 +124,7 @@ make phase2
 ```bash
 make phase3
 ```
-- FluxCD が `manifests/k3d`（コンポーネント別サブディレクトリ）を同期
+- FluxCD が `manifests/local`（コンポーネント別サブディレクトリ）を同期
 - Hydration 済みマニフェスト（Helm + Kustomize）の一括適用
 - Namespace, CRD, アプリケーションの順序制御（Flux Kustomization依存）
 

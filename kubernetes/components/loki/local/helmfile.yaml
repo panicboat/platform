@@ -1,0 +1,21 @@
+# =============================================================================
+# Loki Helmfile for local
+# =============================================================================
+# Loki is a log aggregation system designed for efficiency and ease of
+# operation. It receives logs from the OTel Collector and provides querying
+# capabilities in Grafana.
+# =============================================================================
+environments:
+  local:
+---
+repositories:
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
+
+releases:
+  - name: loki
+    namespace: monitoring
+    chart: grafana/loki
+    version: "7.0.0"
+    values:
+      - values.yaml

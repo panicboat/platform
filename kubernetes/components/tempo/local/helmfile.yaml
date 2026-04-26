@@ -1,0 +1,20 @@
+# =============================================================================
+# Tempo Helmfile for local
+# =============================================================================
+# Tempo is a distributed tracing backend. It receives traces from the OTel
+# Collector and provides querying capabilities in Grafana.
+# =============================================================================
+environments:
+  local:
+---
+repositories:
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
+
+releases:
+  - name: tempo
+    namespace: monitoring
+    chart: grafana/tempo
+    version: "1.24.4"
+    values:
+      - values.yaml

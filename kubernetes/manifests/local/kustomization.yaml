@@ -1,0 +1,13 @@
+resources:
+  - ./00-namespaces
+  - ./beyla
+  - ./cilium
+  - ./coredns
+  - ./dashboard
+  - ./fluent-bit
+  - ./gateway-api
+  - ./loki
+  - ./opentelemetry-collector
+  - ./opentelemetry
+  - ./prometheus-operator
+  - ./tempo

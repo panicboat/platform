@@ -6,7 +6,7 @@ on:
       environment:
         required: true
         type: string
-        description: 'Target environment for hydration (e.g., k3d)'
+        description: 'Target environment for hydration (e.g., local)'
       services:
         required: true
         type: string

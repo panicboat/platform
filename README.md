@@ -10,14 +10,13 @@
 .
 ├── .github/workflows/         # GitHub Actions (Terragrunt executor, deploy trigger, etc.)
 ├── aws/                       # Terragrunt stacks (module + envs/{environment})
-│   ├── claude-code/
-│   ├── claude-code-action/
+│   ├── ai-assistant/
 │   ├── github-oidc-auth/
 │   └── vpc/
 ├── kubernetes/
-│   ├── clusters/k3d/          # Flux bootstrap (flux-system, repositories)
+│   ├── clusters/local/        # Flux bootstrap (flux-system, repositories)
 │   ├── components/            # Cilium, Prometheus, Loki, Tempo, OTel, Beyla, etc.
-│   └── manifests/k3d/         # Rendered manifests (per-component subdirectories)
+│   └── manifests/local/       # Rendered manifests (per-component subdirectories)
 ├── github/repository/         # Terraform for GitHub repo settings
 ├── docs/
 └── workflow-config.yaml       # Environments and deployment targets
@@ -40,12 +39,12 @@
 
 ### Environments
 
-Defined in `workflow-config.yaml`. Currently `develop` and `production` are active; `staging` is reserved (commented out).
+Defined in `workflow-config.yaml`. `local`, `develop`, and `production` are active.
 
 | Environment | AWS Region | AWS Account | Status |
 |-------------|------------|-------------|--------|
+| local | - | - | Active (kubernetes only, k3d cluster) |
 | develop | us-east-1 | 559744160976 | Active |
-| staging | - | - | Reserved |
 | production | ap-northeast-1 | 559744160976 | Active |
 
 Terragrunt remote state is consolidated in S3 bucket `terragrunt-state-559744160976` with DynamoDB lock table `terragrunt-state-locks`.
@@ -110,17 +109,17 @@ AWS authentication uses GitHub OIDC. `aws/github-oidc-auth/envs/{environment}` i
 
 ### GitOps Sync (Flux CD)
 
-- `kubernetes/clusters/k3d/flux-system/gotk-sync.yaml` defines the Flux bootstrap.
+- `kubernetes/clusters/local/flux-system/gotk-sync.yaml` defines the Flux bootstrap.
 - Two `GitRepository` sources (poll interval: 1 minute):
-  - **platform repo**: syncs `./kubernetes/clusters/k3d` — deploys shared platform components (Cilium, CoreDNS, Prometheus-Operator, Grafana, Loki, Tempo, OpenTelemetry, Beyla, etc.).
+  - **platform repo**: syncs `./kubernetes/clusters/local` — deploys shared platform components (Cilium, CoreDNS, Prometheus-Operator, Grafana, Loki, Tempo, OpenTelemetry, Beyla, etc.).
   - **monorepo**: syncs `./clusters/develop` — deploys application workloads (reconciled every 10 minutes).
 - Platform and Monorepo are loosely coupled via Flux.
 - When `kubernetes/components/` changes in a PR, the CI pipeline automatically runs `make hydrate` and commits the rendered manifests. The diff against `main` is posted as a PR comment for review.
 
 ### Claude Code Integration
 
-- `.github/workflows/claude-code-action.yaml` is triggered by `@claude` comments and invokes AWS Bedrock Claude via the `claude-code-action` IAM role.
-- `aws/claude-code-action/` and `aws/claude-code/` define the IAM roles for Bedrock invocation and execution respectively.
+- `.github/workflows/claude-code-action.yaml` is triggered by `@claude` comments and invokes AWS Bedrock Claude via the `ai-assistant` IAM role.
+- `aws/ai-assistant/` defines the IAM roles for Bedrock invocation and execution.
 
 ## 🔗 Related Repositories
 
