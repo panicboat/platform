@@ -8,8 +8,6 @@ locals {
     Project     = local.project_name
     Environment = local.environment
     ManagedBy   = "terragrunt"
-    Repository  = "monorepo"
-    Component   = "repository-management"
     Team        = "panicboat"
   }
 }

@@ -14,8 +14,8 @@ locals {
       dismiss_stale_reviews           = false
       require_code_owner_reviews      = false
       require_last_push_approval      = false
-      require_conversation_resolution = true
-      required_status_checks          = ["CI Gatekeeper"]
+      require_conversation_resolution = false
+      required_status_checks          = []
       strict_required_status_checks   = false
       required_linear_history         = true
       require_signed_commits          = false
