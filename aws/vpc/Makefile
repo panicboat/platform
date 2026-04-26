@@ -28,52 +28,52 @@ help: ## Show this help message
 	@echo "  make apply ENV=production"
 
 init: ## Initialize Terragrunt
-	@echo "$(YELLOW)Initializing Terragrunt for $(ENV)...$(NC)"
+	@printf "$(YELLOW)Initializing Terragrunt for $(ENV)...$(NC)\n"
 	cd envs/$(ENV) && terragrunt init
 
 plan: ## Plan Terragrunt changes
-	@echo "$(YELLOW)Planning Terragrunt changes for $(ENV)...$(NC)"
+	@printf "$(YELLOW)Planning Terragrunt changes for $(ENV)...$(NC)\n"
 	cd envs/$(ENV) && terragrunt plan
 
 apply: ## Apply Terragrunt changes
-	@echo "$(YELLOW)Applying Terragrunt changes for $(ENV)...$(NC)"
+	@printf "$(YELLOW)Applying Terragrunt changes for $(ENV)...$(NC)\n"
 	cd envs/$(ENV) && terragrunt apply -auto-approve
 
 destroy: ## Destroy Terragrunt resources
-	@echo "$(RED)Destroying Terragrunt resources for $(ENV)...$(NC)"
-	@echo "$(RED)WARNING: This will destroy all resources!$(NC)"
+	@printf "$(RED)Destroying Terragrunt resources for $(ENV)...$(NC)\n"
+	@printf "$(RED)WARNING: This will destroy all resources!$(NC)\n"
 	@read -p "Are you sure? [y/N] " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		cd envs/$(ENV) && terragrunt destroy; \
 	else \
-		echo "$(YELLOW)Cancelled.$(NC)"; \
+		printf "$(YELLOW)Cancelled.$(NC)\n"; \
 	fi
 
 validate: ## Validate Terragrunt configuration
-	@echo "$(YELLOW)Validating Terragrunt configuration for $(ENV)...$(NC)"
+	@printf "$(YELLOW)Validating Terragrunt configuration for $(ENV)...$(NC)\n"
 	cd envs/$(ENV) && terragrunt validate
 
 fmt: ## Format Terraform files
-	@echo "$(YELLOW)Formatting Terraform files...$(NC)"
+	@printf "$(YELLOW)Formatting Terraform files...$(NC)\n"
 	terraform fmt -recursive .
 
 check: validate fmt ## Run validation and formatting checks
-	@echo "$(GREEN)All checks completed for $(ENV)$(NC)"
+	@printf "$(GREEN)All checks completed for $(ENV)$(NC)\n"
 
 clean: ## Clean Terragrunt cache
-	@echo "$(YELLOW)Cleaning Terragrunt cache...$(NC)"
+	@printf "$(YELLOW)Cleaning Terragrunt cache...$(NC)\n"
 	find . -type d -name ".terragrunt-cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -name "*.tfplan" -delete 2>/dev/null || true
 
 show: ## Show current Terragrunt state
-	@echo "$(YELLOW)Showing current state for $(ENV)...$(NC)"
+	@printf "$(YELLOW)Showing current state for $(ENV)...$(NC)\n"
 	cd envs/$(ENV) && terragrunt show
 
 output: ## Show Terragrunt outputs
-	@echo "$(YELLOW)Showing outputs for $(ENV)...$(NC)"
+	@printf "$(YELLOW)Showing outputs for $(ENV)...$(NC)\n"
 	cd envs/$(ENV) && terragrunt output
 
 refresh: ## Refresh Terragrunt state
-	@echo "$(YELLOW)Refreshing state for $(ENV)...$(NC)"
+	@printf "$(YELLOW)Refreshing state for $(ENV)...$(NC)\n"
 	cd envs/$(ENV) && terragrunt refresh
