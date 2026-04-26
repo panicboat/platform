@@ -19,6 +19,6 @@ releases:
   - name: kube-prometheus-stack
     namespace: monitoring
     chart: prometheus-community/kube-prometheus-stack
-    version: "84.0.1"
+    version: "84.1.0"
     values:
       - values.yaml
