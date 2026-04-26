@@ -20,8 +20,7 @@ jobs:
           app-id: ${{ vars.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
-      - name: Auto-approve PRs
-        uses: panicboat/panicboat-actions/auto-approve@main
+      - name: Auto-approve
+        uses: hmarr/auto-approve-action@v4.0.0
         with:
-          token: ${{ steps.app-token.outputs.token }}
-          auto-merge-label: 'automerge'
+          github-token: ${{ steps.app-token.outputs.token }}
