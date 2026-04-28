@@ -156,7 +156,7 @@ Lookup module は consumer 側の AWS provider を共有するため、provider 
 
 ```hcl
 variable "environment" {
-  description = "Environment name used to locate the VPC (matches the producer's `vpc-${environment}` Name tag)."
+  description = "Environment name used to locate the VPC (matches the producer's `vpc-$${environment}` Name tag)."
   type        = string
 }
 ```
