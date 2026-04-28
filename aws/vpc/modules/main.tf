@@ -24,5 +24,9 @@ module "vpc" {
   create_database_internet_gateway_route = false
   create_database_nat_gateway_route      = false
 
+  public_subnet_tags   = { Tier = "public" }
+  private_subnet_tags  = { Tier = "private" }
+  database_subnet_tags = { Tier = "database" }
+
   tags = var.common_tags
 }
