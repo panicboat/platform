@@ -308,7 +308,7 @@ aws ec2 describe-subnets \
 
 ### 3. lookup の動作確認（仮 consumer + Terragrunt 経由）
 
-`include_in_copy` 込みで Terragrunt がキャッシュへ lookup を同梱し、`terraform validate` / `terragrunt plan` が成功することを検証する。配置：
+go-getter の `//` subdir 記法で Terragrunt がキャッシュへ `aws/` 全体（`vpc/lookup/` を含む）を同梱し、`terraform validate` / `terragrunt plan` が成功することを検証する。配置：
 
 ```
 aws/_test-consumer/                   # 検証専用、検証後に削除
