@@ -10,6 +10,7 @@ resource "github_repository" "repository" {
   has_projects = each.value.features.projects
 
   vulnerability_alerts = true
+  allow_forking        = each.value.allow_forking
 
   allow_merge_commit     = false
   allow_squash_merge     = true

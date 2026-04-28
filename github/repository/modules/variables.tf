@@ -34,9 +34,10 @@ variable "github_token" {
 variable "repositories" {
   description = "Map of repository configurations. visibility must be one of: public, private, internal"
   type = map(object({
-    name        = string
-    description = string
-    visibility  = string
+    name          = string
+    description   = string
+    visibility    = string
+    allow_forking = optional(bool, true)
     features = object({
       issues   = bool
       wiki     = bool
