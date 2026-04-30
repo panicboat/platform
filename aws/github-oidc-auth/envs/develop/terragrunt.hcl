@@ -22,7 +22,6 @@ inputs = {
   aws_region               = include.env.locals.aws_region
   github_org               = include.env.locals.github_org
   github_repos             = include.env.locals.github_repos
-  github_branches          = include.env.locals.github_branches
   github_environments      = include.env.locals.github_environments
   additional_iam_policies  = include.env.locals.additional_iam_policies
   create_oidc_provider     = include.env.locals.create_oidc_provider
