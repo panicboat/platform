@@ -99,10 +99,12 @@ locals {
 - 削除: `github_branches`
 - それ以外は維持
 
-`envs/{develop,staging,production}/env.hcl`:
+`envs/{develop,production}/env.hcl`:
 
 - `github_branches = ["*"]` の行を削除
-- `github_environments` は環境名（`develop` / `staging` / `production`）のまま維持
+- `github_environments` は環境名（`develop` / `production`）のまま維持
+
+`envs/staging/` は env.hcl / terragrunt.hcl が無く未使用のため対象外。
 
 #### terragrunt.hcl の更新
 
@@ -160,7 +162,7 @@ permissions:
 
 破壊的変更を含むため、新 role の作成と旧 role の削除を分離した段階適用とする:
 
-1. **AWS apply (Phase 1)**: `aws/github-oidc-auth/modules/` を改修し、旧 `aws_iam_role.github_actions_role` リソースを残したまま新 plan-role / apply-role を**追加で**作成する PR をマージ。develop / staging / production の各環境で apply
+1. **AWS apply (Phase 1)**: `aws/github-oidc-auth/modules/` を改修し、旧 `aws_iam_role.github_actions_role` リソースを残したまま新 plan-role / apply-role を**追加で**作成する PR をマージ。develop / production の各環境で apply（staging は未使用のため対象外）
 2. **`workflow-config.yaml` 切替 PR**: `iam_role_plan` / `iam_role_apply` を新 role の ARN に書き換える PR をマージ。マージ後、PR で plan が plan-role で動くこと、main マージ後の apply が apply-role で動くことを確認する
 3. **AWS apply (Phase 2)**: 手順 2 の動作確認後、旧 `aws_iam_role.github_actions_role` リソース定義を削除する PR をマージし、各環境で apply。これにより不可逆な旧 role 削除を新 role の運用実績がある状態で実施する
 4. **`ci-gatekeeper.yaml` 修正 PR**: `permissions: actions: read` を追加する PR をマージ（次手順の前提）
@@ -174,7 +176,7 @@ permissions:
   - 関連ポリシーアタッチメントの差分
   - 旧 `aws_iam_role.github_actions_role` は差分に含まれない（残存）
 - 手順 3（AWS apply Phase 2）の `terragrunt plan` で旧 `aws_iam_role.github_actions_role` の削除差分のみが出る
-- staging / production でも同様（staging は workflow-config 未参照だが新構成は作成する）
+- production でも同様の差分
 - `monorepo` と `platform` の GitHub UI で `Settings → Actions → General → Workflow permissions` が "Read repository contents and packages permissions" になっていること
 - 他リポジトリ（`deploy-actions`, `panicboat-actions`, `ansible`, `dotfiles`）の Workflow permissions に変更が無いこと
 - `auto-label--deploy-trigger.yaml` の PR plan / main apply の両方が新 role で完走する
