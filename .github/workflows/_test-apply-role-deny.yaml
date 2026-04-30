@@ -1,0 +1,30 @@
+name: 'TEST - apply-role denial'
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/_test-apply-role-deny.yaml'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test-deny:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Attempt to assume apply-role (expected to fail)
+        id: assume
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::559744160976:role/github-oidc-auth-develop-github-actions-apply-role
+          aws-region: us-east-1
+        continue-on-error: true
+
+      - name: Verify the assume step failed
+        run: |
+          if [[ "${{ steps.assume.outcome }}" == "success" ]]; then
+            echo "::error::apply-role was assumable from a PR — trust policy is too permissive"
+            exit 1
+          fi
+          echo "OK: apply-role assumption was denied from PR as expected"
