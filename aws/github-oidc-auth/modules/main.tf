@@ -50,21 +50,6 @@ locals {
       "repo:${var.github_org}/${repo}:environment:${env}"]
     )
   ])
-
-  # Legacy trust conditions — preserved verbatim until aws_iam_role.github_actions_role
-  # is removed in Phase 3. Reproduces the previous concat(repo_wildcard, branch_wildcard,
-  # environment) construction exactly so that the in-flight trust policy is not changed
-  # by this plan. The branch wildcard is hard-coded because var.github_branches was ["*"]
-  # in both envs at the time it was removed; this entire local goes away with the legacy
-  # role, so the hard-code does not need to become a variable.
-  legacy_conditions = flatten([
-    for repo in var.github_repos : concat(
-      ["repo:${var.github_org}/${repo}:*"],
-      ["repo:${var.github_org}/${repo}:ref:refs/heads/*"],
-      [for env in var.github_environments :
-      "repo:${var.github_org}/${repo}:environment:${env}"]
-    )
-  ])
 }
 
 # Plan role: read-only AWS access + Terragrunt state lock RW
@@ -178,51 +163,6 @@ resource "aws_iam_role_policy_attachment" "apply_administrator_access" {
 resource "aws_iam_role_policy_attachment" "apply_additional_policies" {
   count      = length(var.additional_iam_policies)
   role       = aws_iam_role.apply.name
-  policy_arn = var.additional_iam_policies[count.index]
-}
-
-# IAM Role for GitHub Actions OIDC
-resource "aws_iam_role" "github_actions_role" {
-  name                 = "${var.project_name}-${var.environment}-github-actions-role"
-  max_session_duration = var.max_session_duration
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Federated = local.oidc_provider_arn
-        }
-        Action = "sts:AssumeRoleWithWebIdentity"
-        Condition = {
-          StringEquals = {
-            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          }
-          StringLike = {
-            "token.actions.githubusercontent.com:sub" = local.legacy_conditions
-          }
-        }
-      }
-    ]
-  })
-
-  tags = merge(var.common_tags, {
-    Name    = "${var.project_name}-${var.environment}-github-actions-role"
-    Purpose = "github-actions-oidc"
-  })
-}
-
-# Attach AdministratorAccess for full AWS access
-resource "aws_iam_role_policy_attachment" "administrator_access" {
-  role       = aws_iam_role.github_actions_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
-}
-
-# Attach any additional policies specified
-resource "aws_iam_role_policy_attachment" "additional_policies" {
-  count      = length(var.additional_iam_policies)
-  role       = aws_iam_role.github_actions_role.name
   policy_arn = var.additional_iam_policies[count.index]
 }
 
