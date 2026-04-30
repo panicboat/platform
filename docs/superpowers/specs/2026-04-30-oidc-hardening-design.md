@@ -114,10 +114,13 @@ locals {
 
 `github/repository/` 配下で `monorepo` と `platform` の default workflow permissions（GitHub Settings → Actions → General → Workflow permissions に対応）を `read` に設定する。
 
-実装方針（具体は plan 段階で確定）:
+実装は `integrations/github` provider が提供する Terraform リソースで管理することを前提とし、状態管理外の手段（`null_resource` + `local-exec` 等）でのフォールバックは取らない。失敗がサイレントになり、plan/apply の差分追跡が効かなくなるため。
 
-- `integrations/github` 6.12 系で `github_actions_repository_permissions` リソースに `default_workflow_permissions` 引数が存在すれば、そのリソースを `monorepo` / `platform` 限定で追加して使う
-- 引数が無ければ `null_resource` + `local-exec` から `gh api -X PUT /repos/{owner}/{repo}/actions/permissions/workflow -f default_workflow_permissions=read` を呼ぶ形でフォールバック
+plan 段階で provider のリソース対応状況を確認する。`integrations/github` 6.12 系で対応する場合はそのリソースを `monorepo` / `platform` 限定で追加する。対応していない場合は次のいずれかで対処する（spec を更新する）:
+
+- provider のバージョンアップ
+- 対応する別 provider の導入
+- 本要件の取り下げ（C 領域に移管、または別 spec で扱う）
 
 `variables.tf` に `actions_default_permissions_read = optional(bool, false)` を追加し、`envs/develop/{monorepo,platform}.hcl` で `true` を指定する。他のリポジトリは既定値 `false` のままで挙動変化なし。
 
