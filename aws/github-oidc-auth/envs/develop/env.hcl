@@ -8,11 +8,6 @@ locals {
   github_org  = "panicboat"
   github_repos = ["monorepo","platform"]
 
-  # GitHub branches that can assume the role in develop
-  github_branches = [
-    "*"
-  ]
-
   # GitHub environments that can assume the role
   github_environments = [
     "develop"

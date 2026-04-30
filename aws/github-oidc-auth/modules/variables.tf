@@ -32,12 +32,6 @@ variable "github_repos" {
   type        = list(string)
 }
 
-variable "github_branches" {
-  description = "List of GitHub branches that can assume the role"
-  type        = list(string)
-  default     = ["main", "master"]
-}
-
 variable "github_environments" {
   description = "List of GitHub environments that can assume the role"
   type        = list(string)

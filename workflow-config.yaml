@@ -8,16 +8,16 @@ environments:
     stacks:
       terragrunt:
         aws_region: us-east-1
-        iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-develop-github-actions-role
-        iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-develop-github-actions-role
+        iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-develop-github-actions-plan-role
+        iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-develop-github-actions-apply-role
       kubernetes: {}
 
   - environment: production
     stacks:
       terragrunt:
         aws_region: ap-northeast-1
-        iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-production-github-actions-role
-        iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-production-github-actions-role
+        iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-production-github-actions-plan-role
+        iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-production-github-actions-apply-role
       kubernetes: {}
 
 stack_conventions:
