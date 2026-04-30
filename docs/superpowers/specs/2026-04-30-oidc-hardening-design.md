@@ -118,13 +118,12 @@ locals {
 
 実装は `integrations/github` provider が提供する Terraform リソースで管理することを前提とし、状態管理外の手段（`null_resource` + `local-exec` 等）でのフォールバックは取らない。失敗がサイレントになり、plan/apply の差分追跡が効かなくなるため。
 
-plan 段階で provider のリソース対応状況を確認する。`integrations/github` 6.12 系で対応する場合はそのリソースを `monorepo` / `platform` 限定で追加する。対応していない場合は次のいずれかで対処する（spec を更新する）:
+provider のリソース調査結果（6.12 系のスキーマで確認）:
 
-- provider のバージョンアップ
-- 対応する別 provider の導入
-- 本要件の取り下げ（C 領域に移管、または別 spec で扱う）
+- `github_actions_repository_permissions` は `enabled` / `allowed_actions` / `sha_pinning_required` を扱うリソースで、`default_workflow_permissions` は持たない
+- `github_workflow_repository_permissions` が `repository` / `default_workflow_permissions` / `can_approve_pull_request_reviews` を持つ別リソース。本 spec の目的にはこちらを使う
 
-`variables.tf` に `actions_default_permissions_read = optional(bool, false)` を追加し、`envs/develop/{monorepo,platform}.hcl` で `true` を指定する。他のリポジトリは既定値 `false` のままで挙動変化なし。
+`variables.tf` に `actions_default_permissions_read = optional(bool, false)` を追加し、`envs/develop/{monorepo,platform}.hcl` で `true` を指定する。`github_workflow_repository_permissions` を `actions_default_permissions_read = true` のリポジトリにのみ作成し、`default_workflow_permissions = "read"` と `can_approve_pull_request_reviews = false` を設定する。他のリポジトリは既定値 `false` のままで挙動変化なし。
 
 #### Workflow 側の影響
 

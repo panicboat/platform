@@ -39,40 +39,30 @@ GitHub repository module:
 
 ---
 
-## Task 1: Verify github provider supports `default_workflow_permissions`
+## Task 1: Provider resource verification (already completed)
 
-**Files:** none (research only)
+**Files:** none (research only) — completed during planning
 
-This is a pre-condition for Task 9. If the installed `integrations/github ~> 6.12` does not support `default_workflow_permissions` on `github_actions_repository_permissions`, halt and update the spec (provider upgrade, replacement, or scope drop). Do not introduce a `null_resource` / `local-exec` workaround.
+The schema of `integrations/github` ~> 6.12 (locked to 6.12.0) was inspected and the result is:
 
-- [ ] **Step 1: Initialize the github/repository terragrunt-managed module to download the provider**
+- `github_actions_repository_permissions` has the attributes `enabled`, `allowed_actions`, `id`, `repository`, `sha_pinning_required`. It does NOT have `default_workflow_permissions`.
+- `github_workflow_repository_permissions` is a separate resource with attributes `repository`, `default_workflow_permissions`, `can_approve_pull_request_reviews`, `id`. This is the resource we will use.
 
-```bash
-cd github/repository/envs/develop
-terragrunt init
-```
+Subsequent tasks reference `github_workflow_repository_permissions` accordingly. No further action in Task 1.
 
-Expected: provider plugins are downloaded into `.terragrunt-cache/.../<some-hash>/.terraform/providers/registry.terraform.io/integrations/github/`.
-
-- [ ] **Step 2: Check whether `default_workflow_permissions` is in the resource schema**
+To re-verify the schema if needed:
 
 ```bash
 cd github/repository/envs/develop
-terragrunt providers schema -json 2>/dev/null \
+GITHUB_TOKEN=dummy terragrunt run -- providers schema -json 2>/dev/null \
   | jq '.provider_schemas
         | to_entries[]
         | select(.key | test("integrations/github"))
-        | .value.resource_schemas.github_actions_repository_permissions.block.attributes
-        | has("default_workflow_permissions")'
+        | .value.resource_schemas.github_workflow_repository_permissions.block.attributes
+        | keys'
 ```
 
-Expected: `true`.
-
-- [ ] **Step 3: Decide based on result**
-
-If the command prints `true` → proceed to Task 2.
-
-If `false` (or null) → STOP. Update `docs/superpowers/specs/2026-04-30-oidc-hardening-design.md` to either bump the github provider version, switch to a different provider, or remove the default-permissions requirement. Do not move on to subsequent tasks before the spec is revised and re-approved.
+Expected output: `["can_approve_pull_request_reviews", "default_workflow_permissions", "id", "repository"]`.
 
 ---
 
@@ -674,24 +664,24 @@ variable "repositories" {
 }
 ```
 
-- [ ] **Step 2: Add `github_actions_repository_permissions` resource**
+- [ ] **Step 2: Add `github_workflow_repository_permissions` resource**
 
 Edit `github/repository/modules/main.tf`. Append:
 
 ```hcl
-resource "github_actions_repository_permissions" "repository" {
+resource "github_workflow_repository_permissions" "repository" {
   for_each = {
     for k, v in var.repositories :
     k => v if v.actions_default_permissions_read
   }
 
-  repository                   = github_repository.repository[each.key].name
-  enabled                      = true
-  default_workflow_permissions = "read"
+  repository                       = github_repository.repository[each.key].name
+  default_workflow_permissions     = "read"
+  can_approve_pull_request_reviews = false
 }
 ```
 
-If Task 1 found that `default_workflow_permissions` is not supported, do NOT proceed — revisit the spec instead.
+The resource is `github_workflow_repository_permissions` (NOT `github_actions_repository_permissions` — the latter has different responsibilities and does not expose `default_workflow_permissions` in `integrations/github` ~> 6.12).
 
 - [ ] **Step 3: Format and validate**
 
@@ -760,8 +750,8 @@ cd github/repository && make plan ENV=develop
 ```
 
 Expected diff:
-- `module.monorepo.github_actions_repository_permissions.repository["monorepo"]` create
-- `module.platform.github_actions_repository_permissions.repository["platform"]` create
+- `module.monorepo.github_workflow_repository_permissions.repository["monorepo"]` create
+- `module.platform.github_workflow_repository_permissions.repository["platform"]` create
 - (No diffs for `deploy-actions`, `panicboat-actions`, `ansible`, `dotfiles`)
 
 If any other repository shows a diff, STOP and investigate.
