@@ -140,8 +140,6 @@ permissions:
   actions: read
 ```
 
-実機検証で他に不足する権限が出たら `permissions:` に明示追加する。
-
 ### `workflow-config.yaml` の更新
 
 各環境の `iam_role_plan` / `iam_role_apply` を新 role の ARN に置換。フィールド構造（`required_attributes` 含む）は維持。
@@ -160,37 +158,37 @@ permissions:
 
 ## Apply ordering
 
-破壊的変更を含むため、ARN 切り替え・役割削除・default workflow permissions 切替を段階的に行う:
+破壊的変更を含むため、新 role の作成と旧 role の削除を分離した段階適用とする:
 
-1. `aws/github-oidc-auth/modules/` を新構成（plan-role + apply-role）に書き換える PR をマージし、各環境で apply。実装上は旧 `github_actions_role` リソース定義を main.tf から外して新 2 ロールを作成する形にし、削除と新規作成を一度の apply で行う
-2. `workflow-config.yaml` の `iam_role_plan` / `iam_role_apply` を新 ARN に書き換える PR をマージ
-3. `ci-gatekeeper.yaml` に `permissions: actions: read` を追加する PR をマージ（次手順の前提）
-4. `github/repository/envs/develop/{monorepo,platform}.hcl` で `actions_default_permissions_read = true` を有効化して apply
-5. 動作確認: PR で plan が plan-role で動く、main マージ後に apply が apply-role で動く、`auto-label--deploy-trigger.yaml` と `ci-gatekeeper.yaml` が完走する
-
-手順 1 の旧 role 削除は同時に行う前提だが、もし新 role の動作不安が大きい場合は plan 段階で「新 role 作成のみ → workflow-config 切替 → 旧 role 削除」の 3 段階に分割することも検討する。
+1. **AWS apply (Phase 1)**: `aws/github-oidc-auth/modules/` を改修し、旧 `aws_iam_role.github_actions_role` リソースを残したまま新 plan-role / apply-role を**追加で**作成する PR をマージ。develop / staging / production の各環境で apply
+2. **`workflow-config.yaml` 切替 PR**: `iam_role_plan` / `iam_role_apply` を新 role の ARN に書き換える PR をマージ。マージ後、PR で plan が plan-role で動くこと、main マージ後の apply が apply-role で動くことを確認する
+3. **AWS apply (Phase 2)**: 手順 2 の動作確認後、旧 `aws_iam_role.github_actions_role` リソース定義を削除する PR をマージし、各環境で apply。これにより不可逆な旧 role 削除を新 role の運用実績がある状態で実施する
+4. **`ci-gatekeeper.yaml` 修正 PR**: `permissions: actions: read` を追加する PR をマージ（次手順の前提）
+5. **GitHub default permissions apply**: `github/repository/envs/develop/{monorepo,platform}.hcl` で `actions_default_permissions_read = true` を有効化して apply。`ci-gatekeeper.yaml` を含む全 workflow が完走することを確認する
 
 ## Verification
 
-- `aws/github-oidc-auth/envs/develop` の `terragrunt plan` で以下の差分が出る:
-  - `aws_iam_role.github_actions_role` 削除
+- 手順 1（AWS apply Phase 1）の `terragrunt plan` で以下の差分が出る:
   - `aws_iam_role.plan` 新規作成
   - `aws_iam_role.apply` 新規作成
   - 関連ポリシーアタッチメントの差分
+  - 旧 `aws_iam_role.github_actions_role` は差分に含まれない（残存）
+- 手順 3（AWS apply Phase 2）の `terragrunt plan` で旧 `aws_iam_role.github_actions_role` の削除差分のみが出る
 - staging / production でも同様（staging は workflow-config 未参照だが新構成は作成する）
 - `monorepo` と `platform` の GitHub UI で `Settings → Actions → General → Workflow permissions` が "Read repository contents and packages permissions" になっていること
 - 他リポジトリ（`deploy-actions`, `panicboat-actions`, `ansible`, `dotfiles`）の Workflow permissions に変更が無いこと
 - `auto-label--deploy-trigger.yaml` の PR plan / main apply の両方が新 role で完走する
 - `ci-gatekeeper.yaml` が default read 環境下で完走する
-- 試行: PR ブランチで apply-role を assume する step を仕込んだ workflow を実行し、`AccessDenied` で失敗すること（任意の検証）
+- **拒否確認**: PR ブランチで apply-role の ARN を assume する step を持つテスト workflow を一時的に作成し PR を出して動作させ、`AccessDenied` で失敗することを確認する。確認後にテスト workflow は削除する
 
 ## Rollback
 
 各 step の rollback:
 
-- 手順 4（GitHub default permissions）: `actions_default_permissions_read = false` に戻して apply、または UI で "Read and write permissions" に戻す
-- 手順 3（ci-gatekeeper permissions）: 影響なし。読み取り権限の追加は default が write でも害はない
-- 手順 2（`workflow-config.yaml`）: 旧 ARN に戻す PR をマージ
-- 手順 1（IAM role 構成変更）: 該当 commit を revert して apply。旧 `github_actions_role` が再作成される
+- 手順 5（GitHub default permissions）: `actions_default_permissions_read = false` に戻して apply
+- 手順 4（ci-gatekeeper permissions）: 影響なし。読み取り権限の追加は default が write でも害はない
+- 手順 3（旧 role 削除）: 該当 commit を revert して apply。旧 `github_actions_role` が再作成される
+- 手順 2（`workflow-config.yaml`）: 旧 ARN に戻す PR をマージ。旧 role はまだ存在するため即座に旧経路に戻る
+- 手順 1（新 role 作成）: 該当 commit を revert して apply。新 role が削除される
 
-最も影響が大きいのは手順 1（旧 role の削除と新 role 作成）。apply 直後に手順 2 の ARN 切替がマージされるまでは、`auto-label--deploy-trigger.yaml` から AWS への認証が失敗する時間帯がある。手順 1 と手順 2 の間隔を最小化するため、両 PR を同時に準備し連続でマージする運用を取る。
+3 段階分離の利点として、旧 role が残った状態（手順 1〜2）であれば旧経路に即座に戻せる。手順 3 の旧 role 削除以降に問題が出た場合は手順 3 を revert する。
