@@ -25,6 +25,17 @@ resource "github_repository" "repository" {
   archived = false
 }
 
+resource "github_workflow_repository_permissions" "repository" {
+  for_each = {
+    for k, v in var.repositories :
+    k => v if v.actions_default_permissions_read
+  }
+
+  repository                       = github_repository.repository[each.key].name
+  default_workflow_permissions     = "read"
+  can_approve_pull_request_reviews = false
+}
+
 resource "aws_cloudwatch_log_group" "github_repository_logs" {
   for_each = var.repositories
 
