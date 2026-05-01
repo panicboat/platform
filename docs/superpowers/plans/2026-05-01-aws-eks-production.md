@@ -938,15 +938,20 @@ platform components を載せる system 用 managed node group を 1 つ定義
 # addons.tf - AWS-managed EKS add-ons and their IRSA roles.
 #
 # IRSA roles for vpc-cni and aws-ebs-csi-driver are created via the
-# terraform-aws-modules/iam iam-role-for-service-accounts-eks submodule and
+# terraform-aws-modules/iam iam-role-for-service-accounts submodule and
 # wired into the addon definitions. kube-proxy / coredns / pod-identity-agent
 # do not need IRSA.
+#
+# Note on submodule naming: v5 of the IAM module shipped a dedicated
+# `iam-role-for-service-accounts-eks` submodule. v6.0 renamed it to
+# `iam-role-for-service-accounts` and changed the role-ARN output from
+# `iam_role_arn` to `arn`. We pin `~> 6.0` and use the v6 names.
 
 module "vpc_cni_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "~> 6.0"
 
-  name             = "eks-${var.environment}-vpc-cni"
+  name                  = "eks-${var.environment}-vpc-cni"
   attach_vpc_cni_policy = true
   vpc_cni_enable_ipv4   = true
 
@@ -961,7 +966,7 @@ module "vpc_cni_irsa" {
 }
 
 module "ebs_csi_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "~> 6.0"
 
   name                  = "eks-${var.environment}-ebs-csi"
@@ -983,7 +988,7 @@ locals {
       most_recent                 = true
       resolve_conflicts_on_create = "OVERWRITE"
       resolve_conflicts_on_update = "OVERWRITE"
-      service_account_role_arn    = module.vpc_cni_irsa.iam_role_arn
+      service_account_role_arn    = module.vpc_cni_irsa.arn
     }
     kube-proxy = {
       resolve_conflicts_on_create = "OVERWRITE"
@@ -998,7 +1003,7 @@ locals {
       most_recent                 = true
       resolve_conflicts_on_create = "OVERWRITE"
       resolve_conflicts_on_update = "OVERWRITE"
-      service_account_role_arn    = module.ebs_csi_irsa.iam_role_arn
+      service_account_role_arn    = module.ebs_csi_irsa.arn
     }
     eks-pod-identity-agent = {
       most_recent                 = true
@@ -1044,15 +1049,19 @@ TG_TF_PATH=tofu terragrunt plan
 
 Expected plan additions (vs Task 6):
 
-- `module.vpc_cni_irsa.aws_iam_role.this[0]` (`name = "eks-production-vpc-cni"`)
-- `module.vpc_cni_irsa.aws_iam_role_policy_attachment.vpc_cni[0]` (`policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"`)
-- `module.ebs_csi_irsa.aws_iam_role.this[0]` (`name = "eks-production-ebs-csi"`)
-- `module.ebs_csi_irsa.aws_iam_role_policy_attachment.ebs_csi[0]` (`policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"`)
+- `module.vpc_cni_irsa.aws_iam_role.this[0]` (`name_prefix = "eks-production-vpc-cni-"`)
+- `module.vpc_cni_irsa.aws_iam_policy.this[0]` (v6 では AWS-managed `AmazonEKS_CNI_Policy` 相当が customer-managed policy として inline 作成される)
+- `module.vpc_cni_irsa.aws_iam_role_policy_attachment.this[0]`
+- `module.ebs_csi_irsa.aws_iam_role.this[0]` (`name_prefix = "eks-production-ebs-csi-"`)
+- `module.ebs_csi_irsa.aws_iam_policy.this[0]` (v6 では AWS-managed `AmazonEBSCSIDriverPolicy` 相当が customer-managed policy として inline 作成される)
+- `module.ebs_csi_irsa.aws_iam_role_policy_attachment.this[0]`
 - `module.eks.aws_eks_addon.this["vpc-cni"]` (`service_account_role_arn = <vpc_cni_irsa role ARN>`)
 - `module.eks.aws_eks_addon.this["kube-proxy"]`
 - `module.eks.aws_eks_addon.this["coredns"]`
 - `module.eks.aws_eks_addon.this["aws-ebs-csi-driver"]` (`service_account_role_arn = <ebs_csi_irsa role ARN>`)
 - `module.eks.aws_eks_addon.this["eks-pod-identity-agent"]`
+
+Total plan should be approximately 48 resources (37 from Task 6 + 11 new = 6 IRSA + 5 addons).
 
 - [ ] **Step 5: Format check**
 
@@ -1064,15 +1073,19 @@ terraform fmt -check -recursive aws/eks
 - [ ] **Step 6: Commit**
 
 ```bash
-git add aws/eks/modules/addons.tf aws/eks/modules/main.tf aws/eks/envs/production/.terraform.lock.hcl
+git add aws/eks/modules/addons.tf aws/eks/modules/main.tf
 git commit -s -m "feat(aws/eks): wire AWS-managed addons with IRSA for vpc-cni and ebs-csi
 
 vpc-cni / kube-proxy / coredns / aws-ebs-csi-driver / eks-pod-identity-agent
 の 5 つの AWS-managed addon を有効化する。vpc-cni と
-aws-ebs-csi-driver には terraform-aws-modules/iam の
-iam-role-for-service-accounts-eks submodule で作成した IRSA role を
-service_account_role_arn 経由で渡す。conflict resolution は
-create/update ともに OVERWRITE。"
+aws-ebs-csi-driver には terraform-aws-modules/iam ~> 6.0 の
+iam-role-for-service-accounts submodule で作成した IRSA role を
+service_account_role_arn 経由で渡す（v5 の同名 -eks サフィックス付き
+submodule とは異なる v6 の名前を使用）。conflict resolution は
+create/update ともに OVERWRITE。
+
+.terraform.lock.hcl は IAM module が既存の AWS provider を再利用する
+ため変更なし。"
 ```
 
 ---
