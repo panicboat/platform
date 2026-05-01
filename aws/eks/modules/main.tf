@@ -27,9 +27,9 @@ module "eks" {
   # block and avoid unwanted KMS resources.
   encryption_config = null
 
-  # Populated in Task 6 / 7
+  # Populated in Task 7
   access_entries          = local.access_entries
-  eks_managed_node_groups = {}
+  eks_managed_node_groups = local.eks_managed_node_groups
   addons                  = null
 
   tags = var.common_tags
