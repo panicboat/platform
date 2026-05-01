@@ -44,7 +44,7 @@ jobs:
     steps:
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v3.1.1
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
         with:
           app-id: ${{ inputs.app-id }}
           private-key: ${{ secrets.private-key }}
@@ -52,7 +52,7 @@ jobs:
 
       - name: Get PR information
         id: pr-info
-        uses: jwalton/gh-find-current-pr@v1
+        uses: jwalton/gh-find-current-pr@f3d61b485d2801773f7a07b2aaa3306bd8f8e653 # v1.3.5
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           state: all
