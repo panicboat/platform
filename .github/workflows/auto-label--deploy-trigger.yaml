@@ -115,7 +115,6 @@ jobs:
     name: 'Deploy Kubernetes (${{ matrix.target.service }}:${{ matrix.target.environment }})'
     needs: [deploy-trigger, deploy-kubernetes-hydrate]
     if: |
-      github.event_name == 'pull_request' &&
       needs.deploy-trigger.outputs.has-targets == 'true' &&
       contains(needs.deploy-trigger.outputs.targets, '"stack":"kubernetes"')
     strategy:
