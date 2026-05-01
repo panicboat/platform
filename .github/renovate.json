@@ -1,9 +1,18 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:base", ":semanticCommits", ":separateMajorReleases", "group:monorepos", "group:recommended"],
+  "extends": [
+    "config:base",
+    ":semanticCommits",
+    ":separateMajorReleases",
+    "group:monorepos",
+    "group:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
   "semanticCommitScope": "{{packageFileDir}}",
   "timezone": "Asia/Tokyo",
-  "labels": ["🤖 renovate"],
+  "labels": [
+    "🤖 renovate"
+  ],
   "assigneesFromCodeOwners": false,
   "reviewersFromCodeOwners": true,
   "automergeType": "pr",
@@ -13,59 +22,81 @@
   "prHourlyLimit": 5,
   "branchPrefix": "renovate/",
   "rangeStrategy": "bump",
-
-  "schedule": ["before 4am every weekday"],
+  "schedule": [
+    "before 4am every weekday"
+  ],
   "minimumReleaseAge": "1 day",
   "separateMinorPatch": false,
   "packageRules": [
     {
       "description": "Default: separate PRs per package",
-      "matchPackagePatterns": ["*"],
+      "matchPackagePatterns": [
+        "*"
+      ],
       "groupName": "{{packageFileDir}}/{{depName}}"
     },
-
     {
       "description": "🚫 Production environments - disable automerge",
-      "matchPaths": ["**/production/**"],
+      "matchPaths": [
+        "**/production/**"
+      ],
       "automerge": false,
       "prPriority": -1,
-      "addLabels": ["⚠️ production"]
+      "addLabels": [
+        "⚠️ production"
+      ]
     },
-
     {
       "description": "🚫 Major updates - disable automerge",
-      "matchUpdateTypes": ["major"],
+      "matchUpdateTypes": [
+        "major"
+      ],
       "automerge": false,
-      "addLabels": ["📈 major-update"]
+      "addLabels": [
+        "📈 major-update"
+      ]
     },
-
     {
       "description": "✅ Minor/Patch updates - enable automerge",
-      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
       "automerge": true
     },
-
     {
       "description": "🚫 Cilium - pinned to 1.18.x. 1.19+ removes --enable-node-port/host-port/external-ips opt-outs and breaks k3d serverlb -> api server 6443 connectivity.",
-      "matchPackageNames": ["cilium"],
-      "matchManagers": ["helmv3", "helm-values", "helmfile"],
+      "matchPackageNames": [
+        "cilium"
+      ],
+      "matchManagers": [
+        "helmv3",
+        "helm-values",
+        "helmfile"
+      ],
       "allowedVersions": "< 1.19.0",
       "enabled": false
     },
-
     {
       "description": "Track OpenTofu releases instead of Terraform for required_version",
-      "matchDepTypes": ["required_version"],
-      "matchDepNames": ["hashicorp/terraform"],
+      "matchDepTypes": [
+        "required_version"
+      ],
+      "matchDepNames": [
+        "hashicorp/terraform"
+      ],
       "overridePackageName": "opentofu/opentofu"
     }
   ],
-
   "customManagers": [
     {
       "customType": "regex",
       "description": "EKS Kubernetes version pinned in env.hcl",
-      "fileMatch": ["^aws/eks/envs/.+/env\\.hcl$"],
+      "fileMatch": [
+        "^aws/eks/envs/.+/env\\.hcl$"
+      ],
       "matchStrings": [
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\n\\s*cluster_version\\s*=\\s*\"(?<currentValue>[^\"]+)\""
       ]

@@ -1,0 +1,24 @@
+name: Lint GitHub Actions
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '**/action.yml'
+      - '**/action.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  ensure-sha-pinned:
+    name: Ensure actions are pinned to SHAs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: zgosalvez/github-actions-ensure-sha-pinned-actions@ca46236c6ce584ae24bc6283ba8dcf4b3ec8a066 # v5.0.4
+        with:
+          allowlist: |
+            panicboat/panicboat-actions/
