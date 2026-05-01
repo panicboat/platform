@@ -819,8 +819,24 @@ locals {
       max_size     = var.node_max_size
       desired_size = var.node_desired_size
 
-      disk_size = var.node_disk_size
-      disk_type = "gp3"
+      # Set EBS root volume size + type via block_device_mappings.
+      # The top-level `disk_size` / `disk_type` arguments are silently
+      # dropped by v21.19.0: `disk_type` is not in the v21 root schema's
+      # eks_managed_node_groups object type (so it's an unknown key that
+      # validates but never reaches AWS), and `disk_size` is forced to
+      # `null` when `use_custom_launch_template = true` (the v21 default).
+      # Using block_device_mappings is the only path that actually sets
+      # gp3 / 50 GiB on the launch template.
+      block_device_mappings = {
+        root = {
+          device_name = "/dev/xvda" # AL2023 root device
+          ebs = {
+            volume_size           = var.node_disk_size
+            volume_type           = "gp3"
+            delete_on_termination = true
+          }
+        }
+      }
 
       labels = {
         "node-role/system" = "true"
@@ -876,12 +892,12 @@ TG_TF_PATH=tofu terragrunt plan
 
 Expected plan additions (vs Task 5):
 
-- `module.eks.module.eks_managed_node_group["system"].aws_eks_node_group.this[0]` (`ami_type = "AL2023_ARM_64_STANDARD"`、`instance_types = ["m6g.large"]`、`capacity_type = "ON_DEMAND"`、`scaling_config = { min = 2, max = 4, desired = 2 }`、`disk_size = 50`)
+- `module.eks.module.eks_managed_node_group["system"].aws_eks_node_group.this[0]` (`ami_type = "AL2023_ARM_64_STANDARD"`、`instance_types = ["m6g.large"]`、`capacity_type = "ON_DEMAND"`、`scaling_config = { min = 2, max = 4, desired = 2 }`)
 - `module.eks.module.eks_managed_node_group["system"].aws_iam_role.this[0]` (node IAM role)
 - `module.eks.module.eks_managed_node_group["system"].aws_iam_role_policy_attachment.this["AmazonEKSWorkerNodePolicy"]`
 - `module.eks.module.eks_managed_node_group["system"].aws_iam_role_policy_attachment.this["AmazonEC2ContainerRegistryReadOnly"]`
 - `module.eks.module.eks_managed_node_group["system"].aws_iam_role_policy_attachment.additional["ssm"]` (`policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"`)
-- `module.eks.module.eks_managed_node_group["system"].aws_launch_template.this[0]` (`block_device_mappings` で `volume_type = "gp3"`、`volume_size = 50`)
+- `module.eks.module.eks_managed_node_group["system"].aws_launch_template.this[0]` (`block_device_mappings` block で `device_name = "/dev/xvda"`, `ebs.volume_type = "gp3"`, `ebs.volume_size = 50`, `ebs.delete_on_termination = true`)
 - `module.eks.module.eks_managed_node_group["system"].module.user_data.null_resource.validate_cluster_service_cidr` (v21 内部 boilerplate)
 
 `AmazonEKS_CNI_Policy` が node IAM role に **付いていないこと** を確認する（`iam_role_attach_cni_policy = false` を明示しているため。IRSA で Task 7 にて別途付与する設計）。
