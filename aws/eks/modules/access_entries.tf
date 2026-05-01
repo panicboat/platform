@@ -4,6 +4,11 @@
 # The CI apply role (github-oidc-auth-production-github-actions-role)
 # operates on AWS APIs only and never touches Kubernetes API; under the
 # GitOps model, all Kubernetes-side changes flow through Flux CD.
+#
+# Note on policy_arn format: EKS Access Policies use a dedicated ARN
+# scheme `arn:aws:eks::aws:cluster-access-policy/<NAME>`, NOT the IAM
+# managed policy form `arn:aws:iam::aws:policy/<NAME>`. Passing the IAM
+# form to AssociateAccessPolicy yields InvalidParameterException (400).
 
 locals {
   access_entries = {
@@ -12,7 +17,7 @@ locals {
 
       policy_associations = {
         cluster_admin = {
-          policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterAdminPolicy"
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
           access_scope = {
             type = "cluster"
           }

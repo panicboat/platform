@@ -48,6 +48,13 @@ module "ebs_csi_irsa" {
 locals {
   cluster_addons = {
     vpc-cni = {
+      # Apply vpc-cni BEFORE the node group is created so the aws-node
+      # DaemonSet has its IRSA role available the moment nodes try to
+      # join. Without this, nodes start without a working CNI and the
+      # node group fails with NodeCreationFailure (Unhealthy nodes),
+      # because the node IAM role intentionally does NOT carry
+      # AmazonEKS_CNI_Policy (see node_groups.tf comment).
+      before_compute              = true
       most_recent                 = true
       resolve_conflicts_on_create = "OVERWRITE"
       resolve_conflicts_on_update = "OVERWRITE"

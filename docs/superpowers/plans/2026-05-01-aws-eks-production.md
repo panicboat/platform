@@ -1580,3 +1580,33 @@ gh pr view --comments | head -40
 Expected: terragrunt plan の出力（追加リソース一覧）が PR comment として現れる。
 
 > ここで CI plan が手元の Task 10 の plan と一致していれば実装完了。あとはレビュー → ready for review → merge の通常フロー。`apply` は merge 後の `auto-label--deploy-trigger` が main push をトリガに `reusable--terragrunt-executor` で `terragrunt apply` を実行する設計だが、本 spec は GitOps 原則のため **production への apply は手動（Task 11 で実施済）** を推奨する。`workflow-config.yaml` で auto-apply を有効にしている場合は事前にレビュー時間を確保する。
+
+---
+
+## Errata（PR #234 マージ後の apply 失敗を踏まえた訂正）
+
+PR #234（本 plan の初回適用）を merge 後の CI apply で 2 件の誤りが顕在化した。後続 PR で修正している。本セクションは plan の歴史的訂正記録として残す。詳細は spec の Errata セクション (`docs/superpowers/specs/2026-04-30-aws-eks-production-design.md` 末尾) を参照。
+
+### E-1: Task 5 の `policy_arn` フォーマット誤り
+
+`access_entries.tf` の `policy_arn` を IAM Managed Policy ARN フォーマット (`arn:aws:iam::aws:policy/AmazonEKSClusterAdminPolicy`) で記述していたが、`aws_eks_access_policy_association` には EKS 専用の Access Policy ARN フォーマット (`arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy`) を渡す必要がある。
+
+apply 時に `InvalidParameterException: The policyArn parameter format is not valid` で失敗。後続 PR で修正済。
+
+### E-2: Task 7 の vpc-cni addon に `before_compute = true` 不足
+
+`addons.tf` の `vpc-cni` addon に `before_compute = true` を指定しなかったため、addon が node group 作成「後」に apply された。Task 6 で `iam_role_attach_cni_policy = false` を指定し IRSA 経由で CNI 権限を付与する設計を採ったが、IRSA バウンドの aws-node DaemonSet が node 起動時には未稼働であり、ノードが Ready にならず `NodeCreationFailure` で node group が CREATE_FAILED になった。
+
+後続 PR で `before_compute = true` を追加して node group 作成「前」に addon を apply するように修正。`aws_eks_addon.before_compute["vpc-cni"]` という別リソースキーで作成される（`aws_eks_addon.this["vpc-cni"]` ではない）。
+
+### E-3: cluster_version の最新化（1.33 → 1.35）
+
+本 plan は `cluster_version = "1.33"` で書かれていたが、後続 PR 作成時点で EKS の最新標準サポートバージョンは `1.35` に更新済。新規 cluster で何も乗せていない状態のため、`terragrunt destroy` で一旦破棄し `1.35` で新規作成する方針を採った（EKS の minor skip upgrade 制約のため、in-place で 1.33 → 1.35 はできない）。
+
+### 後続 PR で実施した手順
+
+1. 新ブランチ `fix-aws-eks-production-apply` を `origin/main` から作成
+2. impl 修正（`access_entries.tf`, `addons.tf`, `env.hcl`）
+3. 手元で `terragrunt destroy` を実行して PR #234 の partial state を破棄
+4. Draft PR 作成 → CI plan が「全リソース新規作成（~50 add）」で成功することを確認
+5. ユーザーが ready for review → merge → CI apply で `1.35` cluster が新規作成される
