@@ -7,7 +7,10 @@ locals {
       main = merge(
         local.defaults.locals.branch_protection.main,
         {
-          required_status_checks = ["CI Gatekeeper"]
+          required_status_checks = [
+            "Validate PR title",
+            "Ensure actions are pinned to SHAs",
+          ]
         }
       )
     }
