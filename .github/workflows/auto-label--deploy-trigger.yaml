@@ -81,7 +81,7 @@ jobs:
       matrix:
         env: ${{ fromJson(needs.kubernetes-targets-group.outputs.environments) }}
       fail-fast: false
-    uses: ./.github/workflows/reusable--kubernetes-hydrator.yaml
+    uses: panicboat/panicboat-actions/.github/workflows/reusable--kubernetes-hydrator.yaml@main
     with:
       environment: ${{ matrix.env.environment }}
       services: ${{ toJson(matrix.env.services) }}
@@ -99,7 +99,7 @@ jobs:
       matrix:
         target: ${{ fromJson(needs.deploy-trigger.outputs.targets) }}
       fail-fast: false
-    uses: ./.github/workflows/reusable--terragrunt-executor.yaml
+    uses: panicboat/panicboat-actions/.github/workflows/reusable--terragrunt-executor.yaml@main
     with:
       service-name: ${{ matrix.target.service }}
       environment: ${{ matrix.target.environment }}
@@ -124,10 +124,11 @@ jobs:
           - target:
               stack: terragrunt
       fail-fast: false
-    uses: ./.github/workflows/reusable--kubernetes-builder.yaml
+    uses: panicboat/panicboat-actions/.github/workflows/reusable--kubernetes-builder.yaml@main
     with:
       service-name: ${{ matrix.target.service }}
       environment: ${{ matrix.target.environment }}
+      path: kubernetes/manifests/${{ matrix.target.environment }}/${{ matrix.target.service }}
       app-id: ${{ vars.APP_ID }}
     secrets:
       private-key: ${{ secrets.APP_PRIVATE_KEY }}
