@@ -622,6 +622,13 @@ module "eks" {
   enabled_log_types                      = ["audit", "authenticator"]
   cloudwatch_log_group_retention_in_days = var.log_retention_days
 
+  # Disable Secrets envelope encryption (spec decision: Out of Scope).
+  # v21.19.0 enables encryption by default when `encryption_config != null`,
+  # which would auto-create a KMS key + IAM policy + attachment via the
+  # `kms` submodule. Set to `null` to skip the entire encryption_config
+  # block and avoid unwanted KMS resources.
+  encryption_config = null
+
   # Populated in Task 5 / 6 / 7
   access_entries          = {}
   eks_managed_node_groups = {}
@@ -662,6 +669,8 @@ Expected plan の主要リソース（v21 の internal 名前は `module.eks.aws
 
 VPC の data source 結果が `subnet_ids` に展開されており、3 件の subnet ID が known after apply ではなく具体的な値で表示されること。
 
+`module.eks.module.kms.*` および `aws_iam_policy.cluster_encryption[0]` が **plan に出ないこと**を確認する（`encryption_config = null` で Secrets envelope encryption を spec 通り無効化しているため）。
+
 - [ ] **Step 4: Format check**
 
 ```bash
@@ -680,6 +689,10 @@ terraform-aws-modules/eks/aws 21.19.0 を呼び出して production EKS
 private 両方有効、authentication_mode = API、
 enable_cluster_creator_admin_permissions = false、control plane logs は
 audit / authenticator のみ retention 7 日。
+
+Secrets envelope encryption は spec 通り無効化（encryption_config =
+null）。v21 のデフォルト挙動では encryption_config = {} で KMS key が
+自動作成されるため、明示的に null を渡してその挙動を抑制する。
 
 access_entries / eks_managed_node_groups / addons は後続 Task で
 locals に分離して埋める。"
