@@ -9,7 +9,7 @@ locals {
 
   # EKS Kubernetes version
   # renovate: datasource=endoflife-date depName=amazon-eks versioning=loose
-  cluster_version = "1.33"
+  cluster_version = "1.35"
 
   # Environment-specific tags
   environment_tags = {
