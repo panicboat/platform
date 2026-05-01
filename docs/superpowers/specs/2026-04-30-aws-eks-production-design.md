@@ -840,3 +840,51 @@ npx --yes renovate-config-validator .github/renovate.json
 - `eks-admin-production` の MFA 必須化、source IP 制限：運用が安定した段階で trust policy に Condition 追加。
 - ALB Ingress Controller / external-dns / cert-manager：Ingress 公開 workload を載せる段階で。
 - `develop` / `staging` 環境の追加：必要時に `envs/production/` を複製。renovate fileMatch は対応済み。
+
+## Errata（PR #234 マージ後の apply で判明した誤りと訂正）
+
+PR #234（本 spec の初回実装）を apply した際に 2 件の誤り、および 1 件の version 古化が判明し、後続 PR で修正している。本セクションは設計判断の記録として残す（実装は後続 PR 反映済み）。
+
+### E-1: Access Policy の `policy_arn` フォーマット誤り
+
+**当初の指定**:
+
+```hcl
+policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterAdminPolicy"
+```
+
+**誤り**: これは IAM Managed Policy の ARN フォーマット。`aws_eks_access_policy_association` には EKS 専用の Access Policy ARN フォーマット (`arn:aws:eks::aws:cluster-access-policy/<NAME>`) を渡す必要がある。
+
+**訂正**:
+
+```hcl
+policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+```
+
+apply 時に `InvalidParameterException: The policyArn parameter format is not valid` で失敗した。
+
+### E-2: vpc-cni addon の bootstrap 順序
+
+**当初の構成**: `aws/eks/modules/node_groups.tf` で `iam_role_attach_cni_policy = false` を指定し、CNI 権限を IRSA 経由で aws-node ServiceAccount に付与する設計を採用したが、`aws/eks/modules/addons.tf` の `vpc-cni` には `before_compute` を指定しなかった。
+
+**誤り**: `before_compute` を指定しない場合、addon は node group 作成「後」に apply される。node 起動時には IRSA を使う aws-node DaemonSet がまだ動かず、CNI が機能しないため、ノードは Ready にならず `NodeCreationFailure: Unhealthy nodes in the kubernetes cluster` で node group が CREATE_FAILED になる。
+
+**訂正**: `vpc-cni` に `before_compute = true` を追加。これで addon が node group 作成「前」に apply され、ノード起動時点で IRSA バウンドの aws-node が利用可能になる。
+
+```hcl
+vpc-cni = {
+  before_compute              = true
+  most_recent                 = true
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+  service_account_role_arn    = module.vpc_cni_irsa.arn
+}
+```
+
+### E-3: cluster_version の更新（1.33 → 1.35）
+
+PR #234 では `cluster_version = "1.33"` で設計したが、後続 PR の作成時点で AWS EKS の最新標準サポートバージョンは `1.35` に更新済（1.33 / 1.34 / 1.35 が標準サポート）。新規 cluster 作成のため、最新 GA バージョンに揃える。
+
+**注**: EKS の Kubernetes version は **1 minor ずつしか upgrade できない**（1.33 → 1.35 のような skip 不可）。PR #234 で作成された cluster は apply 失敗 + node group 未稼働により実質的に空状態だったため、`terragrunt destroy` で一旦破棄し、`1.35` で新規作成する方針を採った。
+
+将来の minor up は Renovate（`endoflife-date/amazon-eks` datasource）が起票する PR を 1 minor ずつ手動 merge する運用とする。
