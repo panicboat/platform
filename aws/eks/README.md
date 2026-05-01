@@ -1,8 +1,19 @@
 # aws/eks
 
-Production EKS cluster `eks-${env}` for the panicboat platform.
+EKS clusters `eks-${env}` for the panicboat platform.
 
-## Cluster
+## Environments
+
+`workflow-config.yaml` 由来の env / region 対応：
+
+| Environment | Region | Cluster Name | Status |
+|---|---|---|---|
+| `production` | `ap-northeast-1` | `eks-production` | Active |
+| `develop` | `us-east-1` | `eks-develop` | 未作成（必要時に `envs/production/` を複製して `envs/develop/` を新設） |
+
+新環境を追加する際は、対応する `aws_region` を `envs/${env}/env.hcl` に書き、`panicboat/ansible` 側の `eks-login.sh` の `case` 文にも region を追加すること（DRY 違反の二重管理だが現状は許容）。
+
+## Cluster (production)
 
 | 項目 | 値 |
 |---|---|
@@ -26,18 +37,19 @@ Production EKS cluster `eks-${env}` for the panicboat platform.
 `panicboat/ansible` で deploy される `eks-login.sh` を source する：
 
 ```bash
-source ~/Workspace/eks-login.sh                # → eks-production
-source ~/Workspace/eks-login.sh production     # 同上 (明示)
-# 将来 develop/staging を追加した場合:
-# source ~/Workspace/eks-login.sh develop      # → eks-develop
+source ~/Workspace/eks-login.sh                          # → eks-production / ap-northeast-1
+source ~/Workspace/eks-login.sh production               # 同上 (明示)
+source ~/Workspace/eks-login.sh develop                  # → eks-develop / us-east-1 (将来 cluster 追加時)
+source ~/Workspace/eks-login.sh staging us-west-2        # 未知 env は region 必須
 ```
 
 スクリプトは：
 
-1. `aws sts get-caller-identity` で現在の account ID を取得
-2. `eks-admin-${env}` role を assume（session 1 時間）
-3. `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` を export
-4. `aws eks update-kubeconfig` で kubeconfig 更新
+1. env / region を解決（既知 env は default region、未知 env は明示必須）
+2. `aws sts get-caller-identity` で現在の account ID を動的取得
+3. `eks-admin-${env}` role を assume（session 1 時間）
+4. `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` を export
+5. `aws eks update-kubeconfig` で kubeconfig 更新
 
 完了後 `kubectl get nodes` 等が通るようになる。
 
@@ -46,7 +58,10 @@ source ~/Workspace/eks-login.sh production     # 同上 (明示)
 ### Manual login (script なし)
 
 ```bash
-ADMIN_ROLE_ARN=$(cd aws/eks/envs/production && TG_TF_PATH=tofu terragrunt output -raw admin_role_arn)
+ENV=production    # or develop
+REGION=ap-northeast-1   # production の場合。develop なら us-east-1。
+
+ADMIN_ROLE_ARN=$(cd aws/eks/envs/${ENV} && TG_TF_PATH=tofu terragrunt output -raw admin_role_arn)
 CREDS=$(aws sts assume-role \
   --role-arn "$ADMIN_ROLE_ARN" \
   --role-session-name "kubectl-${USER:-debug}" \
@@ -57,7 +72,7 @@ export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | jq -r .AccessKeyId)
 export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | jq -r .SecretAccessKey)
 export AWS_SESSION_TOKEN=$(echo "$CREDS" | jq -r .SessionToken)
 
-aws eks update-kubeconfig --region ap-northeast-1 --name eks-production
+aws eks update-kubeconfig --region "${REGION}" --name "eks-${ENV}"
 ```
 
 session を破棄するには `unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN`。
