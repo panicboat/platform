@@ -6,7 +6,7 @@
 
 **Architecture:** `aws/{service}/modules + envs/{env}` 規約で `aws/eks/` を新設。VPC 出力は `aws/vpc/lookup` を `module "vpc"` として呼ぶ（terragrunt `dependency` ブロックは使わない）。go-getter `//` subdir 記法（`source = "../../..//eks/modules"`）で `aws/` 全体を terragrunt cache に同梱して相対 source `../../vpc/lookup` を解決。Kubernetes admin RBAC は新設の `eks-admin-production` IAM role のみに Access Entry で付与し、CI 上の `github-oidc-auth-production-github-actions-role` は AWS API のみ（Kubernetes RBAC なし）。GitOps 原則のため `enable_cluster_creator_admin_permissions = false`。`endoflife-date/amazon-eks` datasource を Renovate `customManagers` で `env.hcl` の `cluster_version` に紐付ける。
 
-**Tech Stack:** OpenTofu/Terraform `>= 1.11.6`, Terragrunt, AWS provider `6.42.0`, `terraform-aws-modules/eks/aws 21.19.0`, `terraform-aws-modules/iam/aws ~> 6.0`（`iam-role-for-service-accounts-eks` submodule for IRSA）, `aws/vpc/lookup`（同リポジトリ内）, Renovate (`endoflife-date` datasource)
+**Tech Stack:** OpenTofu/Terraform `>= 1.11.6`, Terragrunt, AWS provider `6.42.0`, `terraform-aws-modules/eks/aws 21.19.0`, `terraform-aws-modules/iam/aws ~> 6.0`（`iam-role-for-service-accounts` submodule for IRSA。v5 では `iam-role-for-service-accounts-eks` という名称だったが v6 でリネーム）, `aws/vpc/lookup`（同リポジトリ内）, Renovate (`endoflife-date` datasource)
 
 **Spec:** `docs/superpowers/specs/2026-04-30-aws-eks-production-design.md`
 
@@ -86,7 +86,7 @@ Expected: `Success! The configuration is valid.`
 | `access_entries` | map(object) | admin role 1 つ |
 | `tags` | map(string) | `var.common_tags` |
 
-> v21 の `addons` は内部で IRSA role を作らないため、IRSA は `terraform-aws-modules/iam/aws ~> 6.0` の `iam-role-for-service-accounts-eks` submodule で別途作成し、その role ARN を `service_account_role_arn` に渡す（Task 7）。
+> v21 の `addons` は内部で IRSA role を作らないため、IRSA は `terraform-aws-modules/iam/aws ~> 6.0` の `iam-role-for-service-accounts` submodule で別途作成し、その role ARN を `service_account_role_arn` に渡す（Task 7）。
 
 - [ ] **Step 4: ブランチ・worktree を確認**
 
@@ -930,7 +930,7 @@ platform components を載せる system 用 managed node group を 1 つ定義
 - Create: `aws/eks/modules/addons.tf`
 - Modify: `aws/eks/modules/main.tf`
 
-`terraform-aws-modules/iam/aws ~> 6.0` の `iam-role-for-service-accounts-eks` submodule で vpc-cni と aws-ebs-csi-driver の IRSA role を作成し、`addons` map から `service_account_role_arn` で参照する。
+`terraform-aws-modules/iam/aws ~> 6.0` の `iam-role-for-service-accounts` submodule で vpc-cni と aws-ebs-csi-driver の IRSA role を作成し、`addons` map から `service_account_role_arn` で参照する。
 
 - [ ] **Step 1: Create `aws/eks/modules/addons.tf`**
 
@@ -1039,7 +1039,7 @@ TG_TF_PATH=tofu terragrunt init
 TG_TF_PATH=tofu terragrunt validate
 ```
 
-Expected: `terraform-aws-modules/iam/aws` と submodule `iam-role-for-service-accounts-eks` がダウンロードされ、`.terraform.lock.hcl` が更新される。
+Expected: `terraform-aws-modules/iam/aws` と submodule `iam-role-for-service-accounts` がダウンロードされる。`.terraform.lock.hcl` は IAM module が既存の AWS provider を再利用するため変更なし。
 
 - [ ] **Step 4: Plan で IRSA + addons を確認**
 
