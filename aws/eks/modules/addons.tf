@@ -4,6 +4,11 @@
 # terraform-aws-modules/iam iam-role-for-service-accounts submodule and
 # wired into the addon definitions. kube-proxy / coredns / pod-identity-agent
 # do not need IRSA.
+#
+# Note on submodule naming: v5 of the IAM module shipped a dedicated
+# `iam-role-for-service-accounts-eks` submodule. v6.0 renamed it to
+# `iam-role-for-service-accounts` and changed the role-ARN output from
+# `iam_role_arn` to `arn`. We pin `~> 6.0` and use the v6 names.
 
 module "vpc_cni_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
