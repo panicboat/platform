@@ -834,6 +834,15 @@ locals {
         # SSM Session Manager access (no SSH key, port 22 closed)
         ssm = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
       }
+
+      # Do NOT attach AmazonEKS_CNI_Policy to the node IAM role.
+      # v21.19.0's eks-managed-node-group submodule defaults
+      # `iam_role_attach_cni_policy = true`, which would attach the policy
+      # to the node role. We grant CNI permissions via IRSA instead (Task 7
+      # creates the vpc-cni IRSA role bound to the aws-node ServiceAccount).
+      # The trade-off: the aws-node DaemonSet must obtain its IAM
+      # credentials via IRSA, which is the EKS best practice.
+      iam_role_attach_cni_policy = false
     }
   }
 }
@@ -873,8 +882,9 @@ Expected plan additions (vs Task 5):
 - `module.eks.module.eks_managed_node_group["system"].aws_iam_role_policy_attachment.this["AmazonEC2ContainerRegistryReadOnly"]`
 - `module.eks.module.eks_managed_node_group["system"].aws_iam_role_policy_attachment.additional["ssm"]` (`policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"`)
 - `module.eks.module.eks_managed_node_group["system"].aws_launch_template.this[0]` (`block_device_mappings` で `volume_type = "gp3"`、`volume_size = 50`)
+- `module.eks.module.eks_managed_node_group["system"].module.user_data.null_resource.validate_cluster_service_cidr` (v21 内部 boilerplate)
 
-`AmazonEKS_CNI_Policy` が node IAM role に付いていないこと（IRSA で別途付与する設計）。
+`AmazonEKS_CNI_Policy` が node IAM role に **付いていないこと** を確認する（`iam_role_attach_cni_policy = false` を明示しているため。IRSA で Task 7 にて別途付与する設計）。
 
 - [ ] **Step 4: Format check**
 
