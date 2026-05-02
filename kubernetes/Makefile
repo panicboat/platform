@@ -102,8 +102,18 @@ hydrate-index: ## Regenerate manifests/$(ENV) index and cleanup orphans (usage: 
 	@set -euo pipefail; \
 	env_dir="manifests/$(ENV)"; \
 	mkdir -p "$$env_dir/00-namespaces"; \
-	find components -maxdepth 2 -name namespace.yaml | sort | \
-		xargs -I{} sh -c 'echo "---"; cat "{}"' > "$$env_dir/00-namespaces/namespaces.yaml"; \
+	: > "$$env_dir/00-namespaces/namespaces.yaml"; \
+	for comp_dir in components/*/$(ENV)/; do \
+		[ -d "$$comp_dir" ] || continue; \
+		comp_name=$$(basename "$$(dirname "$$comp_dir")"); \
+		if [ -f "components/$$comp_name/$(ENV)/namespace.yaml" ]; then \
+			echo "---" >> "$$env_dir/00-namespaces/namespaces.yaml"; \
+			cat "components/$$comp_name/$(ENV)/namespace.yaml" >> "$$env_dir/00-namespaces/namespaces.yaml"; \
+		elif [ -f "components/$$comp_name/namespace.yaml" ]; then \
+			echo "---" >> "$$env_dir/00-namespaces/namespaces.yaml"; \
+			cat "components/$$comp_name/namespace.yaml" >> "$$env_dir/00-namespaces/namespaces.yaml"; \
+		fi; \
+	done; \
 	printf "resources:\n  - namespaces.yaml\n" > "$$env_dir/00-namespaces/kustomization.yaml"; \
 	for dir in $$(ls -d "$$env_dir"/*/ 2>/dev/null); do \
 		name=$$(basename "$$dir"); \
