@@ -9,7 +9,7 @@
 #   helmfile -e local template          # Generate manifests
 #   helmfile -e local apply             # Deploy to cluster
 #
-# TODO: (production) Add production, staging environments
+# TODO: (staging) Add staging environment when eks-staging cluster is provisioned
 # =============================================================================
 
 environments:
@@ -17,14 +17,13 @@ environments:
     values:
       - cluster:
           name: k8s-local
-          # TODO: (local) local-specific settings
           isLocal: true
-  # TODO: (production) Uncomment and configure for production
-  # production:
-  #   values:
-  #     - cluster:
-  #         name: eks-production
-  #         isLocal: false
+  production:
+    values:
+      - cluster:
+          name: eks-production
+          isLocal: false
+  # TODO: (staging) Uncomment and configure when staging cluster is provisioned
   # staging:
   #   values:
   #     - cluster:
