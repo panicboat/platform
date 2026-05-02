@@ -84,7 +84,7 @@ hydrate-component: ## Hydrate single component (usage: make hydrate-component CO
 	mkdir -p "$$out_dir"; \
 	: > "$$out_dir/manifest.yaml"; \
 	if [ -f "$$component_dir/helmfile.yaml" ]; then \
-		helmfile -f "$$component_dir/helmfile.yaml" template --include-crds --skip-tests >> "$$out_dir/manifest.yaml"; \
+		helmfile -f "$$component_dir/helmfile.yaml" -e $(ENV) template --include-crds --skip-tests >> "$$out_dir/manifest.yaml"; \
 	fi; \
 	if [ -d "$$component_dir/kustomization" ]; then \
 		echo "---" >> "$$out_dir/manifest.yaml"; \
