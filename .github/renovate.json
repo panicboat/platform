@@ -27,6 +27,11 @@
   ],
   "minimumReleaseAge": "1 day",
   "separateMinorPatch": false,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 4am every weekday"],
+    "automerge": true
+  },
   "packageRules": [
     {
       "description": "Default: separate PRs per package",
