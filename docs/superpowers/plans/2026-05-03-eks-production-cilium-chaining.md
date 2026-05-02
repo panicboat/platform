@@ -19,7 +19,7 @@
 | `kubernetes/Makefile` | modify | `hydrate-index` ターゲットを env-aware に変更（env-specific path 優先 + env-non-specific fallback） |
 | `kubernetes/helmfile.yaml.gotmpl` | modify | `production` env block に `cluster.eksApiEndpoint` を追加 |
 | `kubernetes/components/cilium/production/helmfile.yaml` | create | production 用 helmfile（local の helmfile.yaml と同型、`k8sServiceHost` を gotmpl で差し込み） |
-| `kubernetes/components/cilium/production/values.yaml` | create | production 用 Cilium values（chaining mode + KPR + Envoy DaemonSet + Gateway Controller） |
+| `kubernetes/components/cilium/production/values.yaml.gotmpl` | create | production 用 Cilium values（chaining mode + KPR + Envoy DaemonSet + Gateway Controller） |
 | `kubernetes/manifests/production/cilium/manifest.yaml` | create (hydrated) | `make hydrate ENV=production` で生成される rendered Cilium manifest |
 | `kubernetes/manifests/production/cilium/kustomization.yaml` | create (hydrated) | 同上、`resources: - manifest.yaml` |
 | `kubernetes/manifests/production/00-namespaces/namespaces.yaml` | create or empty (hydrated) | env-aware ロジックの結果。Cilium は kube-system 利用なので **空** |
