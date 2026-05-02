@@ -88,6 +88,16 @@
         "hashicorp/terraform"
       ],
       "overridePackageName": "opentofu/opentofu"
+    },
+    {
+      "description": "Boundary lookup modules - keep ranges permissive, never narrow lower bound",
+      "matchManagers": [
+        "terraform"
+      ],
+      "matchFileNames": [
+        "**/lookup/terraform.tf"
+      ],
+      "rangeStrategy": "widen"
     }
   ],
   "customManagers": [
