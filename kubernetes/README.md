@@ -296,6 +296,21 @@ flowchart LR
 
 EKS production cluster `eks-production`（`ap-northeast-1`）の運用手順。
 
+### Cluster overview (post Plan 1b)
+
+`eks-production` cluster は **Cilium 1.18.x が chaining mode (VPC CNI 共存)** で稼働し、`kubeProxyReplacement: true` で kube-proxy を eBPF で代替している。
+
+| 層 | 担当 |
+|---|---|
+| CNI / IPAM / datapath | VPC CNI（AWS managed addon）|
+| L3/L4/L7 NetworkPolicy | Cilium |
+| Service routing (kube-proxy 代替) | Cilium KPR（eBPF）|
+| L7 proxy | Cilium Envoy DaemonSet（独立、`envoy.enabled: true`）|
+| 東西の HTTPRoute / Gateway API | Cilium Gateway Controller（東西専用、北南は ALB Controller）|
+| Observability | Hubble（TLS は `cronJob` mode で cluster 内自動 rotate）|
+
+EKS managed addon としては `kube-proxy` を削除済（KPR で代替）。残存 addon: `vpc-cni` / `coredns` / `aws-ebs-csi-driver` / `eks-pod-identity-agent`。
+
 ### Initial Bootstrap (one-time)
 
 cluster を新規作成した直後に 1 回だけ実行する。すでに完了済の場合は skip。
@@ -330,6 +345,24 @@ flux reconcile kustomization flux-system -n flux-system
 flux get all -A
 ```
 
+### Cilium-specific operations
+
+```bash
+# Cilium 全体ヘルスチェック
+cilium status
+
+# 接続性テスト（test namespace を作る、数分かかる）
+cilium connectivity test --test '!check-log-errors'
+# 完了後の test namespace 手動削除
+kubectl delete namespace cilium-test-1 cilium-test-ccnp1 cilium-test-ccnp2 --ignore-not-found
+
+# Hubble flow 観測
+hubble observe --last 20
+
+# Hubble UI（Phase 4 で外部公開予定、現状は port-forward only）
+cilium hubble ui
+```
+
 ### Troubleshooting
 
 | 症状 | 原因 / 対処 |
@@ -338,6 +371,10 @@ flux get all -A
 | `Kustomization` が `BuildFailed` | `flux logs --kind=Kustomization` で kustomize build エラーを確認。`kubectl get kustomizations.kustomize.toolkit.fluxcd.io -n flux-system flux-system -o yaml` で `.status.conditions` も見る |
 | Flux が main の最新を sync しない | GitRepository の `interval: 1m` が効いているか確認。OOM / pod restart の可能性なら `kubectl get pods -n flux-system` |
 | `kubectl: error: ... credentials` | `eks-login.sh production` を再 source（session 1 時間で expire） |
+| EKS managed addon を削除したが Kubernetes DaemonSet が残る | `terraform-aws-modules/eks/aws v21` の `aws_eks_addon` が state に `preserve = true` を設定する場合がある。terragrunt apply は addon registration だけ削除し DaemonSet は残す挙動。`kubectl delete daemonset <name> -n kube-system` で手動削除 |
+| `cilium status` で `Cluster Pods: X/Y managed by Cilium` の差分（Y - X）が常に 0 にならない | hostNetwork pod（cilium-agent / cilium-envoy / cilium-operator 等）は Cilium endpoint を持たないため Cilium 管理対象外。差分が `cilium DaemonSet replicas × node + cilium-operator replicas` 程度なら steady state |
+| Cilium install 前から動いていた pod が Cilium 管理下に入らない | chaining mode では Cilium 設定が CNI conf に反映されるのは Pod 再作成時。`kubectl rollout restart -n flux-system deployment` 等で再作成すると chained になる |
+| `cilium connectivity test` で ICMP のみ失敗（TCP/HTTP は pass） | EKS Cluster SG が ICMP を明示許可していない可能性。production アプリが TCP のみなら無視で OK。ICMP が必要なら別 issue で SG ルール追加 |
 
 ### GitOps 原則
 

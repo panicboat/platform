@@ -1325,3 +1325,43 @@ Expected:
   - 出力言語日本語、コミット `-s`、`Co-Authored-By` 不付与、PR は `--draft`、`-u origin HEAD`、Conventional Commits
 - [x] **代替パスを user 実行に明示**:
   - kubectl apply -k で apply（spec の "helm install" の代わり）→ Migration sequence Step 3 と差異が出るが、Hydration Pattern の利点（実 manifest を Git に commit）と一致しており、Flux adoption も clean に成立
+
+---
+
+## Lessons Learned (post-execution)
+
+Plan 1b 実行後に判明した知見。Plan 1c 以降の plan 設計時に反映する。
+
+### L1: `terraform-aws-modules/eks/aws v21` の `aws_eks_addon` の `preserve` 挙動
+
+EKS managed addon を terragrunt で削除しても、state に `preserve = true` が設定されている場合、AWS は addon registration を削除するだけで Kubernetes resource (DaemonSet/Deployment) は残す。
+
+**症状:** Task 6 の addons.tf 修正 → terragrunt apply success → しかし `kubectl get ds -n kube-system kube-proxy` がまだ存在。
+
+**対処:** Migration sequence Step 6 (post-removal verification) に「DaemonSet 自体が消えているか確認、残っていれば `kubectl delete daemonset` で手動削除」のチェックを追加する。または `aws/eks/modules/addons.tf` の addon block に `preserve = false` を明示する（ただし他の addon でも安全側で `preserve = true` のままにすべきものがあるなら、`kube-proxy` だけ `preserve = false` にする）。
+
+### L2: `make hydrate-component` が `helmfile template` に `-e $(ENV)` を渡していなかった
+
+local 環境では `values.yaml`（gotmpl ではない）を使っていたため発覚していなかった。production の `values.yaml.gotmpl` で `{{ .Values.cluster.* }}` を使った瞬間、helmfile が production env を選択できず `map has no entry for key "cluster"` エラー。Task 5 で `-e $(ENV)` 追加で修正済（commit `ec270da`）。
+
+**今後の plan 設計時の note:** gotmpl values を使う component を新設する場合、`make hydrate ENV=<env>` の動作確認を Task 1（Makefile 変更）の verification step に明示的に含める。
+
+### L3: helmfile v1.4 が parent → child env values を auto-inherit しない
+
+親 `kubernetes/helmfile.yaml.gotmpl` の `environments.<env>.values` は、子 helmfile（`kubernetes/components/<comp>/<env>/helmfile.yaml`）に継承されない。
+
+**対処:** 子 helmfile 側で同じ value を再定義する（重複だが確実）。または `helmfiles:` directive 内で `values: [...]` で forward する pattern を使う（複数 component で値を共有する必要が出た時に検討）。
+
+### L4: 親 helmfile の `helmfiles:` glob は `helmfile.yaml.gotmpl` にマッチしない
+
+`components/*/{{ .Environment.Name }}/helmfile.yaml` の glob は `.gotmpl` 拡張子の子 helmfile を拾わない。子 helmfile が gotmpl 処理を必要とする場合でも、ファイル名は `helmfile.yaml` のままにし、release 内の `values: [values.yaml.gotmpl]` で values 側だけ gotmpl 化する（Task 3 fix で対処済、commit `974bf98`）。
+
+### L5: Cilium connectivity test ICMP 失敗（EKS 環境）
+
+EKS Cluster SG が ICMP を許可していないため、`cilium connectivity test` の `client-to-client:ping-*` および `pod-to-host:ping-*` が断続的に失敗する。TCP/HTTP は全 pass。
+
+**対処:** production アプリ（monorepo）が gRPC/HTTP のみで ICMP に依存しないため、本 plan としては受け入れ可能。ICMP が必要になった場合は別 issue で `aws/eks/modules/` の cluster SG に ICMP 許可ルールを追加する spec を起こす。
+
+### L6: Hubble TLS auto.method の default `helm` は public Git repo に秘密鍵を出す
+
+Cilium chart の `hubble.tls.auto.method` が default の `helm` の場合、Helm が auto-generate した CA / Hubble relay/server の TLS 秘密鍵が rendered manifest に焼き込まれる。public Git repo の Hydration Pattern では production の秘密鍵が git history に残るため、`cronJob` mode に切り替え（Task 5 fix、commit `bf8ab39`）で cluster 内生成 / rotate に変更。
