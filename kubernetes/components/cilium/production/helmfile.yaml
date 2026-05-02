@@ -7,6 +7,9 @@
 # =============================================================================
 environments:
   production:
+    values:
+      - cluster:
+          eksApiEndpoint: BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com
 ---
 repositories:
   - name: cilium
