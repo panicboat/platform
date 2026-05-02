@@ -1,0 +1,21 @@
+# =============================================================================
+# Production Cluster Kustomization
+# =============================================================================
+# このファイルは EKS production cluster (eks-production) で Flux が
+# 同期する root kustomization。
+#
+# 含むリソース:
+#   - manifests/production: ハイドレーション済 Kubernetes manifests
+#
+# Plan 1a 時点では manifests/production が空。Plan 1b / 1c で
+# Cilium / Gateway API CRDs / ALB Controller / ExternalDNS /
+# Metrics Server / KEDA が追加される。
+#
+# repositories/ は本 plan では未作成。monorepo の GitOps 統合は
+# 別 spec で追加する。
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../manifests/production

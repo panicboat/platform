@@ -291,3 +291,56 @@ flowchart LR
     style Alert fill:#ef4444
     style RC fill:#22c55e,color:#fff
 ```
+
+## Production Operations
+
+EKS production cluster `eks-production`（`ap-northeast-1`）の運用手順。
+
+### Initial Bootstrap (one-time)
+
+cluster を新規作成した直後に 1 回だけ実行する。すでに完了済の場合は skip。
+
+```bash
+# 1. eks-admin role を assume して kubectl 接続
+source ~/Workspace/eks-login.sh production
+
+# 2. Flux controllers を install
+make flux-install ENV=production
+
+# 3. Self-sync 設定を apply（main ブランチからの GitOps 開始）
+make gitops-setup ENV=production
+
+# 4. Sync が成功したことを確認
+make gitops-status ENV=production
+```
+
+### Daily Operations
+
+GitOps が enable されているため、manifests の変更は **常に main ブランチへの merge 経由** で行う。直接 `kubectl apply` は drift を生むので避ける。
+
+```bash
+# Flux の sync 状況を確認
+make gitops-status ENV=production
+
+# Flux の reconciliation を手動 trigger（main の最新を即座に sync）
+flux reconcile source git flux-system -n flux-system
+flux reconcile kustomization flux-system -n flux-system
+
+# 全 GitOps リソースを一覧
+flux get all -A
+```
+
+### Troubleshooting
+
+| 症状 | 原因 / 対処 |
+|---|---|
+| `flux reconcile` が `not ready` で止まる | `kubectl describe gitrepository flux-system -n flux-system` で fetch error を確認。多くは GitHub への egress 失敗か platform repo の private 化 |
+| `Kustomization` が `BuildFailed` | `flux logs --kind=Kustomization` で kustomize build エラーを確認。`kubectl get kustomizations.kustomize.toolkit.fluxcd.io -n flux-system flux-system -o yaml` で `.status.conditions` も見る |
+| Flux が main の最新を sync しない | GitRepository の `interval: 1m` が効いているか確認。OOM / pod restart の可能性なら `kubectl get pods -n flux-system` |
+| `kubectl: error: ... credentials` | `eks-login.sh production` を再 source（session 1 時間で expire） |
+
+### GitOps 原則
+
+- **kubectl で直接 apply / edit / delete しない**: Flux と drift して reconciliation で上書きされる
+- **緊急 rollback** が必要な場合は `git revert` で main に戻す。main を直接 force-push するのは禁止
+- **Flux 自体の障害**で sync が止まった場合は、`flux suspend kustomization flux-system -n flux-system` で一時停止し、原因究明後に `flux resume` で再開
