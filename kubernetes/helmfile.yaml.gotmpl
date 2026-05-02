@@ -23,6 +23,8 @@ environments:
       - cluster:
           name: eks-production
           isLocal: false
+          # eks-production cluster の API server endpoint hostname（https:// は含まない）
+          eksApiEndpoint: BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com
   # TODO: (staging) Uncomment and configure when staging cluster is provisioned
   # staging:
   #   values:
