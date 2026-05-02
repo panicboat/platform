@@ -1,6 +1,7 @@
 # Terragrunt and Terraform files
 .terragrunt-cache/
 .terraform/
+.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
 *.tfplan

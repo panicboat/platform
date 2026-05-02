@@ -27,11 +27,6 @@
   ],
   "minimumReleaseAge": "1 day",
   "separateMinorPatch": false,
-  "lockFileMaintenance": {
-    "enabled": true,
-    "schedule": ["before 4am every weekday"],
-    "automerge": true
-  },
   "packageRules": [
     {
       "description": "Default: separate PRs per package",
@@ -93,6 +88,16 @@
         "hashicorp/terraform"
       ],
       "overridePackageName": "opentofu/opentofu"
+    },
+    {
+      "description": "Boundary lookup modules - keep ranges permissive, never narrow lower bound",
+      "matchManagers": [
+        "terraform"
+      ],
+      "matchFileNames": [
+        "**/lookup/terraform.tf"
+      ],
+      "rangeStrategy": "widen"
     }
   ],
   "customManagers": [
