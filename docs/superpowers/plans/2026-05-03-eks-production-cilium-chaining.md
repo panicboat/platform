@@ -18,7 +18,7 @@
 |---|---|---|
 | `kubernetes/Makefile` | modify | `hydrate-index` ターゲットを env-aware に変更（env-specific path 優先 + env-non-specific fallback） |
 | `kubernetes/helmfile.yaml.gotmpl` | modify | `production` env block に `cluster.eksApiEndpoint` を追加 |
-| `kubernetes/components/cilium/production/helmfile.yaml.gotmpl` | create | production 用 helmfile（local の helmfile.yaml と同型、`k8sServiceHost` を gotmpl で差し込み） |
+| `kubernetes/components/cilium/production/helmfile.yaml` | create | production 用 helmfile（local の helmfile.yaml と同型、`k8sServiceHost` を gotmpl で差し込み） |
 | `kubernetes/components/cilium/production/values.yaml` | create | production 用 Cilium values（chaining mode + KPR + Envoy DaemonSet + Gateway Controller） |
 | `kubernetes/manifests/production/cilium/manifest.yaml` | create (hydrated) | `make hydrate ENV=production` で生成される rendered Cilium manifest |
 | `kubernetes/manifests/production/cilium/kustomization.yaml` | create (hydrated) | 同上、`resources: - manifest.yaml` |
@@ -326,10 +326,10 @@ EOF
 
 ---
 
-### Task 3: cilium production 用 helmfile.yaml.gotmpl を作成
+### Task 3: cilium production 用 helmfile.yaml を作成
 
 **Files:**
-- Create: `kubernetes/components/cilium/production/helmfile.yaml.gotmpl`
+- Create: `kubernetes/components/cilium/production/helmfile.yaml`
 
 local の helmfile.yaml を参考に、production 用 helmfile を作成。`k8sServiceHost` を `.Values.cluster.eksApiEndpoint` で差し込めるように gotmpl 化。
 
@@ -339,9 +339,9 @@ local の helmfile.yaml を参考に、production 用 helmfile を作成。`k8sS
 mkdir -p kubernetes/components/cilium/production
 ```
 
-- [ ] **Step 2: helmfile.yaml.gotmpl を作成**
+- [ ] **Step 2: helmfile.yaml を作成**
 
-`kubernetes/components/cilium/production/helmfile.yaml.gotmpl` を以下の内容で作成：
+`kubernetes/components/cilium/production/helmfile.yaml` を以下の内容で作成：
 
 ```yaml
 # =============================================================================
@@ -373,7 +373,7 @@ releases:
 - [ ] **Step 3: Commit（values 作成は次 Task のため、helmfile のみ先行 commit）**
 
 ```bash
-git add kubernetes/components/cilium/production/helmfile.yaml.gotmpl
+git add kubernetes/components/cilium/production/helmfile.yaml
 git commit -s -m "$(cat <<'EOF'
 feat(kubernetes/components/cilium): add production helmfile
 
@@ -1319,7 +1319,7 @@ Expected:
   - `<CLUSTER_ENDPOINT_HOSTNAME>` は Task 0 Step 6 で取得した実値に置換する明示的指示あり
   - `TBD` / `implement later` 等の禁止文言なし
 - [x] **Type / signature consistency**:
-  - File path: 全 task で同一（kubernetes/components/cilium/production/{helmfile.yaml.gotmpl, values.yaml.gotmpl}, kubernetes/manifests/production/cilium/{manifest.yaml, kustomization.yaml}）
+  - File path: 全 task で同一（kubernetes/components/cilium/production/{helmfile.yaml, values.yaml.gotmpl}, kubernetes/manifests/production/cilium/{manifest.yaml, kustomization.yaml}）
   - Helmfile values reference: `.Values.cluster.eksApiEndpoint` を Task 2 で定義、Task 4 で参照
 - [x] **CLAUDE.md 準拠**:
   - 出力言語日本語、コミット `-s`、`Co-Authored-By` 不付与、PR は `--draft`、`-u origin HEAD`、Conventional Commits

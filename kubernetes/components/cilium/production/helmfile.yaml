@@ -7,7 +7,6 @@
 # =============================================================================
 environments:
   production:
-
 ---
 repositories:
   - name: cilium
