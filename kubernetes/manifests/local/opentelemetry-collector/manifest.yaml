@@ -6,10 +6,10 @@ metadata:
   name: opentelemetry-collector
   namespace: opentelemetry-system
   labels:
-    helm.sh/chart: opentelemetry-collector-0.152.0
+    helm.sh/chart: opentelemetry-collector-0.153.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.150.1"
+    app.kubernetes.io/version: "0.151.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: standalone-collector
@@ -21,10 +21,10 @@ metadata:
   name: opentelemetry-collector
   namespace: opentelemetry-system
   labels:
-    helm.sh/chart: opentelemetry-collector-0.152.0
+    helm.sh/chart: opentelemetry-collector-0.153.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.150.1"
+    app.kubernetes.io/version: "0.151.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: standalone-collector
@@ -213,10 +213,10 @@ kind: ClusterRole
 metadata:
   name: opentelemetry-collector
   labels:
-    helm.sh/chart: opentelemetry-collector-0.152.0
+    helm.sh/chart: opentelemetry-collector-0.153.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.150.1"
+    app.kubernetes.io/version: "0.151.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: standalone-collector
@@ -249,10 +249,10 @@ kind: ClusterRoleBinding
 metadata:
   name: opentelemetry-collector
   labels:
-    helm.sh/chart: opentelemetry-collector-0.152.0
+    helm.sh/chart: opentelemetry-collector-0.153.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.150.1"
+    app.kubernetes.io/version: "0.151.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: standalone-collector
@@ -272,10 +272,10 @@ metadata:
   name: opentelemetry-collector
   namespace: opentelemetry-system
   labels:
-    helm.sh/chart: opentelemetry-collector-0.152.0
+    helm.sh/chart: opentelemetry-collector-0.153.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.150.1"
+    app.kubernetes.io/version: "0.151.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: standalone-collector
@@ -330,10 +330,10 @@ metadata:
   name: opentelemetry-collector
   namespace: opentelemetry-system
   labels:
-    helm.sh/chart: opentelemetry-collector-0.152.0
+    helm.sh/chart: opentelemetry-collector-0.153.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.150.1"
+    app.kubernetes.io/version: "0.151.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: standalone-collector
@@ -350,7 +350,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 5c80c6e67961e9d8861e106517b038e0601713f025cefa35379e87758a348eb5
+        checksum/config: 23caa77e46b45304e85e0ce3484aabe99957e01cea7c3f00961a2798ae66a232
         
       labels:
         app.kubernetes.io/name: opentelemetry-collector
@@ -464,10 +464,10 @@ metadata:
   name: opentelemetry-collector
   namespace: opentelemetry-system
   labels:
-    helm.sh/chart: opentelemetry-collector-0.152.0
+    helm.sh/chart: opentelemetry-collector-0.153.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.150.1"
+    app.kubernetes.io/version: "0.151.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: standalone-collector
