@@ -56,6 +56,11 @@ socketLB:
 # =============================================================================
 hubble:
   enabled: true
+  # TLS certs を Helm 自動生成（chart values に焼き込み）ではなく cluster 内
+  # CronJob で生成・rotate する。public Git repo に Hubble の秘密鍵を出さない。
+  tls:
+    auto:
+      method: cronJob
   relay:
     enabled: true
   ui:
