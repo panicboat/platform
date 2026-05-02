@@ -1,0 +1,28 @@
+# =============================================================================
+# Cilium Helmfile for production
+# =============================================================================
+# Cilium 1.18.x を chaining mode (VPC CNI 共存) で deploy する。
+# KPR / Gateway Controller / 独立 Envoy DaemonSet / Hubble を有効化。
+# k8sServiceHost は .Values.cluster.eksApiEndpoint で動的に差し込む。
+# =============================================================================
+environments:
+  production:
+    # NOTE: helmfile v1.4 は親 helmfile.yaml.gotmpl の environments values を
+    # 子 helmfile に auto-inherit しないため、ここで再定義する。
+    # eksApiEndpoint の値は kubernetes/helmfile.yaml.gotmpl の production env
+    # block と同期すること（cluster recreate 等で endpoint hostname が変わる場合）。
+    values:
+      - cluster:
+          eksApiEndpoint: BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com
+---
+repositories:
+  - name: cilium
+    url: https://helm.cilium.io/
+
+releases:
+  - name: cilium
+    namespace: kube-system
+    chart: cilium/cilium
+    version: "1.18.6"
+    values:
+      - values.yaml.gotmpl

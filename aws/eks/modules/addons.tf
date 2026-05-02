@@ -2,8 +2,9 @@
 #
 # IRSA roles for vpc-cni and aws-ebs-csi-driver are created via the
 # terraform-aws-modules/iam iam-role-for-service-accounts submodule and
-# wired into the addon definitions. kube-proxy / coredns / pod-identity-agent
-# do not need IRSA.
+# wired into the addon definitions. coredns / pod-identity-agent do not need IRSA. kube-proxy is intentionally
+# omitted because Cilium is configured with kubeProxyReplacement=true (see
+# kubernetes/components/cilium/production/values.yaml.gotmpl).
 #
 # Note on submodule naming: v5 of the IAM module shipped a dedicated
 # `iam-role-for-service-accounts-eks` submodule. v6.0 renamed it to
@@ -59,10 +60,6 @@ locals {
       resolve_conflicts_on_create = "OVERWRITE"
       resolve_conflicts_on_update = "OVERWRITE"
       service_account_role_arn    = module.vpc_cni_irsa.arn
-    }
-    kube-proxy = {
-      resolve_conflicts_on_create = "OVERWRITE"
-      resolve_conflicts_on_update = "OVERWRITE"
     }
     coredns = {
       most_recent                 = true

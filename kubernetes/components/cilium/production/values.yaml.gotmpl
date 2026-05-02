@@ -1,0 +1,89 @@
+# Cilium CNI Configuration for production (eks-production)
+# Reference: docs/superpowers/specs/2026-05-03-eks-production-cilium-chaining-design.md
+
+# =============================================================================
+# CNI Chaining Mode（VPC CNI が IPAM/datapath、Cilium は L7/policy/observability）
+# =============================================================================
+cni:
+  chainingMode: aws-cni
+  exclusive: false
+
+# =============================================================================
+# Routing & Masquerade
+# =============================================================================
+routingMode: native
+endpointRoutes:
+  enabled: true
+enableIPv4Masquerade: false
+ipv6:
+  enabled: false
+
+# =============================================================================
+# Kube Proxy Replacement: 完全置換
+# =============================================================================
+# kube-proxy addon は spec の Migration sequence Step 5 で terragrunt 経由で削除
+kubeProxyReplacement: true
+k8sServiceHost: {{ .Values.cluster.eksApiEndpoint }}
+k8sServicePort: 443
+
+# =============================================================================
+# Operator: HA
+# =============================================================================
+operator:
+  replicas: 2
+  rollOutPods: true
+
+# =============================================================================
+# L7 Proxy: 独立 DaemonSet
+# =============================================================================
+envoy:
+  enabled: true
+
+# =============================================================================
+# Gateway API（東西用、北南は ALB Controller）
+# =============================================================================
+gatewayAPI:
+  enabled: true
+
+# =============================================================================
+# Socket-level LB（Beyla / hostNetwork Pod が ClusterIP に到達するため）
+# =============================================================================
+socketLB:
+  enabled: true
+
+# =============================================================================
+# Hubble（UI は port-forward only、Phase 4 で Ingress 公開）
+# =============================================================================
+hubble:
+  enabled: true
+  # TLS certs を Helm 自動生成（chart values に焼き込み）ではなく cluster 内
+  # CronJob で生成・rotate する。public Git repo に Hubble の秘密鍵を出さない。
+  tls:
+    auto:
+      method: cronJob
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+  metrics:
+    enabled:
+      - dns
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - http
+    serviceMonitor:
+      enabled: false                  # Phase 3 で prometheus-operator 導入後に true
+
+# =============================================================================
+# DNS Proxy（hostNetwork Pod の DNS resolution に必要）
+# =============================================================================
+dnsProxy:
+  enabled: true
+
+# =============================================================================
+# Prometheus Metrics
+# =============================================================================
+prometheus:
+  enabled: false                      # Phase 3 で prometheus-operator 導入後に true
