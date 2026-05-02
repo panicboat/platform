@@ -7,6 +7,10 @@
 # =============================================================================
 environments:
   production:
+    # NOTE: helmfile v1.4 は親 helmfile.yaml.gotmpl の environments values を
+    # 子 helmfile に auto-inherit しないため、ここで再定義する。
+    # eksApiEndpoint の値は kubernetes/helmfile.yaml.gotmpl の production env
+    # block と同期すること（cluster recreate 等で endpoint hostname が変わる場合）。
     values:
       - cluster:
           eksApiEndpoint: BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com
