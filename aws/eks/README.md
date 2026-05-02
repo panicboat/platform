@@ -23,7 +23,7 @@ EKS clusters `eks-${env}` for the panicboat platform.
 | Endpoint | public + private 両方有効 |
 | Authentication | EKS Access Entries (`authentication_mode = "API"`) |
 | Compute | Managed Node Group `system` (m6g.large × 2-4, AL2023 ARM64, gp3 50 GiB) |
-| Add-ons | vpc-cni / kube-proxy / coredns / aws-ebs-csi-driver / eks-pod-identity-agent (all AWS-managed) |
+| Add-ons | vpc-cni / coredns / aws-ebs-csi-driver / eks-pod-identity-agent (all AWS-managed; kube-proxy は Cilium kubeProxyReplacement で代替) |
 | IRSA | enabled; vpc-cni と aws-ebs-csi-driver は別途 IRSA role |
 | Secrets envelope encryption | 無効 (Out of Scope, spec 参照) |
 | Control plane logs | `audit` + `authenticator` のみ、CloudWatch retention 7 日 |

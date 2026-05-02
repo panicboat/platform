@@ -1,7 +1,7 @@
 # node_groups.tf - EKS managed node group definitions.
 #
 # Single "system" group on Graviton (ARM64) sized to host the platform
-# components (Cilium / kube-proxy / CoreDNS / Prometheus-Operator / Loki /
+# components (Cilium / CoreDNS / Prometheus-Operator / Loki /
 # Tempo / OTel Collector / Beyla) plus headroom. Application workloads will
 # be hosted on Karpenter-managed nodes (separate spec).
 
