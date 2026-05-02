@@ -1,0 +1,11 @@
+# =============================================================================
+# Production manifests entry point
+# =============================================================================
+# 本ファイルは Plan 1a 時点では空。後続 plan で components を追加した際に
+# `make hydrate ENV=production` が再生成する。
+# 手動で resources を編集するのは避ける（hydrate で上書きされる）。
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources: []
