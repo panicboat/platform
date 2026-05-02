@@ -302,7 +302,7 @@ cluster を新規作成した直後に 1 回だけ実行する。すでに完了
 
 ```bash
 # 1. eks-admin role を assume して kubectl 接続
-source eks-login.sh production
+eks-login production
 
 # 2. Flux controllers を install
 make flux-install ENV=production
