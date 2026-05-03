@@ -76,6 +76,32 @@ ALB Controller には ALB の所有モデルが排他的な 2 つしかなく、
 
 **Future Specs**: 「terragrunt visibility が production-grade で必要 / WAF を Listener Rule 単位で精緻に設定したい / ALB を K8s 外と共用したい」要件が顕在化した場合は Option C（TargetGroupBinding pattern）への移行を別 spec で検討。
 
+### ALB アクセス制御の方針: 本 spec では default のまま（後続 spec で対応）
+
+ALB のアクセス制御は 3 レイヤー（L4 Security Group、L7 AWS WAF、L7 OIDC 認証）に分かれるが、**Plan 1c-β では default 設定のまま** とする：
+
+- ALB Controller が default で作成する SG（inbound `0.0.0.0/0` on listener port）をそのまま使う
+- WAF / Shield の attach なし
+- OIDC / Cognito 認証 annotation なし
+
+**この時点で production が "open" であることのリスク評価**:
+
+- production cluster には現状 monorepo 等のアプリが存在せず、Phase 5 nginx sample が唯一の公開予定 service
+- nginx sample は smoke test 目的なので一時的、長期間 open に晒される想定なし
+- panicboat.net subdomain の DNS レコードは ExternalDNS 経由でしか作成されず、必要時のみ public に解放される運用
+
+**後続 spec での対応振り分け**:
+
+| 制御 | 対応 spec | 実装方法（候補） |
+|---|---|---|
+| Source IP allowlist (panicboat.net 全体) | Future Specs | terragrunt で SG / WAF IPSet 管理、Ingress annotation 参照 |
+| 認証ゲート (Hubble UI / Grafana 等) | Phase 4 | ALB OIDC action または oauth2-proxy（Phase 4 spec で選択） |
+| per-service 細粒度制御 | monorepo K8s 移行 / 個別 spec | per-Ingress annotation または Cilium NetworkPolicy / Cilium Gateway L7 機能 |
+| WAF managed rules（OWASP Top 10、bot 防御等） | Future Specs（セキュリティ要件顕在化時） | `aws/alb/modules/` に WAF resource 追加 |
+| AWS Shield | Future Specs（DDoS 要件顕在化時） | `aws/alb/modules/` に Shield Advanced 等 |
+
+現 spec の `aws/alb/modules/` は ACM cert + 将来の WAF / Shield の収容先として確保されているため、後続 spec 追加時の収まりも良い。
+
 ### ExternalDNS policy = `sync`
 
 - 既定値: `sync`（auto-delete on Service / Ingress deletion）
@@ -304,7 +330,9 @@ PR merge 後に問題が発覚した場合：
 本 spec のスコープ外で、別 spec として追跡する：
 
 - **monorepo K8s 移行**: `dystopia.city` zone の ACM cert / ExternalDNS 拡張 / ALB Ingress 設計（必要なら別 `group.name` で ALB 分離）
-- **AWS WAF / Shield 連携**: セキュリティ要件顕在化時に `aws/alb/modules/` へ追加
+- **panicboat.net 全体の Source IP allowlist**: terragrunt で ALB SG または WAF IPSet を管理し、Ingress annotation (`security-groups` / `wafv2-acl-arn`) から参照する pattern を別 spec で扱う
+- **AWS WAF managed rules / Shield Advanced**: セキュリティ要件顕在化時に `aws/alb/modules/` へ追加（OWASP Top 10、bot 防御、地理ブロック、DDoS 等）
+- **panicboat.net 全体の認証ゲート**: Phase 4 spec で ALB OIDC action または oauth2-proxy のいずれかを選択（Hubble UI / Grafana 等の操作系 UI 公開と一括）
 - **Internal ALB の活用**: VPC 内部からのアクセス要件出現時
 - **`txtOwnerId` 戦略**: 複数 cluster で同 zone 共有時の所有権マーカー設計
 - **cert-manager**（Phase 4 spec で扱う）
