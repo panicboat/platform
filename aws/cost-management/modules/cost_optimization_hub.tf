@@ -15,6 +15,9 @@ resource "aws_costoptimizationhub_enrollment_status" "this" {
 # from non-management accounts with:
 #   ValidationException: Only management accounts can update member account
 #   discount visibility.
-# AWS defaults are used: savings_estimation_mode = "BeforeDiscounts".
+# AWS defaults are used: savings_estimation_mode = "AfterDiscounts" (verified
+# via "aws cost-optimization-hub get-preferences"). For a standalone account
+# without enterprise discount programs, BeforeDiscounts and AfterDiscounts
+# produce identical numbers.
 # Add this resource back when the account becomes an Organization management
 # account.

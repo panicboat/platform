@@ -57,7 +57,7 @@ resource "aws_costoptimizationhub_enrollment_status" "this" {
 
 - `include_member_accounts = false`: standalone account のため。
 - **既知の挙動 (perpetual drift)**: AWS API は `include_member_accounts` を Read で返さないため、refresh 時に state がこの属性を null として読み戻す。HCL に `false` が書かれているため毎回 plan で `~ update in-place` の 1 件 diff が発生する。Apply は冪等で害はない。`lifecycle.ignore_changes` は config-vs-state diff のみを抑止し、refresh 起因の state drift には効かないため、現状回避不可能。
-- **`aws_costoptimizationhub_preferences` リソースは管理しない**: AWS Terraform provider は `member_account_discount_visibility` を未指定でも常にデフォルト値 `"All"` で API に送る。AWS API は non-management account に対しこの属性が含まれた呼び出しを `ValidationException: Only management accounts can update member account discount visibility.` で拒否するため、provider のスキーマ上 standalone account では本リソースが apply 不可能。AWS デフォルト (`savings_estimation_mode = "BeforeDiscounts"`) で運用し、Organization の management account になった時点でこのリソースを追加する。
+- **`aws_costoptimizationhub_preferences` リソースは管理しない**: AWS Terraform provider は `member_account_discount_visibility` を未指定でも常にデフォルト値 `"All"` で API に送る。AWS API は non-management account に対しこの属性が含まれた呼び出しを `ValidationException: Only management accounts can update member account discount visibility.` で拒否するため、provider のスキーマ上 standalone account では本リソースが apply 不可能。AWS デフォルト (`savings_estimation_mode = "AfterDiscounts"` — `aws cost-optimization-hub get-preferences` で確認) で運用する。standalone account には enterprise discount 契約が無いため `BeforeDiscounts` と `AfterDiscounts` は同じ値を返す。Organization の management account になった時点でこのリソースを追加する。
 
 #### Compute Optimizer (`compute_optimizer.tf`)
 
