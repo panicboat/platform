@@ -1,0 +1,12 @@
+# =============================================================================
+# ExternalDNS Namespace
+# =============================================================================
+# This namespace contains the ExternalDNS controller. Chart default name is
+# also `external-dns`; we follow that convention.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: external-dns
+  labels:
+    app.kubernetes.io/name: external-dns
