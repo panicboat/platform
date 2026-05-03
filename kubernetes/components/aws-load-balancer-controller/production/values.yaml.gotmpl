@@ -1,0 +1,23 @@
+# AWS Load Balancer Controller values for production
+# Reference: docs/superpowers/specs/2026-05-03-eks-production-foundation-addons-beta-design.md
+
+# =============================================================================
+# Cluster identification
+# =============================================================================
+clusterName: eks-production
+region: ap-northeast-1
+vpcId: {{ .Values.cluster.vpcId }}
+
+# =============================================================================
+# ServiceAccount with IRSA
+# =============================================================================
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+  annotations:
+    eks.amazonaws.com/role-arn: {{ .Values.cluster.albControllerRoleArn }}
+
+# =============================================================================
+# Replicas / Resources
+# =============================================================================
+# chart デフォルト (replicaCount: 2) を採用。HA 化済み。

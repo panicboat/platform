@@ -1,0 +1,29 @@
+# =============================================================================
+# AWS Load Balancer Controller Helmfile for production
+# =============================================================================
+# Provisions ALBs from Ingress resources. IngressGroup `panicboat-platform`
+# is used to share one ALB across multiple Ingresses (see spec for the
+# rationale on choosing Option B over TargetGroupBinding).
+# =============================================================================
+environments:
+  production:
+    # NOTE: helmfile v1.4 は親 helmfile.yaml.gotmpl の environments values を
+    # 子 helmfile に auto-inherit しないため、ここで再定義する。
+    # 値は kubernetes/helmfile.yaml.gotmpl の production env block と
+    # 同期すること（vpcId / albControllerRoleArn）。
+    values:
+      - cluster:
+          vpcId: vpc-02ea5d0ed3b7a3266
+          albControllerRoleArn: arn:aws:iam::559744160976:role/eks-production-alb-controller-20260503163503969700000004
+---
+repositories:
+  - name: eks
+    url: https://aws.github.io/eks-charts
+
+releases:
+  - name: aws-load-balancer-controller
+    namespace: kube-system
+    chart: eks/aws-load-balancer-controller
+    version: "3.2.2"
+    values:
+      - values.yaml.gotmpl
