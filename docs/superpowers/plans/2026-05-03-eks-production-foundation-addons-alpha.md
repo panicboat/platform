@@ -981,8 +981,8 @@ spec:
   maxReplicaCount: 3
   triggers:
     - type: cpu
+      metricType: Utilization
       metadata:
-        type: Utilization
         value: "50"
 EOF
 sleep 30
@@ -1054,4 +1054,33 @@ Expected: 結果が空（または header のみ）。Plan 1c-α 投入で stuck
   - Helm chart version: Task 2 で 3.13.0 固定 / Task 3 で 2.19.0 固定 / Task 1 で v1.2.1 固定、Task 4 hydrate / Task 8 verification で同じ値を確認
 - [x] **CLAUDE.md 準拠**:
   - 出力言語日本語、コミット `-s`、`Co-Authored-By` 不付与、PR は `--draft`、`-u origin HEAD`、Conventional Commits
-- [x] **README 更新が含まれている**: Task 5 で kubernetes/README.md を Production Operations セクション 3 箇所修正
+
+---
+
+## Lessons Learned (post-execution)
+
+Plan 1c-α 実行後に判明した知見。Plan 1c-β 以降の plan 設計時に反映する。
+
+### L1: Cilium 1.18.x chart は GatewayClass を auto-create しない
+
+`gatewayAPI.enabled: true` を values で指定しても、chart の rendered output には GatewayClass リソースが含まれない。Cilium operator は **既存の GatewayClass を watch して reconcile** する設計のため、user 側で GatewayClass を作成する必要がある。
+
+**対処:** `kubernetes/components/cilium/production/kustomization/gateway-class.yaml` で GatewayClass を定義し、`hydrate-component` の kustomization overlay として helmfile output に append する。local も同じ pattern (`kubernetes/components/cilium/local/kustomization/gateway.yaml`) だが production は GatewayClass のみで Gateway resource は per-service / 別 spec で扱う。
+
+### L2: Cilium 1.18.x operator は TLSRoute (Experimental) の scheme を expect する
+
+operator log に `"no kind is registered for the type v1alpha2.TLSRouteList in scheme"` の error が継続的に出る。これは Standard channel の Gateway API CRDs に TLSRoute が含まれないことに起因するが、GatewayClass / Gateway / HTTPRoute の reconciliation 自体は正常に動作するため **non-blocking warning** として扱える。
+
+**Future Specs:** TCPRoute / TLSRoute / GRPCRoute experimental 機能が必要になるタイミングで Experimental channel への切り替えを検討する（Plan 1c-α spec の Future Specs に既出）。Cilium 側で TLSRouteList scheme の error を抑制する PR が upstream にあれば追従する。
+
+### L3: KEDA 2.18+ で ScaledObject の metric type 指定が変更
+
+KEDA 2.18 で `triggers[].metadata.type` (旧) は **削除** され、`triggers[].metricType` (新) を trigger 直下で指定する形式になった。Plan 1c-α 草案時の smoke test YAML は旧 syntax を使っており、検証時に `error parsing cpu metadata: scaler cpu info: The 'type' setting is DEPRECATED and is removed in v2.18 - Use 'metricType' instead.` で失敗。
+
+**対処:** plan markdown の Task 8 Step 3 を新 syntax に修正。Renovate が KEDA chart を上げる際は KEDA リリースノートを確認する習慣を維持する。
+
+### L4: Cilium operator は Gateway API CRDs install 後に rolling restart が必要なケースあり
+
+Plan 1c-α merge 後、Flux が CRDs と Cilium values を apply。しかし Cilium operator は **起動時に CRDs を picking up する** 実装のため、CRDs install 後に operator が再起動しないと Gateway API resource を認識しない場合がある。
+
+**対処:** Plan 1c-α Task 8 verification battery に `kubectl rollout restart -n kube-system deploy/cilium-operator` を「GatewayClass が NotFound の場合」として記載済（plan の `### Task 8` Step 1 該当箇所）。今回の verification でも実際に restart が必要だった。
