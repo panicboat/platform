@@ -1,0 +1,28 @@
+# =============================================================================
+# ExternalDNS Helmfile for production
+# =============================================================================
+# Synchronizes Route53 records from Kubernetes Service / Ingress hostname
+# annotations. Restricted to the panicboat.net zone via domainFilters and
+# IRSA hosted_zone_arns scope.
+# =============================================================================
+environments:
+  production:
+    # NOTE: helmfile v1.4 は親 helmfile.yaml.gotmpl の environments values を
+    # 子 helmfile に auto-inherit しないため、ここで再定義する。
+    # externalDnsRoleArn は kubernetes/helmfile.yaml.gotmpl の production env
+    # block と同期すること。
+    values:
+      - cluster:
+          externalDnsRoleArn: arn:aws:iam::559744160976:role/eks-production-external-dns-20260503163503968100000002
+---
+repositories:
+  - name: external-dns
+    url: https://kubernetes-sigs.github.io/external-dns
+
+releases:
+  - name: external-dns
+    namespace: external-dns
+    chart: external-dns/external-dns
+    version: "1.21.1"
+    values:
+      - values.yaml.gotmpl

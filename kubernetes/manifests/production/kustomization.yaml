@@ -1,6 +1,8 @@
 resources:
   - ./00-namespaces
+  - ./aws-load-balancer-controller
   - ./cilium
+  - ./external-dns
   - ./gateway-api
   - ./keda
   - ./metrics-server

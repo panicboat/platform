@@ -25,6 +25,13 @@ environments:
           isLocal: false
           # eks-production cluster の API server endpoint hostname（https:// は含まない）
           eksApiEndpoint: BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com
+          # VPC ID where the cluster lives. Used by AWS Load Balancer Controller.
+          # Source: aws/eks/envs/production terragrunt output vpc_id
+          vpcId: vpc-02ea5d0ed3b7a3266
+          # IRSA role ARNs for foundation addons. Source: aws/eks/envs/production
+          # terragrunt output {alb_controller_role_arn, external_dns_role_arn}
+          albControllerRoleArn: arn:aws:iam::559744160976:role/eks-production-alb-controller-20260503163503969700000004
+          externalDnsRoleArn: arn:aws:iam::559744160976:role/eks-production-external-dns-20260503163503968100000002
   # TODO: (staging) Uncomment and configure when staging cluster is provisioned
   # staging:
   #   values:

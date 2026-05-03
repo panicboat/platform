@@ -1,0 +1,48 @@
+# ExternalDNS values for production
+# Reference: docs/superpowers/specs/2026-05-03-eks-production-foundation-addons-beta-design.md
+
+# =============================================================================
+# Provider / Sources
+# =============================================================================
+provider:
+  name: aws
+
+sources:
+  - service
+  - ingress
+
+# =============================================================================
+# Domain filtering
+# =============================================================================
+# panicboat.net 以下のみ管理。dystopia.city は monorepo 移行 spec で扱う。
+domainFilters:
+  - panicboat.net
+
+# =============================================================================
+# Sync policy
+# =============================================================================
+# sync = Service/Ingress 削除で record も自動削除（spec ALB アクセス制御の方針
+# セクション参照）。GitOps 経由の変更のみ運用ルールにより、誤削除リスクは
+# README の GitOps 原則で緩和。
+policy: sync
+
+# =============================================================================
+# Ownership marker
+# =============================================================================
+# 同 zone を複数 cluster で共有する場合の所有権マーカー。本 cluster のみで
+# panicboat.net を管理する想定なので cluster name を採用。
+txtOwnerId: eks-production
+
+# =============================================================================
+# ServiceAccount with IRSA
+# =============================================================================
+serviceAccount:
+  create: true
+  name: external-dns
+  annotations:
+    eks.amazonaws.com/role-arn: {{ .Values.cluster.externalDnsRoleArn }}
+
+# =============================================================================
+# Replicas / Resources
+# =============================================================================
+# chart デフォルト採用。
