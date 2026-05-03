@@ -1,0 +1,28 @@
+# Metrics Server values for production
+# Reference: docs/superpowers/specs/2026-05-03-eks-production-foundation-addons-alpha-design.md
+
+# =============================================================================
+# Args
+# =============================================================================
+# EKS の kubelet は InternalIP で待ち受けるため、優先 address type に InternalIP
+# を指定する。default の "InternalIP,ExternalIP,Hostname" でも動くが、
+# InternalIP-only にすることで kubelet 接続が安定する。
+args:
+  - --kubelet-preferred-address-types=InternalIP
+
+# =============================================================================
+# Resources
+# =============================================================================
+resources:
+  requests:
+    cpu: 100m
+    memory: 200Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# =============================================================================
+# Replicas
+# =============================================================================
+# Phase 1 では single replica。HA 化は monorepo 投入時に再評価。
+replicas: 1
