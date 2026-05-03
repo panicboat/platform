@@ -2,13 +2,18 @@
 # Reference: docs/superpowers/specs/2026-05-03-eks-production-foundation-addons-alpha-design.md
 
 # =============================================================================
-# Args
+# defaultArgs override
 # =============================================================================
-# EKS の kubelet は InternalIP で待ち受けるため、優先 address type に InternalIP
-# を指定する。default の "InternalIP,ExternalIP,Hostname" でも動くが、
-# InternalIP-only にすることで kubelet 接続が安定する。
-args:
+# chart の defaultArgs を上書きして --kubelet-preferred-address-types を
+# InternalIP のみに narrow する。EKS の kubelet は InternalIP で待ち受けるため
+# preference list を 1 つに絞ることで明示的な制約を表す。
+# defaultArgs を上書きすることで chart の args ロジック（defaultArgs に args を
+# append する仕様）による flag 重複を避ける。
+defaultArgs:
+  - --cert-dir=/tmp
   - --kubelet-preferred-address-types=InternalIP
+  - --kubelet-use-node-status-port
+  - --metric-resolution=15s
 
 # =============================================================================
 # Resources
@@ -24,5 +29,6 @@ resources:
 # =============================================================================
 # Replicas
 # =============================================================================
-# Phase 1 では single replica。HA 化は monorepo 投入時に再評価。
+# single replica。Metrics Server は state を持たないので軽微な再起動 gap を許容する。
+# HA 化は trade-off を再評価した上で Future Specs。
 replicas: 1
