@@ -1,0 +1,14 @@
+# =============================================================================
+# Cilium GatewayClass for production
+# =============================================================================
+# Cilium 1.18.x の chart は GatewayClass を auto-create しないため、
+# helmfile output に上乗せする overlay として手動で定義する。
+# Cilium operator がこのリソースを reconcile して ACCEPTED: True にする。
+# =============================================================================
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: cilium
+spec:
+  controllerName: io.cilium/gateway-controller
+  description: Cilium Gateway Controller
