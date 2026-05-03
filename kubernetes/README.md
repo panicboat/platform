@@ -296,13 +296,36 @@ flowchart LR
 
 EKS production cluster `eks-production`（`ap-northeast-1`）の運用手順。
 
+### Cluster overview (post Plan 1c-α)
+
+`eks-production` cluster は **Cilium 1.18.x が chaining mode (VPC CNI 共存)** で稼働し、`kubeProxyReplacement: true` で kube-proxy を eBPF で代替している。
+
+| 層 | 担当 |
+|---|---|
+| CNI / IPAM / datapath | VPC CNI（AWS managed addon）|
+| L3/L4/L7 NetworkPolicy | Cilium |
+| Service routing (kube-proxy 代替) | Cilium KPR（eBPF）|
+| L7 proxy | Cilium Envoy DaemonSet（独立、`envoy.enabled: true`）|
+| 東西の HTTPRoute / Gateway API | Cilium Gateway Controller（東西専用、北南は ALB Controller）|
+| Observability | Hubble（TLS は `cronJob` mode で cluster 内自動 rotate）|
+
+EKS managed addon としては `kube-proxy` を削除済（KPR で代替）。残存 addon: `vpc-cni` / `coredns` / `aws-ebs-csi-driver` / `eks-pod-identity-agent`。
+
+加えて Plan 1c-α で以下の foundation addons を導入：
+
+| Addon | Namespace | 役割 |
+|---|---|---|
+| Gateway API CRDs | (cluster-scoped) | Cilium Gateway Controller の前提（Standard channel v1.2.1） |
+| Metrics Server | `kube-system` | Pod の resource metrics を公開、HPA / KEDA-generated HPA の前提 |
+| KEDA | `keda` | Event-driven autoscaling layer（HPA を内部生成） |
+
 ### Initial Bootstrap (one-time)
 
 cluster を新規作成した直後に 1 回だけ実行する。すでに完了済の場合は skip。
 
 ```bash
 # 1. eks-admin role を assume して kubectl 接続
-source eks-login.sh production
+eks-login production
 
 # 2. Flux controllers を install
 make flux-install ENV=production
@@ -330,6 +353,43 @@ flux reconcile kustomization flux-system -n flux-system
 flux get all -A
 ```
 
+### Cilium-specific operations
+
+```bash
+# Cilium 全体ヘルスチェック
+cilium status
+
+# 接続性テスト（test namespace を作る、数分かかる）
+cilium connectivity test --test '!check-log-errors'
+# 完了後の test namespace 手動削除
+kubectl delete namespace cilium-test-1 cilium-test-ccnp1 cilium-test-ccnp2 --ignore-not-found
+
+# Hubble flow 観測
+hubble observe --last 20
+
+# Hubble UI（Phase 4 で外部公開予定、現状は port-forward only）
+cilium hubble ui
+```
+
+### Foundation addon operations
+
+```bash
+# Gateway API（Cilium Gateway Controller）
+kubectl get gatewayclass cilium                          # Programmed: True
+kubectl get gateway -A                                   # cluster 内の Gateway 一覧
+kubectl get httproute -A                                 # HTTPRoute 一覧
+
+# Metrics Server
+kubectl top nodes                                        # node の CPU/Memory
+kubectl top pods -A | head                               # pod の CPU/Memory
+kubectl logs -n kube-system deploy/metrics-server --tail=20
+
+# KEDA
+kubectl get scaledobject -A                              # ScaledObject 一覧
+kubectl get hpa -A | grep keda-hpa                       # KEDA-generated HPA
+kubectl logs -n keda deploy/keda-operator --tail=20
+```
+
 ### Troubleshooting
 
 | 症状 | 原因 / 対処 |
@@ -338,6 +398,13 @@ flux get all -A
 | `Kustomization` が `BuildFailed` | `flux logs --kind=Kustomization` で kustomize build エラーを確認。`kubectl get kustomizations.kustomize.toolkit.fluxcd.io -n flux-system flux-system -o yaml` で `.status.conditions` も見る |
 | Flux が main の最新を sync しない | GitRepository の `interval: 1m` が効いているか確認。OOM / pod restart の可能性なら `kubectl get pods -n flux-system` |
 | `kubectl: error: ... credentials` | `eks-login.sh production` を再 source（session 1 時間で expire） |
+| EKS managed addon を削除したが Kubernetes DaemonSet が残る | `terraform-aws-modules/eks/aws v21` の `aws_eks_addon` が state に `preserve = true` を設定する場合がある。terragrunt apply は addon registration だけ削除し DaemonSet は残す挙動。`kubectl delete daemonset <name> -n kube-system` で手動削除 |
+| `cilium status` で `Cluster Pods: X/Y managed by Cilium` の差分（Y - X）が常に 0 にならない | hostNetwork pod（cilium-agent / cilium-envoy / cilium-operator 等）は Cilium endpoint を持たないため Cilium 管理対象外。差分が `cilium DaemonSet replicas × node + cilium-operator replicas` 程度なら steady state |
+| Cilium install 前から動いていた pod が Cilium 管理下に入らない | chaining mode では Cilium 設定が CNI conf に反映されるのは Pod 再作成時。`kubectl rollout restart -n flux-system deployment` 等で再作成すると chained になる |
+| `cilium connectivity test` で ICMP のみ失敗（TCP/HTTP は pass） | EKS Cluster SG が ICMP を明示許可していない可能性。production アプリが TCP のみなら無視で OK。ICMP が必要なら別 issue で SG ルール追加 |
+| `kubectl top` が `Metrics API not available` を返す | metrics-server が未 Ready or kubelet certs / preferred address types の不一致。`kubectl logs -n kube-system deploy/metrics-server` で確認 |
+| `GatewayClass cilium` が `Programmed: False` | Cilium operator が CRDs を picking up していない。`kubectl logs -n kube-system deploy/cilium-operator` で確認、Cilium pod の rolling restart が必要なケースあり |
+| KEDA `ScaledObject` が `Ready: False` | trigger 設定誤り or RBAC error。`kubectl describe scaledobject <name> -n <ns>` で詳細を確認 |
 
 ### GitOps 原則
 

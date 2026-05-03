@@ -1,0 +1,20 @@
+# =============================================================================
+# Metrics Server Helmfile for production
+# =============================================================================
+# Provides resource metrics (CPU / memory) for HPA and `kubectl top`.
+# Required by KEDA-generated HPAs as well.
+# =============================================================================
+environments:
+  production:
+---
+repositories:
+  - name: metrics-server
+    url: https://kubernetes-sigs.github.io/metrics-server
+
+releases:
+  - name: metrics-server
+    namespace: kube-system
+    chart: metrics-server/metrics-server
+    version: "3.13.0"
+    values:
+      - values.yaml

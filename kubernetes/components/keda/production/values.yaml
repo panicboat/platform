@@ -1,0 +1,10 @@
+# KEDA values for production
+# Reference: docs/superpowers/specs/2026-05-03-eks-production-foundation-addons-alpha-design.md
+
+# =============================================================================
+# Resources / Replicas
+# =============================================================================
+# Phase 1 では chart デフォルトを採用。HA 化や resource tuning は
+# monorepo の async worker 投入時に再評価する。
+# AWS scaler (SQS / EventBridge / DynamoDB Streams) の IRSA 設定も
+# 利用が顕在化したタイミングで別 spec で扱う。

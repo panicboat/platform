@@ -1,0 +1,16 @@
+# =============================================================================
+# Cilium Kustomization Overlay for production
+# =============================================================================
+# This kustomization adds production-specific resources to the Cilium Helm
+# release output:
+#   - GatewayClass: registers Cilium as the gateway-api controller
+#
+# Note: production の Gateway resources は per-service で個別に作成する設計
+# （north-south は ALB Controller、east-west は monorepo / Plan 4-x で扱う）。
+# local の cilium-gateway のような共有 Gateway は production では作らない。
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - gateway-class.yaml

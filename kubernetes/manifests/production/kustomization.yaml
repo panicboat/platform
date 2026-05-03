@@ -2,3 +2,5 @@ resources:
   - ./00-namespaces
   - ./cilium
   - ./gateway-api
+  - ./keda
+  - ./metrics-server
