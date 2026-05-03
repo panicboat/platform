@@ -55,8 +55,7 @@ resource "aws_costoptimizationhub_enrollment_status" "this" {
 }
 
 resource "aws_costoptimizationhub_preferences" "this" {
-  savings_estimation_mode            = "BeforeDiscounts"
-  member_account_discount_visibility = "None"
+  savings_estimation_mode = "BeforeDiscounts"
 
   depends_on = [aws_costoptimizationhub_enrollment_status.this]
 }
@@ -64,7 +63,7 @@ resource "aws_costoptimizationhub_preferences" "this" {
 
 - `include_member_accounts = false`: standalone account のため。
 - `savings_estimation_mode = "BeforeDiscounts"`: EDP / RI 等の割引前で見積もる（standalone なら影響なし、デフォルト値）。
-- `member_account_discount_visibility = "None"`: standalone のため意味を持たない。明示する。
+- `member_account_discount_visibility` は **指定しない**: AWS API は non-management account に対しこの属性が含まれた呼び出しを拒否する (`ValidationException: Only management accounts can update member account discount visibility.`)。Organization の management account になった時点で追加する。
 
 #### Compute Optimizer (`compute_optimizer.tf`)
 
