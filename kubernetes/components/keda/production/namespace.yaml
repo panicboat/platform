@@ -1,0 +1,13 @@
+# =============================================================================
+# KEDA Namespace
+# =============================================================================
+# This namespace contains:
+#   - keda-operator (controller for ScaledObject / ScaledJob / TriggerAuthentication)
+#   - keda-operator-metrics-apiserver (external metrics API server)
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keda
+  labels:
+    app.kubernetes.io/name: keda

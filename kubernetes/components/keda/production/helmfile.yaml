@@ -1,0 +1,21 @@
+# =============================================================================
+# KEDA Helmfile for production
+# =============================================================================
+# KEDA (Kubernetes Event-driven Autoscaling) installs ScaledObject / ScaledJob
+# CRDs and provides external triggers (Prometheus / Cron / SQS / etc.) on top
+# of native HPA. The chart includes the operator and metrics-apiserver.
+# =============================================================================
+environments:
+  production:
+---
+repositories:
+  - name: kedacore
+    url: https://kedacore.github.io/charts
+
+releases:
+  - name: keda
+    namespace: keda
+    chart: kedacore/keda
+    version: "2.19.0"
+    values:
+      - values.yaml
