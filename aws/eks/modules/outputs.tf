@@ -55,3 +55,18 @@ output "admin_role_name" {
   description = "Name of the IAM role for human kubectl admin access"
   value       = aws_iam_role.eks_admin.name
 }
+
+output "alb_controller_role_arn" {
+  description = "IRSA role ARN for AWS Load Balancer Controller"
+  value       = module.alb_controller_irsa.arn
+}
+
+output "external_dns_role_arn" {
+  description = "IRSA role ARN for ExternalDNS"
+  value       = module.external_dns_irsa.arn
+}
+
+output "vpc_id" {
+  description = "VPC ID where the EKS cluster lives (for ALB Controller chart values)"
+  value       = module.vpc.vpc.id
+}
