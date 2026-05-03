@@ -46,6 +46,41 @@ module "ebs_csi_irsa" {
   tags = var.common_tags
 }
 
+module "alb_controller_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.0"
+
+  name                                   = "eks-${var.environment}-alb-controller"
+  attach_load_balancer_controller_policy = true
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["kube-system:aws-load-balancer-controller"]
+    }
+  }
+
+  tags = var.common_tags
+}
+
+module "external_dns_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.0"
+
+  name                          = "eks-${var.environment}-external-dns"
+  attach_external_dns_policy    = true
+  external_dns_hosted_zone_arns = [module.route53.zones.panicboat_net.arn]
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["external-dns:external-dns"]
+    }
+  }
+
+  tags = var.common_tags
+}
+
 locals {
   cluster_addons = {
     vpc-cni = {
