@@ -1,32 +1,36 @@
-# cost_optimization_hub.tf - documentation only; no resources are managed.
+# cost_optimization_hub.tf - AWS Cost Optimization Hub enrollment
+
+# Workaround for hashicorp/terraform-provider-aws#39520: the
+# aws_costoptimizationhub_enrollment_status resource produces a perpetual
+# in-place update on every plan because the provider always plans
+# include_member_accounts=false even when omitted from HCL, while the AWS
+# API does not return that attribute on Read for non-management accounts.
+# lifecycle.ignore_changes (including = all) does not suppress this.
 #
-# AWS Cost Optimization Hub has TWO related Terraform resources, both of
-# which are unusable from this stack:
-#
-# 1. aws_costoptimizationhub_enrollment_status
-#    The AWS API does not return include_member_accounts on Read, so refresh
-#    nulls the state and every plan re-proposes "+ include_member_accounts =
-#    false" with "~ status = (known after apply)". lifecycle.ignore_changes
-#    (including = all) does not suppress this — provider behavior, not
-#    fixable from HCL. Apply is idempotent but the perpetual diff is noise
-#    that drowns out real changes.
-#
-# 2. aws_costoptimizationhub_preferences
-#    The provider always sends member_account_discount_visibility (default
-#    "All" when unset) and the AWS API rejects that attribute from
-#    non-management accounts with:
-#      ValidationException: Only management accounts can update member
-#      account discount visibility.
-#    Cannot be applied at all from a standalone account.
-#
-# Operational state:
-# - Enrollment was performed via Terraform once (initial PR #262 / #264) and
-#   the resource was subsequently `terragrunt state rm`'d to stop the
-#   perpetual diff. The AWS-side enrollment remains Active permanently.
-# - savings_estimation_mode is left at the AWS default "AfterDiscounts"
-#   (verified via `aws cost-optimization-hub get-preferences`). For a
-#   standalone account without enterprise discount programs, BeforeDiscounts
-#   and AfterDiscounts produce identical numbers.
-#
-# Add resources back when the account becomes an Organization management
-# account and the provider issues are resolved.
+# Workaround: invoke the AWS CLI directly via terraform_data + local-exec.
+# This bypasses the broken provider resource while keeping enrollment
+# managed in Terraform. The call is idempotent (re-enrolling an Active
+# account is a no-op).
+resource "terraform_data" "cost_optimization_hub_enrollment" {
+  triggers_replace = {
+    # Re-run only when this version string changes.
+    version = "v1"
+  }
+
+  provisioner "local-exec" {
+    command = "aws cost-optimization-hub update-enrollment-status --status Active --region us-east-1"
+  }
+}
+
+# aws_costoptimizationhub_preferences is intentionally NOT managed here.
+# The AWS Terraform provider always sends member_account_discount_visibility
+# (defaulting to "All" if unset), and the AWS API rejects that attribute
+# from non-management accounts with:
+#   ValidationException: Only management accounts can update member account
+#   discount visibility.
+# AWS defaults are used: savings_estimation_mode = "AfterDiscounts" (verified
+# via "aws cost-optimization-hub get-preferences"). For a standalone account
+# without enterprise discount programs, BeforeDiscounts and AfterDiscounts
+# produce identical numbers.
+# Add this resource back when the account becomes an Organization management
+# account.
