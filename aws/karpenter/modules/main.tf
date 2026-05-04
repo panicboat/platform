@@ -31,6 +31,12 @@ module "karpenter" {
   namespace       = "karpenter"
   service_account = "karpenter"
 
+  # Karpenter v1.x の controller IAM policy は accumulated permissions により
+  # standard IAM policy size limit (6,144 chars) を超過する。inline role
+  # policy にすると 10,240 chars 上限になりエラー回避できる (sub-module の
+  # variable description が直接このユースケースを推奨)。
+  enable_inline_policy = true
+
   # Node role: SSM Session Manager access (no SSH key, port 22 closed)
   node_iam_role_additional_policies = {
     AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
