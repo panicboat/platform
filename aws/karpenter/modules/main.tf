@@ -72,6 +72,13 @@ module "karpenter_bootstrap" {
   # Cluster primary SG must be attached to nodes for cluster API access
   cluster_primary_security_group_id = module.eks.cluster.cluster_security_group_id
 
+  # Node SG (from parent module "eks") required for node-to-node pod-network
+  # traffic. Standalone eks-managed-node-group submodule does NOT attach this
+  # automatically (unlike when MNGs live inside `module "eks"`), causing
+  # cross-node pod traffic (e.g., bootstrap pod → CoreDNS on system node) to
+  # be silently dropped. Sourced from aws/eks/lookup via tag-based discovery.
+  vpc_security_group_ids = [module.eks.cluster.node_security_group_id]
+
   ami_type       = "AL2023_ARM_64_STANDARD"
   instance_types = var.bootstrap_instance_types
   capacity_type  = "ON_DEMAND"
