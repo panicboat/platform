@@ -734,6 +734,8 @@ Expected: init で provider download → success、validate で `Success! The co
 
 `.terraform.lock.hcl` が生成されたことを確認（git add の対象）。
 
+> ⚠️ **Lessons Learned L2 参照**: 本 repo では `.gitignore` line 4 (`.terraform.lock.hcl`) で全 stack の lock file が untracked。`git add` しても silent skip される。
+
 - [ ] **Step 13: terragrunt plan で差分確認**
 
 ```bash
@@ -883,6 +885,11 @@ source ~/.zshrc
 eks-login production >/dev/null 2>&1
 aws iam get-role --role-name eks-production-alb-controller --query 'Role.Arn' --output text
 aws iam get-role --role-name eks-production-external-dns --query 'Role.Arn' --output text
+# ⚠️ Lessons Learned L1 参照: 実 role 名は random suffix 付き
+# (例: eks-production-alb-controller-20260503163503969700000004)。
+# 上記の固定名 lookup は NoSuchEntity になる。代わりに terragrunt output 経由:
+#   ROLE_ARN=$(cd aws/eks/envs/production && TG_TF_PATH=tofu terragrunt output -raw alb_controller_role_arn)
+#   aws iam get-role --role-name "${ROLE_ARN##*/}" --query 'Role.Arn' --output text
 aws acm list-certificates --region ap-northeast-1 \
   --query "CertificateSummaryList[?DomainName=='*.panicboat.net'].{Arn:CertificateArn,Status:Status}" \
   --output table
@@ -938,6 +945,8 @@ Expected: 3 つの値が取得できる：
 ---
 
 ## Task 7: ALB Controller production component を作成
+
+> ⚠️ **Lessons Learned L4 参照**: 本 task と Task 8 で記述している `REPLACE_FROM_TERRAGRUNT_OUTPUT` placeholder パターンは実装時に冗長と判明し、cilium 同様「child helmfile.yaml に Task 6 で取得した実値を直接記入」する形で実装した。次 plan では placeholder pattern を採用しない。
 
 **Files:**
 - Create: `kubernetes/components/aws-load-balancer-controller/production/helmfile.yaml`
@@ -1761,3 +1770,55 @@ Expected: Flux 全 Ready、stuck pod なし。
   - helmfile v1.4 の parent → child env values 非継承への対応（child 重複定義 + 同期コメント）→ Task 7 / 8 で同パターン
   - hydrate-component の `-e $(ENV)` 不足は Plan 1b で fix 済（修正後の Makefile 前提）
   - 新 component の env-aware namespace 配置 → external-dns/production/namespace.yaml で対応
+
+---
+
+## Lessons Learned (post-execution)
+
+PR 1 (#268) / PR 2 (#269) を merge して production cluster で全 verification が pass した時点で判明した知見。次 plan 設計時に反映する。
+
+### L1: `terraform-aws-modules/iam` v6 IRSA module の role 名は `name_prefix` で random suffix が付く
+
+`terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts` v6 系は内部で `use_name_prefix = true` をデフォルトに採用しており、`name = "eks-${var.environment}-alb-controller"` と指定しても実際に作られる IAM role 名は `eks-production-alb-controller-20260503163503969700000004` のようにタイムスタンプベースの suffix が付く。
+
+**影響:** Plan の Task 13 Step 4 で `aws iam get-role --role-name eks-production-alb-controller` と固定名で確認する verification command は `NoSuchEntity` で失敗する。
+
+**対処:** Verification command は `terragrunt output -raw alb_controller_role_arn` 経由で実値を取得して `aws iam get-role --role-name $(... | awk -F/ '{print $NF}')` のように動的に解決すべき。本 plan 内では既に `<USER GATE: PR 1 review + merge>` の Step 4 を Task 13 (Verification battery) に統合する形で改修済。
+
+### L2: `.terraform.lock.hcl` は repo の `.gitignore` で除外済
+
+Plan の Task 4 Step 12 では「`.terraform.lock.hcl` が生成されたことを確認（git add の対象）」と記載していたが、本 repo の `.gitignore` line 4 (`.terraform.lock.hcl`) で全 stack の lock file は意図的に追跡対象外（Renovate lockFileMaintenance を採用しないリポジトリ方針）。実際 `aws/eks/envs/production/` 等にもファイルは存在するが untracked。
+
+**影響:** lock file を `git add aws/alb/` で追加しようとしても何も追加されない（gitignored ので silent skip）。
+
+**対処:** 既存スタックがどう扱っているかを `git ls-files <stack>/envs/<env>/` で先に確認し、repo 方針に合わせる。Plan では「lock file は repo 方針に従う」と一行明記すれば十分。
+
+### L3: `module.eks.aws_eks_addon.this["kube-proxy"]` の state drift は次 eks apply で自動解消
+
+Plan 1b で kube-proxy DaemonSet を `kubectl delete` 済み + `terragrunt apply` で addon block 削除済みだが、`terraform-aws-modules/eks v21` の addon state に `preserve = true` が残っており、PR 1 直前の `terragrunt plan` で `module.eks.aws_eks_addon.this["kube-proxy"] will be destroyed` (`Plan: 6 to add, 0 to change, 1 to destroy`) として出力された。PR 1 apply 時に自然に state エントリが削除され、cluster 側に副作用なし（DaemonSet は既に存在しないため）。
+
+**影響:** PR description で「1 destroy 表示は Plan 1b の state drift、apply で解消」と explanatory note を入れる必要があった。
+
+**対処:** Plan 1b のレッスンとして README troubleshooting に既に記録済。次 plan で同様の "expected destroy from prior phase drift" が出る場合は PR description の Test plan セクションに `## Known plan output explanations` 等の subsection を設けて明示する慣習にする。
+
+### L4: `REPLACE_FROM_TERRAGRUNT_OUTPUT` プレースホルダパターンは不要、cilium 同様 child helmfile に直接実値を入れる
+
+Plan 草案では Task 7-9 で「child helmfile.yaml に `REPLACE_FROM_TERRAGRUNT_OUTPUT` placeholder を入れ、Task 9 で実値に置換する」と段階的フローを記述していた。しかし:
+
+- helmfile v1.4 は parent → child env values の auto-inherit を行わないため、child 側で実値を持つことが必須
+- cilium component (Plan 1b で導入済) は child helmfile に `eksApiEndpoint: BD10E7689A05E46191305DDC7BE6CA67...` と直接実値を持つ前例
+- placeholder を経由する 2 段階フローは git diff レビュー時の noise を増やすだけで、初回から実値を入れる方がシンプル
+
+**影響:** 実装時に Task 7 / 8 でいきなり実値を埋め、Task 9 (parent helmfile.yaml.gotmpl 更新) のみが残る形になり、Plan markdown と実装が乖離。
+
+**対処:** Plan 草案テンプレートから `REPLACE_FROM_TERRAGRUNT_OUTPUT` パターンを削除し、cilium 同様「child helmfile.yaml に PR 1 の terragrunt output から取得した実値を直接記入」と書く。実値の記入は Task 6 (terragrunt outputs 取得) の後で 1 回行う形が clean。
+
+### L5: PR 1 squash merge 後、subagent dispatch 中に local branch reset が巻き戻る現象
+
+Controller が `git fetch origin main && git reset --hard origin/main` で PR 1 merge 後の main に branch を整列させた後、Task 7-11 の subagent をディスパッチして commit を作っていた。Task 12 で `git log origin/main..HEAD` を確認したところ、PR 1 の squash 前の 4 commits + docs commits 4 件 + Task 7-11 の 5 commits = 計 13 commits ahead と表示され、reset が事実上ロールバックされていた（subagent が古い状態を保持して上書き、または git の何らかの race）。
+
+**影響:** PR 2 が「squash 済の PR 1 commits + 新規 PR 2 commits」を含む大きな diff になりかける。
+
+**対処:** `git rebase --onto origin/main <last-pre-pr1-commit> HEAD` で PR 1 の commits を `patch contents already upstream` として drop し、PR 2 commits だけを origin/main の上に再配置 → `git push --force-with-lease` で recovery 可能。次 plan では:
+- 2-PR split を行う場合、controller は USER GATE (PR 1 merge 完了確認) の直後に **明示的に** `git fetch && git reset --hard origin/main && git status` を実行し、`git log --oneline origin/main..HEAD` が空であることを確認してから Task 6 以降の subagent ディスパッチに進む
+- 各 task 完了後に `git log --oneline origin/main..HEAD | wc -l` を出力して累積 commit 数の整合性を controller 側で監視する
