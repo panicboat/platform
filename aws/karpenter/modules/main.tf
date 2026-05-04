@@ -52,6 +52,15 @@ module "karpenter_bootstrap" {
   name         = "karpenter_bootstrap"
   cluster_name = module.eks.cluster.name
 
+  # Cluster info required by AL2023 user data generator. The standalone
+  # eks-managed-node-group submodule does NOT auto-wire these from the
+  # cluster name (unlike when MNGs live inside `module "eks"`), so we
+  # must pass them explicitly. Sourced from aws/eks/lookup module.
+  cluster_endpoint     = module.eks.cluster.endpoint
+  cluster_auth_base64  = module.eks.cluster.certificate_authority_data
+  cluster_service_cidr = module.eks.cluster.service_cidr
+  cluster_ip_family    = module.eks.cluster.ip_family
+
   subnet_ids = module.vpc.subnets.private.ids
 
   # Cluster primary SG must be attached to nodes for cluster API access
