@@ -2239,7 +2239,7 @@ metadata:
 spec:
   disruption:
     consolidateAfter: 30s
-    consolidationPolicy: WhenUnderutilized
+    consolidationPolicy: WhenEmptyOrUnderutilized
   limits:
     cpu: "200"
   template:
