@@ -42,7 +42,9 @@ spec:
           values: ["medium", "large", "xlarge", "2xlarge", "4xlarge"]
       expireAfter: 720h  # 30 days
   disruption:
-    consolidationPolicy: WhenUnderutilized
+    # Karpenter v1+ valid values: WhenEmpty | WhenEmptyOrUnderutilized
+    # (v0.x の WhenUnderutilized は廃止。spec/plan の値が古かった)
+    consolidationPolicy: WhenEmptyOrUnderutilized
     consolidateAfter: 30s
   limits:
     cpu: "200"
