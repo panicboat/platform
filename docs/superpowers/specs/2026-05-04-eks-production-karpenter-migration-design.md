@@ -88,45 +88,51 @@ NodePool requirements:
 
 | PR | 内容 | State after apply |
 |---|---|---|
-| **PR 1 (AWS infra parallel add)** | `karpenter-bootstrap` MNG 新設 (in `aws/eks/`) + 新 stack `aws/karpenter/` 作成 (Karpenter sub-module で SQS / EventBridge / Pod Identity / Node IAM / EC2 Instance Profile) + cross-stack lookup (`aws/eks/lookup/`) | 4 nodes (system × 2 + bootstrap × 2)。Karpenter は未 install |
+| **PR 1 (AWS infra parallel add)** | `aws/eks/lookup/` 新 shared module + 新 stack `aws/karpenter/` (Karpenter sub-module で SQS / EventBridge / Pod Identity / Controller IAM / Node IAM + bootstrap MNG を **全て** 一括 provision) | 4 nodes (system × 2 + bootstrap × 2)。Karpenter は未 install |
 | (USER GATE 1) | PR 1 merge + apply 確認 + terragrunt outputs 取得 | — |
 | **PR 2 (Kubernetes layer)** | Karpenter Helm release + EC2NodeClass + NodePool + helmfile values 転記 + README | Karpenter pod が bootstrap MNG 上で Ready。NodePool 登録済 (まだ pending pod 無いので node 起動なし) |
 | (USER GATE 2) | Smoke test + cordon + drain + 移行完了確認 | 全 system pod が Karpenter NodePool 上で稼働。system MNG は cordoned/empty |
-| **PR 3 (AWS cleanup)** | `system` MNG block 削除 | system MNG destroyed。bootstrap MNG + Karpenter-managed nodes のみ |
+| **PR 3 (AWS cleanup)** | `system` MNG block 削除 (`aws/eks/modules/node_groups.tf`) | system MNG destroyed。aws/eks/ stack は cluster control plane のみ管理。bootstrap MNG + Karpenter-managed nodes は引き続き存在 |
 
 採用理由: 各 PR が独立 testable / rollback 可能。USER GATE で実 cluster 状態を見ながら進める。Plan 1c-β の 2-PR + USER GATE パターンの拡張で、慣れた進行。
 
 トレードオフ:
 1. PR 数が増える (3 PR + 2 USER GATE)。
-2. `aws/eks/modules/node_groups.tf` を 2 回触る (PR 1 で bootstrap 追加、PR 3 で system 削除)。
+2. PR 3 後の `aws/eks/modules/node_groups.tf` は空 (`eks_managed_node_groups = {}`) になり、aws/eks/ stack が cluster control plane のみを管理する状態になる。
 
-### Decision 5: Karpenter の AWS リソースは独立 stack `aws/karpenter/` に分離 + Pod Identity を採用
+### Decision 5: Karpenter の AWS リソース (bootstrap MNG 含む) は独立 stack `aws/karpenter/` に集約 + Pod Identity を採用
 
-Karpenter の AWS-side infra (`terraform-aws-modules/eks/aws//modules/karpenter` sub-module) を `aws/eks/modules/` 内ではなく **新 stack `aws/karpenter/`** で管理する。Plan 1c-β の `aws/alb/` 同様、Karpenter 関連リソースを独立した terragrunt stack として扱う。
+Karpenter 関連 AWS リソース全て (sub-module による SQS / EventBridge / Pod Identity / Controller IAM / Node IAM / EC2 Instance Profile **+ bootstrap MNG 自体**) を `aws/eks/modules/` 内ではなく **新 stack `aws/karpenter/`** で管理する。Plan 1c-β の `aws/alb/` 同様、Karpenter 関連リソースを独立した terragrunt stack として扱う。
+
+Bootstrap MNG は `terraform-aws-modules/eks/aws//modules/eks-managed-node-group` standalone submodule を使い、aws/eks/ stack の `module "eks"` の `eks_managed_node_groups` map ではなく aws/karpenter/ stack 内で独立に provision する。
 
 Authentication mode は **Pod Identity** (sub-module の v21.19.0 デフォルト) を採用。Karpenter ServiceAccount は EKS Pod Identity Association 経由で IAM role を assume する。
 
 #### `aws/eks/lookup/` 新設 (cross-stack lookup module)
 
-`aws/karpenter/` から EKS cluster 情報 (`cluster_name`、Pod Identity の場合は OIDC provider 不要) を参照するため、`aws/vpc/lookup/` / `aws/route53/lookup/` 同型の shared lookup module `aws/eks/lookup/` を新設する。`data "aws_eks_cluster"` を pass-through。
+`aws/karpenter/` から EKS cluster 情報 (`cluster_name` + bootstrap MNG が必要とする `cluster_security_group_id`) を参照するため、`aws/vpc/lookup/` / `aws/route53/lookup/` 同型の shared lookup module `aws/eks/lookup/` を新設する。`data "aws_eks_cluster"` を pass-through し、outputs に cluster.{name, arn, endpoint, oidc_provider_arn, oidc_provider, cluster_security_group_id} を expose。
+
+`aws/karpenter/modules/lookups.tf` は `aws/eks/lookup/` (cluster info) と `aws/vpc/lookup/` (private subnet IDs for bootstrap MNG) の 2 つを consume する。
 
 #### Stack 分離の採用理由
 
-1. **Operational simplicity (priority B)**: 「Karpenter 関連の AWS リソースは全部 `aws/karpenter/`」という mental model が clean。Plan 1c-β の `aws/alb/` precedent と一貫。
-2. **Lifecycle 分離**: Karpenter sub-module の version up (例: v21 → v22) が EKS module の terraform state file に触らずに済む。
-3. **`aws/eks/modules/` のスリム維持**: Plan 1a/1b/1c-α/1c-β で addons.tf 等が膨張気味。Karpenter は新 stack に逃がす。
+1. **Operational simplicity (priority B)**: 「Karpenter 関連の AWS リソースは全部 `aws/karpenter/`」という mental model が clean。bootstrap MNG も Karpenter 専用 host なので一緒。Plan 1c-β の `aws/alb/` precedent と一貫。
+2. **Lifecycle 分離**: Karpenter sub-module の version up (例: v21 → v22) が EKS module の terraform state file に触らずに済む。bootstrap MNG の sizing 変更も同様。
+3. **`aws/eks/modules/` のスリム維持**: PR 3 完了後 `aws/eks/modules/node_groups.tf` は空 (`eks_managed_node_groups = {}`) になり、aws/eks/ stack の責務が「cluster control plane のみ」と明快に。
+4. **将来の nodegroup 追加判断が clear**: 将来 Karpenter 以外の特殊 MNG を追加する場合は purpose-based stack (`aws/<purpose>/` または aws/eks/modules/node_groups.tf) に追加。「とりあえず aws/eks/」という曖昧さがない。
 
 #### Pod Identity の採用理由
 
 1. **v21.19.0 module のデフォルト**: `enable_irsa` 等の variable は v21 で廃止済。IRSA を使うには `iam_role_source_assume_policy_documents` で OIDC trust policy を注入する custom 実装が必要で、module の trust policy に Pod Identity statement (`pods.eks.amazonaws.com`) が常時残る歪んだ状態になる。
-2. **コードのシンプルさ (priority B)**: Pod Identity を素直に採用すれば `module "karpenter"` 呼び出しが minimal config (cluster_name + node_iam_role_additional_policies + tags) で済む。
+2. **コードのシンプルさ (priority B)**: Pod Identity を素直に採用すれば `module "karpenter"` 呼び出しが minimal config (cluster_name + node_iam_role_additional_policies + namespace + service_account + tags) で済む。
 3. **AWS 推奨方向**: Pod Identity は EKS で新規採用される認証方式の主流。`eks-pod-identity-agent` addon は Plan 1a で既に install 済。
 4. **chart 側のシンプル化**: Karpenter Helm chart の serviceAccount.annotations に `eks.amazonaws.com/role-arn` を入れる必要なし (Pod Identity Association が SA-to-role mapping を直接管理)。
 
 #### 採用しなかった代替案
 
-1. **IRSA を強引に維持**: v21 module の interface 変更により custom assume policy 注入が必要。trust policy に dormant Pod Identity statement が残るため操作的に「綺麗じゃない」状態になる。priority B (operational simplicity) と矛盾。
-2. **terraform-aws-modules/iam の iam-role-for-service-accounts で Karpenter 用 IRSA role を手動構築**: SQS / EventBridge / Node IAM 等の他リソースは別途 module 化が必要で、車輪の再発明。
+1. **bootstrap MNG を aws/eks/modules/node_groups.tf に置く** (Decision 5 v1): 当初案。aws/eks/ に Karpenter 専用 host が混在し、将来 nodegroup 追加時に「どこに置くか」の判断が曖昧になる。
+2. **IRSA を強引に維持**: v21 module の interface 変更により custom assume policy 注入が必要。trust policy に dormant Pod Identity statement が残るため操作的に「綺麗じゃない」状態になる。priority B (operational simplicity) と矛盾。
+3. **terraform-aws-modules/iam の iam-role-for-service-accounts で Karpenter 用 IRSA role を手動構築**: SQS / EventBridge / Node IAM 等の他リソースは別途 module 化が必要で、車輪の再発明。
 
 #### Plan 1c-β との一貫性について
 
@@ -134,10 +140,12 @@ Plan 1c-β の ALB Controller / ExternalDNS は IRSA のまま据え置き。本
 
 トレードオフ:
 1. Stack が 1 つ増える: `aws/karpenter/` の Makefile / root.hcl / envs/production/ / modules/ の boilerplate。CI deploy job も 1 つ増える (`Deploy Terragrunt (karpenter:production)`)。
-2. Cross-stack lookup が 1 つ増える: `aws/eks/lookup/` 経由で `aws/karpenter/` が EKS cluster 情報を取得。
+2. Cross-stack lookup が 2 つ必要: `aws/eks/lookup/` (cluster info) + `aws/vpc/lookup/` (subnet IDs)。
 3. Sub-module の挙動 (SQS queue 名や EventBridge rule 名のフォーマット) は module 側で決まり、自由度が下がる。
    - 緩和: 命名は cluster name から自動生成、本 cluster だけなので名前競合の心配なし。
 4. cluster 内に IRSA + Pod Identity 混在状態が一時的に存在する (上述、Future Specs で解消)。
+5. EKS managed nodegroup が 2 つの terraform state file (aws/eks/ と aws/karpenter/) で管理される一時的状態 (Plan 2 完了後は aws/karpenter/ のみ)。
+6. terraform-aws-modules/eks の "MNG as part of `module "eks"`" convention から逸脱し、standalone `eks-managed-node-group` submodule を使う。convention 遵守度は下がるが、submodule は公式に提供されており設計上問題なし。
 
 ## Components matrix
 
@@ -145,11 +153,13 @@ Plan 1c-β の ALB Controller / ExternalDNS は IRSA のまま据え置き。本
 
 | Component | Stack / File | PR | 役割 |
 |---|---|---|---|
-| `karpenter-bootstrap` MNG | `aws/eks/modules/node_groups.tf` | PR 1 (add) | Karpenter controller pod 専用、`t4g.small × 2`、taint `karpenter.sh/controller=true:NoSchedule`、label `node-role/karpenter-bootstrap=true` |
-| `aws/eks/lookup/` (new shared module) | `aws/eks/lookup/{terraform,variables,main,outputs}.tf` | PR 1 (add) | EKS cluster 情報を cross-stack で公開 (`data "aws_eks_cluster"` pass-through)。`aws/karpenter/` と将来の他 stack が consume |
+| `aws/eks/lookup/` (new shared module) | `aws/eks/lookup/{terraform,variables,main,outputs}.tf` | PR 1 (add) | EKS cluster 情報を cross-stack で公開 (`data "aws_eks_cluster"` pass-through)。outputs に `cluster.{name, arn, endpoint, oidc_provider_arn, oidc_provider, cluster_security_group_id}` を expose。`aws/karpenter/` と将来の他 stack が consume |
 | `aws/karpenter/` (new stack) | `aws/karpenter/Makefile` + `root.hcl` + `envs/production/{env.hcl, terragrunt.hcl}` | PR 1 (add) | terragrunt stack の boilerplate (Plan 1c-β `aws/alb/` 同型) |
-| Karpenter sub-module + outputs | `aws/karpenter/modules/{terraform,variables,lookups,main,outputs}.tf` | PR 1 (add) | `terraform-aws-modules/eks/aws//modules/karpenter` で SQS + EventBridge + Pod Identity (IRSA ではない) + Node IAM + Instance Profile を一括 provision。`aws/eks/lookup/` 経由で cluster 情報を取得。outputs: `node_role_name` / `interruption_queue_name` (Pod Identity なので controller_role_arn は kubernetes 側で不要) |
-| `system` MNG (existing) | `aws/eks/modules/node_groups.tf` | PR 3 (remove) | Migration 完了後に block 削除 |
+| `aws/karpenter/modules/variables.tf` | `aws/karpenter/modules/variables.tf` | PR 1 (add) | bootstrap-specific variables (`bootstrap_instance_types` / `bootstrap_min_size` / `bootstrap_max_size` / `bootstrap_desired_size` / `bootstrap_disk_size`) を含む |
+| `aws/karpenter/modules/lookups.tf` | `aws/karpenter/modules/lookups.tf` | PR 1 (add) | `module "eks" { source = "../../eks/lookup" }` + `module "vpc" { source = "../../vpc/lookup" }` で cluster info + private subnet IDs を取得 |
+| Karpenter sub-module + bootstrap MNG | `aws/karpenter/modules/main.tf` | PR 1 (add) | `terraform-aws-modules/eks/aws//modules/karpenter` で SQS + EventBridge + Pod Identity (IRSA ではない) + Controller IAM + Node IAM + Instance Profile を一括 provision。`terraform-aws-modules/eks/aws//modules/eks-managed-node-group` standalone submodule で `karpenter_bootstrap` MNG (`t4g.small × 2`、taint `karpenter.sh/controller=true:NoSchedule`、label `node-role/karpenter-bootstrap=true`) を provision |
+| `aws/karpenter/modules/outputs.tf` | `aws/karpenter/modules/outputs.tf` | PR 1 (add) | outputs: `node_role_name` / `interruption_queue_name` (Pod Identity なので controller_role_arn は kubernetes 側で不要) |
+| `system` MNG (existing) | `aws/eks/modules/node_groups.tf` | PR 3 (remove) | Migration 完了後に block 削除 → `eks_managed_node_groups = {}` (空) |
 
 ### Kubernetes layer (helmfile)
 
@@ -169,12 +179,16 @@ Plan 1c-β の ALB Controller / ExternalDNS は IRSA のまま据え置き。本
 ```
 [PR 1: AWS apply]
   aws/eks/envs/production
-  └─ karpenter-bootstrap MNG provision (4 nodes 体制)
+  └─ (no MNG additions — system MNG は既存のまま)
 
   aws/karpenter/envs/production (NEW stack)
-  ├─ aws/eks/lookup module 経由で cluster_name を取得
-  └─ Karpenter sub-module (SQS / EventBridge / Pod Identity Association +
-     Controller IAM role / Node IAM / Instance Profile)
+  ├─ aws/eks/lookup module 経由で cluster info を取得
+  │   (cluster.name, cluster.cluster_security_group_id 等)
+  ├─ aws/vpc/lookup module 経由で private subnet IDs を取得
+  └─ 提供:
+      - Karpenter sub-module (SQS / EventBridge / Pod Identity Association +
+        Controller IAM role / Node IAM / Instance Profile)
+      - karpenter_bootstrap MNG (t4g.small × 2、taint + label) ← NEW: 移動
                           ↓ outputs (aws/karpenter/modules/outputs.tf)
   cd aws/karpenter/envs/production && terragrunt output -json:
   - node_role_name             → EC2NodeClass.spec.role
@@ -208,15 +222,15 @@ Plan 1c-β の ALB Controller / ExternalDNS は IRSA のまま据え置き。本
 ### PR 1: AWS infrastructure (parallel add)
 
 **Files**:
-- `aws/eks/modules/variables.tf` (modify): bootstrap-specific variables 5 件追加
-- `aws/eks/modules/node_groups.tf` (modify): Add `karpenter-bootstrap` block (既存 `system` 据え置き)
-- `aws/eks/lookup/{terraform,variables,main,outputs}.tf` (new shared module): cross-stack lookup
+- `aws/eks/lookup/{terraform,variables,main,outputs}.tf` (new shared module): cross-stack lookup (cluster.{name, oidc_provider_arn, oidc_provider, cluster_security_group_id})
 - `aws/karpenter/Makefile` + `root.hcl` (new stack): boilerplate
 - `aws/karpenter/envs/production/{env.hcl,terragrunt.hcl}` (new env)
-- `aws/karpenter/modules/{terraform,variables,lookups,main,outputs}.tf` (new module): Karpenter sub-module 呼び出し + Pod Identity + outputs
+- `aws/karpenter/modules/{terraform,variables,lookups,main,outputs}.tf` (new module): Karpenter sub-module + Pod Identity + bootstrap MNG (standalone `eks-managed-node-group` submodule) + bootstrap variables + outputs。`module "eks" { source = "../../eks/lookup" }` + `module "vpc" { source = "../../vpc/lookup" }` で cluster info + private subnet IDs を取得
+
+> ⚠️ aws/eks/modules/ は **本 PR では一切変更しない**。Karpenter 関連リソース (bootstrap MNG 含む) はすべて aws/karpenter/ 内に集約。aws/eks/ 側の変更は PR 3 (system MNG 撤去) のみ。
 
 **State after apply**:
-- 4 EKS managed nodes (`system × 2 = m6g.large` + `karpenter-bootstrap × 2 = t4g.small`)
+- 4 EKS managed nodes (`system × 2 = m6g.large` (aws/eks/ owned) + `karpenter_bootstrap × 2 = t4g.small` (aws/karpenter/ owned))
 - Bootstrap MNG: taint で空 (Karpenter pod もまだ install 前)
 - SQS interruption queue + EventBridge rules: created (まだ consumer なし、idle)
 - Karpenter Controller IAM role + Pod Identity Association (`karpenter:karpenter` SA → IAM role)、Node IAM role、EC2 Instance Profile: created (まだ assumeRole する pod / EC2 なし)
@@ -310,8 +324,8 @@ flux get all -A | grep -v "True"        # 結果が empty (全部 Ready)
 ### PR 3: AWS cleanup (system MNG 撤去)
 
 **Files**:
-- `aws/eks/modules/node_groups.tf` (modify): `system` block 削除。`karpenter-bootstrap` のみ残る
-- `aws/eks/modules/variables.tf` (modify): `var.node_*` の整理 (bootstrap 専用に rename or 削除)
+- `aws/eks/modules/node_groups.tf` (modify): `system` block 削除。`eks_managed_node_groups = {}` 空 map (Karpenter bootstrap MNG は aws/karpenter/ で管理)
+- `aws/eks/modules/variables.tf` (modify): `var.node_*` (system MNG 用 vars) を削除。bootstrap_* vars は **aws/eks/ に存在しない** (aws/karpenter/modules/variables.tf にあるため、aws/eks/ では cleanup する変数が node_* のみ)
 
 **State after apply**:
 - Bootstrap MNG (`t4g.small × 2`) + Karpenter NodePool managed nodes (動的、N=current load-dependent)
@@ -330,7 +344,7 @@ flux get all -A | grep -v "True"        # 結果が empty (全部 Ready)
 ## Verification checklist
 
 ### PR 1 後 (terragrunt apply 後)
-- [ ] `kubectl get nodes -L eks.amazonaws.com/nodegroup` で 4 node Ready (`system × 2 = m6g.large` + `karpenter-bootstrap × 2 = t4g.small`)
+- [ ] `kubectl get nodes -L eks.amazonaws.com/nodegroup` で 4 node Ready (`system × 2 = m6g.large` (aws/eks/) + `karpenter_bootstrap × 2 = t4g.small` (aws/karpenter/))
 - [ ] `aws iam list-roles --query "Roles[?contains(RoleName, 'KarpenterController')]"` で Karpenter controller IAM role 存在
 - [ ] `aws eks list-pod-identity-associations --cluster-name eks-production --namespace karpenter` で karpenter ServiceAccount に Pod Identity Association が紐付いている
 - [ ] `aws iam get-role --role-name <karpenter_node_role_name>` で Node IAM role 存在 + EC2 service principal trust
@@ -340,7 +354,7 @@ flux get all -A | grep -v "True"        # 結果が empty (全部 Ready)
 
 ### PR 2 後 (Flux reconcile 後)
 - [ ] `kubectl get pods -n karpenter` で Karpenter pod replicas=2 Running
-- [ ] `kubectl get pod -n karpenter -o wide` で **bootstrap MNG 上に配置** (`eks.amazonaws.com/nodegroup=karpenter-bootstrap` label の node)
+- [ ] `kubectl get pod -n karpenter -o wide` で **bootstrap MNG 上に配置** (`node-role/karpenter-bootstrap=true` label の node)
 - [ ] `kubectl logs -n karpenter deploy/karpenter --tail=20 | grep -iE "(error|fail)"` でエラーなし
 - [ ] `kubectl get ec2nodeclass system-components` で Ready=True
 - [ ] `kubectl get nodepool system-components` で Ready=True
@@ -374,7 +388,7 @@ flux get all -A | grep -v "True"        # 結果が empty (全部 Ready)
 
 | Stage | Rollback 手順 | リスク |
 |---|---|---|
-| PR 1 merged → revert | `terragrunt destroy` (karpenter-bootstrap + Karpenter sub-module)。system MNG 影響なし | 低 |
+| PR 1 merged → revert | `cd aws/karpenter/envs/production && terragrunt destroy` (bootstrap MNG + Karpenter sub-module)。aws/eks/ stack 影響なし | 低 |
 | PR 2 merged → revert | Flux reconcile で Karpenter Helm release / NodePool / EC2NodeClass 撤去。Bootstrap MNG は idle で残るが pod 影響なし。system MNG 上の pod は引き続き稼働 | 低 |
 | USER GATE 2 中で問題発生 | `kubectl uncordon` で system MNG 復活。Karpenter-provisioned node は consolidation で 30s 後に auto-delete (NodeClaim TTL) | 中 (drain 中に PDB ロックで悩む可能性) |
 | PR 3 merged → revert | `aws/eks/modules/node_groups.tf` に `system` block を再追加 → `terragrunt apply` で **新規** system MNG (新 EC2、IP 違う) が作成。Pod は Karpenter 上のままなので migration やり直しは不要 | 中 (新 MNG なので state ID は異なるが運用影響なし) |
