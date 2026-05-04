@@ -1,0 +1,12 @@
+# =============================================================================
+# Karpenter Namespace
+# =============================================================================
+# This namespace contains the Karpenter controller. Chart default name is
+# also `karpenter`; we follow that convention.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: karpenter
+  labels:
+    app.kubernetes.io/name: karpenter

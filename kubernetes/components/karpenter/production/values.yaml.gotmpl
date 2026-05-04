@@ -1,0 +1,41 @@
+# Karpenter values for production
+# Reference: docs/superpowers/specs/2026-05-04-eks-production-karpenter-migration-design.md
+
+# =============================================================================
+# ServiceAccount (Pod Identity, no IRSA annotation needed)
+# =============================================================================
+# Pod Identity Association (aws/karpenter/ stack で provision 済) が
+# karpenter:karpenter ServiceAccount を controller IAM role に紐付けるため、
+# Helm chart 側で eks.amazonaws.com/role-arn annotation を入れる必要なし。
+# ServiceAccount は chart デフォルト (create: true、name: karpenter) で OK。
+
+# =============================================================================
+# Replicas / Pod placement (bootstrap MNG への pin)
+# =============================================================================
+# replicas: 2 (chart デフォルト) を採用。HA 化済み。
+replicas: 2
+
+# Karpenter pod を karpenter_bootstrap MNG 上のみに schedule する。
+# Bootstrap MNG の taint `karpenter.sh/controller=true:NoSchedule` を
+# tolerate しつつ、label `node-role/karpenter-bootstrap=true` で 配置先を絞る。
+nodeSelector:
+  node-role/karpenter-bootstrap: "true"
+
+tolerations:
+  - key: karpenter.sh/controller
+    operator: Exists
+    effect: NoSchedule
+
+# =============================================================================
+# Karpenter settings
+# =============================================================================
+settings:
+  clusterName: {{ .Values.cluster.name }}
+  # SQS interruption queue 名 (Plan 2 PR 1 で aws/karpenter/ stack が provision)
+  interruptionQueue: {{ .Values.karpenter.interruptionQueueName }}
+
+# =============================================================================
+# Controller resources
+# =============================================================================
+# chart デフォルト (1 cpu / 1Gi memory) を採用。bootstrap MNG t4g.small は
+# 2 vCPU / 2 GiB なので replicas=2 で 2 cpu / 2 Gi 要求 → 余裕で fit。

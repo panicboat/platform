@@ -32,6 +32,12 @@ environments:
           # terragrunt output {alb_controller_role_arn, external_dns_role_arn}
           albControllerRoleArn: arn:aws:iam::559744160976:role/eks-production-alb-controller-20260503163503969700000004
           externalDnsRoleArn: arn:aws:iam::559744160976:role/eks-production-external-dns-20260503163503968100000002
+        karpenter:
+          # Source: aws/karpenter/envs/production terragrunt output
+          # Pod Identity 採用のため controllerRoleArn は不要 (Pod Identity
+          # Association が SA-to-role mapping を直接管理)
+          nodeRoleName: Karpenter-eks-production-20260504154319852600000007
+          interruptionQueueName: Karpenter-eks-production
   # TODO: (staging) Uncomment and configure when staging cluster is provisioned
   # staging:
   #   values:

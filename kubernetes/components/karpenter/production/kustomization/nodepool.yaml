@@ -1,0 +1,48 @@
+# =============================================================================
+# NodePool: system-components
+# =============================================================================
+# Karpenter が起動する EC2 instance の選定 + lifecycle policy:
+# - architecture: arm64 only (cluster と一致)
+# - capacity-type: on-demand only (system-class workload なので spot 不可)
+# - instance-generation: Gt 7 (Graviton 4 = m8g/c8g/r8g、最新世代のみ)
+# - instance-category: m, c, r (general / compute-optimized / memory-optimized)
+# - instance-size: medium..4xlarge (medium 未満は burst、8xlarge+ は bin-packing 悪化)
+# - disruption: WhenUnderutilized + 30 日 expireAfter (OS patching 用 forced cycle)
+# - limits.cpu: 200 (cluster 暴走時の上限、Phase 5 nginx + monorepo 想定)
+# =============================================================================
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: system-components
+spec:
+  template:
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: system-components
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["arm64"]
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: ["m", "c", "r"]
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values: ["7"]
+        - key: karpenter.k8s.aws/instance-size
+          operator: In
+          values: ["medium", "large", "xlarge", "2xlarge", "4xlarge"]
+      expireAfter: 720h  # 30 days
+  disruption:
+    consolidationPolicy: WhenUnderutilized
+    consolidateAfter: 30s
+  limits:
+    cpu: "200"

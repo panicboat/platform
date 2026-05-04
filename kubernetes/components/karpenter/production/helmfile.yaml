@@ -1,0 +1,35 @@
+# =============================================================================
+# Karpenter Helmfile for production
+# =============================================================================
+# Provisions EC2 nodes for cluster workloads. Controller pod is pinned to
+# karpenter_bootstrap MNG via nodeSelector + toleration. Workload nodes are
+# launched into Karpenter NodePool `system-components`.
+#
+# Authentication: Pod Identity (provisioned by aws/karpenter/ stack の
+# Pod Identity Association)。Helm chart の serviceAccount.annotations は
+# 不要 (Pod Identity Association が SA-to-role mapping を直接管理)。
+# =============================================================================
+environments:
+  production:
+    # NOTE: helmfile v1.4 は親 helmfile.yaml.gotmpl の environments values を
+    # 子 helmfile に auto-inherit しないため、ここで再定義する。
+    # 値は kubernetes/helmfile.yaml.gotmpl の production env block と
+    # 同期すること（karpenter.interruptionQueueName + cluster.name）。
+    values:
+      - cluster:
+          name: eks-production
+        karpenter:
+          # Source: aws/karpenter/envs/production terragrunt output
+          interruptionQueueName: Karpenter-eks-production
+---
+repositories:
+  # Karpenter chart は OCI registry で配布されるため repositories block 不要
+  # (helmfile は chart: oci://... を直接 解決する)
+
+releases:
+  - name: karpenter
+    namespace: karpenter
+    chart: oci://public.ecr.aws/karpenter/karpenter
+    version: "1.6.5"
+    values:
+      - values.yaml.gotmpl

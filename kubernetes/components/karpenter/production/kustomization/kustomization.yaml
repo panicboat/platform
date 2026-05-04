@@ -1,0 +1,14 @@
+# =============================================================================
+# Karpenter NodePool / EC2NodeClass overlay for production
+# =============================================================================
+# Karpenter chart 自身は CRD 定義のみ install し、NodePool / EC2NodeClass の
+# instance は提供しない。本 overlay で system-components NodePool +
+# EC2NodeClass を 1 セット定義する。
+# Plan 1b cilium の GatewayClass overlay と同じパターン (helmfile-builder の
+# components/<svc>/<env>/kustomization/ がこの目的に使われる)。
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ec2nodeclass.yaml
+  - nodepool.yaml

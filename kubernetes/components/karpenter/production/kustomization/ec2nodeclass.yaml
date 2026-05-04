@@ -1,0 +1,39 @@
+# =============================================================================
+# EC2NodeClass: system-components
+# =============================================================================
+# Karpenter が node を起動する際の AWS-side configuration:
+# - AMI: AL2023 ARM64 (latest)
+# - Subnet: VPC private subnets (Tier=private tag で discover)
+# - SecurityGroup: cluster SG (aws:eks:cluster-name tag で discover)
+# - Role: aws/karpenter/ stack が provision した Node IAM role
+#   (aws/karpenter/envs/production terragrunt output `node_role_name` の値)
+# - EBS: gp3 30 GiB (Karpenter-managed node 用 sizing、Plan 1c-β L2 学び参照)
+# - Metadata: IMDSv2 token required (security best practice)
+# =============================================================================
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: system-components
+spec:
+  amiFamily: AL2023
+  amiSelectorTerms:
+    - alias: al2023@latest
+  subnetSelectorTerms:
+    - tags:
+        Tier: private
+  securityGroupSelectorTerms:
+    - tags:
+        "aws:eks:cluster-name": eks-production
+  role: Karpenter-eks-production-20260504154319852600000007
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 30Gi
+        volumeType: gp3
+        encrypted: true
+        deleteOnTermination: true
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 2
+    httpTokens: required
