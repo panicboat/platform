@@ -34,6 +34,6 @@ jobs:
           owner: ${{ github.repository_owner }}
 
       - name: Run Claude Code
-        uses: panicboat/panicboat-actions/claude-run@main
+        uses: panicboat/panicboat-actions/claude-run@f917fa0921e06ec7b08941df04958361c43253fb # main
         with:
           token: ${{ steps.app-token.outputs.token }}
