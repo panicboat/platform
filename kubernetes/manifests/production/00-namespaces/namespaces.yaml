@@ -13,6 +13,19 @@ metadata:
     app.kubernetes.io/name: external-dns
 ---
 # =============================================================================
+# Karpenter Namespace
+# =============================================================================
+# This namespace contains the Karpenter controller. Chart default name is
+# also `karpenter`; we follow that convention.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: karpenter
+  labels:
+    app.kubernetes.io/name: karpenter
+---
+# =============================================================================
 # KEDA Namespace
 # =============================================================================
 # This namespace contains:

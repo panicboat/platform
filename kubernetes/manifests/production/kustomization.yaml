@@ -4,5 +4,6 @@ resources:
   - ./cilium
   - ./external-dns
   - ./gateway-api
+  - ./karpenter
   - ./keda
   - ./metrics-server
