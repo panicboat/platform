@@ -31,7 +31,7 @@ Cluster operator が日常運用で意識する autoscaler を **Karpenter NodeP
 - **Multi-NodePool 設計** — 単一 NodePool (`system-components` 命名) で本 spec の要件を全部カバー。将来 GPU / observability heavy / spot 用の追加 NodePool は別 spec で。
 - **Architecture hybrid** — ARM64 only。x86 fallback は持たない。
 - **EKS Auto Mode 移行** — AWS 管理 Karpenter ではなく self-managed Karpenter で構築。EKS module の rewrite を避ける。
-- **Pod Identity 移行** — IRSA で構築 (Plan 1c-β との一貫性優先)。Pod Identity 全体移行は別 spec。
+- **Plan 1c-β IRSA 全体の Pod Identity 移行** — 本 spec の Karpenter は Pod Identity を採用するが、Plan 1c-β で IRSA 採用済の ALB Controller / ExternalDNS は IRSA のまま据え置き (Karpenter とは独立、別 spec で扱う)。本 cluster は IRSA と Pod Identity が混在する状態に一時的になる。
 - **Karpenter consolidation の per-workload tuning** — disruption budget は chart デフォルト + NodePool 全体設定のみ。observability 整備後 (Phase 3 後) に詳細 tuning は別 spec で。
 
 ## Architecture decisions
@@ -88,7 +88,7 @@ NodePool requirements:
 
 | PR | 内容 | State after apply |
 |---|---|---|
-| **PR 1 (AWS infra parallel add)** | `karpenter-bootstrap` MNG 新設 + Karpenter sub-module (SQS / EventBridge / IRSA / Node IAM / EC2 Instance Profile) | 4 nodes (system × 2 + bootstrap × 2)。Karpenter は未 install |
+| **PR 1 (AWS infra parallel add)** | `karpenter-bootstrap` MNG 新設 (in `aws/eks/`) + 新 stack `aws/karpenter/` 作成 (Karpenter sub-module で SQS / EventBridge / Pod Identity / Node IAM / EC2 Instance Profile) + cross-stack lookup (`aws/eks/lookup/`) | 4 nodes (system × 2 + bootstrap × 2)。Karpenter は未 install |
 | (USER GATE 1) | PR 1 merge + apply 確認 + terragrunt outputs 取得 | — |
 | **PR 2 (Kubernetes layer)** | Karpenter Helm release + EC2NodeClass + NodePool + helmfile values 転記 + README | Karpenter pod が bootstrap MNG 上で Ready。NodePool 登録済 (まだ pending pod 無いので node 起動なし) |
 | (USER GATE 2) | Smoke test + cordon + drain + 移行完了確認 | 全 system pod が Karpenter NodePool 上で稼働。system MNG は cordoned/empty |
@@ -100,18 +100,44 @@ NodePool requirements:
 1. PR 数が増える (3 PR + 2 USER GATE)。
 2. `aws/eks/modules/node_groups.tf` を 2 回触る (PR 1 で bootstrap 追加、PR 3 で system 削除)。
 
-### Decision 5: terraform-aws-modules/eks の karpenter sub-module を採用
+### Decision 5: Karpenter の AWS リソースは独立 stack `aws/karpenter/` に分離 + Pod Identity を採用
 
-`module "karpenter" { source = "terraform-aws-modules/eks/aws//modules/karpenter" }` を `aws/eks/modules/karpenter.tf` に新設して、SQS interruption queue + EventBridge rules + Controller IRSA + Node IAM role + EC2 Instance Profile を一括 provision する。
+Karpenter の AWS-side infra (`terraform-aws-modules/eks/aws//modules/karpenter` sub-module) を `aws/eks/modules/` 内ではなく **新 stack `aws/karpenter/`** で管理する。Plan 1c-β の `aws/alb/` 同様、Karpenter 関連リソースを独立した terragrunt stack として扱う。
 
-採用理由:
-1. Karpenter の AWS 側 infra 要件が定型化されているため、自前で IAM module を組むより車輪の再発明を避ける。
-2. Plan 1c-β で `terraform-aws-modules/iam-role-for-service-accounts` を採用したのと同じ「公式 module を信頼する」方針。
-3. Sub-module は terraform-aws-modules/eks の他の部分 (`module "eks"`) と同じ provider / version 制約で動く。
+Authentication mode は **Pod Identity** (sub-module の v21.19.0 デフォルト) を採用。Karpenter ServiceAccount は EKS Pod Identity Association 経由で IAM role を assume する。
+
+#### `aws/eks/lookup/` 新設 (cross-stack lookup module)
+
+`aws/karpenter/` から EKS cluster 情報 (`cluster_name`、Pod Identity の場合は OIDC provider 不要) を参照するため、`aws/vpc/lookup/` / `aws/route53/lookup/` 同型の shared lookup module `aws/eks/lookup/` を新設する。`data "aws_eks_cluster"` を pass-through。
+
+#### Stack 分離の採用理由
+
+1. **Operational simplicity (priority B)**: 「Karpenter 関連の AWS リソースは全部 `aws/karpenter/`」という mental model が clean。Plan 1c-β の `aws/alb/` precedent と一貫。
+2. **Lifecycle 分離**: Karpenter sub-module の version up (例: v21 → v22) が EKS module の terraform state file に触らずに済む。
+3. **`aws/eks/modules/` のスリム維持**: Plan 1a/1b/1c-α/1c-β で addons.tf 等が膨張気味。Karpenter は新 stack に逃がす。
+
+#### Pod Identity の採用理由
+
+1. **v21.19.0 module のデフォルト**: `enable_irsa` 等の variable は v21 で廃止済。IRSA を使うには `iam_role_source_assume_policy_documents` で OIDC trust policy を注入する custom 実装が必要で、module の trust policy に Pod Identity statement (`pods.eks.amazonaws.com`) が常時残る歪んだ状態になる。
+2. **コードのシンプルさ (priority B)**: Pod Identity を素直に採用すれば `module "karpenter"` 呼び出しが minimal config (cluster_name + node_iam_role_additional_policies + tags) で済む。
+3. **AWS 推奨方向**: Pod Identity は EKS で新規採用される認証方式の主流。`eks-pod-identity-agent` addon は Plan 1a で既に install 済。
+4. **chart 側のシンプル化**: Karpenter Helm chart の serviceAccount.annotations に `eks.amazonaws.com/role-arn` を入れる必要なし (Pod Identity Association が SA-to-role mapping を直接管理)。
+
+#### 採用しなかった代替案
+
+1. **IRSA を強引に維持**: v21 module の interface 変更により custom assume policy 注入が必要。trust policy に dormant Pod Identity statement が残るため操作的に「綺麗じゃない」状態になる。priority B (operational simplicity) と矛盾。
+2. **terraform-aws-modules/iam の iam-role-for-service-accounts で Karpenter 用 IRSA role を手動構築**: SQS / EventBridge / Node IAM 等の他リソースは別途 module 化が必要で、車輪の再発明。
+
+#### Plan 1c-β との一貫性について
+
+Plan 1c-β の ALB Controller / ExternalDNS は IRSA のまま据え置き。本 spec で導入する Karpenter のみ Pod Identity を採用するため、cluster 内に **IRSA と Pod Identity が混在**する一時的状態になる。Plan 1c-β の IRSA を Pod Identity に揃える場合は別 spec で扱う (Future Specs 参照)。
 
 トレードオフ:
-1. Sub-module の挙動 (SQS queue 名や EventBridge rule 名のフォーマット) は module 側で決まり、自由度が下がる。
+1. Stack が 1 つ増える: `aws/karpenter/` の Makefile / root.hcl / envs/production/ / modules/ の boilerplate。CI deploy job も 1 つ増える (`Deploy Terragrunt (karpenter:production)`)。
+2. Cross-stack lookup が 1 つ増える: `aws/eks/lookup/` 経由で `aws/karpenter/` が EKS cluster 情報を取得。
+3. Sub-module の挙動 (SQS queue 名や EventBridge rule 名のフォーマット) は module 側で決まり、自由度が下がる。
    - 緩和: 命名は cluster name から自動生成、本 cluster だけなので名前競合の心配なし。
+4. cluster 内に IRSA + Pod Identity 混在状態が一時的に存在する (上述、Future Specs で解消)。
 
 ## Components matrix
 
@@ -120,8 +146,9 @@ NodePool requirements:
 | Component | Stack / File | PR | 役割 |
 |---|---|---|---|
 | `karpenter-bootstrap` MNG | `aws/eks/modules/node_groups.tf` | PR 1 (add) | Karpenter controller pod 専用、`t4g.small × 2`、taint `karpenter.sh/controller=true:NoSchedule`、label `node-role/karpenter-bootstrap=true` |
-| Karpenter sub-module | `aws/eks/modules/karpenter.tf` (new) | PR 1 (add) | `terraform-aws-modules/eks/aws//modules/karpenter` で SQS + EventBridge + IRSA + Node IAM + Instance Profile を一括 provision |
-| EKS module outputs | `aws/eks/modules/outputs.tf` | PR 1 (add) | `karpenter_controller_role_arn` / `karpenter_node_role_name` / `karpenter_interruption_queue_name` を追加 |
+| `aws/eks/lookup/` (new shared module) | `aws/eks/lookup/{terraform,variables,main,outputs}.tf` | PR 1 (add) | EKS cluster 情報を cross-stack で公開 (`data "aws_eks_cluster"` pass-through)。`aws/karpenter/` と将来の他 stack が consume |
+| `aws/karpenter/` (new stack) | `aws/karpenter/Makefile` + `root.hcl` + `envs/production/{env.hcl, terragrunt.hcl}` | PR 1 (add) | terragrunt stack の boilerplate (Plan 1c-β `aws/alb/` 同型) |
+| Karpenter sub-module + outputs | `aws/karpenter/modules/{terraform,variables,lookups,main,outputs}.tf` | PR 1 (add) | `terraform-aws-modules/eks/aws//modules/karpenter` で SQS + EventBridge + Pod Identity (IRSA ではない) + Node IAM + Instance Profile を一括 provision。`aws/eks/lookup/` 経由で cluster 情報を取得。outputs: `node_role_name` / `interruption_queue_name` (Pod Identity なので controller_role_arn は kubernetes 側で不要) |
 | `system` MNG (existing) | `aws/eks/modules/node_groups.tf` | PR 3 (remove) | Migration 完了後に block 削除 |
 
 ### Kubernetes layer (helmfile)
@@ -129,12 +156,12 @@ NodePool requirements:
 | Component | Path | 役割 |
 |---|---|---|
 | Karpenter Helm release | `kubernetes/components/karpenter/production/helmfile.yaml` | Chart `oci://public.ecr.aws/karpenter/karpenter` v1.6.x、namespace=karpenter |
-| Karpenter Helm values | `kubernetes/components/karpenter/production/values.yaml.gotmpl` | Controller IRSA annotation、bootstrap MNG への nodeSelector + toleration、`settings.clusterName` / `settings.interruptionQueue` |
+| Karpenter Helm values | `kubernetes/components/karpenter/production/values.yaml.gotmpl` | bootstrap MNG への nodeSelector + toleration、`settings.clusterName` / `settings.interruptionQueue`。**IRSA annotation は不要** (Pod Identity Association が SA-to-role を直接管理)、ServiceAccount は chart デフォルトで作成 |
 | Karpenter Namespace | `kubernetes/components/karpenter/production/namespace.yaml` | `karpenter` namespace |
 | Kustomization bundle | `kubernetes/components/karpenter/production/kustomization/kustomization.yaml` | EC2NodeClass + NodePool を bundle |
 | EC2NodeClass CRD | `kubernetes/components/karpenter/production/kustomization/ec2nodeclass.yaml` | AMI alias `al2023@latest`、subnet selector `Tier=private`、SG selector (cluster + node)、role 参照 (Node IAM)、blockDeviceMappings (gp3 30 GiB)、IMDSv2 token required |
 | NodePool CRD | `kubernetes/components/karpenter/production/kustomization/nodepool.yaml` | Decision 3 の requirements + `disruption.consolidationPolicy=WhenUnderutilized` + `disruption.expireAfter=720h` + `limits.cpu=200` |
-| `kubernetes/helmfile.yaml.gotmpl` | (existing, modify) | production env values に `karpenter.{controllerRoleArn,nodeRoleName,interruptionQueueName}` 追加 |
+| `kubernetes/helmfile.yaml.gotmpl` | (existing, modify) | production env values に `karpenter.{nodeRoleName,interruptionQueueName}` 追加 (controllerRoleArn は Pod Identity のため不要) |
 | `kubernetes/README.md` | (existing, modify) | Production Operations 更新 |
 
 ## Cross-stack value flow
@@ -142,13 +169,18 @@ NodePool requirements:
 ```
 [PR 1: AWS apply]
   aws/eks/envs/production
-  ├─ karpenter-bootstrap MNG provision (4 nodes 体制)
-  └─ Karpenter sub-module (SQS / EventBridge / IRSA / Node IAM / Instance Profile)
-                          ↓ outputs
-  terragrunt output -json:
-  - karpenter_controller_role_arn  → IRSA role for karpenter ServiceAccount
-  - karpenter_node_role_name       → EC2NodeClass.spec.role
-  - karpenter_interruption_queue_name → Helm values.settings.interruptionQueue
+  └─ karpenter-bootstrap MNG provision (4 nodes 体制)
+
+  aws/karpenter/envs/production (NEW stack)
+  ├─ aws/eks/lookup module 経由で cluster_name を取得
+  └─ Karpenter sub-module (SQS / EventBridge / Pod Identity Association +
+     Controller IAM role / Node IAM / Instance Profile)
+                          ↓ outputs (aws/karpenter/modules/outputs.tf)
+  cd aws/karpenter/envs/production && terragrunt output -json:
+  - node_role_name             → EC2NodeClass.spec.role
+  - interruption_queue_name    → Helm values.settings.interruptionQueue
+  (controller_role_arn は Pod Identity Association が SA-to-role を直接
+   管理するため kubernetes 側へ転記する必要なし)
 
 [Manual transcribe: USER GATE 1 後、controller が記録]
 
@@ -162,13 +194,12 @@ NodePool requirements:
         albControllerRoleArn: ...         (既存)
         externalDnsRoleArn: ...           (既存)
       karpenter:
-        controllerRoleArn: ...            ← NEW
-        nodeRoleName: ...                 ← NEW
-        interruptionQueueName: ...        ← NEW
+        nodeRoleName: ...                 ← NEW (EC2NodeClass.spec.role)
+        interruptionQueueName: ...        ← NEW (chart settings)
                                 ↓
   kubernetes/components/karpenter/production/
-  ├─ helmfile.yaml: chart pin + IRSA annotation + interruption queue
-  ├─ values.yaml.gotmpl: nodeSelector + toleration + settings
+  ├─ helmfile.yaml: chart pin + interruption queue (NO IRSA annotation)
+  ├─ values.yaml.gotmpl: nodeSelector + toleration + settings (clusterName + interruptionQueue)
   └─ kustomization/{ec2nodeclass,nodepool}.yaml: NodePool 参照
 ```
 
@@ -177,23 +208,26 @@ NodePool requirements:
 ### PR 1: AWS infrastructure (parallel add)
 
 **Files**:
+- `aws/eks/modules/variables.tf` (modify): bootstrap-specific variables 5 件追加
 - `aws/eks/modules/node_groups.tf` (modify): Add `karpenter-bootstrap` block (既存 `system` 据え置き)
-- `aws/eks/modules/karpenter.tf` (new): `module "karpenter"` を `terraform-aws-modules/eks/aws//modules/karpenter` で呼び出す
-- `aws/eks/modules/outputs.tf` (modify): 3 outputs 追加
+- `aws/eks/lookup/{terraform,variables,main,outputs}.tf` (new shared module): cross-stack lookup
+- `aws/karpenter/Makefile` + `root.hcl` (new stack): boilerplate
+- `aws/karpenter/envs/production/{env.hcl,terragrunt.hcl}` (new env)
+- `aws/karpenter/modules/{terraform,variables,lookups,main,outputs}.tf` (new module): Karpenter sub-module 呼び出し + Pod Identity + outputs
 
 **State after apply**:
 - 4 EKS managed nodes (`system × 2 = m6g.large` + `karpenter-bootstrap × 2 = t4g.small`)
 - Bootstrap MNG: taint で空 (Karpenter pod もまだ install 前)
 - SQS interruption queue + EventBridge rules: created (まだ consumer なし、idle)
-- IRSA / Node IAM role / EC2 Instance Profile: created (まだ assumeRole する pod / EC2 なし)
+- Karpenter Controller IAM role + Pod Identity Association (`karpenter:karpenter` SA → IAM role)、Node IAM role、EC2 Instance Profile: created (まだ assumeRole する pod / EC2 なし)
 - Pod 配置: 既存 system MNG (×2 m6g.large) 上に ~28 pod 全部
 
 ### USER GATE 1
 
 1. PR 1 merge: `gh pr ready && gh pr review --approve && gh pr merge --squash --delete-branch`
-2. CI が `Deploy Terragrunt (eks:production)` を実行 → bootstrap MNG + Karpenter sub-module が provision される
+2. CI が `Deploy Terragrunt (eks:production)` + `Deploy Terragrunt (karpenter:production)` を実行 → bootstrap MNG + Karpenter sub-module が provision される (2 stack なので 2 deploy job)
 3. `kubectl get nodes -L eks.amazonaws.com/nodegroup` で 4 node Ready 確認
-4. Controller が `terragrunt output -json` で `karpenter_*` 値を取得 → PR 2 で kubernetes/helmfile.yaml.gotmpl に転記する
+4. Controller が `cd aws/karpenter/envs/production && terragrunt output -json` で `node_role_name` / `interruption_queue_name` を取得 → PR 2 で kubernetes/helmfile.yaml.gotmpl に転記する
 
 ### PR 2: Kubernetes layer (Karpenter install)
 
@@ -297,7 +331,8 @@ flux get all -A | grep -v "True"        # 結果が empty (全部 Ready)
 
 ### PR 1 後 (terragrunt apply 後)
 - [ ] `kubectl get nodes -L eks.amazonaws.com/nodegroup` で 4 node Ready (`system × 2 = m6g.large` + `karpenter-bootstrap × 2 = t4g.small`)
-- [ ] `aws iam get-role --role-name <karpenter_controller_role_name>` で IRSA role 存在 + trust policy で `system:serviceaccount:karpenter:karpenter` を許可
+- [ ] `aws iam list-roles --query "Roles[?contains(RoleName, 'KarpenterController')]"` で Karpenter controller IAM role 存在
+- [ ] `aws eks list-pod-identity-associations --cluster-name eks-production --namespace karpenter` で karpenter ServiceAccount に Pod Identity Association が紐付いている
 - [ ] `aws iam get-role --role-name <karpenter_node_role_name>` で Node IAM role 存在 + EC2 service principal trust
 - [ ] `aws sqs get-queue-attributes --queue-url <interruption_queue_url>` で queue 存在
 - [ ] `aws events list-rules --name-prefix <cluster>-karpenter` で 4 rule 存在 (Spot Interruption / Health / State Change / Scheduled Change)
@@ -354,7 +389,7 @@ flux get all -A | grep -v "True"        # 結果が empty (全部 Ready)
 | **GPU NodePool** | ML workload 投入時 | g5g (ARM64 GPU) 等の専用 NodePool。NodePool taint で GPU 必要 pod のみ schedule |
 | **Mixed architecture (x86 fallback)** | ARM64 image 不在の OSS 採用時 | `kubernetes.io/arch: [arm64, amd64]` の hybrid NodePool。bin-packing が悪化するので慎重に |
 | **Older generation 許可** | Graviton 4 capacity 制約発覚時 | NodePool requirements 緩和 (`Gt 5`) |
-| **Pod Identity 移行** | Plan 1c-β の IRSA 全体を Pod Identity に書き換える別 spec 内で同時に | EKS Pod Identity (`eks-pod-identity-agent` 既設置) で IRSA 廃止 |
+| **Plan 1c-β IRSA 全体の Pod Identity 移行** | 別 spec | 本 spec で Karpenter のみ Pod Identity 化済。残りの ALB Controller / ExternalDNS (Plan 1c-β で IRSA 採用) を Pod Identity に揃える spec |
 | **Karpenter consolidation 詳細 tuning** | observability 整備後 (Phase 3 後) | per-workload disruption budget、scheduled disruption window 等 |
 | **Custom node images (Bottlerocket)** | Security hardening 専用 spec | 現状 AL2023 で十分 |
 | **Multi-region / DR NodePool** | Multi-region cluster 構築時 | 別 region 用 NodePool / EC2NodeClass |
