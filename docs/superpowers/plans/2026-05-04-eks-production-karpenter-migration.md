@@ -195,6 +195,10 @@ EOF
 
 ## Task 2: aws/eks/modules/node_groups.tf に karpenter-bootstrap MNG block を追加
 
+> ⚠️ **Lessons Learned L1 / L7 参照**: 実装は course correction v2 で `aws/karpenter/modules/main.tf` の standalone `eks-managed-node-group` submodule に移動 (Task 4 内で provision)。本 task の文章は brainstorming v1 当時の建付けで残されている (historical evidence)。命名 `karpenter-bootstrap` (HCL identifier は `karpenter_bootstrap`) は役割不明瞭で、`karpenter-controller-host` 等への改名は後続 plan で扱う。
+>
+> ⚠️ **Lessons Learned L2 / L5 参照**: 実装で standalone submodule を採用した結果、cluster info (endpoint / CA cert / service CIDR / IP family) と node SG (`eks-${cluster_name}-node`) の **明示渡しが必要** だった。Task 3 (aws/eks/lookup) と Task 4 Step 9 (aws/karpenter/modules/main.tf) は merge 後の hotfix で更新済。
+
 **Files:**
 - Modify: `aws/eks/modules/node_groups.tf`
 
@@ -676,6 +680,10 @@ module "eks" {
 ```
 
 ### Step 9: modules/main.tf 作成 (Karpenter sub-module + Pod Identity)
+
+> ⚠️ **Lessons Learned L3 参照**: 本 step の `module "karpenter"` には `enable_inline_policy = true` を必ず追加する (Karpenter v1.x の controller policy が customer-managed policy size 上限 6,144 chars を超えるため)。merge 後の hotfix #272 で追加済。
+>
+> ⚠️ **Lessons Learned L2 / L5 参照**: 本 step では Karpenter sub-module 単独を呼んでいるが、course correction v2 で `aws/karpenter/modules/main.tf` には `module "karpenter_bootstrap"` (standalone `eks-managed-node-group` submodule) も追加され、その引数として cluster info (`cluster_endpoint` / `cluster_auth_base64` / `cluster_service_cidr` / `cluster_ip_family`) と node SG (`vpc_security_group_ids = [module.eks.cluster.node_security_group_id]`) を `aws/eks/lookup` から明示渡しする必要がある (parent module が auto-wire する 5 値を standalone submodule では明示する必要があるため)。merge 後の hotfix #275 で追加済。
 
 `aws/karpenter/modules/main.tf`:
 
@@ -1309,6 +1317,8 @@ spec:
 
 - [ ] **Step 4: nodepool.yaml 作成**
 
+> ⚠️ **Lessons Learned L4 参照**: 下記 YAML 内の `consolidationPolicy: WhenUnderutilized` は Karpenter v0.x の値で、v1+ では無効。実装時は `WhenEmptyOrUnderutilized` を使う (merge 後の hotfix #274 で修正済)。
+
 `kubernetes/components/karpenter/production/kustomization/nodepool.yaml`:
 
 ```yaml
@@ -1780,6 +1790,8 @@ Expected: PR URL が表示。
 
 ## (USER) PR 2 review + merge → Migration
 
+> ⚠️ **Lessons Learned L6 参照**: 本 USER GATE は実行中に bootstrap MNG の rolling update + PR #275 (node SG hotfix) の組み合わせで Karpenter pod が CrashLoopBackOff 状態のまま PDB blocker を起こす escalation を経験した。Step 2 で Karpenter pod が 5 分以上 NotReady の場合は `kubectl delete pod karpenter-... -n karpenter --force --grace-period=0` で eviction を bypass する recovery 手順を実行する。
+
 **Files:** （cluster 状態変更）
 
 PR 2 を merge して Karpenter を install、その後 manual で cordon + drain による migration を実行する。
@@ -1964,6 +1976,8 @@ Migration 完了。次に PR 3 (system MNG 撤去) の実装へ進む。
 # PR 3 implementation: AWS cleanup
 
 ## Task 13: aws/eks/modules/node_groups.tf から system block を削除
+
+> ⚠️ **Lessons Learned L7 参照**: course correction v2 で karpenter-bootstrap MNG が `aws/karpenter/` に移動した結果、`aws/eks/modules/node_groups.tf` には `system` block しか残らず、本 task の実装は同ファイル全体の削除 + `main.tf` の `eks_managed_node_groups` argument 削除 + `variables.tf` の `node_*` var 削除になった (PR 3 #276)。
 
 **Files:**
 - Modify: `aws/eks/modules/node_groups.tf`
@@ -2374,3 +2388,99 @@ Spec の各セクションが Plan 内のどの task で実装されているか
 - [x] **Plan 1c-β L3 (kube-proxy state drift)** → 本 plan では該当する state drift なし (PR 1 で system MNG 撤去でなく追加なので)
 - [x] **Plan 1c-β L4 (REPLACE_FROM_TERRAGRUNT_OUTPUT placeholder pattern 不要)** → 反映済。Task 7 では shell 変数 (`${KARPENTER_INTERRUPTION_QUEUE_NAME}`) を Task 6 の `/tmp/karpenter-outputs.json` から `jq` で取得 → そのまま yaml に埋め込む形で、最初から実値を直接記述する。同パターンを Task 8 (EC2NodeClass.spec.role) / Task 9 (helmfile.yaml.gotmpl) でも採用
 - [x] **Plan 1c-β L5 (squash merge 後の branch reset rollback)** → Task 6 Step 1 + Task 13 Step 1 で明示的に `git fetch origin main && git reset --hard origin/main` + `git log --oneline origin/main..HEAD` 確認を組み込み
+
+---
+
+## Lessons Learned (post-execution)
+
+PR 1 (#271) + #272 + PR 2 (#273) + #274 + #275 + PR 3 (#276) を merge して production cluster で全 verification battery (cordon + drain → Karpenter NodePool 移行 → system MNG 撤去) が pass した時点で判明した知見。次 plan 設計時に反映する。
+
+### L1: `karpenter_bootstrap` MNG の命名は役割不明瞭で改善余地あり
+
+`karpenter_bootstrap` は terraform-aws-modules/eks の Karpenter 公式 sample で使われている命名だが、本 cluster の構成では「Karpenter controller pod (replicas=2) のみをホストする MNG」という具体的役割を持つ。`bootstrap` は「初回起動」の含意があり、長期常駐する controller host としての機能を表現していない。
+
+**影響:** Plan 2 の終盤で「system MNG と karpenter_bootstrap MNG の役割の違い」を文脈なしで説明する必要が生じた (Karpenter NodePool node が増えた後、bootstrap MNG が残り続ける必然性が命名から読み取れない)。
+
+**対処:** 改名候補は `karpenter-controller-host` / `karpenter-controller` / `karpenter-static` 等で、role-explicit な名前。本 PR のスコープ外（rename は MNG 再作成相当の disruption を伴うため別 plan で扱う）。次回 fresh stack で同パターンを採用する場合は最初から role-explicit な名前にする。
+
+### L2: standalone `eks-managed-node-group` submodule は cluster info を auto-wire しない
+
+`terraform-aws-modules/eks` の parent module 内で `eks_managed_node_groups = { ... }` として定義する MNG は cluster endpoint / CA cert / service CIDR / IP family が submodule に自動配線されるが、`terraform-aws-modules/eks/aws//modules/eks-managed-node-group` を **standalone** で呼ぶ場合は同 5 値を呼び出し側から明示渡しする必要がある (AL2023 user data generator が要求)。
+
+**影響:** Plan 2 PR 1 の初回 apply で
+
+```
+Error: Invalid value for variable
+  cluster_service_cidr: Required for AL2023 launch templates.
+```
+
+が発生し、`aws/eks/lookup/outputs.tf` を `cluster_endpoint` / `certificate_authority_data` / `service_cidr` / `ip_family` を含む形に拡張して `aws/karpenter/modules/main.tf` から passthrough する hotfix が必要だった。
+
+**対処:** standalone submodule の使用を選択する場合 (本 plan の course correction v2 で bootstrap MNG を `aws/karpenter/` に独立移動した結果)、Plan 段階で `cluster_endpoint` / `cluster_auth_base64` / `cluster_service_cidr` / `cluster_ip_family` の渡し口を `aws/eks/lookup/outputs.tf` に組み込んで設計する。本 plan の Task 3 (`aws/eks/lookup/`) と Task 4 Step 9 (`aws/karpenter/modules/main.tf`) は merge 後の hotfix で更新済。次 plan では標準テンプレートとして組み込む。
+
+### L3: Karpenter v1.x controller IAM policy は customer-managed policy size 上限 (6,144 chars) を超過する
+
+`terraform-aws-modules/eks/aws//modules/karpenter` v21 系のデフォルトは Karpenter v1.x の controller policy を customer-managed policy として作成するが、Karpenter v1 では accumulated permissions により size がデフォルトで 6,144 chars 超になり、apply 時に
+
+```
+LimitExceeded: Cannot exceed quota for PolicySize: 6144
+```
+
+で失敗する。AWS quota は managed policy 6,144 vs inline role policy 10,240 で、後者なら通る。
+
+**影響:** Plan 2 PR 1 merge 直後の apply が失敗、hotfix #272 として `enable_inline_policy = true` を `module "karpenter"` に追加。
+
+**対処:** `terraform-aws-modules/eks/aws//modules/karpenter` の `enable_inline_policy` variable description が直接このユースケース (Karpenter v1 size limit) を推奨しており、Plan 段階で気付ける。Karpenter sub-module を新規導入する plan では `enable_inline_policy = true` をデフォルトで指定する慣習に。
+
+### L4: NodePool `consolidationPolicy` の有効値は Karpenter v1+ で変更されている
+
+Karpenter v0.x (alpha API) では `WhenUnderutilized` が有効値だったが、v1+ (`karpenter.sh/v1` API) では `WhenEmpty` / `WhenEmptyOrUnderutilized` の 2 値のみ有効で、`WhenUnderutilized` は廃止。
+
+**影響:** Plan 2 spec / plan markdown で `WhenUnderutilized` を引用していたため、PR 2 merge 後に Flux Kustomization が
+
+```
+NodePool.karpenter.sh "system-components" is invalid: spec.disruption.consolidationPolicy: Unsupported value: "WhenUnderutilized": supported values: "WhenEmpty", "WhenEmptyOrUnderutilized"
+```
+
+で dry-run validation 失敗、hotfix #274 で `WhenEmptyOrUnderutilized` に修正。
+
+**対処:** 外部 API の enum 値を spec に転記する場合、spec 作成時点の install 対象 chart version (本 plan では Karpenter 1.6.5) の CRD schema を直接参照する慣習に。本 plan 後半 (Task 8 NodePool block) は merge 後修正済。
+
+### L5: standalone MNG submodule への node SG 明示 attach が必要 (cross-node pod traffic)
+
+`terraform-aws-modules/eks` の parent module は cluster とは別に「node SG」(`eks-${cluster_name}-node`) を作成し、parent 内 MNG に自動 attach する。これは node 間 pod-network traffic (CNI overlay 等) を許可する SG。standalone `eks-managed-node-group` submodule は **cluster_primary_security_group_id のみ** 自動 attach し、node SG は attach しない。
+
+**影響:** Plan 2 PR 2 merge 後、bootstrap MNG node 上の Karpenter controller pod が CoreDNS pod (system MNG node 上) への DNS query で timeout し続ける現象が発生 (`getaddrinfo EAI_AGAIN sts.ap-northeast-1.amazonaws.com`)。控えめな表現で「DNS 不調」だが実体は cross-node pod traffic 全 drop。Karpenter pod が CrashLoopBackOff のまま rolling update 中に PDB blocker (L6) と複合して escalation。
+
+**対処:** hotfix #275 で `aws/eks/lookup/main.tf` に tag-based discovery (`tag:Name = eks-${var.environment}-node`) を追加して `aws_security_group` data source を取得、`outputs.cluster.node_security_group_id` に export し、`aws/karpenter/modules/main.tf` の bootstrap MNG で `vpc_security_group_ids = [module.eks.cluster.node_security_group_id]` として明示 attach。次 plan で standalone submodule を使う場合はテンプレートに組み込む。
+
+### L6: rolling update + PDB の組み合わせで Karpenter controller 自身が drain blocker になり得る
+
+Plan 2 PR 1 + #272 apply 完了直後、bootstrap MNG が rolling update で 2 nodes を順次 replace するが、新 node の SG 設定 (L5 hotfix #275) が適用される前に Karpenter pod が再 schedule され DNS timeout で CrashLoopBackOff (NotReady 状態) になった。Karpenter 自身が PDB `disruptionsAllowed: 0` (NotReady のため available replica が常に 0) を持つため、rolling update の drain 工程は eviction を **無限ループ** で reject される。
+
+**影響:** rolling update が 15 分以上 stall、新規 node が 4 台に積み上がり EC2 cost 増。
+
+**対処:** `kubectl delete pod karpenter-... -n karpenter --force --grace-period=0` で eviction を bypass して force terminate。Pod は新 node (#275 の SG 適用済) に再 schedule され、DNS が通って Ready に。次 plan で同パターンに陥らないために:
+
+- Karpenter sub-module を導入する PR では PR description の Test plan に "Karpenter pods become Ready within 5 min" を明示
+- bootstrap MNG の rolling update 中は `kubectl get pods -n karpenter -w` で Ready 状態を監視
+- 5 分超で NotReady の場合は force delete pod を recovery 手順として README troubleshooting に記載
+
+### L7: 設計途中の major design pivot で spec / plan markdown が divergent
+
+Plan 2 は brainstorming 段階で:
+
+- v1 設計: bootstrap MNG を `aws/eks/modules/node_groups.tf` に追加 (system MNG と並置)
+- v2 設計 (course correction): bootstrap MNG を `aws/karpenter/` に独立 stack 移動 + Pod Identity 採用 + standalone `eks-managed-node-group` submodule 利用
+
+の 2 段階の design pivot を経た。spec / plan markdown は v1 当時の文章 (Task 2 で `aws/eks/modules/node_groups.tf` に追加、Task 13 で system block 削除) を残したまま実装は v2 で進行し、Task 4 (`aws/karpenter/`) のみ v2 に書き換え。結果として Plan Task 2 ヘッダ・Task 13 ヘッダ・Spec の File Structure / Components matrix に v1 表記が残存。
+
+**影響:** 本 PR 作成時に「実装通りに plan を update する」のか「historical evidence として残す」のか判断必要。Plan 1c-β #270 の前例 (= 既存記述は evidence として残し、L マーカーで補足) に倣い後者を選択。post-mortem としてこの divergent の原因と対処を本 lesson で記録する。
+
+**対処:** 次 plan で major design pivot が発生した場合:
+
+- Pivot 直後に spec を直接書き換える (versioned subsection で v1/v2 を併記しない、現行 design のみ)
+- Plan の File Structure / 該当 task ヘッダも同タイミングで update
+- Implementer subagent への dispatch 時に「spec 上の最新 design に従う、plan markdown と乖離する場合は spec を正とする」と明示
+
+そうしないと post-mortem で `course correction v2 で divergent` が常に lesson として残ることになる。
