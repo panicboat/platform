@@ -18,11 +18,16 @@ Karpenter controller host としての役割を HCL identifier・AWS 物理 name
 - AWS 物理 name: `karpenter_bootstrap` → `karpenter-controller-host`
 - K8s label: `node-role/karpenter-bootstrap=true` → `node-role/karpenter-controller-host=true`
 
-### G2: NodePool requirements を system workload に最適化
+### G2: NodePool requirements を system workload に最適化 + capacity-type に SPOT を追加
 
 `instance-category` を general-purpose のみに絞り、`instance-generation` を `Gt 5` (= 実質 `Ge 6` = m6g 以降) で Graviton 2-4 の 3 世代 + 将来の m9g+ を forward-compatible に含める。`instance-size` 制約 (`medium..4xlarge`) は維持。
 
+加えて Plan 2 spec の `capacity-type=["on-demand"]` を `capacity-type=["spot", "on-demand"]` に変更し、SPOT を優先採用 + 不足時 on-demand fallback 構成にする (cost ~70% 削減見込み、Karpenter price-capacity-optimized 戦略で spot 優先選択)。
+
 ```yaml
+- key: karpenter.sh/capacity-type
+  operator: In
+  values: ["spot", "on-demand"]  # Karpenter は price-aware で spot を優先採用、不足時 on-demand fallback
 - key: karpenter.k8s.aws/instance-category
   operator: In
   values: ["m"]
@@ -72,12 +77,13 @@ terraform で `module "karpenter_bootstrap"` を `module "karpenter_controller_h
 - 既存 system-components NodePool node 上の workload は影響を受けない (Karpenter controller は scale 判断をするだけで、既存 node の lifecycle に介入していない)
 - 不採用案: Rolling A/B (新 MNG 追加 PR → controller 移行検証 PR → 旧 MNG 削除 PR)。3 PR 必要、検証ステップ複雑、本変更の disruption 規模に対して過剰
 
-### Decision 3: NodePool requirements 簡素化
+### Decision 3: NodePool requirements 簡素化 + capacity-type に SPOT 追加
 
-Plan 2 spec の `instance-category=[m,c,r]` + `instance-generation=Gt 7` を `instance-category=[m]` + `instance-generation=Gt 5` に変更:
+Plan 2 spec の requirements を以下のように変更:
 
 | 軸 | 旧 | 新 | 理由 |
 |---|---|---|---|
+| capacity-type | `["on-demand"]` | `["spot", "on-demand"]` | system workload は冗長 (replicas≥2 + PDB) または再起動耐性 (reconcile loop) を持つため spot 中断耐性あり。Karpenter price-capacity-optimized で spot 優先選択、不足時 on-demand fallback。cost ~70% 削減見込み |
 | instance-category | `[m, c, r]` | `[m]` | system workload は general-purpose 構成。c (compute) / r (memory) は Karpenter price-aware consolidation でほぼ選ばれず spec ノイズ |
 | instance-generation | `Gt 7` (Graviton 4 のみ) | `Gt 5` (m6g 以降。Ge 6 相当) | m6g (Graviton 2) / m7g (Graviton 3) の AZ availability + 価格優位性を活用。最新 1 世代だけ縛るより 3 世代 + forward-compat の方が cluster の resilience が高い |
 | instance-size | `[medium..4xlarge]` | 同上 | 8xlarge+ は bin-packing 悪化、metal 不要。維持 |
@@ -90,6 +96,17 @@ Karpenter NodeRequirement は `karpenter.sh/v1` API で `kubernetes/api/core/v1.
 
 **spec/yaml に明示コメントを置く** (見逃し防止): `Gt 5` の意図と Ge/Le 不在を nodepool.yaml 内のコメントで明文化し、利用可能 instance type の reference として `https://karpenter.sh/docs/reference/instance-types/` を参照リンク。
 
+### Decision 5: SPOT 採用にあたっての前提と Karpenter 動作
+
+system workload を SPOT で扱う前提 (G2 cost 削減) は以下の technical fact に基づく:
+
+- **AWS SQS interruption queue + EventBridge rules は既に Plan 2 PR 1 で provision 済**: `aws/karpenter/modules/main.tf` で `module "karpenter"` (terraform-aws-modules/eks Karpenter sub-module) が SQS / EventBridge を構築しており、Karpenter controller は spot interruption 通知 (2-min warning) を受信して gracefully drain & replace するパスが既に有効
+- **system workload の冗長性**:
+  - Replicas ≥ 2 + PDB を持つ deployment (CoreDNS / ebs-csi-controller / aws-load-balancer-controller / Karpenter 自身) は中断耐性あり
+  - Replicas = 1 の deployment (external-dns / KEDA operator / metrics-server / Cilium operator / Flux 6 controllers) は reconcile loop で自動 resume できるため、数十秒の unavailable は許容
+- **Karpenter 自身は SPOT 対象外**: Karpenter controller pod は別 MNG (`karpenter_controller_host` = on-demand) に nodeSelector で固定されているため、system-components NodePool の SPOT 化と独立
+- **NodePool diversity**: instance-category=m + generation Gt 5 + size medium..4xlarge の組み合わせで `m6g/m7g/m8g × 5 sizes = 15 instance types` が候補となり、spot pool の同時枯渇リスクは低い
+
 ## Components matrix
 
 | Layer | File | 変更内容 |
@@ -98,7 +115,7 @@ Karpenter NodeRequirement は `karpenter.sh/v1` API で `kubernetes/api/core/v1.
 | AWS (terragrunt) | `aws/karpenter/modules/variables.tf` | `bootstrap_instance_types` / `bootstrap_disk_size` / `bootstrap_desired_size` / `bootstrap_min_size` / `bootstrap_max_size` を `controller_host_*` に rename |
 | AWS (terragrunt) | `aws/karpenter/envs/production/terragrunt.hcl` | input variable name の追従 (default 値で sufficient ならば passthrough のみ) |
 | Kubernetes | `kubernetes/components/karpenter/production/values.yaml.gotmpl` | `nodeSelector.node-role/karpenter-bootstrap` を `node-role/karpenter-controller-host` に変更 |
-| Kubernetes | `kubernetes/components/karpenter/production/kustomization/nodepool.yaml` | requirements の category / generation 値変更 + コメント追加 |
+| Kubernetes | `kubernetes/components/karpenter/production/kustomization/nodepool.yaml` | requirements の capacity-type / category / generation 値変更 + Ge 不在に関するコメント追加 |
 | Kubernetes | `kubernetes/README.md` | `karpenter-bootstrap` 言及を `karpenter-controller-host` に追従 (該当する場合) |
 
 ## Migration sequence
@@ -126,6 +143,7 @@ Karpenter NodeRequirement は `karpenter.sh/v1` API で `kubernetes/api/core/v1.
 - Karpenter pod 移行確認: `kubectl get pods -n karpenter -o wide`
 - 旧 MNG destroy 完了確認: `aws eks list-nodegroups --cluster-name eks-production` で `karpenter-controller-host` のみ
 - NodePool requirements 反映確認: `kubectl get nodepool system-components -o yaml | yq .spec.template.spec.requirements`
+- SPOT capacity 反映観察 (24-72h): Karpenter consolidation で system-components NodePool node が SPOT instance に自然遷移するか `kubectl get nodes -L karpenter.sh/capacity-type` で確認
 
 ### エラーシナリオと対処
 
@@ -135,6 +153,7 @@ Karpenter NodeRequirement は `karpenter.sh/v1` API で `kubernetes/api/core/v1.
 | Karpenter pod が新 MNG node に schedule されない | values.yaml.gotmpl の nodeSelector 変更が Flux 経由でまだ反映されていない | `flux reconcile kustomization flux-system -n flux-system` 後、`kubectl get pod -n karpenter -o yaml | yq .spec.nodeSelector` で `node-role/karpenter-controller-host` に変わっているか確認 |
 | Karpenter pod が CrashLoopBackOff (Plan 2 L6 再現) | 新 MNG の SG 適用順タイミング | `kubectl delete pod karpenter-... -n karpenter --force --grace-period=0` で eviction bypass (Plan 2 L6 既知 recovery 手順) |
 | 旧 MNG destroy が PDB blocker で stall (Plan 2 L6 再現) | Karpenter pod が旧 MNG 上で NotReady のまま PDB が drain reject | 同じく force delete pod。terraform は MNG destroy retry で完走 |
+| SPOT 中断頻発で system workload が flaky | 特定 instance type の spot pool が逼迫 | NodePool requirements を一時的に `capacity-type=["on-demand"]` に hotfix で revert、原因 instance type を診断後 spot pool diversity を `instance-family` 個別指定で広げる |
 
 ## Verification checklist
 
@@ -143,19 +162,22 @@ Karpenter NodeRequirement は `karpenter.sh/v1` API で `kubernetes/api/core/v1.
 - [ ] `aws eks list-nodegroups --cluster-name eks-production --region ap-northeast-1` の結果が `["karpenter-controller-host-..."]` のみ (旧 `karpenter_bootstrap-...` が消えている)
 - [ ] `kubectl get nodes -L eks.amazonaws.com/nodegroup,node-role/karpenter-controller-host` で controller-host MNG node 2 台が `Ready` + label `node-role/karpenter-controller-host=true` を持つ
 - [ ] `kubectl get pods -n karpenter -o wide` で Karpenter deployment の 2 replica が新 MNG node 上で `Running 1/1`
-- [ ] `kubectl get nodepool system-components -o yaml` で requirements が新仕様 (category=m / generation Gt 5 / size medium..4xlarge) を持つ
+- [ ] `kubectl get nodepool system-components -o yaml` で requirements が新仕様 (capacity-type=[spot, on-demand] / category=m / generation Gt 5 / size medium..4xlarge) を持つ
 - [ ] `kubectl get nodeclaims` で既存 NodeClaim (system-components-...) が `Ready=True` を維持
 
 ### 後続観察 (24-72h)
 
 - [ ] Karpenter controller log (`kubectl logs -n karpenter deployment/karpenter`) に新仕様 NodePool に対する provision / consolidation event がエラーなく流れる
-- [ ] Karpenter consolidation (or expireAfter) で system-components NodePool node が m6g/m7g/m8g instance に自然遷移するか観察 (強制ではないので 30 日以内に発生すれば OK)
+- [ ] Karpenter consolidation (or expireAfter) で system-components NodePool node が m6g/m7g/m8g instance + SPOT capacity に自然遷移するか観察 (強制ではないので 30 日以内に発生すれば OK)
+- [ ] `kubectl get nodes -L karpenter.sh/capacity-type` で 全 system-components node が `spot` になる (on-demand fallback が頻発しない) ことを確認
 
 ## Trade-offs (accepted explicitly)
 
 - **Karpenter controller の一時 unavailable (~2-3 分)** を許容: rolling A/B (3-PR split) の代わりに単純 rename 1 PR を選択。alternative よりも cluster 状態が単純化される
 - **m6g (Graviton 2) を含めることで cluster 内 instance heterogeneity が増える**: 異なる世代 (m6g/m7g/m8g) が同じ NodePool 内で混在しても Karpenter consolidation が price-aware に処理する。OS / kernel / containerd version は AMI 共通なので運用上の問題なし
 - **`Gt 5` の semantic 解釈リスク**: コメント明記でカバー。コード review 時に `Gt 5 = Ge 6` の意図が伝わらないと「なぜ 5 (m5g なし) を境界に？」という疑問を招く。Karpenter docs reference link をコメントに含めることで明示
+- **SPOT 中断による system workload の一時不可用 (~30-60秒)** を許容: replicas≥2 の deployment は PDB で連続中断防止、replicas=1 の reconcile-loop deployment (external-dns / KEDA / metrics-server / Cilium operator / Flux) は再起動で resume。Karpenter SQS interruption queue (Plan 2 PR 1 で provision 済) が 2-min warning を受けて gracefully drain & replace。production-grade な best practice (Karpenter 公式 docs / `Spot best practices`)
+- **SPOT pool 同時枯渇による全 system-components node Pending** の極小確率: instance-category=m + Gt 5 + size 5 種の組み合わせで 15+ instance type が候補となり、AZ 跨ぎ + family/generation diversity で同時枯渇は実質 unlikely。発生時は capacity-type に on-demand fallback が即時動作 (Karpenter 内蔵動作)
 
 ## Rollback strategy
 
