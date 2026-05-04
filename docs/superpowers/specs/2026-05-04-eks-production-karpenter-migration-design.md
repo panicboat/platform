@@ -28,7 +28,7 @@ Cluster operator が日常運用で意識する autoscaler を **Karpenter NodeP
 ## Non-goals
 
 - **Spot capacity の採用** — 全 NodePool node は on-demand only。SQS interruption queue + EventBridge rules は infrastructure を provision するが consumer はいない (将来の spot NodePool で実用化)。
-- **Multi-NodePool 設計** — 単一 NodePool (`default` 命名) で本 spec の要件を全部カバー。将来 GPU / observability heavy / spot 用の追加 NodePool は別 spec で。
+- **Multi-NodePool 設計** — 単一 NodePool (`system-components` 命名) で本 spec の要件を全部カバー。将来 GPU / observability heavy / spot 用の追加 NodePool は別 spec で。
 - **Architecture hybrid** — ARM64 only。x86 fallback は持たない。
 - **EKS Auto Mode 移行** — AWS 管理 Karpenter ではなく self-managed Karpenter で構築。EKS module の rewrite を避ける。
 - **Pod Identity 移行** — IRSA で構築 (Plan 1c-β との一貫性優先)。Pod Identity 全体移行は別 spec。
@@ -210,7 +210,7 @@ NodePool requirements:
 
 **State after Flux reconcile**:
 - Karpenter pod (replicas=2) が **bootstrap MNG 上で Running** (toleration + nodeSelector で確実に bootstrap に配置)
-- `EC2NodeClass default` + `NodePool default` が CRD として登録 (まだ NodePool を要求する Pending pod 無し → node 起動なし)
+- `EC2NodeClass system-components` + `NodePool system-components` が CRD として登録 (まだ NodePool を要求する Pending pod 無し → node 起動なし)
 - 既存 ~28 pod は引き続き **既存 system MNG (m6g.large × 2) 上で稼働**
 
 ### USER GATE 2: Manual migration (cordon + drain)
@@ -227,11 +227,11 @@ kubectl logs -n karpenter deploy/karpenter --tail=20 | grep -iE "(fail|error)"
 #### Step 2: Smoke test (Karpenter が Graviton 4 instance を自動 provision することを確認)
 
 ```bash
-# arm64 nginx を 1 つ deploy → Karpenter が NodePool default の requirement を満たす
+# arm64 nginx を 1 つ deploy → Karpenter が NodePool system-components の requirement を満たす
 # instance を起動するはず (m8g.medium / c8g.medium 等)
 kubectl create deployment smoke-target --image=nginx:alpine --replicas=1
 # Karpenter NodeClaim → EC2 起動 → join → pod schedule。通常 60-120 秒
-kubectl get nodeclaims                  # `default-xxxxx` が Launched / Registered / Ready
+kubectl get nodeclaims                  # `system-components-xxxxx` が Launched / Registered / Ready
 kubectl get nodes -L node.kubernetes.io/instance-type
 # 新 node が m8g.* / c8g.* / r8g.* で起動していることを確認
 kubectl get pod -l app=smoke-target -o wide  # 新 node 上で Running
@@ -307,8 +307,8 @@ flux get all -A | grep -v "True"        # 結果が empty (全部 Ready)
 - [ ] `kubectl get pods -n karpenter` で Karpenter pod replicas=2 Running
 - [ ] `kubectl get pod -n karpenter -o wide` で **bootstrap MNG 上に配置** (`eks.amazonaws.com/nodegroup=karpenter-bootstrap` label の node)
 - [ ] `kubectl logs -n karpenter deploy/karpenter --tail=20 | grep -iE "(error|fail)"` でエラーなし
-- [ ] `kubectl get ec2nodeclass default` で Ready=True
-- [ ] `kubectl get nodepool default` で Ready=True
+- [ ] `kubectl get ec2nodeclass system-components` で Ready=True
+- [ ] `kubectl get nodepool system-components` で Ready=True
 - [ ] `kubectl get nodeclaim` で空 (まだ要求 pending pod 無し)
 
 ### USER GATE 2 完了後 (drain + migration 後)
