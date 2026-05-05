@@ -4,14 +4,15 @@
 # 1. Karpenter sub-module: SQS interruption queue + EventBridge rules +
 #    Controller IAM role + EKS Pod Identity Association + Node IAM role +
 #    EC2 Instance Profile.
-# 2. karpenter_bootstrap MNG: A small EKS managed node group (t4g.small × 2)
-#    that hosts only the Karpenter controller pod itself (chicken-and-egg
-#    bootstrap problem). All other workloads run on Karpenter NodePool-
-#    managed Graviton 4 on-demand instances after Plan 2 migration.
+# 2. karpenter_controller_host MNG: A small EKS managed node group
+#    (t4g.small × 2) that hosts only the Karpenter controller pod itself
+#    (chicken-and-egg bootstrap problem). All other workloads run on
+#    Karpenter NodePool-managed instances (system-components NodePool).
 #
-# Plan 2 では capacity-type=on-demand のみだが、SQS/EventBridge も
-# provision することで将来 spot NodePool 追加時の AWS infra 変更を
-# 不要にする (Future Specs: workload-spot NodePool 参照)。
+# capacity-type は system-components NodePool 側で [spot, on-demand] を
+# 採用しており、SQS interruption queue が spot 中断 (2-min warning) を
+# 受けて Karpenter controller が gracefully drain & replace する経路を
+# 提供する。
 #
 # Authentication mode は Pod Identity を採用 (sub-module v21.19.0 default)。
 # Pod Identity Association が karpenter:karpenter ServiceAccount を IAM role
@@ -45,17 +46,17 @@ module "karpenter" {
   tags = var.common_tags
 }
 
-# karpenter_bootstrap managed node group.
+# karpenter_controller_host managed node group.
 #
 # Standalone eks-managed-node-group submodule (not part of `module "eks"`)
 # because we want Karpenter-related AWS resources to live in this stack
 # rather than aws/eks/. See Plan 2 spec Decision 5 for rationale.
 
-module "karpenter_bootstrap" {
+module "karpenter_controller_host" {
   source  = "terraform-aws-modules/eks/aws//modules/eks-managed-node-group"
   version = "21.19.0"
 
-  name         = "karpenter_bootstrap"
+  name         = "karpenter-controller-host"
   cluster_name = module.eks.cluster.name
 
   # Cluster info required by AL2023 user data generator. The standalone
@@ -75,23 +76,24 @@ module "karpenter_bootstrap" {
   # Node SG (from parent module "eks") required for node-to-node pod-network
   # traffic. Standalone eks-managed-node-group submodule does NOT attach this
   # automatically (unlike when MNGs live inside `module "eks"`), causing
-  # cross-node pod traffic (e.g., bootstrap pod → CoreDNS on system node) to
-  # be silently dropped. Sourced from aws/eks/lookup via tag-based discovery.
+  # cross-node pod traffic (e.g., controller host pod → CoreDNS on system
+  # node) to be silently dropped. Sourced from aws/eks/lookup via tag-based
+  # discovery.
   vpc_security_group_ids = [module.eks.cluster.node_security_group_id]
 
   ami_type       = "AL2023_ARM_64_STANDARD"
-  instance_types = var.bootstrap_instance_types
+  instance_types = var.controller_host_instance_types
   capacity_type  = "ON_DEMAND"
 
-  min_size     = var.bootstrap_min_size
-  max_size     = var.bootstrap_max_size
-  desired_size = var.bootstrap_desired_size
+  min_size     = var.controller_host_min_size
+  max_size     = var.controller_host_max_size
+  desired_size = var.controller_host_desired_size
 
   block_device_mappings = {
     root = {
       device_name = "/dev/xvda"
       ebs = {
-        volume_size           = var.bootstrap_disk_size
+        volume_size           = var.controller_host_disk_size
         volume_type           = "gp3"
         delete_on_termination = true
       }
@@ -99,7 +101,7 @@ module "karpenter_bootstrap" {
   }
 
   labels = {
-    "node-role/karpenter-bootstrap" = "true"
+    "node-role/karpenter-controller-host" = "true"
   }
 
   taints = {
@@ -122,6 +124,24 @@ module "karpenter_bootstrap" {
   # (vpc-cni IRSA bound to aws-node ServiceAccount), not via the node
   # IAM role.
   iam_role_attach_cni_policy = false
+
+  # Use fixed IAM role name (not name_prefix) because the auto-generated
+  # name_prefix `karpenter-controller-host-eks-node-group-` (41 chars)
+  # exceeds the AWS IAM name_prefix 38-chars limit. With this set to
+  # false, the sub-module assigns the role a fixed name
+  # `karpenter-controller-host-eks-node-group` (40 chars, within the
+  # IAM role name 64-chars limit).
+  #
+  # 採用根拠: spec Decision 1 が AWS 物理名 `karpenter-controller-host`
+  # を要件として固定しているため、name_prefix を諦めて fixed name を
+  # 採用した。短縮名で name_prefix を保つ代替案 (例: `karpenter-ctrl-host`)
+  # は spec の物理名規約に反するため不採用。
+  #
+  # Side effect: fixed IAM role name は immutable なので、将来この MNG
+  # を再 rename する場合 create_before_destroy が role name 重複で fail
+  # する。再 rename 時は旧 role を先に destroy してから apply する
+  # 2-step 運用が必要 (本 PR と同種の操作の繰り返しでない限り発生しない)。
+  iam_role_use_name_prefix = false
 
   tags = var.common_tags
 }

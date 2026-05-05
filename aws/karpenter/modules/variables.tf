@@ -15,37 +15,37 @@ variable "common_tags" {
   type        = map(string)
 }
 
-# karpenter_bootstrap MNG variables
-# Bootstrap MNG hosts only the Karpenter controller pod (replicas=2). All other
+# karpenter_controller_host MNG variables
+# Controller host MNG hosts only the Karpenter controller pod (replicas=2). All other
 # workloads (CoreDNS, Cilium operator, Flux, addons, etc.) run on Karpenter
-# NodePool-managed Graviton 4 on-demand instances after migration.
+# NodePool-managed instances (system-components NodePool) after migration.
 
-variable "bootstrap_instance_types" {
-  description = "Instance types for the karpenter_bootstrap managed node group (only hosts Karpenter controller pods)"
+variable "controller_host_instance_types" {
+  description = "Instance types for the karpenter_controller_host managed node group (only hosts Karpenter controller pods)"
   type        = list(string)
   default     = ["t4g.small"]
 }
 
-variable "bootstrap_desired_size" {
-  description = "Desired number of nodes in the karpenter_bootstrap node group"
+variable "controller_host_desired_size" {
+  description = "Desired number of nodes in the karpenter_controller_host node group"
   type        = number
   default     = 2
 }
 
-variable "bootstrap_min_size" {
-  description = "Minimum number of nodes in the karpenter_bootstrap node group"
+variable "controller_host_min_size" {
+  description = "Minimum number of nodes in the karpenter_controller_host node group"
   type        = number
   default     = 2
 }
 
-variable "bootstrap_max_size" {
-  description = "Maximum number of nodes in the karpenter_bootstrap node group"
+variable "controller_host_max_size" {
+  description = "Maximum number of nodes in the karpenter_controller_host node group"
   type        = number
   default     = 2
 }
 
-variable "bootstrap_disk_size" {
-  description = "EBS volume size (GiB) for karpenter_bootstrap node group"
+variable "controller_host_disk_size" {
+  description = "EBS volume size (GiB) for karpenter_controller_host node group"
   type        = number
   default     = 20
 }

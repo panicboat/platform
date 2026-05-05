@@ -10,16 +10,17 @@
 # ServiceAccount は chart デフォルト (create: true、name: karpenter) で OK。
 
 # =============================================================================
-# Replicas / Pod placement (bootstrap MNG への pin)
+# Replicas / Pod placement (controller_host MNG への pin)
 # =============================================================================
 # replicas: 2 (chart デフォルト) を採用。HA 化済み。
 replicas: 2
 
-# Karpenter pod を karpenter_bootstrap MNG 上のみに schedule する。
-# Bootstrap MNG の taint `karpenter.sh/controller=true:NoSchedule` を
-# tolerate しつつ、label `node-role/karpenter-bootstrap=true` で 配置先を絞る。
+# Karpenter pod を karpenter_controller_host MNG 上のみに schedule する。
+# Controller host MNG の taint `karpenter.sh/controller=true:NoSchedule` を
+# tolerate しつつ、label `node-role/karpenter-controller-host=true` で
+# 配置先を絞る。
 nodeSelector:
-  node-role/karpenter-bootstrap: "true"
+  node-role/karpenter-controller-host: "true"
 
 tolerations:
   - key: karpenter.sh/controller
@@ -37,5 +38,5 @@ settings:
 # =============================================================================
 # Controller resources
 # =============================================================================
-# chart デフォルト (1 cpu / 1Gi memory) を採用。bootstrap MNG t4g.small は
+# chart デフォルト (1 cpu / 1Gi memory) を採用。controller_host MNG t4g.small は
 # 2 vCPU / 2 GiB なので replicas=2 で 2 cpu / 2 Gi 要求 → 余裕で fit。
