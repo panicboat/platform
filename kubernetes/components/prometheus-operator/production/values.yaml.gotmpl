@@ -89,11 +89,7 @@ prometheus:
         # Mimir の tenant header (= 本 sub-project は 1 tenant、`anonymous` で OK)
         headers:
           X-Scope-OrgID: anonymous
-        writeRelabelConfigs:
-          # NOTE: cardinality を抑える relabel は cluster scale up 時に追加
-          - sourceLabels: [__name__]
-            regex: ".*"
-            action: keep
+        # NOTE: cardinality 抑制の writeRelabelConfigs は cluster scale up 時に追加
 
     # -------------------------------------------------------------------------
     # Resource Limits
