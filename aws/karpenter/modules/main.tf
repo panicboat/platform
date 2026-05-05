@@ -131,6 +131,16 @@ module "karpenter_controller_host" {
   # false, the sub-module assigns the role a fixed name
   # `karpenter-controller-host-eks-node-group` (40 chars, within the
   # IAM role name 64-chars limit).
+  #
+  # 採用根拠: spec Decision 1 が AWS 物理名 `karpenter-controller-host`
+  # を要件として固定しているため、name_prefix を諦めて fixed name を
+  # 採用した。短縮名で name_prefix を保つ代替案 (例: `karpenter-ctrl-host`)
+  # は spec の物理名規約に反するため不採用。
+  #
+  # Side effect: fixed IAM role name は immutable なので、将来この MNG
+  # を再 rename する場合 create_before_destroy が role name 重複で fail
+  # する。再 rename 時は旧 role を先に destroy してから apply する
+  # 2-step 運用が必要 (本 PR と同種の操作の繰り返しでない限り発生しない)。
   iam_role_use_name_prefix = false
 
   tags = var.common_tags
