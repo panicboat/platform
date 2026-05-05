@@ -114,7 +114,8 @@ prometheus:
     # Storage
     # -------------------------------------------------------------------------
     storageSpec:
-      # TODO: (production) Configure Thanos Sidecar and Object Storage for long-term metrics retention
+      # NOTE: production env では long-term retention を Mimir remote_write 経由で実現
+      # (kubernetes/components/mimir/production/ + aws/eks-metrics/ S3 bucket)
       volumeClaimTemplate:
         spec:
           resources:
