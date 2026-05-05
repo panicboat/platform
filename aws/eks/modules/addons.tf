@@ -13,7 +13,7 @@
 
 module "vpc_cni_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "~> 6.0"
+  version = "~> 6.6"
 
   name                  = "eks-${var.environment}-vpc-cni"
   attach_vpc_cni_policy = true
@@ -31,7 +31,7 @@ module "vpc_cni_irsa" {
 
 module "ebs_csi_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "~> 6.0"
+  version = "~> 6.6"
 
   name                  = "eks-${var.environment}-ebs-csi"
   attach_ebs_csi_policy = true
@@ -48,7 +48,7 @@ module "ebs_csi_irsa" {
 
 module "alb_controller_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "~> 6.0"
+  version = "~> 6.6"
 
   name                                   = "eks-${var.environment}-alb-controller"
   attach_load_balancer_controller_policy = true
@@ -65,7 +65,7 @@ module "alb_controller_irsa" {
 
 module "external_dns_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "~> 6.0"
+  version = "~> 6.6"
 
   name                          = "eks-${var.environment}-external-dns"
   attach_external_dns_policy    = true
