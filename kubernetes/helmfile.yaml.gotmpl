@@ -38,6 +38,18 @@ environments:
           # Association が SA-to-role mapping を直接管理)
           nodeRoleName: Karpenter-eks-production-20260504154319852600000007
           interruptionQueueName: Karpenter-eks-production
+        mimir:
+          # Source: aws/eks-metrics/envs/production terragrunt output
+          # Sub-project 1 で provision + Task 1 で Mimir 用に rename された
+          # S3 backend / Pod Identity role を mimir-distributed chart が consume。
+          # helmfile v1.4 は親→子 の auto-inherit をしないため、
+          # kubernetes/components/mimir/production/helmfile.yaml の
+          # environments.production.values にも同値を再定義済 (cilium / karpenter 同パターン)。
+          bucketName: mimir-559744160976
+          bucketPathPrefix: production
+          # verification 用 (helmfile values としては unused、Pod Identity Association は
+          # aws/eks-metrics/ 側で provision 済)。
+          podIdentityRoleName: eks-production-mimir
   # TODO: (staging) Uncomment and configure when staging cluster is provisioned
   # staging:
   #   values:

@@ -38,3 +38,22 @@ metadata:
   name: keda
   labels:
     app.kubernetes.io/name: keda
+---
+# =============================================================================
+# Monitoring Namespace
+# =============================================================================
+# This namespace contains the full observability stack:
+#   - Prometheus (metrics)
+#   - Grafana (visualization)
+#   - Alertmanager (alerting)
+#   - Loki (logs)
+#   - Tempo (traces)
+#   - Beyla (eBPF instrumentation)
+#   - Fluent-bit (log collection)
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/name: monitoring

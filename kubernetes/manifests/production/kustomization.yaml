@@ -7,3 +7,5 @@ resources:
   - ./karpenter
   - ./keda
   - ./metrics-server
+  - ./mimir
+  - ./prometheus-operator

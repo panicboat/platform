@@ -1,0 +1,187 @@
+# Kube-Prometheus-Stack Configuration for production
+# Production-grade configuration with Mimir remote write, env-scoped resources.
+
+# =============================================================================
+# Grafana Configuration
+# =============================================================================
+grafana:
+  enabled: true
+  testFramework:
+    enabled: false
+
+  # TODO: (Phase 4) External Secrets Operator + AWS Secrets Manager 経由で secret 化
+  adminPassword: "panicboat-2026"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClassName: gp3
+
+  # -------------------------------------------------------------------------
+  # Sidecar for Dashboard Discovery
+  # -------------------------------------------------------------------------
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+
+  # -------------------------------------------------------------------------
+  # Data Sources (Mimir primary、Prometheus local secondary)
+  # -------------------------------------------------------------------------
+  # NOTE: Loki / Tempo data sources は Sub-project 3 / 4 で additionalDataSources に追加
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Mimir
+          uid: mimir
+          type: prometheus
+          url: http://mimir-distributed-gateway.monitoring.svc.cluster.local/prometheus
+          access: proxy
+          isDefault: true
+          jsonData:
+            httpMethod: POST
+            timeInterval: 30s
+        - name: Prometheus (local)
+          uid: prometheus-local
+          type: prometheus
+          url: http://prometheus-operated.monitoring.svc.cluster.local:9090
+          access: proxy
+          isDefault: false
+          jsonData:
+            httpMethod: POST
+            timeInterval: 30s
+
+# =============================================================================
+# Prometheus Configuration
+# =============================================================================
+prometheus:
+  prometheusSpec:
+    # -------------------------------------------------------------------------
+    # ServiceMonitor / PodMonitor Discovery
+    # -------------------------------------------------------------------------
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelector: {}
+    podMonitorNamespaceSelector: {}
+
+    # -------------------------------------------------------------------------
+    # Retention (短期、long-term は Mimir に remote write)
+    # -------------------------------------------------------------------------
+    retention: 24h
+
+    # -------------------------------------------------------------------------
+    # Remote Write to Mimir
+    # -------------------------------------------------------------------------
+    remoteWrite:
+      - url: http://mimir-distributed-gateway.monitoring.svc.cluster.local/api/v1/push
+        # Mimir の tenant header (= 本 sub-project は 1 tenant、`anonymous` で OK)
+        headers:
+          X-Scope-OrgID: anonymous
+        # NOTE: cardinality 抑制の writeRelabelConfigs は cluster scale up 時に追加
+
+    # -------------------------------------------------------------------------
+    # Resource Limits
+    # -------------------------------------------------------------------------
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1
+        memory: 2Gi
+
+    # -------------------------------------------------------------------------
+    # Storage
+    # -------------------------------------------------------------------------
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          resources:
+            requests:
+              storage: 20Gi
+
+# =============================================================================
+# Alertmanager Configuration
+# =============================================================================
+# NOTE: receiver 設定 (Slack / SNS / PagerDuty) は Phase 4 で追加
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          resources:
+            requests:
+              storage: 2Gi
+
+# =============================================================================
+# Prometheus Node Exporter
+# =============================================================================
+prometheus-node-exporter:
+  hostRootFsMount:
+    enabled: true
+    mountPropagation: HostToContainer
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# =============================================================================
+# Kube-State-Metrics
+# =============================================================================
+kube-state-metrics:
+  metricLabelsAllowlist:
+    - pods=[*]
+    - deployments=[*]
+    - statefulsets=[*]
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# =============================================================================
+# Prometheus Operator
+# =============================================================================
+# NOTE: production では admissionWebhooks を再有効化 (= local で disable していた
+# のは chart v82.x の RBAC bug 回避のため、v84.x で fix されているため OK)
+prometheusOperator:
+  admissionWebhooks:
+    enabled: true
+    patch:
+      enabled: true
+  tls:
+    enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

@@ -1,31 +1,32 @@
-# main.tf - EKS Metrics AWS-side infrastructure (S3 backend for Thanos sidecar).
+# main.tf - EKS Metrics AWS-side infrastructure (S3 backend for Mimir).
 #
 # Provides:
-# 1. S3 bucket `thanos-<account-id>` for long-term Prometheus metrics storage
-#    (Thanos sidecar が write、Thanos compactor が read で compaction)。
+# 1. S3 bucket `mimir-<account-id>` for long-term metrics storage
+#    (Mimir ingester が write、Mimir compactor が S3 内で compaction、
+#    Mimir store-gateway が read)。
 #    - Lifecycle: 90 日 expiration on `${var.environment}/` prefix only
 #    - Encryption: SSE-S3 (AES256)
 #    - Public access block: 4 settings all true
 #    - Versioning: Disabled (immutable write pattern, cost minimization)
-# 2. IAM role bound by Pod Identity Association to K8s SA `monitoring:prometheus`
+# 2. IAM role bound by Pod Identity Association to K8s SA `monitoring:mimir`
 #    - S3 access scoped to `${var.environment}/*` path only (minimum permission)
-#    - DeleteObject 含む (Thanos compaction で必要)
-# 3. Pod Identity Association binding `monitoring:prometheus` SA → IAM role
+#    - DeleteObject 含む (Mimir compaction で必要)
+# 3. Pod Identity Association binding `monitoring:mimir` SA → IAM role
 #    - cluster_name は aws/eks/lookup module の output から取得
 #
 # env 分離は bucket 内 prefix `${var.environment}/` で行う。
-# Sub-project 2 (kube-prometheus-stack chart 導入) は本 stack の outputs を terragrunt output
-# 経由で取得し、helmfile values に渡す。
+# Sub-project 2 (kube-prometheus-stack + grafana/mimir-distributed chart 導入) は
+# 本 stack の outputs を terragrunt output 経由で取得し、helmfile values に渡す。
 
 data "aws_caller_identity" "current" {}
 
 locals {
-  bucket_name    = "thanos-${data.aws_caller_identity.current.account_id}"
-  service_name   = "prometheus" # K8s ServiceAccount name
-  retention_days = 90           # Thanos long-term metrics retention
+  bucket_name    = "mimir-${data.aws_caller_identity.current.account_id}"
+  service_name   = "mimir" # K8s ServiceAccount name
+  retention_days = 90      # Mimir long-term metrics retention
 }
 
-# S3 bucket for Thanos long-term metrics storage
+# S3 bucket for Mimir long-term metrics storage
 module "s3" {
   source  = "terraform-aws-modules/s3-bucket/aws"
   version = "5.13.0"
