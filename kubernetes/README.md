@@ -23,14 +23,14 @@ flowchart TB
 
         subgraph Storage["Storage Layer"]
             Prometheus["Prometheus<br/>(CNCF Graduated)"]
-            Thanos["Thanos Sidecar<br/>(CNCF Incubating)"]
+            Mimir["Mimir<br/>(Grafana Labs)"]
             Tempo["Tempo"]
             Loki["Loki"]
         end
     end
 
     subgraph S3["S3"]
-        S3Thanos[("Metrics")]
+        S3Mimir[("Metrics")]
         S3Tempo[("Traces")]
         S3Loki[("Logs")]
     end
@@ -55,13 +55,13 @@ flowchart TB
     OTelCol --> Loki
 
     %% Long-term storage
-    Prometheus --> Thanos
-    Thanos --> S3Thanos
+    Prometheus -->|remote_write| Mimir
+    Mimir --> S3Mimir
     Tempo --> S3Tempo
     Loki --> S3Loki
 
     %% Visualization
-    Thanos --> Grafana
+    Mimir --> Grafana
     Tempo --> Grafana
     Loki --> Grafana
 ```
@@ -82,7 +82,7 @@ flowchart LR
     end
 
     subgraph Backends["Backends"]
-        P["Prometheus → Thanos"]
+        P["Prometheus → Mimir"]
         T["Tempo"]
         LO["Loki"]
     end
