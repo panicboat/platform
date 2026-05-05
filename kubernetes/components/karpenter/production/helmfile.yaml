@@ -2,8 +2,9 @@
 # Karpenter Helmfile for production
 # =============================================================================
 # Provisions EC2 nodes for cluster workloads. Controller pod is pinned to
-# karpenter_bootstrap MNG via nodeSelector + toleration. Workload nodes are
-# launched into Karpenter NodePool `system-components`.
+# karpenter_controller_host MNG via nodeSelector + toleration. Workload
+# nodes are launched into Karpenter NodePool `system-components` (capacity
+# type: spot + on-demand fallback)。
 #
 # Authentication: Pod Identity (provisioned by aws/karpenter/ stack の
 # Pod Identity Association)。Helm chart の serviceAccount.annotations は
