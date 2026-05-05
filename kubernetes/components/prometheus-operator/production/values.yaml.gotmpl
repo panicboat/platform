@@ -45,7 +45,7 @@ grafana:
         - name: Mimir
           uid: mimir
           type: prometheus
-          url: http://mimir-distributed-nginx.monitoring.svc.cluster.local/prometheus
+          url: http://mimir-distributed-gateway.monitoring.svc.cluster.local/prometheus
           access: proxy
           isDefault: true
           jsonData:
@@ -85,7 +85,7 @@ prometheus:
     # Remote Write to Mimir
     # -------------------------------------------------------------------------
     remoteWrite:
-      - url: http://mimir-distributed-nginx.monitoring.svc.cluster.local/api/v1/push
+      - url: http://mimir-distributed-gateway.monitoring.svc.cluster.local/api/v1/push
         # Mimir の tenant header (= 本 sub-project は 1 tenant、`anonymous` で OK)
         headers:
           X-Scope-OrgID: anonymous
