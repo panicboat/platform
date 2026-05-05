@@ -412,6 +412,8 @@ module "eks" {
 
 - [ ] **Step 9: modules/main.tf 作成 (S3 bucket + IAM + Pod Identity)**
 
+> ⚠️ **Lessons Learned L1 / L2 参照**: 本 Step の IAM policy code は **3 statement 構造** (BucketLevelListing / BucketLocation / ObjectLevelOperations) で書かれている。これは spec 草案時の Decision 11 (= 2 statement bundle) より正しく、`s3:prefix` condition が `GetBucketLocation` API context key として provide されない事実を反映 (commit `c50ed1c` で spec を実装に揃える形で fix)。また本 Step の comment 量は Task 2 / 3 と sibling-symmetric であるべき。Task 1 Step 9 が verbose comments で書かれたため Task 2 と asymmetric になり、Task 1 main.tf を Task 2 style に align する commit `d9d5f52` で 3 sibling stacks の byte-symmetric を担保した。
+
 `aws/eks-metrics/modules/main.tf` を以下で作成:
 
 ```hcl
@@ -591,6 +593,8 @@ output "pod_identity_role_arn" {
 ```
 
 - [ ] **Step 11: terragrunt init + validate + plan で diff 確認**
+
+> ⚠️ **Lessons Learned L3 参照**: 本 Step の expected `Plan: ~10 to add` は Plan 草案時の概算で、実際は terraform-aws-modules/s3-bucket v5.6.0 が ACL/ownership 関連を生成しないため `Plan: 8 to add`。次 plan では expected count を range 指定 (`7-12`) または "no change/destroy" のみで gate する形に。
 
 ```bash
 cd /Users/takanokenichi/GitHub/panicboat/platform/.claude/worktrees/feat/eks-production-observability-aws-infra/aws/eks-metrics/envs/production
@@ -1891,3 +1895,121 @@ Spec の各セクションが Plan 内のどの task で実装されているか
 - [x] **Plan tuning L3 (PR 中核変更がドキュメント面で閉じる)** → 本 PR の中核 (3 stack) を README に反映する task は Sub-project 2-4 (chart install 時に operational documentation 追加) で扱う、本 sub-project は AWS-side のみで README 反映は時期尚早
 - [x] **Plan tuning L4 (K8s NodeSelectorRequirement Ge 不在)** → 本 plan は NodeSelectorRequirement を扱わない、無関係
 - [x] **Plan tuning L5 (NodePool drift consolidation)** → 本 plan は NodePool を扱わない、無関係
+
+---
+
+## Lessons Learned (post-execution)
+
+PR #283 を merge して 3 stacks (`aws/eks-metrics/`, `aws/eks-logs/`, `aws/eks-traces/`) の terragrunt apply が success + production cluster での全 verification (3 buckets / 3 IAM roles / 3 Pod Identity Associations 作成 + cluster 無変化 + terragrunt outputs 取得) が pass した時点で判明した知見。次 sub-project (Phase 3 Sub-project 2-4) 設計時に反映する。
+
+### L1: Spec Decision 11 IAM policy structure — `s3:prefix` condition は `GetBucketLocation` API context key として provide されない
+
+Spec (草案時) の Decision 11 は IAM policy を `["s3:ListBucket", "s3:GetBucketLocation"]` の 2 actions を 1 statement に bundle して `s3:prefix` condition を付けていた。しかし AWS IAM の API context key として `s3:prefix` は **`GetBucketLocation` には provide されない** (s3:prefix は ListBucket / ListBucketVersions / ListBucketMultipartUploads 等の listing API でのみ available、GetBucketLocation は bucket region を返すだけの metadata API で prefix の概念がない)。bundle すると `GetBucketLocation` 呼び出しが condition match 不可で deny される。
+
+実装時 (Plan の Task 1 Step 9) には正しく 3 statement に分離していた:
+
+- BucketLevelListing: `s3:ListBucket` + `s3:prefix` condition (env-scoped)
+- BucketLocation: `s3:GetBucketLocation` (no condition)
+- ObjectLevelOperations: `Get/Put/Delete/GetObjectAttributes` on `${bucket}/${env}/*`
+
+Code review で flag され、commit `c50ed1c` で spec を実装に揃える形で修正。
+
+**影響:** spec / plan / 実装の 3 箇所が divergent な状態で 3 stacks 全てに transcribe される risk。本 plan では Plan 側で正しい code が書かれていたため subagent は正しく実装したが、spec 単独での lint で発見不可。
+
+**対処:** spec design 段階で AWS IAM の API condition compatibility を check する慣習を導入する:
+
+- AWS docs の "Action context keys" / "Service authorization reference" で各 action の available condition keys を確認
+- 特に `s3:*Bucket*` 系 (ListBucket / GetBucketLocation / GetBucketLifecycle 等) と `s3:*Object*` 系 (GetObject / PutObject / DeleteObject) で context keys が異なるため bundle に注意
+- 設計レビューで「この condition がこの action に対して effective か」を 1 つ 1 つ trace
+
+将来 IAM policy を含む spec を起こす場合、この check を spec self-review checklist に組み込む。
+
+### L2: Plan の sibling tasks 間で task scope text が divergent だと implementer が忠実に従って boilerplate asymmetry を生む
+
+Plan の Task 1 Step 9 (main.tf) と Task 2 Step 9 (main.tf) で comment 量が divergent だった:
+
+- **Task 1 Step 9**: 各 resource block の前に `# Public access block: 4 settings all true (production standard, Decision 6)` 等の Decision N reference comments を 6 箇所追加、IAM policy 前 comment が 3 行 prose
+- **Task 2 Step 9**: 同 comments 削除、IAM policy 前 comment も簡潔化 (`# 3 statement: BucketLevelListing (s3:prefix condition) / BucketLocation (no condition) / ObjectLevelOperations (env-scoped Resource)` の single line)
+
+Subagent は Plan の指示に **byte-level で忠実** に従ったため、Task 1 と Task 2 の main.tf が boilerplate asymmetric (実体差分は 3 functional differences のみのはずが、6 comments + IAM policy prefix comment + header の env-isolation example block で divergent) になった。
+
+Code review で flag され、commit `d9d5f52` で **Task 1 main.tf を Task 2 style に揃える** 形で修正 (= Decision N reference comments 削除、IAM policy 前 comment 簡潔化、header env-isolation example 削除)。これで 3 sibling stacks (eks-metrics / eks-logs / eks-traces) が byte-symmetric (header + 3 functional differences のみ差分) に。
+
+**影響:** sibling stacks の boilerplate asymmetry は long-term maintenance で `pairwise diff review` を困難にする (期待差分と意図しない差分が混在し、新規 reviewer が "なぜ Task 1 だけ comments が多いのか" を判定できない)。
+
+**対処:** writing-plans skill の self-review checklist に以下を追加:
+
+- [ ] **sibling tasks (= 同種 task が複数並ぶ場合) で repeated code block の comment 量・スタイル・wording が完全一致しているか?**
+  - 例: Task 1 / 2 / 3 が aws/eks-metrics/, aws/eks-logs/, aws/eks-traces/ の同型 stack を作る場合、main.tf の repeated code は header + 3 functional differences (locals + S3 prefix comment) **のみ** 差分であるべき
+  - Decision N reference comments を入れるなら **全 sibling tasks で同箇所に同形で入れる**
+  - 入れないなら **全 sibling tasks で省略する**
+
+writing-plans skill 自体への improvement として learnings PR で記録。
+
+### L3: Plan の resource count expected `~10` vs 実際 `8` の精度
+
+Plan の Task 1 Step 11 で `Plan: ~10 to add, 0 to change, 0 to destroy` と expected を書いたが、実際は `Plan: 8 to add` (3 stack 全て同 count)。理由:
+
+- terraform-aws-modules/s3-bucket v5.6.0 が **ACL / ownership controls 関連の sub-resource を生成しない** (= public access block + SSE + lifecycle + versioning + bucket 本体の 5 sub-resources のみ)
+- IAM role + IAM role policy + Pod Identity Association = 3
+- 合計 5 + 3 = **8 resources**
+
+Plan 草案時は terraform module の internal 構造を完全把握していなかったため `~10` と概算した。
+
+**影響:** Plan に書いた Test plan の verification step (`Plan: ~10 to add` を expected として記述) と実際の `8 to add` で number が異なるため、subagent / reviewer が "scope creep か?" を判断する際に concrete count comparison ができない。本件では subagent self-review が `~10` を range 概算と解釈して合格判定したため問題化しなかったが、より厳密な verification を求める場合は range が広すぎる。
+
+**対処:** Plan 草案時に terraform module の internal 構造を **terragrunt plan** で先に確認する pre-flight 慣習。または expected を範囲指定 (`7-12 to add` 等) にして range で書く。最も clean な方法は **expected count を書かず "no change/destroy" のみを expected とする** (= scope creep を `change/destroy: 0` で gate、add count は実 plan 出力で確認):
+
+```
+Expected:
+- `Plan: <N> to add, 0 to change, 0 to destroy.` で N >= 5 (= S3 bucket + IAM role + Pod Identity Association 最小)
+- 全 add resources が `module.<stack>.*` 配下 (他 stack に対する change/destroy なし)
+```
+
+### L4: Subagent driven development の two-stage review が plan-level oversight を catch する safety net として機能
+
+本 sub-project の implementation で **2 件の plan-level oversight** を two-stage review が早期に catch した:
+
+1. **L1 の発端 (Task 1 code review Important #2)**: Code reviewer が「spec Decision 11 の IAM policy 2-statement bundle は実装の 3-statement と divergent」を flag → spec を update する commit `c50ed1c` で即座に解消、後続 Task 2 / 3 が正しい spec を参照可能に
+2. **L2 の発端 (Task 2 code review Minor I1)**: Code reviewer が「Task 1 と Task 2 の main.tf comment が asymmetric」を flag → Task 3 着手前に Task 1 を Task 2 style に align (`d9d5f52`) → 3 sibling stacks の byte-symmetric を担保
+
+これらは **plan-level oversight** (= controller 側の plan 草案時の不整合) であり、implementer subagent 単独では発見できない (= subagent は plan に忠実に従うのが正しい)。
+
+**機能した review structure:**
+
+```
+implementer (subagent) → 自己実装 + self-review (= plan compliance)
+  ↓
+spec compliance reviewer (subagent, fresh context) → spec ↔ 実装 の 1:1 alignment 確認
+  ↓
+code quality reviewer (subagent, fresh context, code-reviewer agent type)
+  → code style + plan-level coherence 確認 ★ ここで plan-level oversight が flag される
+  ↓
+controller (= 私) → review feedback を judgment、plan-level fix を apply or implementer に修正依頼
+  ↓
+Final code reviewer (全体 PR) → cross-task consistency + holistic check
+```
+
+**対処 (skill 利用ガイドの reinforcement):**
+
+- subagent-driven-development skill は plan-level oversight を catch する safety net として **意図通り** に動作 (= skill の design が validate された)
+- 本 lesson は specific な代替策ではなく、subagent driven の two-stage review (per-task) + final review (PR-wide) の **3 段階体制を維持する** ことが plan-level quality gate として有効、という reinforcement
+- writing-plans 段階で perfect な plan を書くことは現実的でない (人間の oversight bandwidth が限界)、subagent 駆動でも final review を必ず通す
+
+### L5: 3 sibling stacks の boilerplate symmetric を維持する discipline は long-term maintenance に効く
+
+本 sub-project で 3 sibling stacks (`aws/eks-{metrics,logs,traces}/`) を作成し、main.tf / Makefile / root.hcl / env.hcl / terragrunt.hcl / terraform.tf / variables.tf / lookups.tf / outputs.tf すべてで pairwise diff が **header + 3 functional differences (locals + module S3 prefix comment + Sub-project 番号) のみ** という symmetric を達成した (Task 1 alignment fix `d9d5f52` の効果も含めて)。
+
+これは将来の maintenance で:
+
+- **Sub-project 2-4 で各 stack の outputs を helmfile values に渡す flow** が 3 stacks で同型になる (= 1 stack 用の helmfile pattern を template として 3 倍に展開できる)
+- **新 stack を追加する場合** (e.g., `aws/eks-events/` for audit log archive) の boilerplate template として直接 copy 可能
+- **stack 削除 (e.g., managed service 移行で aws/eks-metrics/ を AMP workspace に置き換え)** の destroy / re-create が atomic に閉じる
+- **pairwise diff review** が `git diff aws/eks-metrics/modules/main.tf aws/eks-logs/modules/main.tf` で expected diff 量を即座に判定可能
+
+**対処:** Sub-project 2-4 の Helm chart 導入時にも同思想を採用:
+
+- `kubernetes/components/<service>/production/` の 3 component (kube-prometheus-stack / loki / tempo) で helmfile.yaml / values.yaml.gotmpl / namespace.yaml / kustomization/* が **chart-specific 設定 + 3 functional differences のみ** 差分の状態を作る
+- 各 component の helmfile values で `cluster.name` / `interruptionQueueName` 等の cross-stack reference は **同 key 名で書く** (= `monitoring:prometheus` / `monitoring:loki` / `monitoring:tempo` の SA を、helmfile 内で `serviceAccount.name = .Values.<service>.saName` のような uniform 形式)
+
+writing-plans 段階で 3 sibling tasks の text を **template + diff overlay** 形式 で書くと自然に symmetric になる (e.g., Task 1 を full text で書き、Task 2 / 3 は "Task 1 と同型、ただし bucket_name=`loki-...` / service_name=`loki` / retention_days=30 に変える、それ以外は完全 identical" と instruction するスタイル)。ただし subagent-driven-development skill の "make subagent read plan file" red flag に抵触するため、Task 2 / 3 の prompt にも full text を含める必要あり (= controller が template 化を保つ責任)。
