@@ -28,7 +28,7 @@ locals {
 # S3 bucket for Thanos long-term metrics storage
 module "s3" {
   source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "5.6.0"
+  version = "5.13.0"
 
   bucket = local.bucket_name
 
