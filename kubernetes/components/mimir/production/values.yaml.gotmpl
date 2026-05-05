@@ -1,0 +1,194 @@
+# Grafana Mimir Distributed Configuration for production
+# Microservices architecture (no Kafka ingest-storage) with Pod Identity for S3 access.
+#
+# NOTE on chart v6.0.6 defaults:
+# - chart のデフォルトは `ingest_storage` 有効 (= Kafka 経由) の新 architecture。
+#   本 sub-project は Prometheus → distributor → ingester の従来 microservices
+#   path を使うため、structuredConfig で ingest_storage を disable し、kafka/minio
+#   subchart も disable する。
+# - chart の API gateway は `gateway:` key (nginx-based)。`nginx:` という
+#   top-level key は存在しない (chart README の "8 components: nginx" は
+#   gateway component の通称表記)。
+
+# =============================================================================
+# ServiceAccount (Pod Identity, no IRSA annotation needed)
+# =============================================================================
+# Pod Identity Association (aws/eks-metrics/ stack で provision 済) が
+# monitoring:mimir SA を IAM role に紐付けるため、Helm chart 側で
+# eks.amazonaws.com/role-arn annotation を入れる必要なし。
+serviceAccount:
+  create: true
+  name: mimir
+
+# =============================================================================
+# Mimir runtime config (S3 backend を structuredConfig で override)
+# =============================================================================
+mimir:
+  structuredConfig:
+    common:
+      storage:
+        backend: s3
+        s3:
+          bucket_name: {{ .Values.mimir.bucketName }}
+          endpoint: s3.ap-northeast-1.amazonaws.com
+          region: ap-northeast-1
+          # SSE-S3 (AES256) は bucket-level の default encryption で適用済 (Sub-project 1)
+    blocks_storage:
+      storage_prefix: "{{ .Values.mimir.bucketPathPrefix }}/"
+      backend: s3
+      s3:
+        bucket_name: {{ .Values.mimir.bucketName }}
+        endpoint: s3.ap-northeast-1.amazonaws.com
+        region: ap-northeast-1
+    # multi-tenant 不要 (panicboat 1 tenant)
+    multitenancy_enabled: false
+    # 従来 microservices path (distributor → ingester gRPC push) に戻す
+    ingest_storage:
+      enabled: false
+    ingester:
+      push_grpc_method_enabled: true
+    # query_scheduler を disable しているため、frontend / frontend_worker から
+    # scheduler_address 参照を除去 (querier が直接 query-frontend と接続)
+    frontend:
+      scheduler_address: ""
+    frontend_worker:
+      frontend_address: mimir-distributed-query-frontend.monitoring.svc.cluster.local.:9095
+      scheduler_address: ""
+
+# =============================================================================
+# Disable bundled subcharts (本 sub-project では使わない)
+# =============================================================================
+# AWS S3 を使うため、開発用 minio subchart を disable
+minio:
+  enabled: false
+# 従来 microservices path を使うため、Kafka subchart を disable
+kafka:
+  enabled: false
+
+# =============================================================================
+# Disable unused Mimir components (本 sub-project で不要な 5 component)
+# =============================================================================
+# kube-prometheus-stack 内蔵 Alertmanager を使うため、Mimir 内蔵を disable
+alertmanager:
+  enabled: false
+# kube-prometheus-stack 内蔵 Prometheus rule で評価するため、Mimir 内蔵 ruler を disable
+ruler:
+  enabled: false
+# small cluster で query-frontend 直接で十分、query-scheduler 不要
+query_scheduler:
+  enabled: false
+# multi-tenant 不要 (1 tenant)
+overrides_exporter:
+  enabled: false
+# NOTE: smoke_test Job は helm.sh/hook: test 付きで helm test 時のみ実行される
+# (= chart 通常 deploy では runtime workload にならない)。chart に enabled key
+# がないため明示的に disable する手段なし。
+
+# =============================================================================
+# Enabled components (本 sub-project で必要な 8 component) のリソース設定
+# =============================================================================
+
+# gateway: chart の HTTP API entry point (nginx-based reverse proxy)
+gateway:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+distributor:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+ingester:
+  replicas: 1
+  # chart v6.x default は zoneAwareReplication 有効 (= 3 zone × 1 pod/zone = 3 pod 構成)。
+  # small cluster で 1 pod のみ動かすため disable。
+  zoneAwareReplication:
+    enabled: false
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 2Gi
+  persistentVolume:
+    enabled: true
+    storageClass: gp3
+    size: 10Gi
+
+querier:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+query_frontend:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+store_gateway:
+  replicas: 1
+  # chart v6.x default は zoneAwareReplication 有効 (= 3 zone × 1 pod/zone = 3 pod 構成)。
+  # small cluster で 1 pod のみ動かすため disable。
+  zoneAwareReplication:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 2Gi
+  persistentVolume:
+    enabled: true
+    storageClass: gp3
+    size: 20Gi
+
+compactor:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 2Gi
+  persistentVolume:
+    enabled: true
+    storageClass: gp3
+    size: 10Gi
+
+# memcached (chunks-cache) — querier の S3 query 高速化
+chunks-cache:
+  enabled: true
+  replicas: 1
+  allocatedMemory: 512
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 200m
+      memory: 1Gi
