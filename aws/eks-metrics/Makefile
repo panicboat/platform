@@ -1,4 +1,4 @@
-# Makefile for EKS Metrics (Thanos S3 + Pod Identity)
+# Makefile for EKS Metrics (Mimir S3 + Pod Identity)
 
 # Default values
 ENV ?= production
