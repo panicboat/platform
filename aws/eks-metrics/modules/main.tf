@@ -13,19 +13,15 @@
 # 3. Pod Identity Association binding `monitoring:prometheus` SA → IAM role
 #    - cluster_name は aws/eks/lookup module の output から取得
 #
-# env 分離は bucket 内 prefix `${var.environment}/` で行う:
-# - production: s3://thanos-<account-id>/production/...
-# - 将来 staging を同 account で構築する場合: 別 IAM role + 別 Pod Identity Association を staging path 用に追加
-#
-# Sub-project 2 (kube-prometheus-stack chart 導入) は本 stack の outputs
-# (bucket_name / bucket_path_prefix / pod_identity_role_name) を terragrunt output
+# env 分離は bucket 内 prefix `${var.environment}/` で行う。
+# Sub-project 2 (kube-prometheus-stack chart 導入) は本 stack の outputs を terragrunt output
 # 経由で取得し、helmfile values に渡す。
 
 data "aws_caller_identity" "current" {}
 
 locals {
   bucket_name    = "thanos-${data.aws_caller_identity.current.account_id}"
-  service_name   = "prometheus" # K8s ServiceAccount name (override of chart default)
+  service_name   = "prometheus" # K8s ServiceAccount name
   retention_days = 90           # Thanos long-term metrics retention
 }
 
@@ -36,13 +32,11 @@ module "s3" {
 
   bucket = local.bucket_name
 
-  # Public access block: 4 settings all true (production standard, Decision 6)
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
 
-  # SSE-S3 (AES256) by default (Decision 5)
   server_side_encryption_configuration = {
     rule = {
       apply_server_side_encryption_by_default = {
@@ -51,12 +45,10 @@ module "s3" {
     }
   }
 
-  # Versioning Disabled (Decision 7, immutable write pattern)
   versioning = {
     status = "Disabled"
   }
 
-  # Lifecycle: env path filter + retention (Decision 4)
   lifecycle_rule = [
     {
       id     = "${var.environment}-retention"
@@ -73,8 +65,7 @@ module "s3" {
   tags = var.common_tags
 }
 
-# IAM role for Pod Identity Association (Decision 10)
-# Trust policy: pods.eks.amazonaws.com service principal で AssumeRole + TagSession
+# IAM role for Pod Identity Association
 resource "aws_iam_role" "pod_identity" {
   name = "eks-${var.environment}-${local.service_name}"
 
@@ -92,9 +83,8 @@ resource "aws_iam_role" "pod_identity" {
   tags = var.common_tags
 }
 
-# IAM policy for S3 access (Decision 11, production env path scoped)
-# Bucket-level: ListBucket + GetBucketLocation with s3:prefix condition for env scope
-# Object-level: Get / Put / Delete on env path only
+# IAM policy for S3 access (production env path scoped)
+# 3 statement: BucketLevelListing (s3:prefix condition) / BucketLocation (no condition) / ObjectLevelOperations (env-scoped Resource)
 resource "aws_iam_role_policy" "s3_access" {
   name = "s3-access"
   role = aws_iam_role.pod_identity.id
@@ -134,7 +124,7 @@ resource "aws_iam_role_policy" "s3_access" {
   })
 }
 
-# Pod Identity Association binding K8s SA → IAM role (Decision 10)
+# Pod Identity Association binding K8s SA → IAM role
 resource "aws_eks_pod_identity_association" "this" {
   cluster_name    = module.eks.cluster.name
   namespace       = "monitoring"
