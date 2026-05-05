@@ -1,0 +1,25 @@
+# =============================================================================
+# Kube-Prometheus-Stack Helmfile for production
+# =============================================================================
+# This chart installs:
+#   - Prometheus (scrape agent + remote write to Mimir)
+#   - Alertmanager (alerting hub、receiver は Phase 4 で追加)
+#   - Grafana (visualization、Mimir data source primary)
+#   - node-exporter (host metrics)
+#   - kube-state-metrics (K8s API metrics)
+#   - prometheus-operator (CRD 管理)
+# =============================================================================
+environments:
+  production:
+---
+repositories:
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+
+releases:
+  - name: kube-prometheus-stack
+    namespace: monitoring
+    chart: prometheus-community/kube-prometheus-stack
+    version: "84.5.0"
+    values:
+      - values.yaml.gotmpl
