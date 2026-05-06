@@ -160,7 +160,9 @@ daemonSetVolumeMounts:
 serviceMonitor:
   enabled: true
   # kube-prometheus-stack の ServiceMonitor selector に乗るための label
-  additionalLabels:
+  # NOTE: chart v0.57.3 の template は `.Values.serviceMonitor.selector` から
+  # label を読む (= `additionalLabels` は chart values で commented out の dead key)
+  selector:
     release: kube-prometheus-stack
   interval: 15s
 
