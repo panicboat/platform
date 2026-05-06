@@ -993,3 +993,151 @@ Expected:
 - [x] **Sub-project 3 L8 (post-flight check)** → 13 項目を spec / PR description で明示
 - [x] **Sub-project 3 L9 (公式 docs 引用)** → Tempo 公式 docs を spec の Decisions section で direct citation
 - [x] **Sub-project 3 L10 (Phase 3 全体 9 件 runtime issue)** → 4a / 4b 分割 + L1-L9 適用で runtime issue 数 minimize 目標
+
+---
+
+## Lessons Learned (post-execution)
+
+PR #294 (本 sub-project の merge) で deploy した直後に Sub-project 1-3 で確立した learnings (L1-L10) の効果が validate された。**actual runtime issue 0 件** で完了した初の sub-project (= Sub-project 1 以来)。ただし私 (controller) の **誤った診断 + 不要な runtime fix を実装しかけた path** があり、これは確認手順 / persistent vs transient の切り分け判断における重要な学びとして記録する。次 sub-project (Sub-project 4b: Beyla + Hubble OTLP + Fluent Bit OTel switching) 設計時の参考と、運用 pattern の標準化のために記録する。
+
+### L1: Sub-project 1-3 learnings の累積効果で initial deploy が runtime issue 0 件で完了
+
+Phase 3 全体での runtime issue 数:
+
+| sub-project | runtime issue 数 | 主要 root causes |
+|---|---|---|
+| Sub-project 1 | 0 件 | (verification は code review のみ、AWS-side で deploy / cluster 影響なし) |
+| Sub-project 2 (Mimir) | 5 件 | gp3 StorageClass / Mimir 3.x schema / TSDB validator / Grafana datasource / Multi-Attach |
+| Sub-project 3 (Loki) | 4 件 | Loki 3.x config validator / Loki compactor 固定 path + IAM mismatch / Fluent Bit probe / IAM design retrospective |
+| **Sub-project 4a (Tempo + OTel Collector)** | **0 件** | (= Sub-project 1-3 learnings 累積効果) |
+
+Sub-project 3 L10 で「次 sub-project は L1-L9 適用で runtime issue 数 minimize 目標」と明示した目標が **達成された**。具体的に効果を発揮した learnings:
+
+- **Sub-project 2 L1 (chart upgrade での upstream changelog 確認)**: 本 sub-project の brainstorming 時に chart organizational migration 有無を direct 確認、Tempo / OTel Collector ともに問題なし
+- **Sub-project 3 L1 (chart 内部固定 path 問題)**: Tempo の path 制御を事前確認、Loki のような問題なし
+- **Sub-project 3 L2 (IAM 公式準拠)**: Sub-project 3 fix で 3 stack bucket-wide IAM 同型済、Tempo もそのまま利用
+- **Sub-project 3 L3 (chart probe / serviceMonitor key 確認)**: Tempo `additionalLabels` / OTel Collector `extraLabels` + `ports.metrics.enabled: true` を実装段階で精査、initial deploy で挙動正常
+- **Sub-project 3 L4 (uniform retention は S3 lifecycle で)**: 3 stack 完全揃いの design pattern を確立
+
+これは **brainstorming + 公式 docs 確認 + post-flight verify の loop が整備されていれば、新規 sub-project の runtime issue 数を 0 に近づけることが可能** であることを示す。Phase 4 以降への applicable な insight。
+
+### L2: 私 (controller) の誤診断 — startup transient gRPC error を persistent issue と決めつけた
+
+PR #294 merge 後の post-flight verification で OTel Collector logs に以下の error を見つけた:
+
+```
+2026-05-06T13:05:50.261Z warn grpc: addrConn.createTransport failed to connect to
+{Addr: "172.20.96.1:4317", ServerName: "tempo.monitoring.svc.cluster.local:4317"}.
+Err: connection error: ... dial tcp 172.20.96.1:4317: connect: operation not permitted
+```
+
+この error を見て、以下の **誤った判断ルート** を辿った:
+
+1. `kubectl get svc -n monitoring tempo` で port 一覧を確認 → `head -25` で truncate されて OTLP port (4317/4318) が見えなかった
+2. 「Tempo Service に OTLP port が expose されていない = chart の bug」と決めつけ
+3. Sub-project 3 L1 (chart 内部固定 path 問題) の Tempo 版と判断、runtime fix PR を作成しかけた
+4. Flux suspend → 新 worktree → tempo-otlp Service の kustomization 追加 → OTel Collector endpoint 変更まで実装
+
+その後、改めて確認した結果:
+- 実際の Tempo Service は **`grpc-tempo-otlp: 4317/TCP` + `tempo-otlp-http: 4318/TCP` を含む 11 ports を expose** している (= chart 内蔵で expose、私の initial 確認時の出力 truncate で見えていなかっただけ)
+- error の発生時刻は `13:05:25 〜 13:06:08` (= Pod 起動 13:05:24 から **44 秒間のみ**)
+- 過去 30 分以内の error / warn はゼロ
+- 現在の OTel Collector → Tempo gRPC 接続は成立済
+
+つまり error は **Pod 起動直後の transient** で、Cilium chaining mode 環境での Pod identity propagation 中に出る既知の挙動 (= retry で resolve)。**runtime fix は不要だった**。
+
+### L3: persistent vs transient error の切り分け手順を確立
+
+L2 の誤診断を防ぐため、**post-flight verification での error log 解析 checklist**:
+
+1. **時刻情報を必ず確認**: error の発生時刻 vs Pod 起動時刻 vs 現在時刻
+   - 起動直後 ~1-2 分間の error → transient の可能性高
+   - 起動から数分以上経過後も継続 → persistent
+2. **time-bounded log query で current state を確認**:
+   - `kubectl logs --since=10m` / `--since=30m` で最近の error/warn を確認
+   - 最近の log に同種 error が無ければ resolved
+3. **Pod restart count を確認**: `restartCount > 0` なら persistent error / `0` なら recovery 済の可能性
+4. **kubectl get svc / kubectl describe 出力は完全表示で確認**:
+   - `head -N` 等の truncate を避ける、もしくは `-o jsonpath` / `-o yaml` で全 ports を確実に取得
+   - `kubectl get svc <name> -o jsonpath='{range .spec.ports[*]}{.name}: {.port}/{.protocol}{"\n"}{end}'` 形式で port 一覧を完全取得
+5. **Cilium chaining mode 環境特有の transient pattern を認識**:
+   - "operation not permitted" が startup 直後に出る = Cilium identity propagation 中の挙動
+   - 通常 Pod 起動から 30-60 秒で resolve
+
+これらを **Sub-project 4 b 以降の post-flight check spec template に組み込む**。Sub-project 3 L8 (post-flight check) の精度向上施策として記録。
+
+### L4: Sub-project 1-3 IAM design (= bucket-wide + application-level prefix env scope) が Tempo でも問題なく機能
+
+Sub-project 1 で env-scoped IAM を確立、Sub-project 3 で bucket-wide + application-level prefix に retrospective した経緯。本 sub-project (Tempo) で同 design pattern を **そのまま適用** した結果:
+
+- ✅ Tempo の `s3.prefix: production` で env scope 担保
+- ✅ Pod Identity (`eks-production-tempo` IAM role + bucket-wide Resource) で S3 access 動作
+- ✅ "blocklist poll complete" が 5min interval で安定実行 (= compactor の bucket scan 動作確認)
+- ✅ Loki のような chart 内部固定 path 問題なし (= Sub-project 3 L1 の Tempo 版が実は不在)
+
+これは **Sub-project 3 fix で確立した 3 stack 一貫 pattern (= bucket-wide IAM + application-level prefix) が long-term sustainable** であることの validation。Phase 4 以降で同 pattern を継続採用。
+
+### L5: kubectl 出力の truncate に注意 (= L2 / L3 と関連、tooling 学び)
+
+私が L2 で誤診断した直接原因は **`kubectl get svc | head -25` の出力 truncate**。これは bash habit (= 長い出力を `| head` で要約) が時として **重要情報を隠す** という pattern。
+
+**対策**:
+- Service ports / Pod containers / ConfigMap data 等の **list 構造の field** を確認する場合、`-o jsonpath` で field 単位の確実な取得
+- `head` / `tail` で truncate する場合、**list 末尾の情報が必要かを意識**
+- 重要な確認 (= production deploy 後の verification) では truncate を避ける
+
+これは Phase 4 以降の operational habits として運用する。
+
+### L6: 不要な runtime fix の早期 abort (= L2 + L3 適用)
+
+L2 の誤診断後、私は以下を実装しかけた:
+- Flux suspend
+- 新 worktree (`fix/eks-production-observability-traces-stack-foundation-runtime`)
+- `kubernetes/components/tempo/production/kustomization/tempo-otlp-service.yaml` 新規作成
+- OTel Collector の `otlp/tempo.endpoint` を `tempo-otlp.monitoring.svc.cluster.local:4317` に変更
+
+これらは **commit 前** に正確な状況把握 (= L3 の checklist 適用) で **不要な fix と判明**、worktree 削除 + Flux resume で revert。
+
+**早期 abort できたポイント**:
+- 実装途中で `kubectl get svc tempo -o jsonpath` で完全 port 一覧を取得 → OTLP port が既に存在を確認
+- `kubectl logs --since=30m` で最近 error なしを確認
+- これらの evidence で「実は問題ない」と確信し、commit 前に revert 判断
+
+**改善すべき点**:
+- diagnose の段階で **L3 checklist の手順 1-4 を最初に実行** していれば、worktree / kustomization 作成等の作業時間 (~10 分) を節約できた
+- post-flight verification では **「persistent issue を確信する evidence」を集めてから fix 着手** という慣習を運用
+
+### L7: Sub-project 4 全体の learnings note (= 4a 完了時点)
+
+Sub-project 4 を 4a + 4b に分割した Decision 1 の効果:
+
+- **4a**: Tempo + OTel Collector foundation deploy、source 未接続で完結
+  - L2 の誤診断はあったが、**source 未接続の状態だったため traces data ロスト等の actual production impact なし**
+  - もし 4a + 4b を 1 sub-project にしていたら、source 接続後に同 error を見て persistent issue と決めつけ、source-side で対処を試みた可能性 (= 余計な scope 拡大)
+- **4b**: Beyla + Hubble OTLP + Fluent Bit OTel switching を別途扱う scope を確保
+
+**Decision 1 (= 4a + 4b 分割) は long-term ROI として positive**: scope 細分化 + 段階的 verify で誤診断時の損害を limit、production impact を minimize。Phase 4 以降の sub-project 設計でも同 pattern (= 大 scope を foundation + wiring に分割) を検討候補。
+
+### L8: Phase 3 全体のまとめ + Phase 4 への引き継ぎ事項
+
+Phase 3 (Sub-project 1-4a) で確立した panicboat の observability backend design pattern:
+
+| 観点 | 確立内容 |
+|---|---|
+| **3 stack architecture** | Mimir (Microservices) + Loki (SingleBinary) + Tempo (Monolithic) |
+| **AWS infra** | bucket per service (mimir-/loki-/tempo-559744160976) + Pod Identity Association + bucket-wide IAM + application-level prefix env scope (`production/`) |
+| **retention 戦略** | application retention OFF (= chart default に任せる) + S3 lifecycle で uniform 担保 (Mimir 90d / Loki 30d / Tempo 7d) |
+| **Grafana integration** | datasource を Mimir = default、Loki / Tempo = `isDefault: false`、tracesToLogsV2 / tracesToMetrics で correlation |
+| **monitoring** | kube-prometheus-stack ServiceMonitor で全 component を auto-scrape、Mimir に remote_write |
+| **deployment runbook** | 通常 deploy + 問題発見時のみ Flux suspend pattern (= reactive)、L1-L9 適用で proactive prevention |
+
+**Phase 4 への引き継ぎ事項**:
+
+1. **gp3 StorageClass の Flux 管理化** (= Sub-project 2 で kubectl apply direct deploy、Flux 管理外、Sub-project 4a Issue B で flag 済): GitOps 整合性の観点で別 PR で対応推奨
+2. **`opentelemetry-system` namespace の整理** (= Sub-project 4a Issue A、production で空 namespace、`kubernetes/components/opentelemetry-collector/namespace.yaml` を local subdirectory に移動)
+3. **bucket-per-env への migration 検討** (= Sub-project 3 L2 で flag、AWS multi-tenant best practice、Phase 4 advanced features の候補)
+4. **multi-tenant 化 + 詳細 retention rules** (= per-tenant / per-stream 差分 retention、Phase 4 advanced features の候補)
+5. **OTel Operator deploy 検討** (= 現在 YAGNI で deploy せず、auto-instrumentation 機能が必要になったら追加)
+6. **post-flight check の自動化** (= Sub-project 3 L8 から継続課題、Argo CD Health check / Prometheus alert 等で検討)
+
+これらは Phase 4 brainstorming で再検討する。
