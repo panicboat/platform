@@ -49,9 +49,10 @@ Microservices mode の本 sub-project で deploy する component:
 |---|---|
 | alertmanager | kube-prometheus-stack 内蔵 Alertmanager を使用 (D6) |
 | ruler | kube-prometheus-stack 内蔵 Prometheus rule で評価 |
-| query-scheduler | small cluster で query-frontend 直接で十分 (= advanced scheduling 不要) |
 | overrides-exporter | multi-tenant 不要 (panicboat 1 tenant) |
 | smoke-test / continuous-test | production 不要 (= 動作確認 Job) |
+
+**NOTE:** 当初 `query-scheduler` も disable 対象としていたが、Mimir 3.x では `frontend_worker.frontend_address` が `worker.Config` 構造体から削除されている (= scheduler 経由のみ有効) ため、chart default の `query_scheduler.enabled: true` を採用する (post-merge fix)。
 
 ### G3: Grafana data source を Mimir query-frontend に設定
 
@@ -92,7 +93,7 @@ terragrunt apply で旧 resource destroy + 新 resource create (data 0 byte で 
 production env では 2 つの helm chart を deploy:
 
 - **kube-prometheus-stack** (prometheus-community/kube-prometheus-stack v84.5.0): Prometheus + Alertmanager + Grafana + node-exporter + kube-state-metrics + prometheus-operator を bundle した defacto-standard chart。local で動作確認済の構成を production env 派生で deploy。
-- **grafana/mimir-distributed** (Grafana Labs 公式) v6.0.6: Mimir の各 component を Microservices mode で deploy する chart (= chart の default pattern)。本 sub-project で必要な 8 component (nginx / distributor / ingester / querier / query-frontend / store-gateway / compactor / memcached) を有効化、5 component (alertmanager / ruler / query-scheduler / overrides-exporter / smoke-test) を disable する。
+- **grafana/mimir-distributed** (Grafana Labs 公式) v6.0.6: Mimir の各 component を Microservices mode で deploy する chart (= chart の default pattern)。本 sub-project で必要な 9 component (nginx / distributor / ingester / querier / query-frontend / query-scheduler / store-gateway / compactor / memcached) を有効化、4 component (alertmanager / ruler / overrides-exporter / smoke-test) を disable する。
 
 両 chart は `monitoring` namespace に集約 (Sub-project 1 で確定済)。
 
@@ -104,7 +105,7 @@ production env では 2 つの helm chart を deploy:
 
 ### Decision 2: Mimir deployment mode = Microservices (chart default)
 
-Microservices mode (= `grafana/mimir-distributed` chart v6.0.6 の standard pattern) を採用する。chart は各 component を別 Deployment / StatefulSet で deploy する設計で、本 sub-project では **必要 8 component を有効化、不要 5 component を disable** する。
+Microservices mode (= `grafana/mimir-distributed` chart v6.0.6 の standard pattern) を採用する。chart は各 component を別 Deployment / StatefulSet で deploy する設計で、本 sub-project では **必要 9 component を有効化、不要 4 component を disable** する。
 
 **根拠**:
 
@@ -320,7 +321,7 @@ Sub-project 1 で確定した `monitoring` namespace に kube-prometheus-stack +
 | K8s (helmfile) | `kubernetes/components/prometheus-operator/production/namespace.yaml` | `monitoring` namespace 作成 (chart 共有用) |
 | K8s (helmfile) | `kubernetes/components/prometheus-operator/production/kustomization/` | (オプション) Grafana ConfigMap 等の追加リソース |
 | K8s (helmfile) | `kubernetes/components/mimir/production/helmfile.yaml` | grafana/mimir-distributed chart v6.0.6 install (Microservices mode = chart default) |
-| K8s (helmfile) | `kubernetes/components/mimir/production/values.yaml.gotmpl` | Mimir Microservices mode (8 component 有効化 + 5 component disable) + S3 backend (Sub-project 1 outputs) + Pod Identity (`serviceAccount.name=mimir`) + resources / PVC |
+| K8s (helmfile) | `kubernetes/components/mimir/production/values.yaml.gotmpl` | Mimir Microservices mode (9 component 有効化 + 4 component disable) + S3 backend (Sub-project 1 outputs) + Pod Identity (`serviceAccount.name=mimir`) + resources / PVC |
 | K8s (helmfile) | `kubernetes/components/mimir/production/kustomization/` | (オプション) Mimir ConfigMap 等 |
 | K8s | `kubernetes/helmfile.yaml.gotmpl` | production env values に Mimir 関連 cross-stack values 追加 (`mimir.bucketName` / `mimir.podIdentityRoleName` 等) |
 | K8s | `kubernetes/manifests/production/{prometheus-operator,mimir}/` | hydrate 結果 (auto-generated) |
