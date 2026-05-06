@@ -50,6 +50,11 @@ environments:
           # verification 用 (helmfile values としては unused、Pod Identity Association は
           # aws/eks-metrics/ 側で provision 済)。
           podIdentityRoleName: eks-production-mimir
+        loki:
+          # Source: aws/eks-logs/envs/production terragrunt output
+          bucketName: loki-559744160976
+          bucketPathPrefix: production
+          podIdentityRoleName: eks-production-loki
   # TODO: (staging) Uncomment and configure when staging cluster is provisioned
   # staging:
   #   values:
