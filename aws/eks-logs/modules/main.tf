@@ -83,8 +83,14 @@ resource "aws_iam_role" "pod_identity" {
   tags = var.common_tags
 }
 
-# IAM policy for S3 access (production env path scoped)
-# 3 statement: BucketLevelListing (s3:prefix condition) / BucketLocation (no condition) / ObjectLevelOperations (env-scoped Resource)
+# IAM policy for S3 access (bucket-wide, application-level prefix で env scope 担保)
+# 3 statement: BucketLevelListing / BucketLocation / ObjectLevelOperations
+# NOTE: Sub-project 1 で env-scoped IAM (= ${bucket}/${env}/*) としていたが、Loki 3.x
+# compactor の delete request store が bucket root の固定 path (index/delete_requests/)
+# を使うため不整合 (Sub-project 3 runtime fix で判明)。公式 docs (Loki / Tempo / Mimir
+# community discussion) でも `${bucket}` + `${bucket}/*` 形式が推奨。env 分離は各 stack
+# の application-level prefix (= mimir.blocks_storage.storage_prefix /
+# tempo.storage.trace.s3.prefix) で担保し、3 sibling stack の IAM template は同形を維持。
 resource "aws_iam_role_policy" "s3_access" {
   name = "s3-access"
   role = aws_iam_role.pod_identity.id
@@ -97,11 +103,6 @@ resource "aws_iam_role_policy" "s3_access" {
         Effect   = "Allow"
         Action   = ["s3:ListBucket"]
         Resource = "arn:aws:s3:::${local.bucket_name}"
-        Condition = {
-          StringLike = {
-            "s3:prefix" = "${var.environment}/*"
-          }
-        }
       },
       {
         Sid      = "BucketLocation"
@@ -118,7 +119,7 @@ resource "aws_iam_role_policy" "s3_access" {
           "s3:DeleteObject",
           "s3:GetObjectAttributes",
         ]
-        Resource = "arn:aws:s3:::${local.bucket_name}/${var.environment}/*"
+        Resource = "arn:aws:s3:::${local.bucket_name}/*"
       }
     ]
   })
