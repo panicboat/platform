@@ -3,6 +3,7 @@ resources:
   - ./aws-load-balancer-controller
   - ./cilium
   - ./external-dns
+  - ./fluent-bit
   - ./gateway-api
   - ./karpenter
   - ./keda
