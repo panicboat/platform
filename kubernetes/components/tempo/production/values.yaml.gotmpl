@@ -28,6 +28,7 @@ tempo:
       s3:
         bucket: {{ .Values.tempo.bucketName }}
         endpoint: s3.ap-northeast-1.amazonaws.com
+        region: ap-northeast-1
         # application-level env scope (= Sub-project 3 L2 適用、IAM bucket-wide と整合)
         prefix: {{ .Values.tempo.bucketPathPrefix }}
         # AWS S3 native (HTTPS) = insecure: false (default)
@@ -78,6 +79,17 @@ persistence:
   size: 10Gi
   accessModes:
     - ReadWriteOnce
+
+# =============================================================================
+# PodDisruptionBudget (1 replica 用に明示 disable)
+# =============================================================================
+# NOTE: chart default で PDB が enable の場合、replicas=1 で minAvailable=1 に
+# なり node drain 時に block する。Loki/production の SingleBinary podDisruptionBudget
+# と同じく明示 disable して node drain operations を安全に保つ。
+# (Tempo chart v1.24.4 は PDB テンプレートを持たないが、将来の chart upgrade に
+# 備えて明示 disable で意図を文書化する)
+podDisruptionBudget:
+  enabled: false
 
 # =============================================================================
 # Service Configuration
