@@ -74,8 +74,7 @@ data:
           region: ap-northeast-1
           s3forcepathstyle: false
     compactor:
-      retention_delete_delay: 2h
-      retention_enabled: true
+      retention_enabled: false
     frontend:
       scheduler_address: ""
       tail_proxy_url: ""
@@ -988,7 +987,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: a67f78d79e4cf8b2ac40d624f1dd2c0fd6b4f050cfcd98442fbe6d9fd430e78e
+        checksum/config: afa7d08b2e7a51fee5acd0652bc2a489cbc5ecd5d1945dfaa267c069caa4185b
         storage/size: 10Gi
         kubectl.kubernetes.io/default-container: "loki"
       labels:

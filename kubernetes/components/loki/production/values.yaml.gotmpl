@@ -85,13 +85,18 @@ loki:
     ingestion_burst_size_mb: 6
 
   # -------------------------------------------------------------------------
-  # Compactor (retention enforcement)
+  # Compactor (retention 機能は disable、S3 lifecycle で代替)
   # -------------------------------------------------------------------------
+  # NOTE: Loki 3.x の retention enforcement は delete request store
+  # (`<bucket>/index/delete_requests/`) を bucket root 固定 path で使い、
+  # aws/eks-logs/ IAM policy の `<bucket>/<env>/*` Resource scope と整合しない。
+  # 代替として retention は aws/eks-logs/ S3 lifecycle 30d (= Sub-project 1 で
+  # provision 済) で担保。compactor 自体は chunks compaction (= S3 IO 効率化)
+  # のため起動を維持、retention 機能のみ off。
+  # 細かい per-tenant / per-stream retention rules を要する場合は
+  # Phase 4 (advanced features) で IAM policy 設計を見直す。
   compactor:
-    # S3 上の chunks を retention に基づき削除する (= aws/eks-logs/ S3 lifecycle と
-    # 同 30d、Loki 側でも明示的に enforce)
-    retention_enabled: true
-    retention_delete_delay: 2h
+    retention_enabled: false
 
   # -------------------------------------------------------------------------
   # Ingester (= flush 間隔短縮、Decision 11 軽減策)
