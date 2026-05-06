@@ -25,14 +25,25 @@ grafana:
     size: 5Gi
     storageClassName: gp3
 
+  # ReadWriteOnce な EBS PVC を使うため、RollingUpdate (= 古い Pod 保持中に新 Pod 起動)
+  # だと Multi-Attach error で新 Pod が PVC を取れない。Recreate (= 古い Pod 停止 →
+  # 新 Pod 起動) でダウンタイム数十秒を許容しつつ rollout を確実にする。
+  deploymentStrategy:
+    type: Recreate
+
   # -------------------------------------------------------------------------
-  # Sidecar for Dashboard Discovery
+  # Sidecar for Dashboard / Data source Discovery
   # -------------------------------------------------------------------------
   sidecar:
     dashboards:
       enabled: true
       label: grafana_dashboard
       searchNamespace: ALL
+    datasources:
+      # chart 自動生成の `kube-prometheus-stack-grafana-datasource` ConfigMap
+      # (= Prometheus を default に登録する) を disable。下の `datasources` で
+      # Mimir を default として明示するため、両者の `isDefault: true` 衝突を回避。
+      defaultDatasourceEnabled: false
 
   # -------------------------------------------------------------------------
   # Data Sources (Mimir primary、Prometheus local secondary)
