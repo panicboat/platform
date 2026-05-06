@@ -1,0 +1,173 @@
+# Fluent Bit Configuration for production
+# DaemonSet で container logs を tail、Loki Gateway に HTTP 直接 push (= Decision 1 中間状態)
+
+# =============================================================================
+# Deployment Kind
+# =============================================================================
+# 各 node の container logs を tail するため DaemonSet (= chart default)
+kind: DaemonSet
+
+# =============================================================================
+# ServiceAccount (Decision 8: Pod Identity 不要)
+# =============================================================================
+# AWS access 不要 (Loki HTTP push のみ)、default SA で OK
+serviceAccount:
+  create: true
+  annotations: {}
+
+# =============================================================================
+# Resources (lightweight per-node DaemonSet)
+# =============================================================================
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# =============================================================================
+# Tolerations (= 全 node に乗るため、master/etcd 等の taint に対応)
+# =============================================================================
+tolerations:
+  - effect: NoSchedule
+    operator: Exists
+  - effect: NoExecute
+    operator: Exists
+
+# =============================================================================
+# Fluent Bit Config (production override)
+# =============================================================================
+config:
+  # -------------------------------------------------------------------------
+  # SERVICE Block
+  # -------------------------------------------------------------------------
+  service: |
+    [SERVICE]
+        Daemon Off
+        Flush 1
+        Log_Level info
+        Parsers_File /fluent-bit/etc/parsers.conf
+        Parsers_File /fluent-bit/etc/conf/custom_parsers.conf
+        HTTP_Server On
+        HTTP_Listen 0.0.0.0
+        HTTP_Port 2020
+        Health_Check On
+        # filesystem-backed buffer = node disk 利用、長時間 outage 耐性 (Decision 11 軽減策)
+        storage.path              /var/log/flb_storage/
+        storage.sync              normal
+        storage.checksum          off
+        storage.backlog.mem_limit 5M
+
+  # -------------------------------------------------------------------------
+  # INPUTS (= container logs tail)
+  # -------------------------------------------------------------------------
+  inputs: |
+    [INPUT]
+        Name              tail
+        Path              /var/log/containers/*.log
+        multiline.parser  docker, cri
+        Tag               kube.*
+        Mem_Buf_Limit     5MB
+        Skip_Long_Lines   On
+        Refresh_Interval  10
+        # storage.type filesystem = retry buffer を node disk に保存 (Decision 11)
+        storage.type      filesystem
+        # DB ファイルで読み取り position を記録、再起動時に resume
+        DB                /var/log/flb_storage/tail.db
+
+  # -------------------------------------------------------------------------
+  # FILTERS (= Kubernetes metadata 付与 + cardinality 制御 = Decision 4)
+  # -------------------------------------------------------------------------
+  filters: |
+    [FILTER]
+        Name                kubernetes
+        Match               kube.*
+        Kube_URL            https://kubernetes.default.svc:443
+        Kube_CA_File        /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token
+        Kube_Tag_Prefix     kube.var.log.containers.
+        Merge_Log           On
+        Keep_Log            Off
+        K8S-Logging.Parser  On
+        K8S-Logging.Exclude On
+        Annotations         Off
+        Labels              On
+
+  # -------------------------------------------------------------------------
+  # OUTPUTS (= Loki HTTP push、Decision 1 中間状態)
+  # -------------------------------------------------------------------------
+  outputs: |
+    [OUTPUT]
+        Name              loki
+        Match             kube.*
+        Host              loki-gateway.monitoring.svc.cluster.local
+        Port              80
+        # Loki API path
+        Uri               /loki/api/v1/push
+        # 1 tenant 運用 (= Decision 3)
+        tenant_id         anonymous
+        # Decision 4 labels = 最小 (namespace / pod / container)
+        labels            job=fluentbit, namespace=$kubernetes['namespace_name'], pod=$kubernetes['pod_name'], container=$kubernetes['container_name']
+        # 残りの k8s metadata は structured metadata で保持 (= cardinality cost なし)
+        structured_metadata node=$kubernetes['host'], stream=$stream
+        # remove kubernetes prefix from log fields (= structured_metadata で保持済)
+        remove_keys       kubernetes
+        # gzip 圧縮で帯域削減
+        compress          gzip
+        # retry settings
+        net.connect_timeout 10
+        Retry_Limit       no_limits
+        # storage = filesystem buffer (= retry の永続化)
+        storage.total_limit_size  5G
+
+# =============================================================================
+# Volumes & Volume Mounts (= filesystem buffer 用 hostPath)
+# =============================================================================
+# default の daemonSetVolumes / daemonSetVolumeMounts に追加
+daemonSetVolumes:
+  - name: varlog
+    hostPath:
+      path: /var/log
+  - name: varlibdockercontainers
+    hostPath:
+      path: /var/lib/docker/containers
+  - name: etcmachineid
+    hostPath:
+      path: /etc/machine-id
+      type: File
+  # Decision 11 軽減策 = filesystem buffer 永続化用の hostPath
+  - name: flb-storage
+    hostPath:
+      path: /var/log/flb_storage
+      type: DirectoryOrCreate
+
+daemonSetVolumeMounts:
+  - name: varlog
+    mountPath: /var/log
+  - name: varlibdockercontainers
+    mountPath: /var/lib/docker/containers
+    readOnly: true
+  - name: etcmachineid
+    mountPath: /etc/machine-id
+    readOnly: true
+  - name: flb-storage
+    mountPath: /var/log/flb_storage
+
+# =============================================================================
+# ServiceMonitor (Prometheus auto-scrape, Decision 9)
+# =============================================================================
+serviceMonitor:
+  enabled: true
+  # kube-prometheus-stack の ServiceMonitor selector に乗るための label
+  # NOTE: chart v0.57.3 の template は `.Values.serviceMonitor.selector` から
+  # label を読む (= `additionalLabels` は chart values で commented out の dead key)
+  selector:
+    release: kube-prometheus-stack
+  interval: 15s
+
+# =============================================================================
+# Test (= helm test 用、production では不要)
+# =============================================================================
+testFramework:
+  enabled: false

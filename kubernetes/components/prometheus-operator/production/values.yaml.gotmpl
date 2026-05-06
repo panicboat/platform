@@ -46,9 +46,8 @@ grafana:
       defaultDatasourceEnabled: false
 
   # -------------------------------------------------------------------------
-  # Data Sources (Mimir primary、Prometheus local secondary)
+  # Data Sources (Mimir primary、Prometheus local secondary、Loki logs)
   # -------------------------------------------------------------------------
-  # NOTE: Loki / Tempo data sources は Sub-project 3 / 4 で additionalDataSources に追加
   datasources:
     datasources.yaml:
       apiVersion: 1
@@ -71,6 +70,18 @@ grafana:
           jsonData:
             httpMethod: POST
             timeInterval: 30s
+        # Phase 3 Sub-project 3 (Logs stack)
+        - name: Loki
+          uid: loki
+          type: loki
+          url: http://loki-gateway.monitoring.svc.cluster.local
+          access: proxy
+          isDefault: false
+          jsonData:
+            # 1 tenant 運用 (= Decision 3)
+            httpHeaderName1: X-Scope-OrgID
+          secureJsonData:
+            httpHeaderValue1: anonymous
 
 # =============================================================================
 # Prometheus Configuration

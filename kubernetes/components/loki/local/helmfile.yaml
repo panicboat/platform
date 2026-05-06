@@ -4,18 +4,22 @@
 # Loki is a log aggregation system designed for efficiency and ease of
 # operation. It receives logs from the OTel Collector and provides querying
 # capabilities in Grafana.
+#
+# NOTE: 2026/3/16 に grafana/loki chart が GEL only に分離、OSS continuation は
+# grafana-community/loki に移行。本 sub-project (Phase 3 Sub-project 3) で
+# chart を切替する (Decision 5/6)。
 # =============================================================================
 environments:
   local:
 ---
 repositories:
-  - name: grafana
-    url: https://grafana.github.io/helm-charts
+  - name: grafana-community
+    url: https://grafana-community.github.io/helm-charts
 
 releases:
   - name: loki
     namespace: monitoring
-    chart: grafana/loki
-    version: "7.0.0"
+    chart: grafana-community/loki
+    version: "13.6.0"
     values:
       - values.yaml

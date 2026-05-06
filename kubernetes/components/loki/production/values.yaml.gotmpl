@@ -1,0 +1,213 @@
+# Loki Configuration for production
+# Monolithic mode (= 公式 docs の "Single Binary Mode") + S3 backend (Sub-project 1 outputs) + Pod Identity (loki SA)
+
+# =============================================================================
+# Deployment Mode (Decision 2)
+# =============================================================================
+# Monolithic = chart 内蔵の single binary deploy (= 公式 docs の "Single Binary Mode")。
+# 1 StatefulSet (replicas=1) で distributor / ingester / querier / query-frontend /
+# store-gateway / compactor を全部 in-process。small production 向け、HA は将来
+# SimpleScalable に upgrade。
+# NOTE: chart v13 で `SingleBinary` は削除され `Monolithic` に rename された。
+deploymentMode: Monolithic
+
+# =============================================================================
+# Loki Core Configuration
+# =============================================================================
+loki:
+  # 1 tenant 運用 (panicboat) のため auth 不要 (Decision 3)
+  auth_enabled: false
+
+  # -------------------------------------------------------------------------
+  # Common Config
+  # -------------------------------------------------------------------------
+  commonConfig:
+    path_prefix: /var/loki
+    # SingleBinary 1 replica なので replication_factor=1 (Decision 2)
+    # HA upgrade 時は SimpleScalable 3 replicas + replication_factor=3 に変更
+    replication_factor: 1
+
+  # -------------------------------------------------------------------------
+  # Storage Config (S3 backend, Sub-project 1 outputs)
+  # -------------------------------------------------------------------------
+  # NOTE: chart v13 で `loki.storage.bucketNames.{chunks, ruler}` は chart の独自
+  # abstraction で、rendered manifest の `common.storage.s3.bucketnames` には届かない
+  # (= 空文字列のまま)。runtime では `storage_config.aws.bucketnames` (下記) と
+  # `ruler.storage.s3.bucketnames` 経由で bucket 参照されるため動作影響なし。Loki が
+  # common.storage を fallback で参照するパスで起動失敗が観測された場合は
+  # `loki.commonConfig.storage` を明示的に s3 設定する追加 fix を実施する。
+  storage:
+    type: s3
+    bucketNames:
+      chunks: {{ .Values.loki.bucketName }}
+      ruler: {{ .Values.loki.bucketName }}
+    s3:
+      region: ap-northeast-1
+      # AWS S3 native = path style 不要 (= virtual-hosted style)
+      s3ForcePathStyle: false
+      # AWS_ENDPOINT_URL 不要 (= default endpoint)
+      endpoint: null
+      # Pod Identity 経由のため access key 不要
+      accessKeyId: null
+      secretAccessKey: null
+
+  # -------------------------------------------------------------------------
+  # Schema Config (TSDB schema = Loki 3.x recommended)
+  # -------------------------------------------------------------------------
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          # env prefix で IAM policy s3:prefix=production と整合
+          prefix: production_index_
+          period: 24h
+
+  # -------------------------------------------------------------------------
+  # Storage Config (env prefix for IAM policy compat)
+  # -------------------------------------------------------------------------
+  storage_config:
+    aws:
+      bucketnames: {{ .Values.loki.bucketName }}
+      region: ap-northeast-1
+      s3forcepathstyle: false
+
+  # -------------------------------------------------------------------------
+  # Limits Config (retention 30d、Decision 3)
+  # -------------------------------------------------------------------------
+  limits_config:
+    # logs entry の最大保持期間 = aws/eks-logs/ S3 lifecycle 30d と整合
+    retention_period: 720h
+    # 1 stream あたりのログ entry rate 制限 (= burst protection)
+    ingestion_rate_mb: 4
+    ingestion_burst_size_mb: 6
+
+  # -------------------------------------------------------------------------
+  # Compactor (retention enforcement)
+  # -------------------------------------------------------------------------
+  compactor:
+    # S3 上の chunks を retention に基づき削除する (= aws/eks-logs/ S3 lifecycle と
+    # 同 30d、Loki 側でも明示的に enforce)
+    retention_enabled: true
+    retention_delete_delay: 2h
+
+  # -------------------------------------------------------------------------
+  # Ingester (= flush 間隔短縮、Decision 11 軽減策)
+  # -------------------------------------------------------------------------
+  ingester:
+    # WAL chunk を S3 に flush する間隔 (default は 5 min、AZ 障害時のロスト window
+    # を縮小するため 2 min に短縮)
+    chunk_idle_period: 2m
+    # max chunk age = 古い chunk を強制 flush
+    max_chunk_age: 5m
+
+# =============================================================================
+# ServiceAccount (Pod Identity for S3 access)
+# =============================================================================
+serviceAccount:
+  create: true
+  # aws/eks-logs/ で provision 済の Pod Identity Association が
+  # monitoring/loki SA を IAM role eks-production-loki に紐付け済
+  name: loki
+  # Pod Identity は IRSA と異なり annotation 不要 (cluster-side で managed)
+  annotations: {}
+
+# =============================================================================
+# SingleBinary StatefulSet (Decision 2)
+# =============================================================================
+singleBinary:
+  enabled: true
+  replicas: 1
+
+  # PVC: WAL + boltdb-shipper local cache を gp3 10Gi
+  persistence:
+    enabled: true
+    storageClass: gp3
+    size: 10Gi
+
+  # Resources (small production)
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1
+      memory: 2Gi
+
+  # PodDisruptionBudget は 1 replica なので minAvailable=0 (= 強制 evict 可能)
+  # default の `enabled: true` のままだと replicas=1 で minAvailable=1 になる
+  # 可能性があり、node drain 時に block する。明示的に disable。
+  podDisruptionBudget:
+    enabled: false
+
+# =============================================================================
+# Loki Gateway (chart 内蔵 nginx)
+# =============================================================================
+gateway:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  # Gateway は stateless (PVC なし)、1 replica + RollingUpdate で OK
+  # (= Sub-project 2 L3 の Multi-Attach 罠は PVC なしのため発生しない)
+
+# =============================================================================
+# Disable subcomponents (Monolithic mode で不要)
+# =============================================================================
+# SimpleScalable / Distributed mode の component を全 disable
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
+# Cache (memcached-based、small production では不要)
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+
+# Test (helm test 用、production では不要)
+test:
+  enabled: false
+
+# Loki Canary (= synthetic canary、small production では不要)
+lokiCanary:
+  enabled: false
+
+# Table-manager (= deprecated component、Loki 3.x では使わない)
+tableManager:
+  enabled: false
+
+# Network policy (panicboat では Cilium で別途管理、chart 内蔵は使わない)
+networkPolicy:
+  enabled: false
+
+# =============================================================================
+# Monitoring (ServiceMonitor for Prometheus auto-scrape)
+# =============================================================================
+# NOTE: chart v13 で monitoring.selfMonitoring section は削除されたため記述しない
+monitoring:
+  # Self-monitoring metrics を Prometheus が scrape
+  serviceMonitor:
+    enabled: true
+    # kube-prometheus-stack の ServiceMonitor selector に乗るための label
+    labels:
+      release: kube-prometheus-stack
+    interval: 15s
+
+  # Prometheus Rules (= alerting rules)、Phase 4 で alertmanager 設定時に有効化
+  rules:
+    enabled: false
+
+  # Loki dashboards (chart 内蔵 ConfigMap)、Phase 4 で別途 Grafana に投入
+  dashboards:
+    enabled: false

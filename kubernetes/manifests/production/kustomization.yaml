@@ -3,9 +3,11 @@ resources:
   - ./aws-load-balancer-controller
   - ./cilium
   - ./external-dns
+  - ./fluent-bit
   - ./gateway-api
   - ./karpenter
   - ./keda
+  - ./loki
   - ./metrics-server
   - ./mimir
   - ./prometheus-operator

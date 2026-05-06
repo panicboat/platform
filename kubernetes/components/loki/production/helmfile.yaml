@@ -1,0 +1,37 @@
+# =============================================================================
+# Loki Helmfile for production
+# =============================================================================
+# Phase 3 Sub-project 3 で deploy する Logs stack の Loki 本体。
+# SingleBinary mode (= chart 内蔵の Monolithic deploy、9 Pod Microservices ではなく
+# 1-2 Pod 構成、small production OK の Loki 公式 position に準拠)。
+# S3 backend は Sub-project 1 で provision 済の loki-559744160976 を Pod Identity
+# 経由でアクセス。
+#
+# Decision references:
+# - D2: SingleBinary mode (HA upgrade path 保持)
+# - D3: tenancy=anonymous + retention=30d + auth_enabled=false (Mimir 対称)
+# - D5: chart = grafana-community/loki v13.6.0 (Loki 3.7.1)
+# - D11: HA upgrade path 明示、WAL flush 1-2 min + retry buffer filesystem-backed
+# =============================================================================
+environments:
+  production:
+    # NOTE: helmfile v1.4 は親 helmfile.yaml.gotmpl の environments values を
+    # 子 helmfile に auto-inherit しないため、ここで再定義する。
+    # 値は kubernetes/helmfile.yaml.gotmpl の production env block と
+    # 同期すること (loki.bucketName / loki.bucketPathPrefix)。
+    values:
+      - loki:
+          bucketName: loki-559744160976
+          bucketPathPrefix: production
+---
+repositories:
+  - name: grafana-community
+    url: https://grafana-community.github.io/helm-charts
+
+releases:
+  - name: loki
+    namespace: monitoring
+    chart: grafana-community/loki
+    version: "13.6.0"
+    values:
+      - values.yaml.gotmpl

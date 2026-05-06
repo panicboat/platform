@@ -5,7 +5,8 @@
 # Deployment Mode
 # =============================================================================
 # TODO: (production) Use "distributed" mode for high availability in production
-deploymentMode: SingleBinary
+# NOTE: "SingleBinary" は grafana-community/loki v13 で deprecated。正式名称は "Monolithic"
+deploymentMode: Monolithic
 
 # =============================================================================
 # Loki Configuration
@@ -98,7 +99,9 @@ gateway:
 # =============================================================================
 # Cache Configuration
 # =============================================================================
-results_cache:
+# NOTE: grafana-community/loki v13 では snake_case の results_cache は camelCase の
+# resultsCache に変更された
+resultsCache:
   enabled: false
 
 chunksCache:
@@ -117,10 +120,7 @@ write:
 # =============================================================================
 # Monitoring
 # =============================================================================
+# NOTE: grafana-community/loki v13 では monitoring.selfMonitoring セクションは削除された
 monitoring:
   serviceMonitor:
     enabled: true
-  selfMonitoring:
-    enabled: false
-    grafanaAgent:
-      installOperator: false
