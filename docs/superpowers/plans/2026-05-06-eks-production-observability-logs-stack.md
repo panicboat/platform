@@ -1343,3 +1343,174 @@ Expected: ≤ 100 (em dash の 3 byte 含む)、visible chars ≤ 70
 - [x] **Sub-project 2 L6 (gp3 StorageClass)** → Sub-project 2 で provision 済再利用、本 sub-project では作らない
 - [x] **Sub-project 2 L7 (Pod Identity webhook injection は Pod 作成時のみ)** → 新規 deploy のため初回起動時に正しく injection
 - [x] **Sub-project 2 L8 (storage_prefix 英数字制約)** → Loki schema config の `prefix: production_index_` で英数字 + underscore のみ使用、slash 不要 = Mimir L8 適用済
+
+---
+
+## Lessons Learned (post-execution)
+
+PR #291 (本 sub-project の初回 merge) で deploy した直後に 4 件の runtime issue が判明し、PR #292 で fix を完了 + Flux 同期再開して production cluster で logs stack が正常稼働するに至った。Sub-project 2 で確立した Flux suspend pattern (= L5) が再利用され、確立 pattern として validate された。今回の中で **公式 docs に基づく事実関係調査** + **Sub-project 1 で確立した IAM 設計の retrospective** が大きな知見となった。次 sub-project (Phase 3 Sub-project 4 Traces / Tempo) 設計時の参考と、運用 pattern の標準化のために記録する。
+
+### L1: chart の application 内部実装 (= 固定 path / 強制動作) は IAM design では予防困難
+
+Loki 3.x の compactor `delete_request_store` は **bucket root の固定 path `index/delete_requests/`** に DeleteObject 試行する。chart values で path 制御不可 ([Loki Issue #14657](https://github.com/grafana/loki/issues/14657) で `object_prefix` が全 component に一貫適用されない問題が報告)。Sub-project 1 で確立した env-scoped IAM (`${bucket}/${env}/*`) と整合しない。
+
+これは **brainstorming / planning 段階で予防困難** な性質の issue:
+
+- chart README / values に書かれていない application 内部実装
+- runtime で初めて表面化 (= initial deploy 時に CrashLoopBackOff)
+- post-merge cycle で発見されるべき (= Sub-project 2 L8 の "実 deploy 後に初めて見つかる errors" と同性質)
+
+**対処:**
+
+- **brainstorming 段階** で各 stack の **公式 IAM template** (= 公式 docs に明記された permission set) を必ず確認する慣習を導入。chart の application 内部実装に依存する path を IAM scope で control しない。
+- **post-merge verification** (= Sub-project 2 L4 で確立した pre-flight / post-flight 分割) を確実に回す。runtime issue は post-flight で catch する。
+
+### L2: Sub-project 1 IAM 設計の retrospective — env scope は IAM レベルではなく application-level prefix で
+
+Sub-project 1 で **env-scoped IAM** (= `${bucket}/${env}/*` の Resource scope + `s3:prefix=${env}/*` condition) を 3 sibling stack で確立した。これは AWS IAM の least privilege 原則に沿う設計だが、本 sub-project で **Loki 3.x compactor の bucket root 固定 path** と整合しないことが判明。
+
+公式 docs を再調査した結果:
+
+- **Grafana Loki 公式** ([Storage configuration AWS](https://grafana.com/docs/loki/latest/configure/storage/#aws)): `Resource: [${bucket}, ${bucket}/*]` (= prefix なし) を IAM template として推奨
+- **Grafana Tempo 公式** ([S3 configuration](https://grafana.com/docs/tempo/latest/configuration/s3/)): 同 Loki と同形式
+- **Grafana Mimir** ([Discussion #2264](https://github.com/grafana/mimir/discussions/2264)): community で同 pattern が主流、`storage_prefix` で application-level env scope 実現
+
+つまり **公式推奨は bucket-wide IAM + application-level prefix で env scope** であり、Sub-project 1 で確立した IAM レベルの env scope は **公式 pattern から逸脱した independent 設計** だった。
+
+**対処:**
+
+- 3 sibling stack の IAM policy を **`Resource: [${bucket}, ${bucket}/*]` に統一** (= Loki / Tempo 公式と整合)、env scope は各 stack の application-level prefix で担保:
+  - Mimir: `blocks_storage.storage_prefix: production` (Sub-project 2 で実証済)
+  - Tempo: `storage.trace.s3.prefix: production` (Sub-project 4 で予定)
+  - Loki: TSDB schema `index.prefix: production_index_` (本 sub-project で実装)
+- defense in depth は弱まるが (= bucket-wide write 権限)、各 application が prefix を強制するので env 越境 write は構造的に発生しない。
+- AWS multi-tenant pattern としては **bucket-per-tenant** が long-term sustainable ([AWS Storage Blog](https://aws.amazon.com/blogs/storage/design-patterns-for-multi-tenant-access-control-on-amazon-s3/))、Phase 4 以降で再検討候補。
+
+**Sub-project 1 spec / plan は本 sub-project では update しない**: 既に確立した historical record として保持、本 fix は Sub-project 3 の changeset で扱う。Sub-project 1 spec の D11 (= IAM 3-statement structure) は当時の判断として valid、ただし production 運用で Loki / Tempo を扱う場合は本 learnings を参照する。
+
+### L3: Helm chart default readinessProbe は application policy と矛盾する場合あり、values で override
+
+`fluent/fluent-bit` chart v0.57.3 の default readinessProbe は `/api/v2/health` (= comprehensive check、output retry limits + dropped chunks 累計を含む)。これは strict check で、production policy と矛盾する場合がある:
+
+- panicboat は `Retry_Limit no_limits` (= retry 無制限、長時間 outage 耐性) + `storage.type filesystem` (= node disk buffer) の policy
+- Loki ingester `max_chunk_age: 5m` 超過の古い entries は `entry too far behind` で reject される
+- これらの reject errors が retry buffer で蓄積 → `/api/v2/health` が HTTP 500 を返し続ける → Pod 永遠に NotReady
+
+**対処:**
+
+- readinessProbe + livenessProbe を **`/api/v1/health` (= Fluent Bit プロセス up の simple check)** に変更
+- output 健全性は ServiceMonitor 経由の Prometheus metrics で別途観測:
+  - `fluentbit_output_retries_failed_total`
+  - `fluentbit_output_dropped_records_total`
+  - 等を Mimir に remote_write、必要なら alertmanager で alerting
+- 一般化: **chart default の strict probe は確認すべき項目**。production policy (retry / buffer / output destination 等) と矛盾するケースを brainstorming 段階でチェックする。
+
+### L4: Uniform retention の場合は S3 lifecycle で代替、application-level retention は per-tenant rules 等の advanced feature 用
+
+Loki / Mimir の retention 機能 (`compactor.retention_enabled` 等) は **user-defined retention rules を強制するため** (= 「app=foo は 7d」「tenant=bar は 90d」等の差分 retention)。panicboat は uniform 30d retention で十分なため、application-level retention は redundant。
+
+加えて Loki 3.x の retention 機能は **delete request store** という追加 component を必要とし、bucket root 固定 path (= L1 で flag した issue) を使う。これが IAM 設計を複雑化させる。
+
+**対処:**
+
+- panicboat は **S3 lifecycle (= aws/eks-{metrics,logs,traces}/ で provision 済)** で uniform retention を担保。application-level retention 機能は OFF。
+  - Mimir: 90d (S3 lifecycle)
+  - Loki: 30d (S3 lifecycle)
+  - Tempo: TBD (Sub-project 4 で確定)
+- compactor 自体は **chunks compaction (= S3 IO 効率化、cost 削減)** のため起動を維持、retention enforcement のみ off。
+- 細かい per-tenant / per-stream retention rules が必要になったら **Phase 4 (advanced features)** で再検討 (= IAM 設計も含めた見直しが必要)。
+
+### L5: Flux suspend pattern が再利用、Sub-project 2 で確立した standard runbook として validate
+
+PR #291 merge 後の runtime issue 解消で **Sub-project 2 L5 (Flux suspend → 手 apply → 検証 → PR → resume)** pattern を再適用。production cluster で機能した。
+
+具体手順 (Sub-project 2 と同一):
+
+1. `flux suspend kustomization flux-system` で同期停止
+2. 手 `kubectl apply` で fix を当てて検証
+3. 検証 OK 確認後に PR 作成 + merge
+4. `flux reconcile source git` → `flux resume` → `flux reconcile kustomization --with-source` で resume
+5. cluster state と repo の最新 commit が等価 → idempotent re-apply で no-op
+
+**重要な再認証ポイント:**
+
+- `prune: true` の Kustomization でも、suspend 中は drift detection が止まるため手 apply で追加した resource (今回は IAM update + Loki/Fluent Bit values 更新) が削除されない
+- merge 後の resume は idempotent re-apply、cluster state が最新 commit と一致していれば Pod restart も発生しない (今回 Sub-project 2 stack の component は AGE 6h+ を維持、影響なし)
+- Loki SingleBinary も idempotent (= AGE 10m を維持、Flux re-apply で restart なし)
+
+**運用 pattern として確立:** 本 pattern を **production runtime fix の standard runbook** として spec template に組み込む。Sub-project 4 / 5 / ... で同種の post-merge issue が起きた場合に再利用する。
+
+### L6: Loki `auth_enabled: false` 時の internal default tenant ID = `fake`
+
+`auth_enabled: false` を設定した Loki は、`X-Scope-OrgID` header を **無視**して internal default tenant ID `fake` で全 logs を保存する ([Loki 公式 Multi-tenancy docs](https://grafana.com/docs/loki/latest/operations/multi-tenancy/)):
+
+> If multi-tenancy is disabled (auth_enabled: false), all data goes into the default tenant called `fake`.
+
+panicboat の Fluent Bit OUTPUT で `tenant_id: anonymous` を設定したが、Loki は `auth_enabled: false` で受けるため実際の S3 path は `${bucket}/fake/<chunks>/...` になる。
+
+**実害なし** (= 1 tenant 運用で全 logs が同 tenant に集約されるという挙動は同じ) が、以下の点で記録:
+
+- Grafana datasource の `X-Scope-OrgID: anonymous` header も実は無視される (Loki が `fake` で受ける)、ただし送信側のロジックは正しい
+- 将来 multi-tenant 化する場合 (= `auth_enabled: true` に切替) は、tenant ID の合意 (`anonymous` / `panicboat` / 等) を Fluent Bit OUTPUT + Grafana datasource + Mimir / Tempo (もし auth 有効化) で揃える必要
+
+**対処:**
+
+- 現状は `fake` のままで運用 (= 実害なし)
+- `auth_enabled: true` に切替する場合 (Phase 4 等で multi-tenant 必要時)、tenant ID を spec の Decision として明示記録、3 stack で揃える
+
+### L7: 3 sibling stack symmetric を維持しつつ runtime fix を行うコスト評価
+
+Sub-project 1 L5 で確立した「3 sibling stack symmetric」原則は long-term maintenance に効くが、runtime fix で **3 stack 全てを同時に変更する必要がある** ケースが出る (= 本 sub-project の IAM align)。
+
+評価:
+
+- **メリット**: Sub-project 1 plan / spec が template として 3 stack に展開されている → 1 箇所修正の方法論で 3 stack 同時に対応可能、template として再利用可能
+- **コスト**: 1 stack だけ修正 (= 例えば eks-logs だけ IAM align) で済む場合でも、symmetric 維持のため 3 stack apply が必要 → terragrunt apply のコストが 3 倍
+- **判定**: 今回は 3 stack 全てに公式準拠の IAM が適用されたので long-term ROI が positive。ただし **「1 stack 固有の fix で symmetric を捨てるべきか?」 の判断点は brainstorming で議論すべき**
+
+**対処:**
+
+- brainstorming / planning 段階で「sibling stack symmetric を維持するコスト」と「1 stack 固有の fix で済む価値」を明示比較する慣習。
+- 今回のケースは **公式 docs が 3 stack で同一の IAM template を推奨** していたため symmetric 維持が natural、長期 maintenance に有利と判断。
+
+### L8: subagent-driven-development の two-stage review が runtime issue を catch しない場合がある (= meta lesson 再認証)
+
+本 sub-project でも subagent-driven-development の two-stage review (spec compliance + code quality) を全 task で実施。Final code reviewer は subagent rate limit で controller 直接実施に切替。spec compliance / code quality レベルでは **Verdict: APPROVED** で完走したが、**post-merge で 4 件の runtime issue を発見**。
+
+これは **subagent-driven-development の review は code-level oversight に有効、runtime issue は別 cycle (= post-flight check) で発見される** という Sub-project 2 L8 の再確認。
+
+**対処:**
+
+- subagent-driven-development の two-stage review は継続 (= code-level oversight 効果は明確)
+- **post-flight check の確実性向上** が次の優先課題:
+  - 本 sub-project では Sub-project 2 L4 (= pre-flight / post-flight 分割) で post-flight 13 項目を spec に明示したが、実際の deploy 時に 1 件ずつ手動で確認した。**自動化** が次のステップ
+  - production cluster の Pod state を CI/CD で gate にする automated smoke test の検討 (= 全 Pod が `Running` になるまで CI が pass しない仕組み、Argo CD Health check 連携 等)
+  - Sub-project 4 / 5 では post-flight check を **時系列 alert** として組み込む (= merge 後 N 分以内に target Pods 全件 Ready のチェックを Prometheus alert として実装)
+
+### L9: 公式 docs の事実関係調査を brainstorming に組み込む
+
+本 sub-project の brainstorming 段階で、Loki chart の `grafana/loki` v7.0.0 → `grafana-community/loki` への organizational migration を web 検索で発見した (= Decision 5、Sub-project 2 L1 適用)。これと同種の調査を **IAM template 設計時にも実施すべきだった**。
+
+具体的には、Sub-project 1 brainstorming で IAM 3-statement structure を設計した時、**Loki / Tempo / Mimir の公式 IAM template を direct citation で確認しなかった**。私の判断で env-scoped IAM を採用、これが本 sub-project で表面化。
+
+**対処:**
+
+- spec brainstorming 時の checklist に **「主要 application / chart の公式 docs (= IAM template / config schema 等の reference) を web 検索で direct citation する」** を追加
+- 公式 docs の引用は spec の Decisions section に URL 付きで記録
+- 私の独自設計 (= 公式と乖離する判断) を spec に書く場合は、その理由を明示
+- memory file `mimir-mode-knowledge.md` の作成と同様に、各 stack の公式 position memory を作る慣習 (= Loki / Tempo / Fluent Bit / OTel Collector 等)
+
+### L10: Phase 3 全体の runtime fix 件数 = 9 件 (Sub-project 2 で 5 件 + Sub-project 3 で 4 件)、Phase 4 以降の改善材料
+
+Phase 3 で発生した runtime issue:
+
+| sub-project | runtime issue 数 | 主要 root causes |
+|---|---|---|
+| Sub-project 1 | 0 件 | (verification は code review のみ、AWS-side で deploy / cluster 影響なし) |
+| Sub-project 2 (Mimir) | 5 件 | gp3 StorageClass / Mimir 3.x schema / TSDB validator / Grafana datasource / Multi-Attach |
+| Sub-project 3 (Loki) | 4 件 | Loki 3.x config validator / Loki compactor 固定 path + IAM mismatch / Fluent Bit probe / (関連 IAM design retrospective) |
+| **合計 9 件** | runtime issue が **post-merge cycle で発見された** | brainstorming / planning では予防困難な性質 |
+
+→ **post-flight check の自動化** + **公式 docs 事実関係調査** + **Flux suspend pattern の確立** で次 sub-project (Sub-project 4) は runtime issue 数を減らす目標。
+
+ただし **完璧な spec / plan を目指すのではなく**、 rapid iteration の loop を高速・安全に回せる infrastructure (= Flux suspend pattern + post-flight verification + learnings 共有) に投資する方が ROI が高い、という Sub-project 2 L8 の meta lesson は引き続き valid。
