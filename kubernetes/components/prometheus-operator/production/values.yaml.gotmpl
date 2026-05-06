@@ -46,7 +46,7 @@ grafana:
       defaultDatasourceEnabled: false
 
   # -------------------------------------------------------------------------
-  # Data Sources (Mimir primary、Prometheus local secondary、Loki logs)
+  # Data Sources (Mimir primary、Prometheus local secondary、Loki logs、Tempo traces)
   # -------------------------------------------------------------------------
   datasources:
     datasources.yaml:
@@ -82,6 +82,20 @@ grafana:
             httpHeaderName1: X-Scope-OrgID
           secureJsonData:
             httpHeaderValue1: anonymous
+        # Phase 3 Sub-project 4a (Traces stack foundation)
+        - name: Tempo
+          uid: tempo
+          type: tempo
+          url: http://tempo.monitoring.svc.cluster.local:3200
+          access: proxy
+          isDefault: false
+          jsonData:
+            # 1 tenant 運用 (= Decision 8、multitenancy OFF)
+            httpMethod: GET
+            tracesToLogsV2:
+              datasourceUid: loki
+            tracesToMetrics:
+              datasourceUid: mimir
 
 # =============================================================================
 # Prometheus Configuration
