@@ -30,6 +30,12 @@ loki:
   # -------------------------------------------------------------------------
   # Storage Config (S3 backend, Sub-project 1 outputs)
   # -------------------------------------------------------------------------
+  # NOTE: chart v13 で `loki.storage.bucketNames.{chunks, ruler}` は chart の独自
+  # abstraction で、rendered manifest の `common.storage.s3.bucketnames` には届かない
+  # (= 空文字列のまま)。runtime では `storage_config.aws.bucketnames` (下記) と
+  # `ruler.storage.s3.bucketnames` 経由で bucket 参照されるため動作影響なし。Loki が
+  # common.storage を fallback で参照するパスで起動失敗が観測された場合は
+  # `loki.commonConfig.storage` を明示的に s3 設定する追加 fix を実施する。
   storage:
     type: s3
     bucketNames:
@@ -67,11 +73,6 @@ loki:
       bucketnames: {{ .Values.loki.bucketName }}
       region: ap-northeast-1
       s3forcepathstyle: false
-    tsdb_shipper:
-      # local cache (= Loki Pod の PVC 内に index cache を保持、S3 query 高速化)
-      active_index_directory: /var/loki/tsdb-index
-      cache_location: /var/loki/tsdb-cache
-      shared_store: s3
 
   # -------------------------------------------------------------------------
   # Limits Config (retention 30d、Decision 3)
@@ -182,7 +183,7 @@ test:
 lokiCanary:
   enabled: false
 
-# Tabler-manager (= deprecated component、Loki 3.x では使わない)
+# Table-manager (= deprecated component、Loki 3.x では使わない)
 tableManager:
   enabled: false
 
