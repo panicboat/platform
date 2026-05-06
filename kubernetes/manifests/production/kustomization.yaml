@@ -9,4 +9,3 @@ resources:
   - ./metrics-server
   - ./mimir
   - ./prometheus-operator
-  - ./storage-class
