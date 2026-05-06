@@ -1,0 +1,98 @@
+# Tempo Configuration for production
+# Monolithic mode + S3 backend (Sub-project 1 outputs) + Pod Identity (tempo SA)
+
+# =============================================================================
+# Tempo Core Configuration
+# =============================================================================
+tempo:
+  # 1 tenant 運用 (panicboat) のため multitenancy OFF (Decision 8)
+  multitenancyEnabled: false
+
+  # -------------------------------------------------------------------------
+  # Resources (small production)
+  # -------------------------------------------------------------------------
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 2Gi
+
+  # -------------------------------------------------------------------------
+  # Storage Config (S3 backend, Sub-project 1 outputs)
+  # -------------------------------------------------------------------------
+  storage:
+    trace:
+      backend: s3
+      s3:
+        bucket: {{ .Values.tempo.bucketName }}
+        endpoint: s3.ap-northeast-1.amazonaws.com
+        # application-level env scope (= Sub-project 3 L2 適用、IAM bucket-wide と整合)
+        prefix: {{ .Values.tempo.bucketPathPrefix }}
+        # AWS S3 native (HTTPS) = insecure: false (default)
+        # Pod Identity 経由のため access_key / secret_key 不要
+
+  # -------------------------------------------------------------------------
+  # Receivers (= 4b で OTel Collector からの OTLP 受信用、4a では未接続)
+  # -------------------------------------------------------------------------
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  # -------------------------------------------------------------------------
+  # Retention 機能は OFF (= chart default に任せる、Decision 5)
+  # -------------------------------------------------------------------------
+  # NOTE: 3 stack で application retention は OFF + S3 lifecycle で uniform 担保
+  # の panicboat pattern (Sub-project 3 L4 適用)。Tempo 内 retention 機能は
+  # per-tenant rules 等の advanced feature 用、panicboat の uniform 7d retention
+  # は aws/eks-traces/ S3 lifecycle で担保。
+
+  # -------------------------------------------------------------------------
+  # Metrics generator は OFF (= advanced features、Phase 4 で再検討)
+  # -------------------------------------------------------------------------
+  metricsGenerator:
+    enabled: false
+
+# =============================================================================
+# ServiceAccount (Pod Identity for S3 access)
+# =============================================================================
+serviceAccount:
+  create: true
+  # aws/eks-traces/ で provision 済の Pod Identity Association が
+  # monitoring/tempo SA を IAM role eks-production-tempo に紐付け済
+  name: tempo
+  # Pod Identity は IRSA と異なり annotation 不要 (cluster-side で managed)
+  annotations: {}
+
+# =============================================================================
+# Persistence (= WAL + 短期 compactor cache、Decision 12)
+# =============================================================================
+persistence:
+  enabled: true
+  storageClassName: gp3
+  size: 10Gi
+  accessModes:
+    - ReadWriteOnce
+
+# =============================================================================
+# Service Configuration
+# =============================================================================
+service:
+  type: ClusterIP
+
+# =============================================================================
+# ServiceMonitor (Prometheus auto-scrape, Decision 9)
+# =============================================================================
+# NOTE: chart の serviceMonitor key 名は `additionalLabels` (Tempo chart 固有)。
+# OTel Collector chart の `extraLabels` とは別 key 名なので注意 (Sub-project 3 L3
+# = chart probe / serviceMonitor key 確認の実装段階精査の結果)。
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    release: kube-prometheus-stack
+  interval: 15s
