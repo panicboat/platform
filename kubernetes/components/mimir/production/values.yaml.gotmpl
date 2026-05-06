@@ -34,7 +34,10 @@ mimir:
           region: ap-northeast-1
           # SSE-S3 (AES256) は bucket-level の default encryption で適用済 (Sub-project 1)
     blocks_storage:
-      storage_prefix: "{{ .Values.mimir.bucketPathPrefix }}/"
+      # NOTE: Mimir 3.x の TSDB validator は `^[A-Za-z0-9]+$` のみ許可
+      # (slash/underscore/hyphen 不可)。slash 区切りは Mimir 内部で
+      # `<prefix>/<tenant>/<block_id>` の形に自動付加される。
+      storage_prefix: "{{ .Values.mimir.bucketPathPrefix }}"
       backend: s3
       s3:
         bucket_name: {{ .Values.mimir.bucketName }}
@@ -47,13 +50,10 @@ mimir:
       enabled: false
     ingester:
       push_grpc_method_enabled: true
-    # query_scheduler を disable しているため、frontend / frontend_worker から
-    # scheduler_address 参照を除去 (querier が直接 query-frontend と接続)
-    frontend:
-      scheduler_address: ""
-    frontend_worker:
-      frontend_address: mimir-distributed-query-frontend.monitoring.svc.cluster.local.:9095
-      scheduler_address: ""
+    # NOTE: frontend / frontend_worker は chart default に任せる
+    # (query_scheduler 有効時は chart が scheduler_address を query-scheduler
+    # service に向けて自動設定。Mimir 3.x で frontend_worker.frontend_address は
+    # worker.Config struct から削除済のため override 不可)。
 
 # =============================================================================
 # Disable bundled subcharts (本 sub-project では使わない)
@@ -66,7 +66,7 @@ kafka:
   enabled: false
 
 # =============================================================================
-# Disable unused Mimir components (本 sub-project で不要な 5 component)
+# Disable unused Mimir components (本 sub-project で不要な 4 component)
 # =============================================================================
 # kube-prometheus-stack 内蔵 Alertmanager を使うため、Mimir 内蔵を disable
 alertmanager:
@@ -74,10 +74,11 @@ alertmanager:
 # kube-prometheus-stack 内蔵 Prometheus rule で評価するため、Mimir 内蔵 ruler を disable
 ruler:
   enabled: false
-# small cluster で query-frontend 直接で十分、query-scheduler 不要
-query_scheduler:
-  enabled: false
-# multi-tenant 不要 (1 tenant)
+# NOTE: query_scheduler は Mimir 3.x で querier ↔ query-frontend 接続の前提
+# コンポーネント (chart default の true を採用、disable すると
+# frontend_worker.frontend_address が Mimir 3.x で削除済のため config schema
+# error になる)。
+# overrides_exporter: multi-tenant 不要 (1 tenant)
 overrides_exporter:
   enabled: false
 # NOTE: smoke_test Job は helm.sh/hook: test 付きで helm test 時のみ実行される
