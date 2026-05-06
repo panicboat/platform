@@ -36,6 +36,24 @@ tolerations:
     operator: Exists
 
 # =============================================================================
+# Probes (chart default の readinessProbe `/api/v2/health` を緩和)
+# =============================================================================
+# NOTE: chart default は readinessProbe `/api/v2/health` (= comprehensive check、
+# output retry limits + dropped chunks 累計を含む)。Retry_Limit no_limits + retry
+# buffer 内に reject される古い entries (= max_chunk_age 超過の "entry too far
+# behind") があると HTTP 500 を返し続け、Pod が永遠に Not Ready になる。
+# `/api/v1/health` (= Fluent Bit プロセス up の simple check) に変更し、output
+# 健全性は ServiceMonitor 経由の Prometheus metrics で別途観測する。
+livenessProbe:
+  httpGet:
+    path: /api/v1/health
+    port: http
+readinessProbe:
+  httpGet:
+    path: /api/v1/health
+    port: http
+
+# =============================================================================
 # Fluent Bit Config (production override)
 # =============================================================================
 config:
