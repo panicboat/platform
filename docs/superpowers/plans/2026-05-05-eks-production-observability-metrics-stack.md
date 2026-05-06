@@ -1377,3 +1377,118 @@ kill %1 2>/dev/null
 - [x] **Sub-project 1 L3 (resource count expected の精度)** → 本 plan の Task 1 Step 4 で expected を `8 to add, 0 to change, 8 to destroy` と書いた (Sub-project 1 と同 count、ただし全 resource が rename で destroy + create)
 - [x] **Sub-project 1 L4 (two-stage review が plan-level oversight catch)** → 本 plan の implementation でも subagent-driven-development で 2-stage review を継続
 - [x] **Sub-project 1 L5 (sibling stacks symmetric)** → 本 plan は sibling stack 無し、aws/eks-metrics/ stack 単独 + chart 2 つ独自構成
+
+---
+
+## Lessons Learned (post-execution)
+
+PR #287 (本 sub-project の初回 merge) で deploy した直後に 5 件の runtime issue が判明し、PR #289 で fix を完了 + Flux 同期再開して production cluster で metrics stack が正常稼働するに至った。実 deploy で初めて表面化した issues は brainstorming / plan 草案では予防困難な性質 (chart 内部の auto-generated resource、upstream の breaking change、low-level validator 等) を持つため、次 sub-project (Phase 3 Sub-project 3 Logs / 4 Traces) 設計時の参考と、運用 pattern の標準化のために記録する。
+
+### L1: Helm chart の major version upgrade で upstream の API/config schema breaking change を確認すべき
+
+`grafana/mimir-distributed` chart v6.0.6 (= Mimir 3.0.4) を採用したが、Mimir 3.x で **`frontend_worker.frontend_address` field が `worker.Config` struct から削除されている** ことを spec 草案時に把握していなかった。本 plan の Task 3 で `query_scheduler` を disable して `frontend_worker.frontend_address` で query-frontend に直接接続する override を書いたが、Mimir 3.x が config schema reject (`field frontend_address not found in type worker.Config`) して distributor / querier / query-frontend が CrashLoopBackOff となった。
+
+**影響:** Mimir Microservices mode の主要 component が起動不能 → metrics stack 全体が機能不全。chart README には触れられているが migration guide まで読まないと気づかない type の breaking change。
+
+**対処:**
+
+- Helm chart の major (e.g., v5 → v6) / minor (Mimir 2.x → 3.x のような upstream major) version 採用時は、**chart README の "Migration" / "Breaking changes" セクション + upstream upstream changelog の `BREAKING:` prefix entry** を必須確認とする
+- 関連: 本件で `query_scheduler` を chart default の `enabled: true` に戻したことで自動的に正しい `scheduler_address` 経由の接続になり解消 (= 余計な override をしないことが best practice)
+- spec 草案時の checklist に「chart values で override する各 field について、upstream の現行 schema で valid かを確認したか」を追加
+
+### L2: kube-prometheus-stack chart の grafana sidecar が auto-generated ConfigMap を持ち values override と並列に inject される
+
+`kube-prometheus-stack-grafana-datasource` ConfigMap (= chart が default で生成、`Prometheus` を `isDefault: true` で投入) と、本 plan で書いた `grafana.datasources.datasources.yaml` の `Mimir` (`isDefault: true`) が **同一 organization 内に default datasource 2 件** を作る形で衝突し、Grafana の datasource provisioning が `Datasource provisioning error: Only one datasource per organization can be marked as default` で失敗。
+
+**影響:** Grafana Pod の sidecar (= `kube-api-access` / `sc-dashboard` / `sc-datasources` の 3 sidecar 構成のうち datasource sidecar) が CrashLoop し、Pod 全体が `2/3 CrashLoopBackOff` 状態に。
+
+**対処:** PR #289 で `grafana.sidecar.datasources.defaultDatasourceEnabled: false` を追加して chart の自動 ConfigMap を抑止。
+
+- chart が auto-generated resource (ConfigMap / Secret / Service / etc.) を持つ場合、values で同種 resource を override する **前に** chart の auto-generation を disable する必要がある
+- spec 草案時の checklist に「chart の sidecar / hook / template が parent chart の override 対象 resource と並列に何かを生成しないか」を追加 (= chart `values.yaml` を `helm show values` で取得して `defaultXxxEnabled` / `enableYyy` 系 toggle を pre-survey する)
+
+### L3: EBS ReadWriteOnce PVC + Deployment.RollingUpdate = Multi-Attach error で永遠に Init から進まない
+
+Grafana Deployment の `strategy.type: RollingUpdate` (= chart default) で deploy したが、PVC が `ReadWriteOnce` (= EBS volume) のため、新 ReplicaSet の Pod が PVC を取れず `FailedAttachVolume: Multi-Attach error for volume "pvc-..." Volume is already used by pod(s) <old pod>` で永遠に Init で stuck。古い Pod が ready のうちは RollingUpdate が古い Pod を terminate しないため、新 Pod が PVC を待ち続け、結果 Deployment update が完了しない loop に。
+
+**影響:** Grafana の rollout (datasource ConfigMap fix の反映等) が deadlock。kubectl で古い Pod を手動 delete することで一時しのぎは可能だが、values 修正のたびに同じ問題が再発する。
+
+**対処:** PR #289 で `grafana.deploymentStrategy.type: Recreate` を追加。
+
+- **RWO PVC を持つ Deployment は `strategy.type: Recreate` を必須化** する (= ダウンタイム数十秒許容)。Grafana / Loki / Tempo / Prometheus 等の monitoring tools は単一 replica + RWO PVC が一般的なので、Sub-project 3 / 4 の Loki / Tempo / Beyla / OpenTelemetry Collector deploy 時にも最初から `Recreate` で書く
+- spec 草案時の checklist に「Deployment + PVC の組み合わせの場合、access mode が RWO か RWX かを確認、RWO なら strategy = Recreate を明示」を追加
+- 関連: StatefulSet は Pod-level の OrderedReady 制御で同様の問題が起きにくい (= PVC は Pod template で 1:1 binding) ため Mimir の ingester / compactor / store-gateway では発生しなかった
+
+### L4: Spec verification step は pre-flight (merge 前) と post-flight (merge 後) に明確分割すべき、destructive ops は merge 前必須
+
+本 sub-project の spec で書いた "8-step verification plan" のうち **Step 1 `terragrunt apply` (= aws/eks-metrics で `thanos-559744160976` → `mimir-559744160976` rename = 8 destroy + 8 create) が merge 後にスキップされた**。ユーザーは PR #287 を merge → Flux が反映 → Mimir Pod が S3 access error で起動失敗 → assistant に状況を報告、という順序になり、**bucket rename という destructive ops が GitOps loop の外で別管理されている前提が暗黙だった** ことが表面化。
+
+**影響:** merge 後に Pod 群が起動しない状態が約 1 時間続いた (バケットが空だったためデータロスは無かったが、本番 cluster の運用劣化)。spec D4 (= rename) は brainstorming で議論された明示的決定だったにもかかわらず、verification step が「merge 後にユーザーが手動で実行する想定」だったため抜け落ちた。
+
+**対処:**
+
+- spec / plan の verification を **以下 2 種に明確分離**:
+  - **Pre-flight (merge 前 = PR draft 中に完了すべき)**: terragrunt apply / DB migration / IAM changes / Secrets rotation 等の **destructive / irreversible ops**
+  - **Post-flight (merge 後の GitOps 反映後 verify)**: Pod 起動確認 / API 疎通 / data flow 確認等の **read-only / observable verifications**
+- spec template の Test Plan section に Pre-flight / Post-flight の sub-section を分ける convention を導入
+- destructive ops が pre-flight に含まれる PR は、PR description に **「Pre-flight check 全件 ✅ を確認してから Ready for review」** を明記 (= reviewer が pre-flight 状態を確認可能に)
+- 関連: writing-plans skill の Test Plan section template を update する learnings (skill 改善 PR にて別途反映)
+
+### L5: production runtime fix の標準フロー: `flux suspend → 手 apply → 検証 → PR merge → flux resume`
+
+PR #287 merge 後の runtime issue を解消するにあたり、`flux suspend kustomization X` で同期を停止 → cluster に手 `kubectl apply` で fix を当てて検証 → 検証 OK 確認後に PR #289 を作成・merge → `flux reconcile source git X` → `flux resume kustomization X` → `flux reconcile kustomization X --with-source` で安全に同期再開する pattern を採用し、production cluster で機能した。
+
+**機能した仕組み:**
+
+- `prune: true` の Kustomization でも、suspend 中は drift detection が止まるため手 apply で追加した resource (gp3 StorageClass / patched Mimir manifest 等) が削除されない
+- merge 後の resume は **idempotent re-apply** であり、cluster state と repo の最新 commit が等価な場合は no-op (= 再度 Pod restart が起きない)
+- helm chart 由来の rendered manifest が Flux により再 apply される際は、helm template の deterministic 性で同じ output が出る → server-side apply の field manager 衝突なく nochange
+
+**対処:** 本 pattern を **production runtime fix の standard runbook** として記録。次 sub-project (Sub-project 3 / 4) で同種の post-merge issue が起きた場合に再利用する。
+
+- step 順序の重要性: **PR merge を resume の前に完了** させること (= resume 時に Flux が古い commit を pull して prune する事故を防ぐ)
+- `flux reconcile source git` を resume の前に実行することで、最新 commit を source-controller に取り込ませてから kustomize-controller に reconcile させる安全順序
+
+### L6: `gp3` StorageClass は EKS default に含まれず、foundational resource として明示 provision が必要
+
+EKS の default StorageClass は `gp2` (= in-tree provisioner `kubernetes.io/aws-ebs`) のみで、`gp3` を使うには **EBS CSI driver (= addon、本 cluster では稼働中) を活用する独自 StorageClass を別途 apply する必要がある**。本 sub-project の spec で Mimir / Prometheus / Grafana / Alertmanager の PVC を `storageClassName: gp3` で指定したが、StorageClass 自体の provision step が plan に無く、PVC 全 6 件が `Pending` (`storageclass.storage.k8s.io "gp3" not found`) となり、Prometheus / Alertmanager の StatefulSet 自体が prometheus-operator により作成されない (= operator が validation で reject) 状態に。
+
+**影響:** Pending PVC が 6 件 + StatefulSet 自体の不在で metrics stack の半分が deploy 不能。
+
+**対処:** PR #289 で `kubernetes/manifests/production/storage-class/{kustomization.yaml, storage-classes.yaml}` を新設し `00-namespaces` と同じ foundational pattern (= helm chart 不要の raw manifest を直置き) で provision。
+
+- foundational k8s resource (StorageClass / IngressClass / PriorityClass / Namespace 等) は cluster bootstrap 時に provision する必要があるため、**spec 草案時の "Pre-requisites" section で前提資源を明示** する
+- 特に `storageClassName: <name>` を values に書く場合、その `<name>` が cluster に存在することを確認する pre-flight check を verification plan に含める (`kubectl get storageclass <name>`)
+- 将来的に Sub-project 3 (Loki) / Sub-project 4 (Tempo) でも `gp3` 前提だが、本 PR で provision 済のため両 sub-project では再 provision 不要 (= storage-class component が共有される)
+
+### L7: K8s controller は unhealthy Pod を常に強制再生成しない (kubectl delete pod / Pod-level rollout が必要なシナリオがある)
+
+本 sub-project の verification 中に 2 種類の "Pod state を強制更新する必要があるシナリオ" を観測:
+
+- **StatefulSet の OrderedReady rollout**: `kubectl rollout restart statefulset` は新 Pod template (= ReplicaSet hash) を生成するが、既存 Pod-0 が unhealthy (CrashLoop) で stuck している場合、StatefulSet controller は **既存 Pod-0 が ready になる** を待って次の操作を行うため、新 Pod-0 への置き換えが起きない。本件では Mimir の compactor / store-gateway が約 1 時間古い Pod のまま CrashLoop し続けた。
+- **EKS Pod Identity Webhook の injection タイミング**: Pod Identity Association を AWS-side で update (`prometheus` SA → `mimir` SA に rename) しても、既存 Pod の env (`AWS_CONTAINER_CREDENTIALS_FULL_URI` 等) は更新されない。webhook は **Pod 作成時 (Mutating admission)** に env を inject する仕様のため、既存 Pod は古い IAM context のまま EC2 instance role にフォールバックする。
+
+両ケースとも `kubectl delete pod <name>` で強制 delete + 再生成すれば webhook injection が走り正常化する。
+
+**対処:** spec / runbook の "Common pitfalls" section に以下を記録:
+
+- StatefulSet で config / image 更新後に Pod が permanent CrashLoop している場合は `kubectl delete pod <statefulset-name>-0` で強制再生成
+- Pod Identity Association を変更したら **対象 SA を使う Pod 全件を rollout restart** (もしくは delete pod)
+- webhook injection 系 (= Pod Identity / Istio sidecar / Cilium identity 等) は新 Pod 作成時にしか発動しないことを前提にした runbook を整備
+
+### L8: Brainstorming / plan で全 runtime issue を予防するのは困難、post-merge verification loop の確実性こそが quality gate
+
+本 sub-project の 5 root causes (gp3 StorageClass 不在 / Mimir 3.x schema breaking / TSDB validator / Grafana datasource conflict / Multi-Attach + RollingUpdate) のうち、**brainstorming 段階で予防可能だったのは L1 (changelog 確認) と L4 (verification step 分割) の 2 件のみ**。残る L2 / L3 / L6 は実 deploy 後に表面化する性質 (chart 内部の auto-generation / k8s scheduler ↔ EBS interaction / EKS default 不在) のもので、人間の oversight bandwidth で全網羅は現実的でない。
+
+**機能した quality gate:**
+
+- subagent-driven-development の two-stage review (spec compliance + code quality) は **code-level oversight** (typo / 型不整合 / spec 逸脱) に有効に機能した — Final code reviewer が rebase 必要性 / Thanos TODO 残存 / PR title 長さ等を catch
+- ただし **runtime issue は別 loop が必要**: PR merge → GitOps 反映 → cluster 状態 verify という post-merge cycle で発見される
+
+**対処:**
+
+- brainstorming / writing-plans 段階の self-review は continued (= L1 / L4 系の learnings は再発を減らす) しつつ、**post-merge verification loop の確実性を上げる** ことを次の優先課題とする:
+  - production cluster の Pod state を CI/CD で gate にする automated smoke test の検討 (= 全 Pod が `Running` になるまで CI が pass しない仕組み)
+  - Sub-project 3 / 4 の plan で Test Plan に "merge 後 N 分以内に target Pods 全件 Ready" という concrete success criteria を記述
+  - 本 sub-project で確立した "Flux suspend → 手 apply → PR → resume" pattern を runtime fix の標準として再利用 (L5)
+- meta lesson: spec / plan の **完璧** を目指すのではなく、**rapid iteration の loop を高速・安全に回せる infrastructure** に投資する方が ROI が高い (= "ship and learn" approach、ただし production-grade safety を伴う形で)
