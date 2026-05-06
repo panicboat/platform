@@ -55,6 +55,11 @@ environments:
           bucketName: loki-559744160976
           bucketPathPrefix: production
           podIdentityRoleName: eks-production-loki
+        tempo:
+          # Source: aws/eks-traces/envs/production terragrunt output
+          bucketName: tempo-559744160976
+          bucketPathPrefix: production
+          podIdentityRoleName: eks-production-tempo
   # TODO: (staging) Uncomment and configure when staging cluster is provisioned
   # staging:
   #   values:
