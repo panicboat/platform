@@ -1,0 +1,89 @@
+# OpenTelemetry Collector Configuration for production
+# Deployment mode + 4a では traces pipeline only (Decision 11、metrics/logs は 4b で追加)
+
+# =============================================================================
+# Deployment Mode (Decision 4)
+# =============================================================================
+mode: deployment
+replicaCount: 1
+
+# =============================================================================
+# Image (contrib for k8sattributes processor 等の拡張機能、4b で利用)
+# =============================================================================
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: 0.151.0
+
+# =============================================================================
+# Resources (small production)
+# =============================================================================
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 1Gi
+
+# =============================================================================
+# Service Configuration
+# =============================================================================
+service:
+  type: ClusterIP
+
+# =============================================================================
+# Ports (= metrics port を必ず enable、ServiceMonitor 用)
+# =============================================================================
+# NOTE: chart README に明記「The metrics port is disabled by default. However
+# you need to enable the port in order to use the ServiceMonitor」。Sub-project 3
+# L3 (chart probe / port enable 設定の実装段階精査) を適用、明示的に enable する。
+ports:
+  metrics:
+    enabled: true
+    containerPort: 8888
+    servicePort: 8888
+    protocol: TCP
+
+# =============================================================================
+# ServiceMonitor (Prometheus auto-scrape, Decision 9)
+# =============================================================================
+# NOTE: chart の serviceMonitor key 名は `extraLabels` (OTel Collector chart 固有)。
+# Tempo chart の `additionalLabels`、fluent-bit chart の `selector` とは別 key
+# 名なので注意 (Sub-project 3 L3 = chart 固有 key 確認の実装段階精査の結果)。
+serviceMonitor:
+  enabled: true
+  extraLabels:
+    release: kube-prometheus-stack
+  metricsEndpoints:
+    - port: metrics
+      interval: 15s
+
+# =============================================================================
+# Collector Config (4a 範囲 = traces pipeline のみ override、Decision 11)
+# =============================================================================
+# NOTE: chart default で logs / metrics pipelines も pre-configure されるが、
+# 4a では source 未接続 (= 4b で wire up 予定) のため effective に inactive。
+# 4b で metrics / logs sources (Hubble / Beyla / Fluent Bit) を接続するときに
+# pipelines を実利用化する。本 4a で override するのは:
+#   1. exporters: otlp/tempo を追加 (= traces を Tempo に export)
+#   2. service.pipelines.traces: chart default の exporters [debug] を
+#      [otlp/tempo] に上書き
+config:
+  exporters:
+    # 4a で追加: Tempo exporter (4b で metrics / logs exporters 追加予定)
+    otlp/tempo:
+      endpoint: tempo.monitoring.svc.cluster.local:4317
+      tls:
+        insecure: true
+  service:
+    pipelines:
+      traces:
+        # chart default の exporters: [debug] を override、Tempo に export
+        exporters:
+          - otlp/tempo
+        # processors / receivers は chart default を継承 (= memory_limiter + batch / otlp)
+        processors:
+          - memory_limiter
+          - batch
+        receivers:
+          - otlp
