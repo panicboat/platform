@@ -6,6 +6,7 @@ resources:
   - ./gateway-api
   - ./karpenter
   - ./keda
+  - ./loki
   - ./metrics-server
   - ./mimir
   - ./prometheus-operator
