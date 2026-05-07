@@ -916,3 +916,123 @@ Expected:
 - [x] `loki:` exporter (OTel Collector): endpoint URL `http://loki-gateway.monitoring.svc.cluster.local:80/loki/api/v1/push` (= Sub-project 3 で deploy 済 service と整合)
 - [x] mermaid label `OTLP gRPC` (Architecture + Dataflow 両方): 統一
 - [x] commit subject prefix: `feat(eks):` (= 4 implementation commits) / `docs(kubernetes):` (= README) / `feat(eks):` (= hydrate)、Sub-project 4a と整合
+
+---
+
+## Lessons Learned (post-execution)
+
+PR #296 (本 sub-project の merge) で deploy した直後、post-flight verification で **2 件の連鎖 persistent issue** を検出、PR #302 + PR #303 の 2 段階 runtime fix で解消した。Sub-project 4a で 0 runtime issue を達成した直後の「累積効果リセット」事象であり、Sub-project 1-4a の learnings 適用 pattern が破綻した点を中心に記録。次 sub-project (Phase 4) 設計時の参考として、また spec 検証 pattern の改善材料として残す。
+
+### Phase 3 全体 runtime issue 数 update
+
+| Sub-project | initial deploy 起因 | runtime fix 起因 | 計 |
+|---|---|---|---|
+| Sub-project 1 (AWS infra) | 0 件 | 0 件 | 0 件 |
+| Sub-project 2 (Mimir) | 5 件 | 0 件 | 5 件 |
+| Sub-project 3 (Loki + Fluent Bit) | 4 件 | 0 件 | 4 件 |
+| Sub-project 4a (Tempo + OTel Collector) | 0 件 | 0 件 | 0 件 |
+| **Sub-project 4b (logs path completion)** | **3 件** | 0 件 | **3 件** |
+| **Phase 3 累計** | | | **12 件** (= Sub-project 4a 完了時 9 件 + 4b で 3 件追加) |
+
+4a 完了時の "累計 9 件のまま据置" 目標 (= 4a L8) は **未達**。Phase 3 累計 12 件で Phase 4 へ引き継ぎ。
+
+### L1: spec 段階で chart binary に含まれる component 群を verify する重要性 (= Sub-project 3 L9 deepen)
+
+4b spec で `loki` exporter を採用した時点で、OTel Collector contrib v0.151.0 (= 4a で deploy 済) に該 exporter が含まれているかを **chart binary レベルで verify せず** spec 確定。Sub-project 3 L9 (= 公式 docs 引用) は適用していたが、Grafana Loki 公式 docs の `loki` exporter 記述は古い情報のまま、deprecate / removal の事実は OTel Collector contrib 側の changelog / GitHub issues を別途調べないと判明しなかった。
+
+**Why**: 公式 docs 引用は **「documented」 と 「currently supported」 を混同するリスク** がある。Loki 公式 docs は OTel exporter の旧来の使い方を継続的に記載しており、「OTel side で deprecate されている」という事実は片側 docs では拾えない。
+
+**How to apply (= Phase 4 brainstorming で適用)**:
+
+1. **chart binary を直接 verify**: `helm template` で render される manifest に該 component の存在を確認するだけでなく、**該 component の type 名を chart binary の component registry に存在するかを cross-check** する。具体的には:
+   - chart のソースを GitHub で読む (= `kubectl get configmap -n <ns> <name> -o yaml | yq` で render 結果と)
+   - exporters の場合: `otelcol-contrib --help` (or `otelcol-contrib components` subcommand) で利用可能な component を list
+   - もしくは事前に **draft pod で `--config=` validate** を実行 (= 起動 1 秒で config parse error を catch)
+2. **両側 docs の cross reference**: source side (Grafana Loki) + sink side (OTel Collector contrib) の両方の docs / changelog / GitHub issues を確認
+3. **deprecation timeline の認識**: 公式 docs に "deprecated" 記載が無くても、GitHub issues で deprecation を tracking している場合がある (= `cilium/hubble-otel` archived の例と同 pattern)
+
+### L2: Helm chart の DaemonSet rolling update 戦略は default (`maxUnavailable: 1`) だと Pending pod 1 件で完全停止する
+
+4b で Fluent Bit ConfigMap を変更したが、DaemonSet rolling update が **31h+ 経過しても進行せず**、4 nodes の running pod が OLD config (Loki direct) のまま、production logs path が事実上 bypass される persistent issue が発生。
+
+**Root cause**:
+- ip-10-0-39-100 node が CPU 95% 使用 (= Karpenter consolidation 不可、pre-existing)
+- DaemonSet が ip-10-0-39-100 に新 pod schedule 試行 → Pending
+- chart default の `updateStrategy.rollingUpdate.maxUnavailable: 1` だと、Pending pod 1 件が制約を埋めて、他 4 nodes の rolling 進行不可
+
+**Fix**: `maxUnavailable: 2` に拡大 (PR #303)、scheduling 失敗の 1 pod を許容しつつ rolling 進行可能に。
+
+**Why**: chart の default 値は **「正常 cluster で全 nodes が ready」前提** で組まれており、cluster 状態 (= CPU 逼迫 node 等) と組み合わせると static deadlock を生む。これは spec / plan の段階では発見しにくく、actual cluster の Karpenter 状態 + DaemonSet 配置 + chart default updateStrategy の組合せ問題。
+
+**How to apply**:
+
+1. **Helm chart の default rolling update strategy を必ず inspect**: `helm show values <chart>` で `updateStrategy` block の chart default を確認、cluster の規模・node 数・scheduling 余裕度との組合せで risk 評価
+2. **DaemonSet 系 chart は `maxUnavailable: <最低でも N>2`** を default で設定: scheduling 失敗 risk のある node が 1 つあるだけで rolling 停止する pattern を回避
+3. **Post-flight check に「ConfigMap checksum と Pod の checksum annotation 比較」を組み込む**: rolling update が完了したかを直接 verify する一意の方法。`kubectl get daemonset <name> -o jsonpath='{.spec.template.metadata.annotations.checksum/config}'` と `kubectl get pods -l ... -o jsonpath='{range .items[*]}{.metadata.annotations.checksum/config}{"\n"}{end}'` の comparison
+
+### L3: OTel Collector exporter alias deprecation cascade (= 連鎖 rename)
+
+4b implementation で `loki` exporter を採用 → fix #1 で `otlphttp/loki` に → fix #2 で `otlp_http/loki` (canonical) に → 学習 PR で `otlp/tempo` も `otlp_grpc/tempo` に。
+
+**Pattern**: OTel Collector contrib の component type 名は **canonical name と alias 名の両方が存在** し、alias が deprecated でも長期間 (= ~1-2 年) 動作する。気付いた時点で全 occurrences を rename しないと、deprecation warnings が log を埋める永続化問題に。
+
+**Concrete cascade**:
+1. **Fix #1 (PR #302)**: `loki:` (= 削除済) → `otlphttp/loki:` (= alias、動作する)
+2. **Fix #2 (PR #303)**: `otlphttp/loki:` (= alias) → `otlp_http/loki:` (= canonical)
+3. **Learnings PR**: `otlp/tempo:` (= alias、4a で採用) → `otlp_grpc/tempo:` (= canonical)
+
+**How to apply**:
+
+1. **chart values で component type を採用する際、alias / canonical の判定**: `otelcol-contrib --help` か contrib repo の `exporter/<name>/factory.go` で `Type()` 関数の戻り値を確認、**alias の場合は最初から canonical を採用**
+2. **deprecation warning を log で確認する post-flight check 追加**: `kubectl logs ... | grep -iE "deprecat|warn"` を全 OTel signal pipeline で実施
+
+### L4: Fix forward pattern の安定性 (= Sub-project 2 / 3 / 4b で繰返し validate)
+
+4b の 2 段階 fix forward (= PR #302 → PR #303) は、Sub-project 2 (Mimir Multi-Attach、5 fix) / 3 (Loki IAM + chart probe、4 fix) と同じ **standard runbook** で完遂。
+
+**確立した runbook**:
+
+```bash
+# 1. post-flight で persistent issue を確認 (= L3 checklist 5 step 適用)
+# 2. 新 worktree fix/<branch-name> を origin/main から作成
+# 3. minimal fix を 1-2 ファイルに limit、values + hydrated manifest の組合せで commit
+# 4. Draft PR を作成、PR body に root cause + decision references + test plan 含める
+# 5. USER review + merge
+# 6. Flux reconcile (= 1m interval で auto、急ぐ場合 manual trigger)
+# 7. post-flight で fix を verify、必要なら次 fix forward へ
+```
+
+**Why repeatable**: GitOps drift を発生させず (= manual kubectl operation 不要)、PR review chain で全 fix が記録される、cluster state は最終的に main と一致。
+
+**Phase 4 改善 candidate**: 自動化要件を考えると、post-flight check を Argo CD Health check / Prometheus alert 等で系統化すれば、persistent issue の検出 → 通知 → fix PR template の自動 generation まで一連の workflow が可能 (= Sub-project 3 L8 の延長)。
+
+### L5: Phase 3 全体まとめ + Phase 4 への引き継ぎ事項 (= 完成版)
+
+Phase 3 完了状態:
+
+| 観点 | 確立内容 |
+|---|---|
+| **3 stack architecture** | Mimir (Microservices) + Loki (SingleBinary) + Tempo (Monolithic) |
+| **AWS infra** | bucket per service + Pod Identity + bucket-wide IAM + application-level prefix env scope |
+| **retention** | application retention OFF + S3 lifecycle uniform 担保 (90d / 30d / 7d) |
+| **Network observability** | Hubble (Cilium native) → ServiceMonitor → Prometheus → Mimir |
+| **Application telemetry funnel** | Fluent Bit (logs OTLP gRPC) → OTel Collector → otlp_http/loki → Loki ✓ + Beyla (= Phase 4) → otlp_grpc/tempo → Tempo |
+| **monitoring** | kube-prometheus-stack で全 component を auto-scrape、Mimir に remote_write |
+| **runbook** | 通常 deploy + 問題発見時の Flux suspend pattern (Sub-project 3) + fix forward 2-3 段階 (Sub-project 2 / 3 / 4b) |
+
+**Phase 4 引き継ぎ事項 (= 4b 完了時、累計 8 件)**:
+
+1. **gp3 StorageClass の Flux 管理化** (= Sub-project 2 から継続)
+2. **bucket-per-env への migration 検討** (= Sub-project 3 L2)
+3. **multi-tenant 化 + 詳細 retention rules**
+4. **OTel Operator deploy 検討** (= application code 投入時)
+5. **post-flight check の自動化** (= Sub-project 3 L8 から継続、4b L4 で延長)
+6. **Beyla deploy + OTel Collector metrics pipeline 拡張** (= application code 投入時)
+7. **Hubble flow logs → Loki path 評価** (= 需要発生時)
+8. **local Fluent Bit OTLP protocol gRPC 統一** (= 4b で production-only gRPC migration したため)
+
+**新規** (= 4b 経験から発生):
+
+9. **ip-10-0-39-100 の CPU 逼迫 / Karpenter consolidation 不可問題**: cluster scheduling layer の design re-evaluation、DaemonSet 系 workload が均等配置されない現象の root cause 解析
+10. **OTel Collector exporter type の alias / canonical チェック自動化**: Phase 4 で OTel Operator deploy 時、values 内の component type を全 audit して alias 使用を検出する CI step を追加検討
+11. **Helm chart default DaemonSet `maxUnavailable: 1` の運用 risk audit**: 他 DaemonSet (Cilium agent / Cilium envoy / metrics-exporter / Fluent Bit) でも同様の deadlock pattern が起こり得るか確認、必要なら一律 `maxUnavailable: 2+` に統一
