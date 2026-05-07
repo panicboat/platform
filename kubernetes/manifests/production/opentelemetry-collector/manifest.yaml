@@ -32,7 +32,7 @@ data:
   relay: |
     exporters:
       debug: {}
-      otlp/tempo:
+      otlp_grpc/tempo:
         endpoint: tempo.monitoring.svc.cluster.local:4317
         tls:
           insecure: true
@@ -97,7 +97,7 @@ data:
           - prometheus
         traces:
           exporters:
-          - otlp/tempo
+          - otlp_grpc/tempo
           processors:
           - memory_limiter
           - batch
@@ -200,7 +200,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 50d9d69412144ef21b6925a0f50e3beb98529329e93b2c2a761f89ab3532eef1
+        checksum/config: 13f8d30ae27064d8b85842926c49da588d951cf59d3fd686ee25c2da6819bedb
         
       labels:
         app.kubernetes.io/name: opentelemetry-collector

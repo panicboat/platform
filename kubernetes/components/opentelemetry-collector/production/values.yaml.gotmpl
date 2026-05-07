@@ -64,7 +64,7 @@ serviceMonitor:
 # OTel Collector の receivers / processors / exporters / pipelines 設定。
 # chart default で全 pipeline (traces / logs / metrics) が pre-configure されており、
 # 各 pipeline で必要な exporter のみ override する方針:
-#   - traces: otlp/tempo exporter で Tempo に export
+#   - traces: otlp_grpc/tempo exporter で Tempo に export
 #   - logs: otlp_http/loki exporter で Loki OTLP endpoint (/otlp) に push
 #   - metrics: chart default の debug exporter のまま (= Phase 4 で Beyla source 接続時に再 design)
 #
@@ -74,7 +74,7 @@ serviceMonitor:
 config:
   exporters:
     # Tempo exporter: traces を gRPC で push
-    otlp/tempo:
+    otlp_grpc/tempo:
       endpoint: tempo.monitoring.svc.cluster.local:4317
       tls:
         insecure: true
@@ -86,9 +86,9 @@ config:
   service:
     pipelines:
       traces:
-        # chart default の exporters: [debug] を otlp/tempo に override
+        # chart default の exporters: [debug] を otlp_grpc/tempo に override
         exporters:
-          - otlp/tempo
+          - otlp_grpc/tempo
         processors:
           - memory_limiter
           - batch
