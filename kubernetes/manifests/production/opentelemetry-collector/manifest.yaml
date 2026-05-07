@@ -32,6 +32,11 @@ data:
   relay: |
     exporters:
       debug: {}
+      loki:
+        default_labels_enabled:
+          exporter: false
+          job: true
+        endpoint: http://loki-gateway.monitoring.svc.cluster.local:80/loki/api/v1/push
       otlp/tempo:
         endpoint: tempo.monitoring.svc.cluster.local:4317
         tls:
@@ -76,7 +81,7 @@ data:
       pipelines:
         logs:
           exporters:
-          - debug
+          - loki
           processors:
           - memory_limiter
           - batch
@@ -196,7 +201,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8ed5f3e11bd66da68bf85d440b0be40f36f09c5f5ad4e0547b1049094b8b8f72
+        checksum/config: c533df52ab69009b870bbcdb2a977f3acffea3a7f484e537fde9a65a4710ac93
         
       labels:
         app.kubernetes.io/name: opentelemetry-collector

@@ -40,16 +40,6 @@ metadata:
     app.kubernetes.io/name: keda
 ---
 # =============================================================================
-# OpenTelemetry Collector Namespace
-# =============================================================================
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: opentelemetry-system
-  labels:
-    app.kubernetes.io/name: opentelemetry-collector
----
-# =============================================================================
 # Monitoring Namespace
 # =============================================================================
 # This namespace contains the full observability stack:

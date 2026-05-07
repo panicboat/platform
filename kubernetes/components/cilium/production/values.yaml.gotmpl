@@ -36,6 +36,7 @@ operator:
     enabled: true
     serviceMonitor:
       enabled: true
+      trustCRDsExist: true  # offline helmfile template (hydrate) で CRD 未登録時のエラーを回避
       labels:
         release: kube-prometheus-stack
 
@@ -81,6 +82,7 @@ hubble:
       - http
     serviceMonitor:
       enabled: true
+      trustCRDsExist: true  # offline helmfile template (hydrate) で CRD 未登録時のエラーを回避
       labels:
         release: kube-prometheus-stack    # kube-prometheus-stack の serviceMonitorSelector match
 
@@ -97,5 +99,6 @@ prometheus:
   enabled: true
   serviceMonitor:
     enabled: true
+    trustCRDsExist: true  # offline helmfile template (hydrate) で CRD 未登録時のエラーを回避
     labels:
       release: kube-prometheus-stack

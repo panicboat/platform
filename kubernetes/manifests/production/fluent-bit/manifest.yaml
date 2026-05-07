@@ -78,26 +78,18 @@ data:
         Labels              On
     
     [OUTPUT]
-        Name              loki
+        Name              opentelemetry
         Match             kube.*
-        Host              loki-gateway.monitoring.svc.cluster.local
-        Port              80
-        # Loki API path
-        Uri               /loki/api/v1/push
-        # 1 tenant 運用 (= Decision 3)
-        tenant_id         anonymous
-        # Decision 4 labels = 最小 (namespace / pod / container)
-        labels            job=fluentbit, namespace=$kubernetes['namespace_name'], pod=$kubernetes['pod_name'], container=$kubernetes['container_name']
-        # 残りの k8s metadata は structured metadata で保持 (= cardinality cost なし)
-        structured_metadata node=$kubernetes['host'], stream=$stream
-        # remove kubernetes prefix from log fields (= structured_metadata で保持済)
-        remove_keys       kubernetes
+        Host              opentelemetry-collector.monitoring.svc.cluster.local
+        Port              4317
+        # OTLP gRPC over HTTP/2 (Sub-project 4b Decision 4)
+        grpc              on
         # gzip 圧縮で帯域削減
         compress          gzip
         # retry settings
         net.connect_timeout 10
         Retry_Limit       no_limits
-        # storage = filesystem buffer (= retry の永続化)
+        # storage = filesystem buffer (= retry の永続化、Decision 11 軽減策)
         storage.total_limit_size  5G
 ---
 # Source: fluent-bit/templates/clusterrole.yaml
@@ -188,7 +180,7 @@ spec:
         app.kubernetes.io/name: fluent-bit
         app.kubernetes.io/instance: fluent-bit
       annotations:
-        checksum/config: b82d3d3f47ce49225fc87c53159733eb28d8c736f2f007850dec503eb815a61b
+        checksum/config: 84ea4ed71235b5e296ee972c0619fb8b7ccc5b19160ff9b2e922fcb41cad27f3
     spec:
       
       serviceAccountName: fluent-bit
