@@ -188,6 +188,7 @@ spec:
     spec:
       
       serviceAccountName: fluent-bit
+      priorityClassName: system-node-critical
       hostNetwork: false
       dnsPolicy: ClusterFirst
       containers:

@@ -175,6 +175,10 @@ alertmanager:
 # Prometheus Node Exporter
 # =============================================================================
 prometheus-node-exporter:
+  # Cluster 全 node の metrics 収集は observability の前提条件であり、DaemonSet
+  # 完全性 (= 各 node に 1 pod 必須) を保証する。EKS / Cilium / EBS CSI 等の他
+  # system DaemonSets と同 priority に揃える。
+  priorityClassName: system-node-critical
   hostRootFsMount:
     enabled: true
     mountPropagation: HostToContainer
