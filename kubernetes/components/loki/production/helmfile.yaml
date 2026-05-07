@@ -32,6 +32,6 @@ releases:
   - name: loki
     namespace: monitoring
     chart: grafana-community/loki
-    version: "13.6.0"
+    version: "13.6.1"
     values:
       - values.yaml.gotmpl
