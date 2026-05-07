@@ -1,5 +1,5 @@
 # OpenTelemetry Collector Configuration for production
-# Deployment mode + 4a では traces pipeline only (Decision 11、metrics/logs は 4b で追加)
+# Deployment mode、traces + logs pipelines を実 sink (Tempo / Loki) に接続
 
 # =============================================================================
 # Deployment Mode (Decision 4)
@@ -8,7 +8,7 @@ mode: deployment
 replicaCount: 1
 
 # =============================================================================
-# Image (contrib for k8sattributes processor 等の拡張機能、4b で利用)
+# Image (contrib for k8sattributes processor 等の拡張機能)
 # =============================================================================
 image:
   repository: otel/opentelemetry-collector-contrib
@@ -35,8 +35,8 @@ service:
 # Ports (= metrics port を必ず enable、ServiceMonitor 用)
 # =============================================================================
 # NOTE: chart README に明記「The metrics port is disabled by default. However
-# you need to enable the port in order to use the ServiceMonitor」。Sub-project 3
-# L3 (chart probe / port enable 設定の実装段階精査) を適用、明示的に enable する。
+# you need to enable the port in order to use the ServiceMonitor」。
+# ServiceMonitor が機能するよう metrics port を明示的に enable する。
 ports:
   metrics:
     enabled: true
@@ -45,11 +45,11 @@ ports:
     protocol: TCP
 
 # =============================================================================
-# ServiceMonitor (Prometheus auto-scrape, Decision 9)
+# ServiceMonitor (Prometheus auto-scrape)
 # =============================================================================
 # NOTE: chart の serviceMonitor key 名は `extraLabels` (OTel Collector chart 固有)。
-# Tempo chart の `additionalLabels`、fluent-bit chart の `selector` とは別 key
-# 名なので注意 (Sub-project 3 L3 = chart 固有 key 確認の実装段階精査の結果)。
+# Tempo chart の `additionalLabels`、fluent-bit chart の `selector` とは異なる
+# key 名のため注意。
 serviceMonitor:
   enabled: true
   extraLabels:
@@ -59,29 +59,44 @@ serviceMonitor:
       interval: 15s
 
 # =============================================================================
-# Collector Config (4a 範囲 = traces pipeline のみ override、Decision 11)
+# Collector Config
 # =============================================================================
-# NOTE: chart default で logs / metrics pipelines も pre-configure されるが、
-# 4a では source 未接続 (= 4b で wire up 予定) のため effective に inactive。
-# 4b で metrics / logs sources (Hubble / Beyla / Fluent Bit) を接続するときに
-# pipelines を実利用化する。本 4a で override するのは:
-#   1. exporters: otlp/tempo を追加 (= traces を Tempo に export)
-#   2. service.pipelines.traces: chart default の exporters [debug] を
-#      [otlp/tempo] に上書き
+# OTel Collector の receivers / processors / exporters / pipelines 設定。
+# chart default で全 pipeline (traces / logs / metrics) が pre-configure されており、
+# 各 pipeline で必要な exporter のみ override する方針:
+#   - traces: otlp/tempo exporter で Tempo に export
+#   - logs: loki exporter で Loki gateway に push (= Fluent Bit からの logs を受信)
+#   - metrics: chart default の debug exporter のまま (= Phase 4 で Beyla source 接続時に再 design)
 config:
   exporters:
-    # 4a で追加: Tempo exporter (4b で metrics / logs exporters 追加予定)
+    # Tempo exporter: traces を gRPC で push
     otlp/tempo:
       endpoint: tempo.monitoring.svc.cluster.local:4317
       tls:
         insecure: true
+    # Loki exporter: Fluent Bit からの logs を Loki gateway に push
+    loki:
+      endpoint: http://loki-gateway.monitoring.svc.cluster.local:80/loki/api/v1/push
+      default_labels_enabled:
+        # exporter label は cardinality 抑制のため抑止
+        exporter: false
+        # job=fluentbit 等の identification label は維持
+        job: true
   service:
     pipelines:
       traces:
-        # chart default の exporters: [debug] を override、Tempo に export
+        # chart default の exporters: [debug] を otlp/tempo に override
         exporters:
           - otlp/tempo
-        # processors / receivers は chart default を継承 (= memory_limiter + batch / otlp)
+        processors:
+          - memory_limiter
+          - batch
+        receivers:
+          - otlp
+      logs:
+        # chart default の exporters: [debug] を loki に override
+        exporters:
+          - loki
         processors:
           - memory_limiter
           - batch

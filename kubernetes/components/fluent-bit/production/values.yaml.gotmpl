@@ -1,5 +1,5 @@
 # Fluent Bit Configuration for production
-# DaemonSet で container logs を tail、Loki Gateway に HTTP 直接 push (= Decision 1 中間状態)
+# DaemonSet で container logs を tail、OTel Collector に OTLP gRPC で push (= Sub-project 4b)
 
 # =============================================================================
 # Deployment Kind
@@ -10,7 +10,7 @@ kind: DaemonSet
 # =============================================================================
 # ServiceAccount (Decision 8: Pod Identity 不要)
 # =============================================================================
-# AWS access 不要 (Loki HTTP push のみ)、default SA で OK
+# AWS access 不要 (OTel Collector gRPC push のみ)、default SA で OK
 serviceAccount:
   create: true
   annotations: {}
@@ -113,30 +113,22 @@ config:
         Labels              On
 
   # -------------------------------------------------------------------------
-  # OUTPUTS (= Loki HTTP push、Decision 1 中間状態)
+  # OUTPUTS (= OTel Collector OTLP gRPC、Sub-project 4b で Loki direct から切替)
   # -------------------------------------------------------------------------
   outputs: |
     [OUTPUT]
-        Name              loki
+        Name              opentelemetry
         Match             kube.*
-        Host              loki-gateway.monitoring.svc.cluster.local
-        Port              80
-        # Loki API path
-        Uri               /loki/api/v1/push
-        # 1 tenant 運用 (= Decision 3)
-        tenant_id         anonymous
-        # Decision 4 labels = 最小 (namespace / pod / container)
-        labels            job=fluentbit, namespace=$kubernetes['namespace_name'], pod=$kubernetes['pod_name'], container=$kubernetes['container_name']
-        # 残りの k8s metadata は structured metadata で保持 (= cardinality cost なし)
-        structured_metadata node=$kubernetes['host'], stream=$stream
-        # remove kubernetes prefix from log fields (= structured_metadata で保持済)
-        remove_keys       kubernetes
+        Host              opentelemetry-collector.monitoring.svc.cluster.local
+        Port              4317
+        # OTLP gRPC over HTTP/2 (Sub-project 4b Decision 4)
+        grpc              on
         # gzip 圧縮で帯域削減
         compress          gzip
         # retry settings
         net.connect_timeout 10
         Retry_Limit       no_limits
-        # storage = filesystem buffer (= retry の永続化)
+        # storage = filesystem buffer (= retry の永続化、Decision 11 軽減策)
         storage.total_limit_size  5G
 
 # =============================================================================

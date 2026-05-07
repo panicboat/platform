@@ -8,54 +8,59 @@
 
 ```mermaid
 flowchart TB
-    subgraph EKS["EKS Cluster"]
+    subgraph EKS["EKS Cluster (eks-production)"]
         subgraph Apps["Application Pods"]
             App["App"]
         end
 
-        subgraph Collection["Collection Layer"]
+        subgraph Network["Network Layer"]
             Cilium["Cilium CNI<br/>(CNCF Graduated)"]
-            Hubble["Hubble"]
-            Beyla["Beyla<br/>(eBPF)"]
-            OTelCol["OTel Collector<br/>(CNCF Graduated)"]
-            FluentBit["Fluent Bit<br/>(CNCF Incubating)"]
+            Hubble["Hubble<br/>(Network L3/L4/L7 Observability)"]
+        end
+
+        subgraph AppTelemetry["Application Telemetry"]
+            Beyla["Beyla<br/>(eBPF DaemonSet)"]
+            OTelCol["OTel Collector<br/>(Deployment)"]
+            FluentBit["Fluent Bit<br/>(DaemonSet)"]
         end
 
         subgraph Storage["Storage Layer"]
-            Prometheus["Prometheus<br/>(CNCF Graduated)"]
-            Mimir["Mimir<br/>(Grafana Labs)"]
-            Tempo["Tempo"]
-            Loki["Loki"]
+            Prometheus["Prometheus<br/>(kube-prometheus-stack)"]
+            Mimir["Mimir<br/>(Microservices)"]
+            Tempo["Tempo<br/>(Monolithic)"]
+            Loki["Loki<br/>(SingleBinary)"]
         end
     end
 
-    subgraph S3["S3"]
-        S3Mimir[("Metrics")]
-        S3Tempo[("Traces")]
-        S3Loki[("Logs")]
+    subgraph S3["S3 (ap-northeast-1)"]
+        S3Mimir[("mimir-559744160976<br/>90d retention")]
+        S3Tempo[("tempo-559744160976<br/>7d retention")]
+        S3Loki[("loki-559744160976<br/>30d retention")]
     end
 
     Grafana["Grafana"]
 
-    %% Network
+    %% Network observability — Hubble は network metrics の native exporter、Prometheus が直接 scrape
     Cilium --> Hubble
+    Hubble -.->|metrics scrape<br/>ServiceMonitor| Prometheus
 
-    %% All telemetry → OTel Collector
-    Hubble -->|OTLP| OTelCol
+    %% Application traces + metrics → OTel Collector
     App -.->|eBPF| Beyla
-    Beyla -->|OTLP| OTelCol
+    Beyla -->|OTLP traces+metrics| OTelCol
 
-    %% OTel Collector → Backends
-    OTelCol -->|remote_write| Prometheus
-    OTelCol --> Tempo
+    %% Logs → Fluent Bit → OTel Collector
+    App -.->|stdout| FluentBit
+    FluentBit -->|OTLP gRPC| OTelCol
 
-    %% Logs
-    Apps -.->|stdout| FluentBit
-    FluentBit --> |OTLP| OTelCol
-    OTelCol --> Loki
+    %% OTel Collector → backends
+    OTelCol -->|OTLP gRPC traces| Tempo
+    OTelCol -->|loki exporter logs| Loki
+    OTelCol -.->|self-metrics scrape<br/>ServiceMonitor| Prometheus
+
+    %% Prometheus → Mimir long-term
+    Prometheus -->|remote_write| Mimir
 
     %% Long-term storage
-    Prometheus -->|remote_write| Mimir
     Mimir --> S3Mimir
     Tempo --> S3Tempo
     Loki --> S3Loki
@@ -66,36 +71,54 @@ flowchart TB
     Loki --> Grafana
 ```
 
+### 役割分離
+
+Signal は role 別に 2 funnel で流す。
+
+**Network Layer** (Cilium + Hubble): cluster の network behavior を観測する。Hubble は native Prometheus exporter として動作し、Prometheus が ServiceMonitor 経由で直接 scrape。Cilium NetworkPolicy enforcement の visibility と統合され、CNI と密結合。
+
+**Application Telemetry Funnel** (Beyla + Fluent Bit + OTel Collector): application code の trace / log / metric を集約する。OTel Collector を hub として全 signal が統一 metadata processor を通り、Tempo / Loki / Mimir へ route。
+
+両者を混ぜない理由:
+
+1. Hubble は Cilium native の Prometheus exporter で、追加 OTel hop は overhead 増の trade-off に見合わない
+2. network 視点と application 視点は cardinality / sampling 戦略が異なり、別 funnel の方が運用しやすい
+
 ### Dataflow
 
 ```mermaid
 flowchart LR
-    subgraph Sources["Data Sources"]
+    subgraph NetSources["Network Layer"]
         H["Hubble<br/>(Network L3/L4/L7)"]
+    end
+
+    subgraph AppSources["App Telemetry Sources"]
         B["Beyla<br/>(App L7)"]
         L["stdout"]
     end
 
-    subgraph Collector["Unified Collector (The Hub)"]
+    subgraph Funnel["Application Telemetry Funnel"]
         FB["Fluent Bit"]
         OTel["OTel Collector"]
     end
 
     subgraph Backends["Backends"]
-        P["Prometheus → Mimir"]
-        T["Tempo"]
-        LO["Loki"]
+        P["Prometheus → Mimir<br/>(metrics)"]
+        T["Tempo<br/>(traces)"]
+        LO["Loki<br/>(logs)"]
     end
 
-    H -->|OTLP| OTel
-    B -->|OTLP| OTel
+    Grafana["Grafana"]
+
+    H -.->|scraped| P
+
+    B -->|OTLP traces+metrics| OTel
     L -->|stdout| FB
+    FB -->|OTLP gRPC| OTel
 
-    FB -->|OTLP| OTel
-
-    OTel -->|Metrics| P
-    OTel -->|Traces| T
-    OTel -->|Logs| LO
+    OTel -.->|self-metrics scraped| P
+    OTel -->|OTLP| T
+    OTel -->|loki exporter logs| LO
 
     P --> Grafana
     T --> Grafana

@@ -32,6 +32,13 @@ k8sServicePort: 443
 operator:
   replicas: 2
   rollOutPods: true
+  prometheus:                         # Sub-project 4b で新規追加
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      trustCRDsExist: true  # offline helmfile template (hydrate) で CRD 未登録時のエラーを回避
+      labels:
+        release: kube-prometheus-stack
 
 # =============================================================================
 # L7 Proxy: 独立 DaemonSet
@@ -74,7 +81,10 @@ hubble:
       - icmp
       - http
     serviceMonitor:
-      enabled: false                  # Phase 3 で prometheus-operator 導入後に true
+      enabled: true
+      trustCRDsExist: true  # offline helmfile template (hydrate) で CRD 未登録時のエラーを回避
+      labels:
+        release: kube-prometheus-stack    # kube-prometheus-stack の serviceMonitorSelector match
 
 # =============================================================================
 # DNS Proxy（hostNetwork Pod の DNS resolution に必要）
@@ -86,4 +96,9 @@ dnsProxy:
 # Prometheus Metrics
 # =============================================================================
 prometheus:
-  enabled: false                      # Phase 3 で prometheus-operator 導入後に true
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    trustCRDsExist: true  # offline helmfile template (hydrate) で CRD 未登録時のエラーを回避
+    labels:
+      release: kube-prometheus-stack
