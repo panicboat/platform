@@ -65,11 +65,11 @@ serviceMonitor:
 # chart default で全 pipeline (traces / logs / metrics) が pre-configure されており、
 # 各 pipeline で必要な exporter のみ override する方針:
 #   - traces: otlp/tempo exporter で Tempo に export
-#   - logs: otlphttp/loki exporter で Loki OTLP endpoint (/otlp) に push
+#   - logs: otlp_http/loki exporter で Loki OTLP endpoint (/otlp) に push
 #   - metrics: chart default の debug exporter のまま (= Phase 4 で Beyla source 接続時に再 design)
 #
 # NOTE: contrib `loki` exporter は 2024-07 deprecate / 2024-11 削除済 (issue #38374)。
-# Loki 3.0+ は OTLP HTTP を native ingest するため、`otlphttp` exporter で
+# Loki 3.0+ は OTLP HTTP を native ingest するため、`otlp_http` exporter で
 # `/otlp` endpoint に直接 push する (Grafana Loki 公式 docs 推奨)。
 config:
   exporters:
@@ -79,7 +79,7 @@ config:
       tls:
         insecure: true
     # Loki OTLP exporter: Fluent Bit からの logs を Loki gateway に OTLP HTTP で push
-    otlphttp/loki:
+    otlp_http/loki:
       endpoint: http://loki-gateway.monitoring.svc.cluster.local:80/otlp
       tls:
         insecure: true
@@ -95,9 +95,9 @@ config:
         receivers:
           - otlp
       logs:
-        # chart default の exporters: [debug] を otlphttp/loki に override
+        # chart default の exporters: [debug] を otlp_http/loki に override
         exporters:
-          - otlphttp/loki
+          - otlp_http/loki
         processors:
           - memory_limiter
           - batch

@@ -36,7 +36,7 @@ data:
         endpoint: tempo.monitoring.svc.cluster.local:4317
         tls:
           insecure: true
-      otlphttp/loki:
+      otlp_http/loki:
         endpoint: http://loki-gateway.monitoring.svc.cluster.local:80/otlp
         tls:
           insecure: true
@@ -80,7 +80,7 @@ data:
       pipelines:
         logs:
           exporters:
-          - otlphttp/loki
+          - otlp_http/loki
           processors:
           - memory_limiter
           - batch
@@ -200,7 +200,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 3e1a08251fa0a7af9776772df2d9be068021e56df940b665df4718699e95e675
+        checksum/config: 50d9d69412144ef21b6925a0f50e3beb98529329e93b2c2a761f89ab3532eef1
         
       labels:
         app.kubernetes.io/name: opentelemetry-collector
