@@ -8,6 +8,18 @@
 kind: DaemonSet
 
 # =============================================================================
+# Update Strategy
+# =============================================================================
+# maxUnavailable: 2 で rolling update を確実に進行させる。chart default の
+# maxUnavailable: 1 だと、scheduling 失敗で Pending 状態の pod が 1 つあるだけで
+# 他の pod の rolling 更新が完全停止するため、ConfigMap 変更が古い pod に
+# 反映されない (= production cluster の CPU 逼迫 node 等で発生する典型 pattern)。
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 2
+
+# =============================================================================
 # ServiceAccount (Decision 8: Pod Identity 不要)
 # =============================================================================
 # AWS access 不要 (OTel Collector gRPC push のみ)、default SA で OK
