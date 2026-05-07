@@ -54,12 +54,12 @@ flowchart TB
     Cilium --> Hubble
     Hubble -.->|metrics scrape<br/>ServiceMonitor| Prometheus
 
-    %% Application traces + metrics → OTel Collector (Beyla は Phase 4 で deploy)
+    %% Application traces + metrics → OTel Collector
     App -.->|eBPF| Beyla
     Beyla -->|OTLP traces+metrics| OTelCol
 
     %% Logs → Fluent Bit → OTel Collector
-    Apps -.->|stdout| FluentBit
+    App -.->|stdout| FluentBit
     FluentBit -->|OTLP gRPC| OTelCol
 
     %% OTel Collector → backends
