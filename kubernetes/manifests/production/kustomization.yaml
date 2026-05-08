@@ -1,6 +1,7 @@
 resources:
   - ./00-namespaces
   - ./aws-load-balancer-controller
+  - ./cert-manager
   - ./cilium
   - ./external-dns
   - ./fluent-bit

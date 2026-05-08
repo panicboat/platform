@@ -1,0 +1,68 @@
+# cert-manager Configuration for production
+# Phase 4 / 5 で必要となる admission webhook cert 自動発行基盤、selfsigned CA で
+# ESO + Cilium Hubble の cert を発行する。
+
+# =============================================================================
+# CRDs (= chart 経由で install)
+# =============================================================================
+crds:
+  enabled: true
+
+# =============================================================================
+# Global config (= 全 component に適用)
+# =============================================================================
+global:
+  # Cluster-wide critical service、scheduling 安定性を確保 (= cert-manager 公式推奨)
+  priorityClassName: system-cluster-critical
+  # Leader election 用 namespace
+  leaderElection:
+    namespace: cert-manager
+
+# =============================================================================
+# Controller (= main reconciliation loop)
+# =============================================================================
+replicaCount: 1
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 128Mi
+
+# =============================================================================
+# Webhook (= 公式 production best practice = 3 replicas で HA)
+# =============================================================================
+# NOTE: cert-manager 公式 best practice docs 明記 — webhook 不可時は全 cert-manager
+# CR 操作が fail するため HA 必須。
+webhook:
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
+
+# =============================================================================
+# CA Injector (= webhook caBundle 自動 inject)
+# =============================================================================
+cainjector:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
+# =============================================================================
+# ServiceMonitor (= kube-prometheus-stack の serviceMonitorSelector に乗る)
+# =============================================================================
+# NOTE: cert-manager chart v1.20.x の ServiceMonitor key path は
+# prometheus.servicemonitor (小文字) で確認済 (= helm show values で verify)。
+prometheus:
+  enabled: true
+  servicemonitor:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack

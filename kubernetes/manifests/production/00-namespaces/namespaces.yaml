@@ -1,5 +1,18 @@
 ---
 # =============================================================================
+# cert-manager Namespace
+# =============================================================================
+# cert-manager controller / cainjector / webhook の専用 namespace。
+# admission webhook cert の自動発行基盤として ESO + Cilium Hubble TLS の cert 発行に使用。
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cert-manager
+  labels:
+    app.kubernetes.io/name: cert-manager
+---
+# =============================================================================
 # ExternalDNS Namespace
 # =============================================================================
 # This namespace contains the ExternalDNS controller. Chart default name is
