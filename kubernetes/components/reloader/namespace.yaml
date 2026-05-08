@@ -1,0 +1,12 @@
+# =============================================================================
+# reloader Namespace
+# =============================================================================
+# Stakater Reloader (= reloader-controller) の専用 namespace。
+# Secret / ConfigMap 変更時に annotation 付きの Deployment / StatefulSet を auto-rollout する。
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: reloader
+  labels:
+    app.kubernetes.io/name: reloader

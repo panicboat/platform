@@ -1,0 +1,20 @@
+# =============================================================================
+# reloader Helmfile for production
+# =============================================================================
+# Stakater Reloader の deploy。passive watcher、admission webhook 不在のため
+# 1 replica で十分。
+# =============================================================================
+environments:
+  production:
+---
+repositories:
+  - name: stakater
+    url: https://stakater.github.io/stakater-charts
+
+releases:
+  - name: reloader
+    namespace: reloader
+    chart: stakater/reloader
+    version: "2.2.11"
+    values:
+      - values.yaml.gotmpl

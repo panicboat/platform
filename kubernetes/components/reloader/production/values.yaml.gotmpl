@@ -1,0 +1,32 @@
+# reloader Configuration for production
+# Secret / ConfigMap 変更時の Deployment / StatefulSet auto-rollout。
+# watch scope は全 namespace、opt-in annotation で対象指定。
+
+# =============================================================================
+# Reloader controller
+# =============================================================================
+reloader:
+  watchGlobally: true                  # 全 namespace を watch (= chart default)
+
+  deployment:
+    replicas: 1                        # passive watcher、SPOF 影響軽微
+
+    priorityClassName: system-cluster-critical
+
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 128Mi
+
+  podMonitor:
+    enabled: false                     # ServiceMonitor を使うため podMonitor 不要
+
+  service:
+    port: 9090                         # ServiceMonitor は Service が必要
+
+  serviceMonitor:
+    enabled: true
+    labels:                            # kube-prometheus-stack が ServiceMonitor を検出するための label
+      release: kube-prometheus-stack
