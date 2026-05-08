@@ -1,0 +1,11 @@
+# =============================================================================
+# cert-manager Kustomization for production
+# =============================================================================
+# ClusterIssuer (= chart 範囲外) を kustomization で別途 deploy。
+# cert-manager CRDs install 後に Flux が ClusterIssuer を apply (= 失敗時 retry)。
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - cluster-issuer.yaml
