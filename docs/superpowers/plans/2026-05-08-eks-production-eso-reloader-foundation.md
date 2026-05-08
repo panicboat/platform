@@ -1215,3 +1215,245 @@ Expected:
 - [x] `eks-production-eso` IAM role name (Task 1 main.tf `aws_iam_role.pod_identity.name = "eks-${var.environment}-eso"`): Pod Identity Association で参照される
 - [x] `pods.eks.amazonaws.com` Service principal (Task 1 main.tf assume_role_policy): Pod Identity Association の正しい principal
 - [x] commit subject prefix: `feat(eks):` (= 4 commits)、Sub-project 4a / 4b / 4-1 と整合
+
+## Lessons Learned (post-execution)
+
+PR #308 (本 sub-project の merge) で deploy した直後の post-flight verification は **actual runtime issue 0 件** で完了。Sub-project 4-1 (= 0 issue) に続き Phase 4 連続 0 件達成、4b L1 (= chart binary verify) の systematic application が再 validate された。同時に、ESO のような成熟 chart 特有の design assumption gap、chart-fixed value による values 設計制約、helmfile hydration 環境特有の Capabilities gate workaround、AWS direct verify が permission boundary で blocked される場合の indirect proof pattern が判明。次 sub-project (= Phase 4-3 Grafana auth + Ingress) 設計時の参考として、また Phase 4 全体 pattern の continuous confirmation として記録する。
+
+### Phase 3-4 全体 runtime issue 数 update
+
+| Sub-project | initial deploy | runtime fix | 計 |
+|---|---|---|---|
+| Sub-project 1 (AWS infra) | 0 | 0 | 0 |
+| Sub-project 2 (Mimir) | 5 | 0 | 5 |
+| Sub-project 3 (Loki + Fluent Bit) | 4 | 0 | 4 |
+| Sub-project 4a (Tempo + OTel Collector) | 0 | 0 | 0 |
+| Sub-project 4b (logs path completion) | 3 | 0 | 3 |
+| Sub-project 4-1 (cert-manager + Cilium TLS) | 0 | 0 | 0 |
+| **Sub-project 4-2 (ESO + Reloader)** | **0** | 0 | **0** |
+| **Phase 3-4 累計** | | | **12** (= 4b 完了時から不変) |
+
+= **4-2 で 0 件達成、4-1 に続き Phase 4 連続 0 件**、Phase 3 全体累計 12 件を維持 (= Phase 4 で増加なし)。
+
+### L1: chart binary verify systematic step の 2 sub-project 連続 validation (= Phase 4 established practice)
+
+4b で発覚 → 4-1 で systematic 適用 → 4-2 で再 validate。本 sub-project Plan Task 2 / Task 3 の **chart binary verify step** が複数の spec/reality gap を実装時に発見・解消:
+
+**ESO chart で発見された差分 (= Task 2 step 1-2)**:
+
+| 項目 | spec 想定 | actual chart 2.4.1 |
+|---|---|---|
+| chart version | "v0.x" placeholder | **v2.4.1** (= 大幅 advanced) |
+| ClusterSecretStore apiVersion | `v1beta1` | `v1` (= GA) |
+| auth block | IRSA serviceAccountRef 必須 | **省略可** (= Pod Identity auto-attach) |
+| cert-controller | 別 Deployment 必要 | **chart skip** (= `webhook.certManager.enabled: true` 時) |
+
+**Reloader chart で発見された差分 (= Task 3 step 1-2)**:
+
+| 項目 | spec 想定 | actual chart 2.2.11 |
+|---|---|---|
+| `serviceMonitor.labels` | override 可能 | **chart-fixed `release: "reloader"`** (= 値固定) |
+| ServiceMonitor render gate | `serviceMonitor.enabled` のみ | **`.Capabilities.APIVersions.Has` 追加 gate** (= offline render で silent omission) |
+
+= chart binary verify step が **2 sub-project 連続で effective**、Phase 4 systematic step として established。Phase 4-3 / Phase 5 でも同 step を Plan に組込継続。
+
+**How to apply**:
+
+1. Plan の Task 1-2 step として **`helm search repo --versions` + `helm show values` + `helm template` 出力 verify** を必ず組込
+2. spec の chart version は placeholder OK (= 4-1 L5 pattern 継続)、plan で latest stable 確認
+3. chart 固有 key (= ServiceMonitor / probe / auth 等) は `helm show values` + 公式 docs で事前確認
+4. **L2 / L3 で詳述する new sub-pattern** (= chart-fixed value detection + offline render gate detection) を本 step に組込
+
+### L2: chart-fixed value conflict pattern (= L1 systematic step の new sub-pattern)
+
+Reloader chart の `serviceMonitor.labels` が **chart 内で値を固定** (`release: "reloader"`) しており、values.yaml.gotmpl で `release: kube-prometheus-stack` を指定しても **chart-fixed value で上書きされる**。Task 3 で当初 labels block を指定して conflict 発生、削除して resolve:
+
+```yaml
+# Reloader chart 内 (= 値固定):
+labels:
+  release: "reloader"
+
+# values.yaml.gotmpl (= NG pattern):
+serviceMonitor:
+  labels:
+    release: kube-prometheus-stack  # ← chart-fixed で無視される
+
+# values.yaml.gotmpl (= 採用 pattern):
+serviceMonitor:
+  enabled: true
+  # NOTE: labels block を省略 = chart-fixed `release: "reloader"` のまま、
+  # panicboat の `serviceMonitorSelector: {}` (= permissive) で全 SM が match
+```
+
+**Why (= chart authors の design 意図)**:
+
+- Reloader chart は **自身の Helm release name を SM label に固定** (= chart の identity を SM 上で表現)
+- 一方 OTel Collector / fluent-bit / Cilium 等の他 chart は labels override 可能 (= operator-configurable)
+- panicboat の kube-prometheus-stack は `serviceMonitorSelector: {}` で **全 SM を match** (= permissive)、chart-fixed label でも問題なし
+
+= **chart-fixed value vs operator-configurable value の区別** が `helm template` 出力で事前確認できる new sub-pattern。
+
+**How to apply**:
+
+1. L1 chart binary verify step に **"chart-fixed value detection"** を追加: `helm template` 出力で values.yaml の指定が反映されているか確認 (= override 不能 key の発見)
+2. ServiceMonitor labels / annotations / selector 等の monitoring key は特に chart 間で挙動差が大きい
+3. panicboat 環境 (= permissive SM selector) では chart-fixed value 容認、Phase 6+ で multi-tenant 化する場合は selector 厳格化と合わせて再評価
+
+### L3: helmfile hydration (offline render) の Capabilities gate workaround pattern
+
+Reloader chart の ServiceMonitor template が `.Capabilities.APIVersions.Has "monitoring.coreos.com/v1"` で gate されており、offline helmfile template (= hydrate) では **Capabilities が空で SM が silent に omit** される。helmfile の `helmDefaults.args` で API versions を declarative override して resolve:
+
+```yaml
+# kubernetes/components/reloader/production/helmfile.yaml
+helmDefaults:
+  args:
+    - --api-versions=monitoring.coreos.com/v1
+```
+
+**Why (= chart authors の design 意図 + helmfile hydration の制約)**:
+
+- chart authors は **online cluster での render を想定**、`.Capabilities.APIVersions.Has` で CRD 未 install の cluster での render error を回避
+- panicboat の hydration model は **offline `helmfile template`** (= GitOps source の決定論的生成)、Capabilities が空で gate に false hit
+- `--api-versions` で **"このクラスタでは X API が install 済"** を declarative に通知、gate を pass
+
+**観察された静的失敗 mode**:
+
+```bash
+# offline render (= NG):
+$ helmfile template
+$ kubectl apply -f hydrated/  # ← SM が含まれず silent omission
+
+# workaround 後 (= OK):
+$ helmfile template -- --api-versions=monitoring.coreos.com/v1
+$ grep -l "ServiceMonitor" hydrated/  # ← 1 file
+```
+
+= **helmfile hydration 環境特有の workaround**、cilium chart の `trustCRDsExist: true` (= alternative pattern) と合わせて、Phase 4 / Phase 5 で他 chart が同 gate を持つ場合の即適用 reference。
+
+**How to apply**:
+
+1. L1 chart binary verify step に **"offline render gate detection"** を追加: `helm template` 出力に期待 resource (= ServiceMonitor / Certificate / 等) が含まれることを確認
+2. 含まれない場合の解決策 2 種:
+   - chart が `trustCRDsExist` 等の **explicit override key** を提供 (= cilium / cert-manager pattern) → values で `true` 指定
+   - chart が override key を提供しない → **`helmDefaults.args: ["--api-versions=<group>/<version>"]`** で declarative override (= reloader pattern)
+3. silent omission は post-flight check で発覚遅延しがち (= prometheus discovery 不可、metrics 欠落)、**hydrate 段階で必ず render verify**
+
+### L4: 設計仮定 vs reality 差分の calibration (= 成熟 chart の design assumption gap)
+
+ESO chart 2.4.1 の実 values + apiVersion は spec brainstorming 時 (= 2026-05-08) の想定 (= "chart v0.x、v1beta1、IRSA 必須") から **大幅に advanced**。spec 段階で chart docs を 1 度だけ確認していたが、chart は急速に進化しており、**実装時の再 verify が必須**。
+
+**判明した差分**:
+
+- chart **v2.4.1 (= 既に v2 メジャー)**、v0.x の reference は legacy
+- ClusterSecretStore **`v1` GA**、v1beta1 は deprecate
+- AWS auth は **Pod Identity 時に auth block 省略**、IRSA serviceAccountRef は legacy fallback
+- cert-controller は **`webhook.certManager.enabled: true` で chart 自動 skip**、別 Deployment 不要
+
+**Why (= chart maturity 認識)**:
+
+- ESO は CNCF Graduated project へ向けた急進化 (= 2024-2026 で v0 → v1 → v2 メジャー 2 回)
+- panicboat の brainstorming pace (= 数日 ~ 数週間) と chart 進化 pace (= 月単位 メジャー bump) は不整合
+- 4-1 cert-manager (= 既に成熟、v1.x 安定) では gap が小さかったが、**急進化 chart では gap 拡大**
+
+= 4-1 L5 placeholder pattern (= chart version は plan で latest 確認) を **single source of truth** として継続、+ "spec 段階の chart assumption は brainstorming 時の snapshot で stale 化前提" を明示認識。
+
+**How to apply**:
+
+1. spec の chart 関連記述 (= apiVersion / auth / required components) は **"brainstorming 時 snapshot, 実装時 re-verify 前提"** と明示
+2. spec compliance reviewer は chart key の差分を "spec deviation" ではなく **"snapshot gap, intent と整合か" で判定** (= 4-1 L5 reviewer pattern 継続)
+3. 急進化 chart (= ESO / Karpenter / ALB controller / Flux 等) を採用する sub-project では Plan Task 1-2 で **公式 docs + chart values の現時点 reference を再確認** step を必須化
+
+### L5: AWS direct verify AccessDenied → application-level indirect proof pattern
+
+post-flight check で IAM role direct verify (= `aws iam get-role --role-name eks-production-eso`) が **AccessDenied**:
+
+```
+An error occurred (AccessDenied) when calling the GetRole operation: 
+User: arn:aws:sts::559744160976:assumed-role/eks-admin/... is not authorized 
+to perform: iam:GetRole on resource: ... because no identity-based policy 
+allows the iam:GetRole action
+```
+
+**root cause**: panicboat の `eks-admin` role は **EKS / K8s API 操作に特化**、AWS IAM 配下の resource 直接 read 権限を持たない (= least privilege 設計)。
+
+**indirect proof で代替**:
+
+```bash
+# direct verify (= NG, AccessDenied):
+$ aws iam get-role --role-name eks-production-eso
+
+# indirect proof (= OK, application-level):
+$ kubectl get clustersecretstore aws-secrets-manager -o yaml | grep -A2 status:
+status:
+  conditions:
+  - reason: Validated
+    status: "True"
+    type: Ready
+  capabilities: ReadWrite
+```
+
+= **ClusterSecretStore Ready=True + Capabilities=ReadWrite** が "Pod Identity → IAM role assume → AWS Secrets Manager 到達 + RW 権限" の **end-to-end success proof** として機能。
+
+**Why (= 重要 pattern)**:
+
+- AWS direct verify は **caller の IAM permission に依存**、panicboat の least privilege design では eks-admin で blocked
+- ESO / Pod Identity / IAM role の chain は **application-level の動作 (= secret fetch 成功)** で end-to-end 検証可能
+- direct verify は "infrastructure exists" の確認のみ、application-level は "infrastructure works" の確認 = より上位の signal
+
+**How to apply**:
+
+1. post-flight check で AWS direct verify が AccessDenied の場合、**application-level success criteria を primary signal に切替**
+2. ESO / IAM 系 component の post-flight: **ClusterSecretStore Ready=True / ExternalSecret synced / Pod Identity Association exists** 等の **K8s API + chart status** で代替検証
+3. Phase 6+ post-flight check 自動化 (= 引き継ぎ #5) の design 指針: **AWS direct verify を必須前提にせず、K8s API + application status を primary**、AWS direct verify は **available なら追加 evidence、blocked でも fail にしない**
+
+### L6: subagent-driven development cadence の 4-1 比 stable maintain
+
+| 観点 | Sub-project 4-1 | Sub-project 4-2 |
+|---|---|---|
+| Initial implementation tasks | 3 (cert-manager / Cilium TLS / hydrate) | 4 (AWS / ESO / Reloader / hydrate) |
+| Implementer DONE 1 回で pass | 2/3 | 1/4 (Task 4 hydrate のみ initial pass) |
+| 1 fix amend 必要 | 1/3 (Task 1 CLAUDE.md violation) | 3/4 (Task 1 CLAUDE.md / Task 2 dead code / Task 3 chart-fixed value) |
+| Re-review iterations | 1 | 3 |
+| Combined spec + code review | Task 2 / 3 で採用 | 全 4 Task で採用 |
+| **Initial deploy runtime issues** | **0** | **0** |
+| **Total subagent dispatches** | ~6 | ~8 |
+
+= **4-2 は subagent dispatch 数が 4-1 比でやや増 (~8 vs ~6)**、 ただし initial deploy runtime issues 0 件を維持。fix amend 増加要因は **L2 / L3 / L4 の chart-specific 発見** (= 急進化 chart に対する spec-implementation gap)、いずれも Plan + chart binary verify step で **実装時に発見・解消** され runtime impact なし。
+
+**Why**:
+
+- L1 systematic step が **chart-specific 発見を実装時 surface** (= deploy 後 surface ではない)
+- 急進化 chart (= ESO 2.4.1) では fix amend 増加自然、ただし production runtime impact 回避
+- Combined reviewer pattern は **dispatch 数最小化に寄与**、4-2 で全 Task 適用
+
+**How to apply**:
+
+1. fix amend 数を質的指標としては **runtime impact の有無** で評価 (= deploy 時 fix vs post-flight fix)、4-2 は前者 = production-safe
+2. Combined spec + code reviewer を **default pattern として継続**、急進化 chart sub-project では特に有効
+3. Plan Task 数 (= 4) は **AWS / chart A / chart B / hydrate の 4 layer split** が clean、Phase 4-3 (= Grafana + Ingress) でも同 split を踏襲予定
+
+### Phase 4 引き継ぎ事項 update (= 4-2 完了時)
+
+| 項目 | 状態 |
+|---|---|
+| 1. gp3 StorageClass の Layer 2 documented exception 化 | Phase 6+ 引き継ぎ |
+| 2. bucket-per-env への migration 検討 | Phase 6+ 引き継ぎ |
+| 3. multi-tenant 化 + 詳細 retention rules | Phase 6+ 引き継ぎ |
+| 4. OTel Operator deploy 検討 | Phase 5 nginx 投入時に評価 |
+| 5. post-flight check の自動化 | Phase 6+ 引き継ぎ (**L5 で design 指針追加** = K8s + application status を primary signal に) |
+| 6. Beyla deploy + OTel Collector metrics pipeline 拡張 | Phase 5 nginx 投入時に同時 deploy |
+| 7. Hubble flow logs → Loki path 評価 | Phase 6+ 引き継ぎ |
+| 8. local Fluent Bit OTLP gRPC 統一 | Phase 6+ 引き継ぎ |
+| 9. Pod CPU requests audit + rightsizing | Phase 5 nginx + 観測 burst 後に実施 |
+| 10. OTel Collector exporter type alias check 自動化 | Phase 6+ 引き継ぎ |
+
+= 4-2 完了で **明示的に解消した引き継ぎ事項なし** (= ESO + Reloader deploy は roadmap Phase 4 の primary goal、引き継ぎ事項とは別カテゴリ)、ただし 引き継ぎ #5 (post-flight check 自動化) に **L5 design 指針を追加**。
+
+### 次 sub-project (= Phase 4-3 Grafana auth + Ingress) への適用
+
+1. **L1 即適用**: Grafana chart + ALB Controller chart 用 chart binary verify step を Plan に組込 (= L2 / L3 sub-pattern も適用)
+2. **L2 即適用**: Grafana chart の `serviceMonitor.labels` 等 chart-fixed value を `helm template` で事前確認
+3. **L3 即適用**: ALB Controller / Grafana が API gate を持つ場合の `--api-versions` workaround pattern を適用
+4. **L4 即適用**: Grafana / ALB Controller chart docs を spec brainstorming 時 + plan 実装時の **2 段階 verify** で snapshot gap を minimize
+5. **L5 即適用**: Grafana ↔ AWS Cognito (= Phase 4-3 候補) 連携の post-flight check で AWS direct verify が blocked される場合に application-level proof で代替
+6. **L6 継続**: Combined spec + code reviewer を全 Task で default に
