@@ -63,11 +63,16 @@ socketLB:
 # =============================================================================
 hubble:
   enabled: true
-  # TLS certs を Helm 自動生成（chart values に焼き込み）ではなく cluster 内
-  # CronJob で生成・rotate する。public Git repo に Hubble の秘密鍵を出さない。
+  # TLS certs は cert-manager で管理 (= Cilium 公式 production-recommended path)。
+  # selfsigned-cluster-issuer (= cert-manager component で deploy 済) を参照、
+  # cert-manager が Certificate resource を生成して TLS cert を発行・自動 rotate する。
   tls:
     auto:
-      method: cronJob
+      method: certmanager
+      certManagerIssuerRef:
+        name: selfsigned-cluster-issuer
+        kind: ClusterIssuer
+        group: cert-manager.io
   relay:
     enabled: true
   ui:
