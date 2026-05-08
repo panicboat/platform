@@ -1,0 +1,37 @@
+# reloader Configuration for production
+# Secret / ConfigMap 変更時の Deployment / StatefulSet auto-rollout。
+# watch scope は全 namespace、opt-in annotation で対象指定。
+
+# =============================================================================
+# Reloader controller
+# =============================================================================
+reloader:
+  watchGlobally: true                  # 全 namespace を watch (= chart default)
+
+  deployment:
+    replicas: 1                        # passive watcher、SPOF 影響軽微
+
+    priorityClassName: system-cluster-critical
+
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 128Mi
+
+  podMonitor:
+    enabled: false                     # ServiceMonitor を使うため podMonitor 不要
+
+  service:
+    port: 9090                         # ServiceMonitor は Service が必要
+
+  serviceMonitor:
+    enabled: true
+    # NOTE: labels は省略 (= chart 標準で release: "reloader" が固定設定済、上書きすると
+    # YAML duplicate key で parse error)。panicboat の Prometheus は serviceMonitorSelector: {}
+    # で全 SM を pick up するため、release: kube-prometheus-stack label なしでも収集される。
+    # 他 component (cert-manager / external-secrets 等) は release: kube-prometheus-stack
+    # label を付けて統一しているが、Reloader chart の template 構造上 conflict を avoid する
+    # ため label を省略している。Prometheus が将来 serviceMonitorSelector で label filter
+    # に切替えた場合は再検討必要。

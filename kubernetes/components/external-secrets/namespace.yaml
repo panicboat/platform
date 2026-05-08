@@ -1,0 +1,12 @@
+# =============================================================================
+# external-secrets Namespace
+# =============================================================================
+# External Secrets Operator (controller / cert-controller / webhook) の専用 namespace。
+# AWS Secrets Manager から K8s Secret への sync 基盤。
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: external-secrets
+  labels:
+    app.kubernetes.io/name: external-secrets
