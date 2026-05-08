@@ -1,0 +1,67 @@
+# external-secrets Configuration for production
+# AWS Secrets Manager backend で K8s Secret を sync する基盤。
+
+# =============================================================================
+# CRDs (= chart 経由で install)
+# =============================================================================
+# NOTE: external-secrets/external-secrets chart の CRD key は installCRDs (top-level)。
+# helm show values で確認済 (= crds.enabled ではない)。
+installCRDs: true
+
+# =============================================================================
+# Global config: Priority class
+# =============================================================================
+priorityClassName: system-cluster-critical
+
+# =============================================================================
+# Controller (= main reconciliation loop)
+# =============================================================================
+replicaCount: 1
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 128Mi
+
+# =============================================================================
+# Webhook (= 公式 production = 3 replicas で HA)
+# =============================================================================
+# NOTE: ESO admission webhook が不可になると ExternalSecret CR の create / update /
+# delete が全部 fail、cert-manager と同 risk 構造のため同 mitigation (= 3 replicas)。
+webhook:
+  replicaCount: 3
+  priorityClassName: system-cluster-critical
+  certManager:
+    enabled: true
+    cert:
+      issuerRef:
+        name: selfsigned-cluster-issuer
+        kind: ClusterIssuer
+        group: cert-manager.io
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
+
+# =============================================================================
+# Cert Controller — chart 側で skip される
+# =============================================================================
+# NOTE: webhook.certManager.enabled: true のため chart は cert-controller Deployment
+# を生成しない (= cert 発行を cert-manager に委譲)。values block は不要。
+
+# =============================================================================
+# ServiceMonitor (= kube-prometheus-stack の serviceMonitorSelector に乗る)
+# =============================================================================
+# NOTE: external-secrets chart の ServiceMonitor key path は serviceMonitor.additionalLabels
+# (helm show values で確認済)。
+serviceMonitor:
+  enabled: true
+  # alwaysRender: cluster に ServiceMonitor CRD がない場合 (= dry-run / template 実行時) も render する。
+  # skipIfMissing (default) にすると helmfile template で ServiceMonitor が skip される。
+  renderMode: alwaysRender
+  additionalLabels:
+    release: kube-prometheus-stack
+  interval: 30s

@@ -1,0 +1,21 @@
+# =============================================================================
+# external-secrets Helmfile for production
+# =============================================================================
+# External Secrets Operator (= external-secrets/external-secrets) の deploy。
+# admission webhook cert は cert-manager + selfsigned-cluster-issuer で発行、
+# ClusterSecretStore は kustomization で別途 deploy (= chart 範囲外)。
+# =============================================================================
+environments:
+  production:
+---
+repositories:
+  - name: external-secrets
+    url: https://charts.external-secrets.io
+
+releases:
+  - name: external-secrets
+    namespace: external-secrets
+    chart: external-secrets/external-secrets
+    version: "2.4.1"
+    values:
+      - values.yaml.gotmpl
