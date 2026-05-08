@@ -4,6 +4,7 @@ resources:
   - ./cert-manager
   - ./cilium
   - ./external-dns
+  - ./external-secrets
   - ./fluent-bit
   - ./gateway-api
   - ./karpenter
@@ -13,4 +14,5 @@ resources:
   - ./mimir
   - ./opentelemetry-collector
   - ./prometheus-operator
+  - ./reloader
   - ./tempo

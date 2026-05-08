@@ -28,5 +28,10 @@ reloader:
 
   serviceMonitor:
     enabled: true
-    labels:                            # kube-prometheus-stack が ServiceMonitor を検出するための label
-      release: kube-prometheus-stack
+    # NOTE: labels は省略 (= chart 標準で release: "reloader" が固定設定済、上書きすると
+    # YAML duplicate key で parse error)。panicboat の Prometheus は serviceMonitorSelector: {}
+    # で全 SM を pick up するため、release: kube-prometheus-stack label なしでも収集される。
+    # 他 component (cert-manager / external-secrets 等) は release: kube-prometheus-stack
+    # label を付けて統一しているが、Reloader chart の template 構造上 conflict を avoid する
+    # ため label を省略している。Prometheus が将来 serviceMonitorSelector で label filter
+    # に切替えた場合は再検討必要。
