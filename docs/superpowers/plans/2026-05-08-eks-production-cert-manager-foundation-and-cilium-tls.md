@@ -779,3 +779,184 @@ Expected:
 - [x] `release: kube-prometheus-stack` ServiceMonitor label (Task 1 values.yaml.gotmpl `prometheus.servicemonitor.labels`): Sub-project 1-4b の ServiceMonitor pattern と整合
 - [x] `certManagerIssuerRef.{name, kind, group}` (Task 2 Cilium values): `name: selfsigned-cluster-issuer` / `kind: ClusterIssuer` / `group: cert-manager.io` 一貫
 - [x] commit subject prefix: `feat(eks):` (= 3 commits)、Sub-project 4a / 4b と整合
+
+---
+
+## Lessons Learned (post-execution)
+
+PR #306 (本 sub-project の merge) で deploy した直後の post-flight verification は **actual runtime issue 0 件** で完了。Sub-project 4b の **3 件 runtime issue + 2 fix forward PR** から大幅改善し、Sub-project 4a (= 0 issue) と同等の clean implementation を再現。Phase 4 初 sub-project として 4b learnings (特に L1 = chart binary verify) の systematic application が有効に機能した。次 sub-project (= Phase 4-2 ESO + Reloader) 設計時の参考として、また Phase 4 全体 pattern の confirmation として記録する。
+
+### Phase 3 全体 + Phase 4-1 runtime issue 数 update
+
+| Sub-project | initial deploy | runtime fix | 計 |
+|---|---|---|---|
+| Sub-project 1 (AWS infra) | 0 | 0 | 0 |
+| Sub-project 2 (Mimir) | 5 | 0 | 5 |
+| Sub-project 3 (Loki + Fluent Bit) | 4 | 0 | 4 |
+| Sub-project 4a (Tempo + OTel Collector) | 0 | 0 | 0 |
+| Sub-project 4b (logs path completion) | 3 | 0 | 3 |
+| **Phase 4-1 (cert-manager + Cilium TLS)** | **0** | 0 | **0** |
+| **Phase 3-4 累計** | | | **12** |
+
+= **4-1 で 0 件達成**、4b の "3 件" から大幅改善、Phase 3 全体累計 12 件を維持 (= Phase 4 で増加なし)。
+
+### L1: Sub-project 4b L1 (= spec 段階 chart binary verify) の systematic application が有効に機能
+
+4b で発覚した root cause: spec 段階で chart binary に含まれる component (`loki` exporter) を verify せず、deploy 後に persistent issue 発生。これを 4-1 で **systematic に適用**:
+
+**Plan Task 1 で明示的 step として組み込み**:
+
+- Step 1: `helm search repo jetstack/cert-manager --versions` で latest stable version 確認
+- Step 2: `helm show values jetstack/cert-manager` で ServiceMonitor key path 確認
+- Step 6: `helm template` 出力で 6 CRDs + 3 Deployments + 1 ServiceMonitor が render されることを verify
+
+**結果**:
+
+- spec 仮定 v1.18.x → 実装時に actual latest stable v1.20.2 を採用 (= chart upgrade gap の解消)
+- ServiceMonitor key path = `prometheus.servicemonitor.enabled` (小文字) を事前確認、values.yaml.gotmpl で正しい key を使用 = post-flight で ServiceMonitor が正しく render
+- 6 CRDs / 3 Deployments / 1 ServiceMonitor の render を事前 verify、実 deploy で同等動作を確認
+
+= **4b L1 が effective**、persistent issue を未然防止。Phase 4-2 / 4-3 でも同 systematic step を組み込む方針継続。
+
+**How to apply (= future sub-projects)**:
+
+1. plan に **必ず "chart binary verify" step を明示**: chart latest version 確認 + key path 確認 + render verify の 3 step
+2. spec の chart version は placeholder で OK、plan で "実装時に最新 stable 確認" と instruct
+3. chart 固有 key (= ServiceMonitor / probe path / resource keys) を `helm show values` で事前確認
+
+### L2: cert-manager startup transient pattern の認識
+
+Post-flight 直後 (= deploy 後 ~30s) に cert-manager controller log で 2 種の error 発生:
+
+```
+"failed calling webhook \"webhook.cert-manager.io\": failed to call webhook: 
+ ... no endpoints available for service \"cert-manager-webhook\""
+
+"Operation cannot be fulfilled on certificates.cert-manager.io \"hubble-relay-client-certs\": 
+ the object has been modified; please apply your changes to the latest version and try again"
+```
+
+**両者ともに startup transient** (= L3 checklist で除外):
+
+- "no endpoints available" = webhook pods が ready になる前の transient (= ~30s 以内 resolve)
+- "optimistic locking" = 並行 reconcile での K8s standard race condition (= retry で resolve)
+
+**Why (= 重要 pattern)**:
+
+cert-manager の起動 sequence は **chicken-and-egg** 問題を含む:
+1. cert-manager controller 起動 → Certificate resources reconcile 試行
+2. しかし webhook pods (= 同 chart で deploy) がまだ ready でない
+3. validation webhook が応答せず → controller の reconcile が fail
+4. webhook ready 後に retry → 成功
+
+= **cert-manager 起動直後は webhook readiness gap で transient errors が必ず出る**。Sub-project 4a L3 checklist (= ~60s 以内 transient は除外) を適用し、persistent と決めつけない。
+
+**How to apply**:
+
+1. cert-manager 関連 sub-project の post-flight check では **起動 ~30-60s 以内の "no endpoints available" / "optimistic locking" は normal と認識**
+2. この transient pattern を Phase 4-2 ESO deploy 時にも適用 (= ESO admission webhook も同 chicken-and-egg 問題を含む可能性)
+3. post-flight check で error log 確認時、**`kubectl logs --since=2m` で recent state を見る** (= 起動直後の transient を区別)
+
+### L3: Cilium TLS migration の clean swap pattern
+
+Sub-project 4-1 Decision 6 で Cilium 公式 production-recommended path に migrate (= cronJob → certmanager)。Migration の transient は **数秒以内、production への顕著な影響なし**:
+
+**観察された動作**:
+
+```
+# Hubble Relay log (post-merge ~3 分後)
+time=2026-05-08T07:43:32Z level=info msg="Certificate authority updated" subsys=hubble-relay
+time=2026-05-08T07:43:32Z level=info msg="Keypair updated" subsys=hubble-relay keyPairSN=92f1deefcb09bf...
+```
+
+= cert-manager 由来の新 cert に **clean swap 完了**、Hubble Relay の TLS handshake 中断は数秒以内、historical flows は relay buffer で保持。
+
+**Why (= chart の transition path が良質)**:
+
+Cilium chart は `tls.auto.method: certmanager` 設定時に:
+1. 旧 cronJob 由来の secret (= `hubble-server-certs` 等) を **同名で cert-manager 由来に置換**
+2. Hubble Relay は secret reload を auto detect (= mounted volume 経由)、新 cert で再 handshake
+3. CronJob `hubble-generate-certs` は rendered manifest から消えて Flux で削除
+
+= **chart の transition design が clean**、production 影響軽微。
+
+**How to apply**:
+
+1. 他 components の cert-manager migration (= Phase 6+ Karpenter / ALB / KEDA / prometheus-operator) でも同 pattern を期待可能、ただし各 chart の `tls.auto.method` 相当 key と migration 動作を **個別に verify** (= L1 適用)
+2. Cilium 公式 docs ([docs.cilium.io/en/v1.18/observability/hubble/configuration/tls/](https://docs.cilium.io/en/v1.18/observability/hubble/configuration/tls/)) のような **公式 production-recommended path 表記** を chart docs で確認
+
+### L4: subagent-driven development pattern の cadence improvement (= 4b 比)
+
+| 観点 | Sub-project 4b | Sub-project 4-1 |
+|---|---|---|
+| Initial implementation tasks | 5 (Cilium / Fluent Bit / OTel / README / hydrate) | 3 (cert-manager / Cilium TLS / hydrate) |
+| Implementer DONE 1 回で pass | 1/5 (Task 4 README) | 2/3 (Task 2 Cilium TLS、Task 3 hydrate) |
+| 1 fix amend 必要 | 4/5 | 1/3 (Task 1 cert-manager の CLAUDE.md violation) |
+| Re-review iterations | 5 (= multiple stale comment fixes) | 1 (= CLAUDE.md violation 1 round) |
+| Combined review (= spec + code 同時 dispatch) | 3 stages separately | Task 2 / 3 で combined 採用 = 効率改善 |
+| **Initial deploy runtime issues** | **3** | **0** |
+| **Total subagent dispatches** | ~20 | ~6 |
+
+= **subagent-driven development pattern の learning curve effect**、4b で多発した CLAUDE.md violation / chart binary verify ミスが 4-1 で大幅減少。
+
+**Why**:
+
+- Plan に 4b learnings (特に L1 chart binary verify) を **明示的 step として組み込み**、implementer が miss しにくい
+- Combined spec + code review (= 1 reviewer subagent) で iteration cost 削減
+- CLAUDE.md naming rule violation pattern が認識可能 (= "Phase X で deploy" "Sub-project Y 適用" 等)、implementer が事前回避
+
+**How to apply**:
+
+1. Phase 4-2 / 4-3 でも **plan に "chart binary verify" を明示 step として組み込み** (= L1 systematic application)
+2. **Combined spec + code reviewer** を Task 2-3 で活用、3 stages を 1 stage に圧縮
+3. CLAUDE.md naming rule violation pattern を implementer prompt で **explicit に flag**
+
+### L5: spec の chart version placeholder pattern が established
+
+4-1 で spec の `v1.18.x` (= placeholder) と plan の "実装時に最新 stable 確認" 指示の組合せで、実装者が **v1.20.2 (= actual latest stable)** を採用、spec compliance reviewer も "spec の真意 = latest stable と整合" と approve。
+
+**Why (= practical reasons)**:
+
+- spec 作成時 (= brainstorming 時) と implementation 時 (= subagent 実行時) で chart version が変動する可能性
+- spec を毎回 amend するのは impractical
+- 「version は plan で `latest stable 確認` と instruct + spec は placeholder」 で柔軟性確保
+
+**Pattern (= future sub-projects 向け)**:
+
+- spec: chart version は **brainstorming 時の latest stable を placeholder として記述** (= "v1.18.x" 等)
+- plan: Step 1 で **`helm search repo --versions` で actual latest 確認**、helmfile.yaml に書き込む version は本 step 結果を採用
+- spec reviewer: "spec の chart version が違う" を flag せず、"latest stable 意図と integral" として approve
+
+### L6: Phase 4 全体 pattern の confirmation
+
+Sub-project 4-1 完了で Phase 4 sub-project 構造 (= 4-1 / 4-2 / 4-3) の **第 1 弾が validate**:
+
+- 4-1 (cert-manager + Cilium TLS): 0 issue で完了 ✅
+- 4-2 (ESO + Reloader): 4-1 の cert-manager + ClusterIssuer を前提として deploy
+- 4-3 (Grafana auth + Ingress): 4-1 + 4-2 を前提として、Grafana 外部公開 + 認証ゲート
+
+= **Phase 4 sub-project 間の依存関係が clean** (= 4-1 → 4-2 → 4-3 が順序通り)、Phase 5 (= nginx) までの roadmap が articulate。
+
+**Phase 4 引き継ぎ事項 update (= 4-1 完了時)**:
+
+| 項目 | 状態 |
+|---|---|
+| 1. gp3 StorageClass の Layer 2 documented exception 化 | Phase 6+ 引き継ぎ |
+| 2. bucket-per-env への migration 検討 | Phase 6+ 引き継ぎ |
+| 3. multi-tenant 化 + 詳細 retention rules | Phase 6+ 引き継ぎ |
+| 4. OTel Operator deploy 検討 | **Phase 5 nginx 投入時に評価** |
+| 5. post-flight check の自動化 | Phase 6+ 引き継ぎ |
+| 6. Beyla deploy + OTel Collector metrics pipeline 拡張 | **Phase 5 nginx 投入時に同時 deploy** |
+| 7. Hubble flow logs → Loki path 評価 | Phase 6+ 引き継ぎ |
+| 8. local Fluent Bit OTLP gRPC 統一 | Phase 6+ 引き継ぎ |
+| 9. Pod CPU requests audit + rightsizing | **Phase 5 nginx + 観測 burst 後に実施** |
+| 10. OTel Collector exporter type alias check 自動化 | Phase 6+ 引き継ぎ |
+
+= 4-1 完了で **明示的に解消した引き継ぎ事項なし** (= cert-manager deploy は roadmap Phase 4 の primary goal、引き継ぎ事項とは別カテゴリ)、ただし 引き継ぎ #4 / #6 / #9 が Phase 5 で同時解消される予定で **Phase 4-2 / 4-3 完了時の re-evaluation** を推奨。
+
+### 次 sub-project (= Phase 4-2 ESO + Reloader) への適用
+
+1. **L1**: ESO + Reloader chart の latest stable + 各 chart 固有 key を Plan Step 1-2 で systematic verify
+2. **L2**: ESO admission webhook の startup transient pattern を post-flight で認識
+3. **L4**: Combined spec + code reviewer を全 Task で採用、subagent 数を minimize
+4. **L5**: spec で chart version は placeholder OK pattern 継続
