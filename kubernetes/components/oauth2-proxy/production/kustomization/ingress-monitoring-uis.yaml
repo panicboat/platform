@@ -2,8 +2,10 @@
 # Ingress: monitoring-uis IngressGroup
 # =============================================================================
 # 4 Ingresses (= grafana / hubble / alertmanager / prometheus) が同一 ALB を
-# IngressGroup `monitoring-uis` で共有。各 Ingress の backend は同 namespace の
-# oauth2-proxy Service。oauth2-proxy が Host header から upstream を選択。
+# IngressGroup `monitoring-uis` で共有。各 Ingress の backend は per-host の
+# oauth2-proxy release Service (= `oauth2-proxy-{grafana,hubble,alertmanager,
+# prometheus}`、各々 1 upstream へ reverse-proxy)。ALB が host header から
+# Service を選択 → oauth2-proxy が Google OAuth 認証 + 単一 backend へ転送。
 #
 # ACM cert auto-discovery: ALB Controller は wildcard cert *.panicboat.net を
 # 自動的に attach する (= Ingress.host が SAN にマッチ)。explicit
@@ -37,7 +39,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: oauth2-proxy
+                name: oauth2-proxy-grafana
                 port:
                   number: 80
 ---
@@ -66,7 +68,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: oauth2-proxy
+                name: oauth2-proxy-hubble
                 port:
                   number: 80
 ---
@@ -95,7 +97,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: oauth2-proxy
+                name: oauth2-proxy-alertmanager
                 port:
                   number: 80
 ---
@@ -124,6 +126,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: oauth2-proxy
+                name: oauth2-proxy-prometheus
                 port:
                   number: 80
