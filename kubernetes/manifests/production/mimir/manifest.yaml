@@ -568,6 +568,7 @@ data:
         max_send_msg_size: 104857600
     limits:
       max_cache_freshness: 10m
+      max_global_series_per_user: 500000
       max_query_parallelism: 240
       max_total_query_length: 12000h
     memberlist:
@@ -1352,7 +1353,7 @@ spec:
         app.kubernetes.io/component: distributor
         app.kubernetes.io/part-of: memberlist
       annotations:
-        checksum/config: a9e7bed0323884705d50250a8bff7e69dd22c297ce596d96327e8a2f1831a3f4
+        checksum/config: cc4b4936dbde6327ae978a6debc8ea1d5d6d0e0b1a1ef12d05b9899fc97c6ff8
       namespace: "monitoring"
     spec:
       serviceAccountName: mimir
@@ -1596,7 +1597,7 @@ spec:
         app.kubernetes.io/component: querier
         app.kubernetes.io/part-of: memberlist
       annotations:
-        checksum/config: a9e7bed0323884705d50250a8bff7e69dd22c297ce596d96327e8a2f1831a3f4
+        checksum/config: cc4b4936dbde6327ae978a6debc8ea1d5d6d0e0b1a1ef12d05b9899fc97c6ff8
     spec:
       serviceAccountName: mimir
       securityContext:
@@ -1720,7 +1721,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/component: query-frontend
       annotations:
-        checksum/config: a9e7bed0323884705d50250a8bff7e69dd22c297ce596d96327e8a2f1831a3f4
+        checksum/config: cc4b4936dbde6327ae978a6debc8ea1d5d6d0e0b1a1ef12d05b9899fc97c6ff8
       namespace: "monitoring"
     spec:
       serviceAccountName: mimir
@@ -1842,7 +1843,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/component: query-scheduler
       annotations:
-        checksum/config: a9e7bed0323884705d50250a8bff7e69dd22c297ce596d96327e8a2f1831a3f4
+        checksum/config: cc4b4936dbde6327ae978a6debc8ea1d5d6d0e0b1a1ef12d05b9899fc97c6ff8
     spec:
       serviceAccountName: mimir
       securityContext:
@@ -2070,7 +2071,7 @@ spec:
         app.kubernetes.io/component: compactor
         app.kubernetes.io/part-of: memberlist
       annotations:
-        checksum/config: a9e7bed0323884705d50250a8bff7e69dd22c297ce596d96327e8a2f1831a3f4
+        checksum/config: cc4b4936dbde6327ae978a6debc8ea1d5d6d0e0b1a1ef12d05b9899fc97c6ff8
       namespace: "monitoring"
     spec:
       serviceAccountName: mimir
@@ -2203,7 +2204,7 @@ spec:
         app.kubernetes.io/component: ingester
         app.kubernetes.io/part-of: memberlist
       annotations:
-        checksum/config: a9e7bed0323884705d50250a8bff7e69dd22c297ce596d96327e8a2f1831a3f4
+        checksum/config: cc4b4936dbde6327ae978a6debc8ea1d5d6d0e0b1a1ef12d05b9899fc97c6ff8
       namespace: "monitoring"
     spec:
       serviceAccountName: mimir
@@ -2340,7 +2341,7 @@ spec:
         app.kubernetes.io/component: store-gateway
         app.kubernetes.io/part-of: memberlist
       annotations:
-        checksum/config: a9e7bed0323884705d50250a8bff7e69dd22c297ce596d96327e8a2f1831a3f4
+        checksum/config: cc4b4936dbde6327ae978a6debc8ea1d5d6d0e0b1a1ef12d05b9899fc97c6ff8
       namespace: "monitoring"
     spec:
       serviceAccountName: mimir

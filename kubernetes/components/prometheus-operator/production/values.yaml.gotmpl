@@ -155,7 +155,17 @@ prometheus:
         # Mimir の tenant header (= 本 sub-project は 1 tenant、`anonymous` で OK)
         headers:
           X-Scope-OrgID: anonymous
-        # NOTE: cardinality 抑制の writeRelabelConfigs は cluster scale up 時に追加
+        # apiserver の high-cardinality histogram bucket を Mimir 送信前に drop。
+        # small cluster で本 metrics 群が total cardinality の ~57% を占める
+        # (= 85K series of 150K limit)、観測価値が低く drop で 70K+ series 削減。
+        # `_sum` / `_count` / `_total` は維持して histogram の総量は観測可能。
+        writeRelabelConfigs:
+          - sourceLabels: [__name__]
+            regex: "apiserver_(request|response|watch_list|watch_cache_read_wait|storage_list|watch_events|request_body_size|request_sli|request_slo)_.+_bucket"
+            action: drop
+          - sourceLabels: [__name__]
+            regex: "etcd_request_duration_seconds_bucket"
+            action: drop
 
     # -------------------------------------------------------------------------
     # Resource Limits

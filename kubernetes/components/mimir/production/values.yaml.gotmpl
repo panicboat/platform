@@ -60,6 +60,13 @@ mimir:
         # 1 store_gateway replica 構成のため RF=1。ingester ring と同じ理由で
         # chart default RF=3 だと query path で ring unhealthy になる。
         replication_factor: 1
+    limits:
+      # chart default `max_global_series_per_user: 150000` は small cluster で
+      # apiserver high-cardinality histogram bucket (= apiserver_request_*) で
+      # 容易に hit する。500K に拡大して buffer 確保、prometheus-operator の
+      # writeRelabelConfigs で長期 cardinality 制御 (= apiserver bucket drop)
+      # と組合せて運用する。
+      max_global_series_per_user: 500000
     # NOTE: frontend / frontend_worker は chart default に任せる
     # (query_scheduler 有効時は chart が scheduler_address を query-scheduler
     # service に向けて自動設定。Mimir 3.x で frontend_worker.frontend_address は
