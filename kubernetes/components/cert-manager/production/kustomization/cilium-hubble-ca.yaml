@@ -1,0 +1,49 @@
+# =============================================================================
+# Cilium Hubble CA Certificate + Issuer (= mTLS root CA)
+# =============================================================================
+# Cilium Hubble は hubble-relay ↔ hubble-peer 間で mTLS 通信。両 cert を
+# 同一 CA で署名する必要がある。
+#
+# selfsigned-cluster-issuer (= cert-manager の SelfSigned type) は各 cert を
+# 自己署名 (= subject == issuer) で発行、共通 root CA を持たないため mTLS が
+# 成立しない (= "tls: failed to verify certificate: x509: certificate signed
+# by unknown authority" で hubble-relay CrashLoop)。
+#
+# 本ファイルで CA-based ClusterIssuer を構築:
+#   1. cilium-hubble-ca = Certificate (isCA: true)、selfsigned-cluster-issuer
+#      で発行 (= 自己署名 root CA、cert-manager が cilium-hubble-ca Secret を生成)
+#   2. cilium-hubble-ca-issuer = ClusterIssuer (kind: CA)、上記 Secret を参照
+#
+# Cilium chart の hubble.tls.auto.certManagerIssuerRef を本 ClusterIssuer に
+# 向けることで、chart が hubble-server-certs + hubble-relay-client-certs を
+# **同一 CA で署名**、mTLS 成立する。
+# =============================================================================
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cilium-hubble-ca
+  namespace: cert-manager
+spec:
+  # Cilium Hubble TLS 用 root CA (= 1 年有効、cert-manager が auto-rotate)
+  isCA: true
+  commonName: cilium-hubble-ca
+  duration: 8760h0m0s
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned-cluster-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+  secretName: cilium-hubble-ca
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: cilium-hubble-ca-issuer
+spec:
+  ca:
+    # 上記 Certificate `cilium-hubble-ca` が cert-manager namespace に
+    # 自動生成する Secret を CA として参照。Cilium chart 経由で
+    # hubble-server-certs + hubble-relay-client-certs が同一 CA で署名される。
+    secretName: cilium-hubble-ca
