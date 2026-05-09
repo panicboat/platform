@@ -13,6 +13,7 @@ resources:
   - ./loki
   - ./metrics-server
   - ./mimir
+  - ./nginx-sample
   - ./oauth2-proxy
   - ./opentelemetry-collector
   - ./prometheus-operator
