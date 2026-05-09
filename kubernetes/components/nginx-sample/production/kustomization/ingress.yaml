@@ -1,0 +1,37 @@
+# =============================================================================
+# nginx ALB Ingress for end-to-end validation (Phase 5-2)
+# =============================================================================
+# Phase 4-3 で deploy 済の ALB (= IngressGroup monitoring-uis) を共有、
+# nginx.panicboat.net で public access。ACM wildcard cert *.panicboat.net
+# auto-discovery、external-dns で Route53 record 自動作成。
+# 認証 layer なし (= public)、demo content は nginx Welcome page で漏洩 risk 低。
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx
+  namespace: default
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    # Phase 4-3 既 ALB 共有 (= cost optimal、+$0/month)
+    alb.ingress.kubernetes.io/group.name: monitoring-uis
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    external-dns.alpha.kubernetes.io/hostname: nginx.panicboat.net
+spec:
+  ingressClassName: alb
+  rules:
+    - host: nginx.panicboat.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx
+                port:
+                  number: 80
