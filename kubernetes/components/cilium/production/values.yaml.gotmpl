@@ -64,13 +64,16 @@ socketLB:
 hubble:
   enabled: true
   # TLS certs は cert-manager で管理 (= Cilium 公式 production-recommended path)。
-  # selfsigned-cluster-issuer (= cert-manager component で deploy 済) を参照、
-  # cert-manager が Certificate resource を生成して TLS cert を発行・自動 rotate する。
+  # cilium-hubble-ca-issuer (= CA-based ClusterIssuer、cert-manager component の
+  # cilium-hubble-ca Certificate 由来 root CA を参照) で hubble-server-certs と
+  # hubble-relay-client-certs を同一 CA で署名、mTLS 成立。
+  # NOTE: selfsigned-cluster-issuer (= SelfSigned type) を直接使うと各 cert が
+  # 自己署名 (= subject == issuer) で発行され mTLS 不可、CA-based issuer が必須。
   tls:
     auto:
       method: certmanager
       certManagerIssuerRef:
-        name: selfsigned-cluster-issuer
+        name: cilium-hubble-ca-issuer
         kind: ClusterIssuer
         group: cert-manager.io
   relay:

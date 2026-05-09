@@ -9,3 +9,4 @@ kind: Kustomization
 
 resources:
   - cluster-issuer.yaml
+  - cilium-hubble-ca.yaml
