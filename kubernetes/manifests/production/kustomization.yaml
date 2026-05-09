@@ -12,6 +12,7 @@ resources:
   - ./loki
   - ./metrics-server
   - ./mimir
+  - ./oauth2-proxy
   - ./opentelemetry-collector
   - ./prometheus-operator
   - ./reloader
