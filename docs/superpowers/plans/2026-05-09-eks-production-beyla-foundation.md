@@ -734,3 +734,243 @@ Expected: Draft PR created、PR URL 表示
 - [x] `release: kube-prometheus-stack` ServiceMonitor label (= Task 1 values、Step 2 で chart-fixed か確認): 1-4-3 ServiceMonitor pattern と整合
 - [x] commit subject prefix: `feat(eks):` (= 2 commits)、Sub-project 4a / 4b / 4-1 / 4-2 / 4-3 と整合
 - [x] chart name `grafana/beyla` (= Task 1 helmfile.yaml + plan 全箇所): local の repository 設定と整合
+
+## Lessons Learned (post-execution)
+
+PR #315 (= 本 sub-project initial merge) で deploy 後の post-flight check は **runtime issue 0 件 (= Phase 5-1 起因)** で完了、Phase 4-3 (= 3 件) から大幅改善し Phase 4-1 / 4-2 と同等の clean implementation を再現。end-to-end smoke test (= test Pod 投入で Beyla pipeline 動作確認) で **Phase 4-3 L6 (= Tempo empty) を完全解消**、`service.name=test-nginx` で Tempo に traces 流入を verify。
+
+ただし post-flight regression check で **Phase 4-1 cert-manager + Cilium Hubble TLS migration の latent architectural issue** (= hubble-relay CrashLoop 9h、`x509: certificate signed by unknown authority`) が発覚、fix forward PR #316 で **CA-based ClusterIssuer 導入** で resolve。Phase 4-3 で Mimir RF (= 3 Sub-project 2 由来) を発覚 + fix forward した pattern と同 — **post-flight regression check が過去 sub-project の latent issue を発見する** という重要 pattern を再 validate。
+
+### Phase 3-5 全体 runtime issue 数 update
+
+| Sub-project | initial deploy | runtime fix | 計 |
+|---|---|---|---|
+| Sub-project 1 (AWS infra) | 0 | 0 | 0 |
+| Sub-project 2 (Mimir) | 5 | 0 (= ただし RF + cardinality limit が 4-3 / 5-1 で発覚、PR #312 + #314 で resolve) | 5 |
+| Sub-project 3 (Loki + Fluent Bit) | 4 | 0 | 4 |
+| Sub-project 4a (Tempo + OTel Collector) | 0 | 0 | 0 |
+| Sub-project 4b (logs path completion) | 3 | 0 | 3 |
+| Sub-project 4-1 (cert-manager + Cilium TLS) | 0 | 0 (= ただし SelfSigned vs mTLS architectural issue が 5-1 で発覚、PR #316 で resolve) | 0 |
+| Sub-project 4-2 (ESO + Reloader) | 0 (= ただし Pod Identity timing latent を 4-3 で発覚) | 0 | 0 |
+| Sub-project 4-3 (Grafana auth + Ingress) | 3 | 2 (= PR #311 + #312) | 3 |
+| **Sub-project 5-1 (Beyla foundation)** | **0** | **0** | **0** |
+| **Phase 3-5 累計** | | | **15** (= 4-3 完了時の 15 から不変) |
+
+= 5-1 で **設計起因 0 件**、**latent issue 1 件発覚 + fix forward** (= PR #316)、累計は 15 維持 (= latent issue は元 sub-project の集計に含まれる扱い)。
+
+### Phase 5-1 で発覚 → fix forward した latent issue 詳細
+
+| # | Issue | 起因 sub-project | Discovery method | Resolution |
+|---|---|---|---|---|
+| 1 | **Mimir cardinality 150K limit hit** = chart default `max_global_series_per_user: 150000` が apiserver high-cardinality histogram bucket で容易に hit、small cluster で 25-30K series が typical なのに 85K (= 57% apiserver) | Phase 3 Sub-project 2 (= latent) | Phase 5-1 brainstorming 中の Loki / Grafana ログ調査で発覚 | PR #314 (= max_global_series_per_user: 500000 + writeRelabelConfigs で apiserver bucket drop) |
+| 2 | **Cilium Hubble TLS architectural issue** = `selfsigned-cluster-issuer` (= SelfSigned type) は各 cert を自己署名で発行、共通 root CA なし、hubble-relay ↔ hubble-peer の mTLS 不可能 | Phase 4-1 (= latent) | Phase 5-1 post-flight regression check で hubble-relay CrashLoop (= 163 restarts、9h) 発覚 | PR #316 (= cilium-hubble-ca Certificate (isCA: true) + cilium-hubble-ca-issuer ClusterIssuer (kind: CA) で CA-based mTLS) |
+
+### L1: chart binary verify systematic step の **4 sub-project 連続 validation**
+
+4b で発覚 → 4-1 / 4-2 / 4-3 で 3 連続 validation → **5-1 で 4 連続 validation 完了**。本 sub-project Plan Task 1 の chart binary verify step で Beyla chart 1.16.7 の **複数 spec/reality gap** を実装時に発見・解消:
+
+| 項目 | spec 想定 | actual chart 1.16.7 | 適用 lesson |
+|---|---|---|---|
+| chart version | placeholder `1.16.x` | **chart 1.16.7 / app 3.14.0** (= local 1.16.6 から 1 patch 進化) | 4-1 L5 placeholder pattern |
+| ServiceMonitor labels key | `serviceMonitor.labels` | **`serviceMonitor.additionalLabels`** | 4-3 L2 chart-actual key correction |
+| DaemonSet hostNetwork | spec で言及なし | chart auto-add `hostNetwork: true` for `preset: application` | 4-3 L4 design assumption gap |
+
+= L1 は **4 sub-project 連続で effective**、Phase 4-3 / 5-1 で発見した chart capability assumption (= L2 chart-fixed value vs override 可能 / L4 chart auto-add) も systematic step として established。
+
+**How to apply (= future sub-projects)**:
+
+1. Plan に **必ず "chart binary verify" step を明示** (= 4 sub-project 連続 validation で完全 established)
+2. chart structure / key path / config schema は L1 step で対応可
+3. chart auto-add / chart-fixed value 等は L2 sub-pattern として `helm show values` + `helm template` で検出
+4. spec の chart 関連記述は **brainstorming 時 snapshot, 実装時 + post-flight 時 re-verify 前提**
+
+### L2: post-flight regression check が past sub-project の latent issue を発見する pattern (= 4-3 で初発覚 + 5-1 で再 validate)
+
+Phase 4-3 で Mimir RF latent issue (= 3 Sub-project 2 由来) → PR #312 で fix forward。Phase 5-1 で:
+1. **Mimir cardinality 150K limit hit** (= 3 Sub-project 2 latent) → PR #314 で fix forward
+2. **Cilium Hubble TLS architectural issue** (= 4-1 latent) → PR #316 で fix forward
+
+= **post-flight regression check が現 sub-project と無関係でも、past sub-project の latent issue を見つける**。本 pattern が 2 sub-project 連続で発生した (= 4-3、5-1) ため **established**。
+
+**Why (= 重要 pattern)**:
+
+- 過去 sub-project 完了時の post-flight check は **当 sub-project 範囲のみ verify**、cross-sub-project の interaction (= 例: Mimir cardinality + 全 ServiceMonitor scrape の累計、cert-manager + Cilium chart の TLS 接続) は test されない
+- Latent issue は **特定の trigger** (= 例: Pod recreation、cluster size 増加、actual usage 開始) で表面化、deploy 直後は dormant
+- 現 sub-project の post-flight regression check (= "全 namespace で Running pod 確認" 等) で latent issue が visible になる
+
+**How to apply**:
+
+1. **post-flight check の "regression check" stage を必須化** (= 5-1 plan で確立、Phase 5-2 / 5-3 / Phase 6+ でも継続)
+2. **過去 sub-project の "完了済" pattern を疑う**: deploy 直後の health check で OK でも、**actual usage で初めて architectural issue が発覚する**可能性を常に意識
+3. **latent issue は元 sub-project の延長**として扱う: 現 sub-project の runtime issues 集計には含めず、元 sub-project 集計に + 1、ただし **Phase 全体の累計 issue 数は重複カウントしない**
+4. Phase 6+ post-flight 自動化 (= 引き継ぎ #5) で **cross-sub-project regression check を automated に**: 例えば全 mTLS connection の actual handshake test、Mimir distributor reject rate の time-series monitoring
+
+### L3: cert-manager `SelfSigned` ClusterIssuer は mTLS 不可 (= 4-1 architectural lesson)
+
+`selfsigned-cluster-issuer` (= cert-manager の `SelfSigned` type ClusterIssuer、`spec.selfSigned: {}`) は **各 Certificate を自己署名で発行する** 仕組み:
+
+```
+SelfSigned ClusterIssuer
+    │
+    ├─ Certificate A → subject == issuer == A's CN (= self-signed by A's private key)
+    └─ Certificate B → subject == issuer == B's CN (= self-signed by B's private key)
+        ↑ A と B は完全独立、共通 root CA なし
+```
+
+mTLS は **両 cert が共通 CA で署名** されている必要 (= 各 peer が相手の cert を CA bundle で verify):
+
+```
+PROPER CA-based ClusterIssuer (= kind: CA)
+    │
+    └─ root CA Cert (= isCA: true、SelfSigned で発行)
+        │
+        ├─ Certificate A (= signed by root CA)
+        └─ Certificate B (= signed by root CA)
+            ↑ 両者の trust chain は root CA で統一、mTLS 成立
+```
+
+**Phase 4-1 で発生した design 誤判**: `selfsigned-cluster-issuer` で Cilium Hubble の cert-manager migration を行ったが、Cilium chart は hubble-server-certs + hubble-relay-client-certs を **同じ Issuer で発行** する design、SelfSigned issuer 直接利用では両 cert が別 self-signed cert になる。
+
+**Cilium chart の hubble TLS architecture (= mTLS 想定)**:
+
+- hubble-relay → hubble-peer (= each Cilium agent on each node、:4244)
+- hubble-peer の server cert (= `hubble-server-certs`) は CA で署名
+- hubble-relay の client cert (= `hubble-relay-client-certs`) も同 CA で署名
+- hubble-relay は server cert を CA bundle で verify、hubble-peer は client cert を同 CA bundle で verify
+- = **両 cert が同 CA で署名されることが prerequisite**
+
+**How to apply**:
+
+1. **cert-manager で mTLS を構築する場合は `kind: CA` ClusterIssuer 必須**:
+   - Step 1: SelfSigned で root CA Certificate (`isCA: true`) を発行
+   - Step 2: 上記 CA Secret を参照する `kind: CA` ClusterIssuer を作成
+   - Step 3: Application の各 mTLS-using Certificate を CA-based ClusterIssuer で発行
+2. **`SelfSigned` ClusterIssuer は server-only TLS 用** (= mTLS 不在の場合):
+   - 例: webhook の server cert (= cert-manager 自身、ESO の admission webhook 等) で client が CA bundle 不要なら OK
+   - mTLS-required application (= Cilium Hubble、CockroachDB、TiDB 等の distributed systems) では NG
+3. **cert-manager Certificate Ready=True ≠ mTLS works** (= L5 と関連): cert resource の health は cert 個別の発行成功のみ、cross-cert trust chain は **end-to-end connection で初めて proof**
+4. Phase 4-1 の selfsigned-cluster-issuer は **cert-manager 自身の webhook + ESO admission webhook 等の server-only TLS では引き続き機能**、Cilium Hubble のような mTLS use case のみ別途 CA-based issuer が必要
+
+### L4: Beyla eBPF auto-instrumentation **end-to-end smoke test (= test Pod) pattern が effective** (= 4-2 L5 / 4-3 L5 extension)
+
+Phase 5-1 deploy 単独では **trace 対象 Pod 不在** (= nginx は Phase 5-2)、Beyla DaemonSet が動作しても traces 0 件継続が想定。Plan の post-flight check Section C #9 で **smoke test (= test Pod 投入)** を組込:
+
+```
+post-flight 30 分 stage で:
+  kubectl run -n default test-nginx --image=nginx:latest --port=80 --restart=Never
+  kubectl exec -n default test-nginx -- curl -s http://localhost/  # 5 回
+                ↓
+  Beyla detect → eBPF probe attach → spans 生成
+                ↓
+  OTel Collector → Tempo
+                ↓
+  Grafana Explore → service.name="test-nginx" で trace 表示確認
+                ↓
+  test-nginx Pod 削除 (= Phase 5-2 で正式 nginx 投入)
+```
+
+実 post-flight で:
+- ✅ Beyla logs: `"instrumenting process" cmd=/usr/sbin/nginx pid=670420`
+- ✅ Beyla logs: `"Launching p.Tracer" component=generic.Tracer`
+- ✅ Tempo API: `service.name=test-nginx` で検索可
+
+= **Beyla pipeline の actual data flow を Phase 5-1 単独で validate**、Phase 4-3 L6 (= Tempo empty) を完全解消。
+
+**Why (= 重要 pattern)**:
+
+- Beyla DaemonSet が Running + Service が active + ServiceMonitor scrape success の static check は **infra layer のみ verify**、actual instrumentation 動作は test source なしでは確認不可
+- 4-2 L5 (= AWS direct verify AccessDenied → application-level proof) を **observability stack に extension**: cert / IAM / 接続 success だけでなく **actual data 生成 + flow** を validate
+- Phase 5-2 nginx 投入時の risk reduction (= Beyla が動作するか不明な状態で nginx を deploy する vs 動作確認済の状態で nginx 投入)
+
+**How to apply**:
+
+1. **observability stack の post-flight check に smoke test (= 一時的 data source 投入) を必須化**:
+   - Beyla / OTel Collector / log forwarder 等 = test Pod / log generator
+   - Mimir / Loki / Tempo 等 = synthetic metric / log / trace 投入で query verify
+2. **smoke test は temporary**: post-flight 完了後に test resource を必ず削除 (= production state を pollution しない)
+3. Phase 5-2 nginx 正式投入時は smoke test を skip (= 既 5-1 で Beyla validated、5-2 nginx は actual end-to-end validation の primary target)
+4. Phase 6+ post-flight 自動化 (= 引き継ぎ #5) で synthetic test を automated に組込候補
+
+### L5: distributed system chart の **TLS / mTLS 設定の architectural correctness は cert resource Ready=True では不十分** (= new lesson)
+
+Phase 4-1 で `cilium-hubble-ca-issuer` 不在状態でも:
+- ✅ `hubble-server-certs` Certificate Ready=True
+- ✅ `hubble-relay-client-certs` Certificate Ready=True
+- ✅ Cilium chart deploy success
+- ✅ Phase 4-1 post-flight check pass (= deploy 時)
+
+ただし actual mTLS connection で:
+- ❌ hubble-relay ↔ hubble-peer の TLS handshake fail
+- ❌ "certificate signed by unknown authority"
+
+= **cert-manager Certificate の Ready=True は cert 個別の発行成功** であって、**cross-cert trust chain (= 同 CA 由来か) は別 verify が必要**。
+
+**Why (= 重要 pattern)**:
+
+- cert-manager Certificate controller は Certificate spec に従い cert 発行、`isCA` / `issuerRef` 等の設定をそのまま実行
+- Certificate Ready=True は "cert が spec 通りに発行された" のみを保証、**design intent (= mTLS 用に CA を統一する) は controller の責任範囲外**
+- mTLS の architectural correctness は **両 cert の CA chain が一致** + **両 peer がそれぞれ相手の cert を CA bundle で verify 成功** で初めて proof
+
+**How to apply**:
+
+1. **cert-manager で mTLS 構築時は post-flight check に "両 cert の CA chain 一致 verify" step を必須化**:
+
+   ```bash
+   kubectl get secret -n <ns> <server-secret> -o jsonpath='{.data.ca\.crt}' | base64 -d | openssl x509 -noout -fingerprint -sha256
+   kubectl get secret -n <ns> <client-secret> -o jsonpath='{.data.ca\.crt}' | base64 -d | openssl x509 -noout -fingerprint -sha256
+   # Expected: 両者の sha256 fingerprint 一致
+   ```
+
+2. **cert-manager pattern で mTLS-required application を deploy する場合**:
+   - design phase で **Issuer kind を意識**: SelfSigned (= server-only) vs CA (= mTLS-required)
+   - implementation phase で **CA-based Issuer の Certificate chain を明示構築**: root CA → intermediate Issuer → application certs
+   - post-flight phase で **end-to-end mTLS connection test を必須**: actual handshake success を application logs で verify
+3. **L5 (= 4-2 L5 application-level indirect proof) を mTLS protocol-level に extension**: "AWS direct verify AccessDenied → ESO Ready=True で proof" の延長で "cert Ready=True → mTLS connection success で proof"
+
+### Sub-project 1-4-3 learnings 適用 review
+
+| Learning | Applied | Effect |
+|---|---|---|
+| L1 (= chart binary verify systematic step) | ✅ Plan Task 1 で適用、Beyla chart 1.16.7 の 3 spec/reality gap を発見・解消 | Effective (= 4 sub-project 連続 validation 完了) |
+| L2 (= chart capability assumption の限界、4-3 new) | ✅ Beyla `discovery.services.open_ports` 省略の挙動を brainstorming で公式 docs で裏付け、`additionalLabels` chart-actual key を発見 | Effective |
+| L3 (= Pod Identity webhook timing-sensitive injection、4-3 new) | N/A (= Beyla は Pod Identity 不要)、ただし Cilium DaemonSet rollout で cert reload する pattern と類似 | N/A → 別 lesson 形成 (= L3 in this learnings、SelfSigned vs CA-based Issuer) |
+| L4 (= distributed system replica / RF 整合、4-3 new) | N/A (= Beyla は distributed ring 構造なし) | N/A |
+| L5 (= AWS direct verify AccessDenied → application-level indirect proof、4-2 L5 extension) | ✅ Phase 5-1 では smoke test (= test Pod) で Beyla pipeline 動作確認、本 lesson が L4 + L5 in this learnings に extend | Strongly effective (= 本 sub-project で 2 件の新 lesson 形成) |
+| L6 (= subagent-driven development cadence) | ✅ Task 1 + 2 各 1 review iteration、Task 2 hydrate-only mechanical で code quality skip、minimum complexity | Stable maintained (= 4 sub-project 連続) |
+| 4-1 L5 (= chart version placeholder pattern) | ✅ helmfile.yaml で actual `1.16.7` pinned (= local 1.16.6 から 1 patch 進化) | Effective |
+
+### Phase 5 引き継ぎ事項 update (= 5-1 完了時)
+
+| 項目 | 5-1 完了時の状態 |
+|---|---|
+| 1-3. gp3 / bucket-per-env / multi-tenant | Phase 6+ 引き継ぎ (= 不変) |
+| 4. OTel Operator deploy 検討 | Phase 6+ 引き継ぎ (= 5-1 で evaluation 結果確定、Phase 6+ monorepo migration 時 deploy) |
+| 5. post-flight check 自動化 | Phase 6+ 引き継ぎ (= 本 sub-project L2 で cross-sub-project regression check の重要性を再 validate、L4 で smoke test pattern を提示、L5 で mTLS verify 手順を提示 = design 指針 3 件追加) |
+| **6. Beyla deploy + OTel Collector metrics pipeline** | **Phase 5-1 で part 1 (= Beyla deploy) 完全解消** ✅、part 2 (= OTel Collector metrics pipeline 拡張) は Phase 6+ 引き継ぎ #10 と統合 |
+| 7-8. Hubble flow logs / local Fluent Bit OTLP | Phase 6+ 引き継ぎ (= 不変) |
+| 9. Pod CPU requests audit + rightsizing | **Phase 5-3 で解消予定** |
+| 10-17. その他 | Phase 6+ 引き継ぎ (= 不変) |
+| **18. cert-manager `SelfSigned` ClusterIssuer の use case 限定 (= server-only TLS のみ、mTLS 用には CA-based Issuer 必須) を docs に明記 (= 本 sub-project L3 で追加)** | Phase 6+ 引き継ぎ |
+| **19. mTLS-using chart の post-flight check に "両 cert CA chain sha256 一致 verify" step を default 化 (= 本 sub-project L5 で追加)** | Phase 6+ 引き継ぎ (= #5 と統合可) |
+| **20. Beyla `discovery.services` deprecation → `discovery.instrument` migration (= Beyla chart 1.16.7 で deprecated warning、将来 chart upgrade 時に対応)** | Phase 6+ 引き継ぎ |
+
+= 5-1 完了で **引き継ぎ #6 part 1 解消**、**新規 3 項目 (= #18-20) 追加**。引き継ぎ #5 (= post-flight 自動化) に本 sub-project 由来の 3 design 指針追加。
+
+### Phase 5 全体 perspective update (= 5-1 完了時)
+
+| Sub-project | scope | runtime issues | 状態 |
+|---|---|---|---|
+| **5-1 Beyla deploy** | Beyla DaemonSet 1 chart deploy、AWS terragrunt 不要 | 0 件 (= 5-1 起因) + 2 件 latent fix forward (= PR #314 + #316) | ✅ 完了 |
+| **5-2 nginx + Ingress + ESO + HPA + KEDA** | nginx Deployment / Service / Ingress (= ALB) / ExternalSecret / HPA / KEDA ScaledObject、Phase 1-4 全 component を end-to-end validate (= 13 checklist) | 多 (= Phase 5 の core sub-project) | 🔜 次 brainstorming |
+| **5-3 rightsizing audit** | Pod CPU requests audit、引き継ぎ #9 解消 | 0-1 件想定 | 🔜 5-2 完了 + 数日 traffic 観測後 |
+
+= 5-1 で **observability foundation ready**、5-2 nginx 投入時に Phase 1-4 全 component の end-to-end validation が possible 状態。
+
+### 次 sub-project (= Phase 5-2 nginx + Ingress + ESO + HPA + KEDA) への適用
+
+1. **L1 即適用**: nginx chart + KEDA ScaledObject CRD の chart binary verify step を Plan に組込
+2. **L2 即適用 (= new)**: Phase 5-2 post-flight regression check で **Phase 1-4 全 component の latent issue が表面化する可能性** を意識、Hubble UI / Grafana / Tempo / Loki / Mimir 等の actual end-to-end query を smoke test に追加
+3. **L3 適用 (= new)**: Phase 5-2 で nginx に TLS が必要 (= ALB Ingress + ACM cert) だが mTLS 不在 (= server-only TLS)、SelfSigned ClusterIssuer 直接利用可、本 lesson の境界条件を明確に意識
+4. **L4 即適用 (= new extension)**: Phase 5-2 nginx 投入で Beyla traces + Hubble L7 flow + Loki logs + Mimir metrics の actual flow validation、5-1 で smoke test pattern を 5-2 で full application-level test に拡大
+5. **L5 即適用 (= new)**: Phase 5-2 で Ingress (= ALB ACM) は server-only TLS、cert chain verify 不要、ただし KEDA ScaledObject の Prometheus query authentication で mTLS 利用なら本 lesson 適用
+6. **4-3 L1-L6 + 5-1 L1-L5 全部適用**: subagent-driven development cadence、smoke test pattern、cert-manager pattern 等
