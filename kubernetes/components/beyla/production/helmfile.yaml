@@ -1,0 +1,22 @@
+# =============================================================================
+# Beyla Helmfile for production
+# =============================================================================
+# Beyla eBPF auto-instrumentation を monitoring namespace に DaemonSet deploy。
+# default namespace の application Pod を観測、traces を OTel Collector 経由
+# Tempo に、metrics を /metrics + ServiceMonitor 経由 Prometheus → Mimir に送る。
+# Phase 5-2 で nginx 投入時に即時 instrumentation 開始する基盤。
+# =============================================================================
+environments:
+  production:
+---
+repositories:
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
+
+releases:
+  - name: beyla
+    namespace: monitoring
+    chart: grafana/beyla
+    version: "1.16.7"
+    values:
+      - values.yaml.gotmpl
