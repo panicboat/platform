@@ -1,0 +1,115 @@
+# Beyla eBPF Auto-Instrumentation Configuration for production
+# default namespace の application Pod を eBPF auto-instrumentation で観測、
+# traces を OTel Collector 経由 Tempo に、metrics を /metrics + ServiceMonitor
+# 経由 Prometheus → Mimir に送る。
+
+# =============================================================================
+# Preset Configuration
+# =============================================================================
+# "application" preset: application-level metrics + traces focus。
+# chart template (= daemon-set.yaml) で preset application 時に hostPID: true が
+# 自動 set される。privileged: true (= top-level chart default) と併せて
+# eBPF probe attach に必要な権限を確保。
+# NOTE: contextPropagation.enabled chart default true のため hostNetwork: true も
+# 自動 set される (= Go application の trace context propagation 対応)。
+preset: application
+
+# =============================================================================
+# Beyla Configuration
+# =============================================================================
+config:
+  data:
+    # -------------------------------------------------------------------------
+    # OTEL Traces Export → Phase 4-3 で deploy 済 OpenTelemetry Collector 経由 Tempo
+    # -------------------------------------------------------------------------
+    otel_traces_export:
+      endpoint: http://opentelemetry-collector.monitoring.svc.cluster.local:4317
+      protocol: grpc
+      interval: 5s
+      max_export_batch_size: 512
+
+    # -------------------------------------------------------------------------
+    # Prometheus Export (= /metrics endpoint、ServiceMonitor で Prometheus が scrape)
+    # -------------------------------------------------------------------------
+    # NOTE: otel_metrics_export は意図的に未設定。Phase 4-3 で OTel Collector の
+    # metrics pipeline は debug exporter (= Mimir 接続未設定) のため、
+    # Beyla metrics は Prometheus exposition format で expose し ServiceMonitor
+    # 経由で Prometheus → remote_write → Mimir のルートを採用。
+    prometheus_export:
+      port: 9090
+      path: /metrics
+
+    # -------------------------------------------------------------------------
+    # Service Discovery (= default namespace の application Pod、open_ports 省略で
+    # 全 listening port auto-discover)
+    # -------------------------------------------------------------------------
+    # NOTE: open_ports は明示的に省略。default namespace は application 専用想定
+    # (= infra Pod 不在)、全 listening port auto-discover で運用 friction 最小。
+    # microservice 追加時に Beyla config 更新不要 (= 新 service の任意 port が
+    # 自動 trace 対象)。
+    discovery:
+      services:
+        - k8s_namespace: "default"
+
+    # -------------------------------------------------------------------------
+    # Route Configuration (= heuristic で URL path から route name 自動推論)
+    # -------------------------------------------------------------------------
+    routes:
+      unmatched: heuristic
+
+    # -------------------------------------------------------------------------
+    # Kubernetes Attributes (= service name resolution に K8s metadata を使用)
+    # -------------------------------------------------------------------------
+    attributes:
+      kubernetes:
+        enable: true
+
+    # -------------------------------------------------------------------------
+    # Network Filter (= infra Pod の trace を exclude、observation noise 削減)
+    # -------------------------------------------------------------------------
+    filter:
+      network:
+        k8s_dst_owner_name:
+          not_match: "{kube*,*prometheus*,*grafana*,*mimir*,*loki*,*tempo*}"
+        k8s_src_owner_name:
+          not_match: "{kube*,*prometheus*,*grafana*,*mimir*,*loki*,*tempo*}"
+
+# =============================================================================
+# Resources (= small DaemonSet、~5-7 Pods total per cluster)
+# =============================================================================
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 384Mi
+
+# =============================================================================
+# Priority Class (= Phase 4-2 ESO / Reloader / 4-3 oauth2-proxy と同 priority)
+# =============================================================================
+# 観測基盤は Phase 5-2 application 投入時の前提条件、cluster 系 component と
+# 同 priority に揃えて CPU 逼迫 node でも preempt 動作で確実に schedule する。
+priorityClassName: system-cluster-critical
+
+# =============================================================================
+# Service (= ServiceMonitor scrape target、/metrics :9090 expose)
+# =============================================================================
+# NOTE: chart default は service.enabled: false、ServiceMonitor が target Service を
+# 必要とするため明示 true 化。
+service:
+  enabled: true
+
+# =============================================================================
+# ServiceMonitor (= kube-prometheus-stack の serviceMonitorSelector に乗る)
+# =============================================================================
+# NOTE: chart の ServiceMonitor labels key path は `serviceMonitor.additionalLabels`
+# (= helm show values で確認、Reloader chart の `labels` 固定 pattern とは異なり
+# override 可能)。release: kube-prometheus-stack を明示指定して他 component
+# (cert-manager / external-secrets / tempo 等) と統一。
+# panicboat の serviceMonitorSelector: {} (= permissive) で label なしでも収集
+# されるが、将来 selector 化時の forward compatibility 確保。
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    release: kube-prometheus-stack
