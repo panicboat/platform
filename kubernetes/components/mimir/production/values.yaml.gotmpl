@@ -50,6 +50,16 @@ mimir:
       enabled: false
     ingester:
       push_grpc_method_enabled: true
+      ring:
+        # 1 ingester replica 構成のため RF=1。chart default RF=3 だと distributor が
+        # quorum (= RF/2+1=2) を満たせず "at least 2 live replicas required" で
+        # write reject、querier も ring unhealthy で query 不可になる。
+        replication_factor: 1
+    store_gateway:
+      sharding_ring:
+        # 1 store_gateway replica 構成のため RF=1。ingester ring と同じ理由で
+        # chart default RF=3 だと query path で ring unhealthy になる。
+        replication_factor: 1
     # NOTE: frontend / frontend_worker は chart default に任せる
     # (query_scheduler 有効時は chart が scheduler_address を query-scheduler
     # service に向けて自動設定。Mimir 3.x で frontend_worker.frontend_address は
