@@ -1,10 +1,17 @@
 # =============================================================================
 # oauth2-proxy Helmfile for production
 # =============================================================================
-# oauth2-proxy/oauth2-proxy chart を 1 instance shared mode で deploy。
-# multi-upstream config で 4 backends (= grafana / hubble-ui / alertmanager /
-# prometheus) に Host header 経由 routing。Google OAuth gate + email
-# allowlist (= ConfigMap allowed-emails) で panicboat@gmail.com のみ通過。
+# oauth2-proxy/oauth2-proxy chart を 4 instances (= 1 per backend) で deploy。
+# 各 release は単一 upstream に reverse-proxy する (= host-based routing は ALB
+# で実施、各 Ingress backend が release ごとの Service を参照)。
+# cookie domain `.panicboat.net` + cookie_secret 共有 (= 4 release が同じ
+# ExternalSecret 由来 Secret を参照) で 4 hosts SSO 実現。
+# Google OAuth gate + email allowlist (= ConfigMap allowed-emails) で
+# panicboat@gmail.com のみ通過。
+#
+# NOTE: oauth2-proxy v7+ の `upstreams` config は path-based routing のみ対応
+# (= 単一 instance での host-based routing 不可、v7.15.2 で startup error
+# `multiple upstreams found with id "/"` を確認)、4 instances 構成が必須。
 # =============================================================================
 environments:
   production:
@@ -14,7 +21,25 @@ repositories:
     url: https://oauth2-proxy.github.io/manifests
 
 releases:
-  - name: oauth2-proxy
+  - name: oauth2-proxy-grafana
+    namespace: oauth2-proxy
+    chart: oauth2-proxy/oauth2-proxy
+    version: "10.4.3"
+    values:
+      - values.yaml.gotmpl
+  - name: oauth2-proxy-hubble
+    namespace: oauth2-proxy
+    chart: oauth2-proxy/oauth2-proxy
+    version: "10.4.3"
+    values:
+      - values.yaml.gotmpl
+  - name: oauth2-proxy-alertmanager
+    namespace: oauth2-proxy
+    chart: oauth2-proxy/oauth2-proxy
+    version: "10.4.3"
+    values:
+      - values.yaml.gotmpl
+  - name: oauth2-proxy-prometheus
     namespace: oauth2-proxy
     chart: oauth2-proxy/oauth2-proxy
     version: "10.4.3"

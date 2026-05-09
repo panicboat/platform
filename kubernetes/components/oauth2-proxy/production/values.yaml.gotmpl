@@ -1,11 +1,36 @@
 # oauth2-proxy Configuration for production
-# Google OAuth で 4 monitoring UIs を gate、Host header 経由 4 backends に reverse-proxy。
+# 4 oauth2-proxy releases (= oauth2-proxy-{grafana,hubble,alertmanager,prometheus})
+# が本 values を共有、`.Release.Name` で upstream を切替。各 release は
+# 単一 upstream へ reverse-proxy、ALB が host-based に各 release Service へ振分。
 
 # =============================================================================
-# Replicas (HA = 2)
+# Upstream map (= release name → backend FQDN)
 # =============================================================================
-# 1 instance shared topology のため、SPOF 回避目的で 2 replicas に設定。
-# ALB target group で 2 endpoints HA。
+# helmfile が release ごとに本 values を render し、`.Release.Name` から
+# 対応する backend を選択する。新 host を追加する場合は helmfile.yaml に
+# release 追加 + 本 map に entry 追加 + ingress-monitoring-uis.yaml に
+# Ingress 追加が必要。
+{{- $upstreamMap := dict
+  "oauth2-proxy-grafana" "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80"
+  "oauth2-proxy-hubble" "http://hubble-ui.kube-system.svc.cluster.local:80"
+  "oauth2-proxy-alertmanager" "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093"
+  "oauth2-proxy-prometheus" "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
+}}
+{{- $upstreamUrl := index $upstreamMap .Release.Name }}
+
+# =============================================================================
+# Fullname Override (= Service / Deployment / ServiceAccount 名を release name に統一)
+# =============================================================================
+# chart default の fullname は `<release>-<chart>` で `oauth2-proxy-grafana-oauth2-proxy`
+# のように冗長になる。fullnameOverride で `.Release.Name` を直接採用、Service 名を
+# Ingress backend で参照しやすくする (= 例: `oauth2-proxy-grafana`)。
+fullnameOverride: {{ .Release.Name }}
+
+# =============================================================================
+# Replicas (HA = 2 per release)
+# =============================================================================
+# 各 release ごとに 2 replicas (= ALB target group で 2 endpoints HA)、
+# 4 releases × 2 = 8 Pods。
 replicaCount: 2
 
 # =============================================================================
@@ -32,18 +57,15 @@ resources:
 # config.existingSecret で ESO 由来 K8s Secret `oauth2-proxy-google` を直接参照、
 # chart が OAUTH2_PROXY_CLIENT_ID / CLIENT_SECRET / COOKIE_SECRET を deployment 環境変数に
 # 自動注入する (= chart template/secret.yaml は existingSecret 設定時に skip)。
-# values 内に credentials を記述しないため secret 漏洩を防止。
+# 4 releases が同じ Secret を参照することで cookie_secret 共有 → cookie domain
+# `.panicboat.net` 経由で 4 hosts SSO 実現 (= 同じ cookie name `_oauth2_proxy` を
+# 4 instances が共通の cookie_secret で encrypt/decrypt)。
 config:
   existingSecret: oauth2-proxy-google
   configFile: |-
     provider = "google"
     email_domains = [ "*" ]
-    upstreams = [
-      "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80",
-      "http://hubble-ui.kube-system.svc.cluster.local:80",
-      "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093",
-      "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
-    ]
+    upstreams = [ "{{ $upstreamUrl }}" ]
     cookie_domains = [ ".panicboat.net" ]
     whitelist_domains = [ ".panicboat.net" ]
     cookie_secure = true
@@ -60,9 +82,10 @@ config:
 # =============================================================================
 # Extra Volumes & Volume Mounts (= ConfigMap allowlist)
 # =============================================================================
-# ConfigMap `oauth2-proxy-allowed-emails` (= kustomization で deploy) を mount、
-# config.configFile の `authenticated_emails_file` で参照。ConfigMap 変更時は
-# Reloader が auto-rollout (= deploymentAnnotations 参照)。
+# ConfigMap `oauth2-proxy-allowed-emails` (= kustomization で deploy) を 4 releases が
+# 共有 mount、config.configFile の `authenticated_emails_file` で参照。
+# ConfigMap 変更時は Reloader が 4 Deployments 全部を auto-rollout
+# (= deploymentAnnotations 参照、annotation が同じ namespace 内の全 ConfigMap watch を trigger)。
 extraVolumes:
   - name: emails
     configMap:
@@ -93,6 +116,7 @@ service:
 # NOTE: chart の ServiceMonitor key path は metrics.serviceMonitor (helm show values
 # で確認済、top-level serviceMonitor ではない)。labels block は override 可能、
 # release: kube-prometheus-stack を明示指定して他 component と統一。
+# 4 release ごとに ServiceMonitor が auto-created、Mimir に各 release の metrics 流入。
 metrics:
   serviceMonitor:
     enabled: true
