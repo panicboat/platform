@@ -1,0 +1,22 @@
+# =============================================================================
+# oauth2-proxy Helmfile for production
+# =============================================================================
+# oauth2-proxy/oauth2-proxy chart を 1 instance shared mode で deploy。
+# multi-upstream config で 4 backends (= grafana / hubble-ui / alertmanager /
+# prometheus) に Host header 経由 routing。Google OAuth gate + email
+# allowlist (= ConfigMap allowed-emails) で panicboat@gmail.com のみ通過。
+# =============================================================================
+environments:
+  production:
+---
+repositories:
+  - name: oauth2-proxy
+    url: https://oauth2-proxy.github.io/manifests
+
+releases:
+  - name: oauth2-proxy
+    namespace: oauth2-proxy
+    chart: oauth2-proxy/oauth2-proxy
+    version: "10.4.3"
+    values:
+      - values.yaml.gotmpl

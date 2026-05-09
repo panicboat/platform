@@ -1,0 +1,422 @@
+---
+# Source: oauth2-proxy/templates/poddisruptionbudget.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app: oauth2-proxy    
+    helm.sh/chart: oauth2-proxy-10.4.3
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: authentication-proxy
+    app.kubernetes.io/part-of: oauth2-proxy
+    app.kubernetes.io/name: oauth2-proxy
+    app.kubernetes.io/instance: oauth2-proxy
+    app.kubernetes.io/version: "7.15.2"
+  name: oauth2-proxy
+  namespace: oauth2-proxy
+spec:
+  selector:
+    matchLabels:      
+      app.kubernetes.io/name: oauth2-proxy
+      app.kubernetes.io/instance: oauth2-proxy
+  minAvailable: 1
+---
+# Source: oauth2-proxy/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: oauth2-proxy    
+    helm.sh/chart: oauth2-proxy-10.4.3
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: authentication-proxy
+    app.kubernetes.io/part-of: oauth2-proxy
+    app.kubernetes.io/name: oauth2-proxy
+    app.kubernetes.io/instance: oauth2-proxy
+    app.kubernetes.io/version: "7.15.2"
+  name: oauth2-proxy
+  namespace: oauth2-proxy
+automountServiceAccountToken: true
+---
+# Source: oauth2-proxy/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: oauth2-proxy    
+    helm.sh/chart: oauth2-proxy-10.4.3
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: authentication-proxy
+    app.kubernetes.io/part-of: oauth2-proxy
+    app.kubernetes.io/name: oauth2-proxy
+    app.kubernetes.io/instance: oauth2-proxy
+    app.kubernetes.io/version: "7.15.2"
+  name: oauth2-proxy
+  namespace: oauth2-proxy
+data:
+  oauth2_proxy.cfg: |
+
+    provider = "google"
+    email_domains = [ "*" ]
+    upstreams = [
+      "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80",
+      "http://hubble-ui.kube-system.svc.cluster.local:80",
+      "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093",
+      "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
+    ]
+    cookie_domains = [ ".panicboat.net" ]
+    whitelist_domains = [ ".panicboat.net" ]
+    cookie_secure = true
+    cookie_httponly = true
+    cookie_samesite = "lax"
+    pass_authorization_header = true
+    pass_access_token = true
+    set_authorization_header = true
+    set_xauthrequest = true
+    skip_provider_button = true
+    reverse_proxy = true
+    authenticated_emails_file = "/etc/oauth2-proxy/emails/allowed"
+---
+# Source: oauth2-proxy/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: oauth2-proxy    
+    helm.sh/chart: oauth2-proxy-10.4.3
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: authentication-proxy
+    app.kubernetes.io/part-of: oauth2-proxy
+    app.kubernetes.io/name: oauth2-proxy
+    app.kubernetes.io/instance: oauth2-proxy
+    app.kubernetes.io/version: "7.15.2"
+  name: oauth2-proxy
+  namespace: oauth2-proxy
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      appProtocol: http
+      name: http
+    - port: 44180
+      protocol: TCP
+      appProtocol: http
+      targetPort: metrics
+      name: metrics
+  selector:    
+    app.kubernetes.io/name: oauth2-proxy
+    app.kubernetes.io/instance: oauth2-proxy
+---
+# Source: oauth2-proxy/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: oauth2-proxy    
+    helm.sh/chart: oauth2-proxy-10.4.3
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: authentication-proxy
+    app.kubernetes.io/part-of: oauth2-proxy
+    app.kubernetes.io/name: oauth2-proxy
+    app.kubernetes.io/instance: oauth2-proxy
+    app.kubernetes.io/version: "7.15.2"
+  annotations:
+    reloader.stakater.com/auto: "true"
+  name: oauth2-proxy
+  namespace: oauth2-proxy
+spec:
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:      
+      app.kubernetes.io/name: oauth2-proxy
+      app.kubernetes.io/instance: oauth2-proxy
+  template:
+    metadata:
+      annotations:
+        checksum/config: afd7b793c114f622789b99e121c305dd07ef103349d37b97325c459df0dc2153
+        checksum/secret: 9eb46bbdefd5cf844a2c4965b1241a7177addaa7c07789e7873ccda6b0104111
+        checksum/google-secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+      labels:
+        app: oauth2-proxy        
+        helm.sh/chart: oauth2-proxy-10.4.3
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/component: authentication-proxy
+        app.kubernetes.io/part-of: oauth2-proxy
+        app.kubernetes.io/name: oauth2-proxy
+        app.kubernetes.io/instance: oauth2-proxy
+        app.kubernetes.io/version: "7.15.2"
+    spec:
+      priorityClassName: "system-cluster-critical"
+      serviceAccountName: oauth2-proxy
+      enableServiceLinks: true
+      automountServiceAccountToken: true
+      containers:
+      - name: oauth2-proxy
+        image: "quay.io/oauth2-proxy/oauth2-proxy:v7.15.2"
+        imagePullPolicy: IfNotPresent
+        args:
+          - --http-address=0.0.0.0:4180
+          - --https-address=0.0.0.0:4443
+          - --metrics-address=0.0.0.0:44180
+          - --config=/etc/oauth2_proxy/oauth2_proxy.cfg
+        env:
+        - name: OAUTH2_PROXY_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name:  oauth2-proxy-google
+              key: client-id
+        - name: OAUTH2_PROXY_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name:  oauth2-proxy-google
+              key: client-secret
+        - name: OAUTH2_PROXY_COOKIE_SECRET
+          valueFrom:
+            secretKeyRef:
+              name:  oauth2-proxy-google
+              key: cookie-secret
+        ports:
+          - containerPort: 4180
+            name: http
+            protocol: TCP
+          - containerPort: 44180
+            protocol: TCP
+            name: metrics
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 0
+          timeoutSeconds: 1
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 0
+          timeoutSeconds: 5
+          successThreshold: 1
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+        volumeMounts:
+        - mountPath: /etc/oauth2_proxy/oauth2_proxy.cfg
+          name: configmain
+          subPath: oauth2_proxy.cfg
+        - mountPath: /etc/oauth2-proxy/emails
+          name: emails
+          readOnly: true
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsGroup: 2000
+          runAsNonRoot: true
+          runAsUser: 2000
+          seccompProfile:
+            type: RuntimeDefault
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: oauth2-proxy
+        name: configmain
+      - configMap:
+          name: oauth2-proxy-allowed-emails
+        name: emails
+---
+# Source: oauth2-proxy/templates/servicemonitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: oauth2-proxy
+  namespace: oauth2-proxy
+  labels:
+    prometheus: default
+    app: oauth2-proxy    
+    helm.sh/chart: oauth2-proxy-10.4.3
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: authentication-proxy
+    app.kubernetes.io/part-of: oauth2-proxy
+    app.kubernetes.io/name: oauth2-proxy
+    app.kubernetes.io/instance: oauth2-proxy
+    app.kubernetes.io/version: "7.15.2"
+    release: kube-prometheus-stack
+spec:
+  jobLabel: oauth2-proxy
+  selector:
+    matchLabels:      
+      app.kubernetes.io/name: oauth2-proxy
+      app.kubernetes.io/instance: oauth2-proxy
+  namespaceSelector:
+    matchNames:
+      - oauth2-proxy
+  endpoints:
+  - port: metrics
+    path: "/metrics"
+    interval: 60s
+    scrapeTimeout: 30s
+
+---
+apiVersion: v1
+data:
+  allowed: |
+    panicboat@gmail.com
+kind: ConfigMap
+metadata:
+  name: oauth2-proxy-allowed-emails
+  namespace: oauth2-proxy
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: oauth2-proxy-google
+  namespace: oauth2-proxy
+spec:
+  data:
+  - remoteRef:
+      key: panicboat/oauth2-proxy/google
+      property: client_id
+    secretKey: client-id
+  - remoteRef:
+      key: panicboat/oauth2-proxy/google
+      property: client_secret
+    secretKey: client-secret
+  - remoteRef:
+      key: panicboat/oauth2-proxy/google
+      property: cookie_secret
+    secretKey: cookie-secret
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: aws-secrets-manager
+  target:
+    creationPolicy: Owner
+    name: oauth2-proxy-google
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    alb.ingress.kubernetes.io/group.name: monitoring-uis
+    alb.ingress.kubernetes.io/healthcheck-path: /ping
+    alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/target-type: ip
+    external-dns.alpha.kubernetes.io/hostname: alertmanager.panicboat.net
+  name: monitoring-uis-alertmanager
+  namespace: oauth2-proxy
+spec:
+  ingressClassName: alb
+  rules:
+  - host: alertmanager.panicboat.net
+    http:
+      paths:
+      - backend:
+          service:
+            name: oauth2-proxy
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    alb.ingress.kubernetes.io/group.name: monitoring-uis
+    alb.ingress.kubernetes.io/healthcheck-path: /ping
+    alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/target-type: ip
+    external-dns.alpha.kubernetes.io/hostname: grafana.panicboat.net
+  name: monitoring-uis-grafana
+  namespace: oauth2-proxy
+spec:
+  ingressClassName: alb
+  rules:
+  - host: grafana.panicboat.net
+    http:
+      paths:
+      - backend:
+          service:
+            name: oauth2-proxy
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    alb.ingress.kubernetes.io/group.name: monitoring-uis
+    alb.ingress.kubernetes.io/healthcheck-path: /ping
+    alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/target-type: ip
+    external-dns.alpha.kubernetes.io/hostname: hubble.panicboat.net
+  name: monitoring-uis-hubble
+  namespace: oauth2-proxy
+spec:
+  ingressClassName: alb
+  rules:
+  - host: hubble.panicboat.net
+    http:
+      paths:
+      - backend:
+          service:
+            name: oauth2-proxy
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    alb.ingress.kubernetes.io/group.name: monitoring-uis
+    alb.ingress.kubernetes.io/healthcheck-path: /ping
+    alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/target-type: ip
+    external-dns.alpha.kubernetes.io/hostname: prometheus.panicboat.net
+  name: monitoring-uis-prometheus
+  namespace: oauth2-proxy
+spec:
+  ingressClassName: alb
+  rules:
+  - host: prometheus.panicboat.net
+    http:
+      paths:
+      - backend:
+          service:
+            name: oauth2-proxy
+            port:
+              number: 80
+        path: /
+        pathType: Prefix

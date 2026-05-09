@@ -66,6 +66,22 @@ metadata:
     app.kubernetes.io/name: keda
 ---
 # =============================================================================
+# oauth2-proxy Namespace
+# =============================================================================
+# oauth2-proxy (= Google OAuth gate + reverse-proxy) の専用 namespace。
+# 4 monitoring UIs (= Grafana / Hubble UI / Alertmanager / Prometheus) を
+# 共通認証ゲート経由で外部公開する。ALB Ingress (IngressGroup monitoring-uis)
+# も本 namespace に配置 (= Ingress.spec.backend は同 namespace の Service のみ
+# 参照可能なため)。
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oauth2-proxy
+  labels:
+    app.kubernetes.io/name: oauth2-proxy
+---
+# =============================================================================
 # Monitoring Namespace
 # =============================================================================
 # This namespace contains the full observability stack:

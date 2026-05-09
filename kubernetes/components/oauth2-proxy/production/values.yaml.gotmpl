@@ -1,0 +1,100 @@
+# oauth2-proxy Configuration for production
+# Google OAuth で 4 monitoring UIs を gate、Host header 経由 4 backends に reverse-proxy。
+
+# =============================================================================
+# Replicas (HA = 2)
+# =============================================================================
+# 1 instance shared topology のため、SPOF 回避目的で 2 replicas に設定。
+# ALB target group で 2 endpoints HA。
+replicaCount: 2
+
+# =============================================================================
+# Priority Class
+# =============================================================================
+# 認証ゲートは 4 monitoring UIs の access 前提条件、Phase 4-2 ESO / Reloader と
+# 同 priority に揃え、CPU 逼迫 node でも preempt 動作で確実に schedule する。
+priorityClassName: system-cluster-critical
+
+# =============================================================================
+# Resources
+# =============================================================================
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# =============================================================================
+# Provider: Google OAuth
+# =============================================================================
+# config.existingSecret で ESO 由来 K8s Secret `oauth2-proxy-google` を直接参照、
+# chart が OAUTH2_PROXY_CLIENT_ID / CLIENT_SECRET / COOKIE_SECRET を deployment 環境変数に
+# 自動注入する (= chart template/secret.yaml は existingSecret 設定時に skip)。
+# values 内に credentials を記述しないため secret 漏洩を防止。
+config:
+  existingSecret: oauth2-proxy-google
+  configFile: |-
+    provider = "google"
+    email_domains = [ "*" ]
+    upstreams = [
+      "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80",
+      "http://hubble-ui.kube-system.svc.cluster.local:80",
+      "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093",
+      "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
+    ]
+    cookie_domains = [ ".panicboat.net" ]
+    whitelist_domains = [ ".panicboat.net" ]
+    cookie_secure = true
+    cookie_httponly = true
+    cookie_samesite = "lax"
+    pass_authorization_header = true
+    pass_access_token = true
+    set_authorization_header = true
+    set_xauthrequest = true
+    skip_provider_button = true
+    reverse_proxy = true
+    authenticated_emails_file = "/etc/oauth2-proxy/emails/allowed"
+
+# =============================================================================
+# Extra Volumes & Volume Mounts (= ConfigMap allowlist)
+# =============================================================================
+# ConfigMap `oauth2-proxy-allowed-emails` (= kustomization で deploy) を mount、
+# config.configFile の `authenticated_emails_file` で参照。ConfigMap 変更時は
+# Reloader が auto-rollout (= deploymentAnnotations 参照)。
+extraVolumes:
+  - name: emails
+    configMap:
+      name: oauth2-proxy-allowed-emails
+extraVolumeMounts:
+  - name: emails
+    mountPath: /etc/oauth2-proxy/emails
+    readOnly: true
+
+# =============================================================================
+# Deployment Annotations (= Reloader watch)
+# =============================================================================
+# ESO 由来 Secret `oauth2-proxy-google` 変更時 + ConfigMap `oauth2-proxy-allowed-emails`
+# 変更時に Reloader が自動 rollout する。
+deploymentAnnotations:
+  reloader.stakater.com/auto: "true"
+
+# =============================================================================
+# Service (= ClusterIP、ALB Ingress backend として利用)
+# =============================================================================
+service:
+  type: ClusterIP
+  portNumber: 80
+
+# =============================================================================
+# ServiceMonitor (= kube-prometheus-stack の serviceMonitorSelector に乗る)
+# =============================================================================
+# NOTE: chart の ServiceMonitor key path は metrics.serviceMonitor (helm show values
+# で確認済、top-level serviceMonitor ではない)。labels block は override 可能、
+# release: kube-prometheus-stack を明示指定して他 component と統一。
+metrics:
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack
