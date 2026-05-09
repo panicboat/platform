@@ -1389,3 +1389,239 @@ Expected: Draft PR created、PR URL 表示
 - [x] 4 host names (= `{grafana,hubble,alertmanager,prometheus}.panicboat.net`): Task 0 Step 8 (Google OAuth redirect URIs) + Task 1 Ingress + values.yaml.gotmpl upstreams + post-flight test 全箇所で同一
 - [x] 4 backend Service FQDNs (= `kube-prometheus-stack-grafana.monitoring`, `hubble-ui.kube-system`, `kube-prometheus-stack-alertmanager.monitoring`, `kube-prometheus-stack-prometheus.monitoring`): Task 0 Step 5 verify + Task 1 values upstreams で一致
 - [x] commit subject prefix: `feat(eks):` (= 3 commits)、Sub-project 4a / 4b / 4-1 / 4-2 と整合
+
+## Lessons Learned (post-execution)
+
+PR #310 (= 本 sub-project initial merge) で deploy 後の post-flight check で **3 件 runtime issues** が連続発覚、2 件 fix forward PR (= #311 + #312) で resolve、1 件 manual ad-hoc fix で resolve。Sub-project 4-1 (= 0 issue) + 4-2 (= 0 issue) の連続 0 件記録から大幅増加し、**Phase 3 Sub-project 4b (= 3 件 issue) と同水準** に戻った。ただし発覚した 3 件のうち 2 件は **過去 sub-project (= 4-2 ESO Pod Identity / 3 Sub-project 2 Mimir replication_factor) の latent issue が application-level data flow で初発覚** したもので、本 sub-project 自体の design / implementation 起因は 1 件 (= oauth2-proxy multi-upstream host-based routing の technical assumption 誤謬) のみ。
+
+= **Phase 4-3 = Phase 4 観測 stack の actual end-to-end use case** として機能、4-2 L5 が想定した "deploy 時 static health check で捕捉できない issue を post-flight application-level test で発見" pattern が再 validate された。
+
+### Phase 3-4 全体 runtime issue 数 update
+
+| Sub-project | initial deploy | runtime fix | 計 |
+|---|---|---|---|
+| Sub-project 1 (AWS infra) | 0 | 0 | 0 |
+| Sub-project 2 (Mimir) | 5 | 0 (= ただし RF=3 latent issue が 4-3 で発覚、PR #312 で resolve) | 5 |
+| Sub-project 3 (Loki + Fluent Bit) | 4 | 0 | 4 |
+| Sub-project 4a (Tempo + OTel Collector) | 0 | 0 | 0 |
+| Sub-project 4b (logs path completion) | 3 | 0 | 3 |
+| Sub-project 4-1 (cert-manager + Cilium TLS) | 0 | 0 | 0 |
+| Sub-project 4-2 (ESO + Reloader) | 0 (= ただし Pod Identity webhook timing latent issue が 4-3 で発覚、ESO restart で resolve) | 0 | 0 |
+| **Sub-project 4-3 (Grafana auth + Ingress)** | **3** (= 1 設計起因 + 2 過去 latent) | **2** (= PR #311 + #312) | **3** |
+| **Phase 3-4 累計** | | | **15** (= 4-2 完了時の 12 + 4-3 で 3) |
+
+= 4-3 で **3 件 runtime issue 発覚 + 2 件 fix forward PR** という pattern (= 4b と同水準)。ただし latent issue 2 件 (= 過去 sub-project 起因) を含むため、本 sub-project design / implementation 起因は 1 件のみ (= oauth2-proxy multi-upstream の technical assumption 誤謬)。
+
+### Runtime issues 詳細 (= 3 件)
+
+| # | Issue | 起因 sub-project | Discovery method | Resolution | Status |
+|---|---|---|---|---|---|
+| 1 | **ESO Pod Identity injection timing** = ESO Pod が Phase 4-2 deploy 時に Pod Identity Association より先 created、webhook が injection skip した状態で 22 時間 dormant、actual `GetSecretValue` で AccessDenied 初発覚 | Phase 4-2 (= latent) | Phase 4-3 ExternalSecret deploy で AWS API call が caller=Karpenter node role で 401、ESO Pod env に `AWS_CONTAINER_CREDENTIALS_FULL_URI` 不在を確認 | manual ad-hoc fix: `kubectl rollout restart deployment/external-secrets -n external-secrets` で recreate → webhook が新 Pod に injection 反映 | 解決済 (= manual)、再発防止策は L3 で document |
+| 2 | **oauth2-proxy multi-upstream host-based routing 技術的不可能** = brainstorming Approach 1 (= 1 instance shared) は oauth2-proxy v7+ の `upstreams` config が path-based routing のみ、4 backends が default path `/` で衝突して startup error `multiple upstreams found with id "/"` | Phase 4-3 (= 設計起因) | post-flight 5min stage で oauth2-proxy Pod CrashLoopBackOff を確認、logs で startup error 発覚 | fix forward PR #311: brainstorming Approach 2 (= 4 instances 1 per backend) へ migration、values.yaml.gotmpl で `.Release.Name` 経由 upstream 切替 | 解決済 (= PR #311) |
+| 3 | **Mimir replication_factor 不整合** = Phase 3 Sub-project 2 で `ingester.replicas: 1` 明示設定、ただし `replication_factor` override missing で chart default RF=3、distributor が quorum (= RF/2+1=2) を満たせず 23 時間 Prometheus remote-write 500 reject | Phase 3 Sub-project 2 (= latent) | Phase 4-3 Grafana login 後の datasource query で `Validation failed: too many unhealthy instances in the ring` エラー、distributor logs で `at least 2 live replicas required, could only find 1` を確認 | fix forward PR #312: `mimir.structuredConfig.{ingester,store_gateway}.{ring,sharding_ring}.replication_factor: 1` 追加 | 解決済 (= PR #312) |
+
+### L1: chart binary verify systematic step の 3 sub-project 連続 validation + new sub-pattern 発見
+
+4b で発覚 → 4-1 で systematic 適用 → 4-2 で再 validate → **4-3 で 3 連続 validation 完了**。本 sub-project Plan Task 1 の chart binary verify step で oauth2-proxy chart 10.4.3 の **複数 spec/reality gap** を実装時に発見・解消:
+
+| 項目 | spec 想定 | actual chart 10.4.3 | 適用 lesson |
+|---|---|---|---|
+| chart version | placeholder `v7.x` (= app version 想定) | **chart 10.4.3 / app 7.15.2** | 4-1 L5 placeholder pattern + L4 calibration |
+| ServiceMonitor key path | `serviceMonitor.*` | **`metrics.serviceMonitor.*`** | 4-2 L2 chart-fixed value detection |
+| Secret injection | `extraEnv` 3 vars | **`config.existingSecret`** (= chart auto-inject、`extraEnv` 併用は env duplicate) | L1 chart binary verify による設計改善 |
+| configFile rendering | Secret 化想定 | **ConfigMap 化** (= 機密情報なし、問題なし) | L4 design assumption gap |
+
+ただし **L1 chart binary verify step では捕捉できない技術的 assumption 誤謬** (= oauth2-proxy が multi-upstream host-based routing をサポートしない) は **brainstorming + chart values 確認のみ** では発見不可だった。
+
+**How to apply (= future sub-projects)**:
+
+1. Plan に **必ず "chart binary verify" step を明示** (= 3 sub-project 連続 validation で established)
+2. chart structure / key path / config schema の verify は L1 step で対応可
+3. **chart capability assumption (= 例: multi-upstream が host-based routing をサポートするか) は L1 では verify 困難**、brainstorming 段階で **chart の actual deployment example をしっかり確認**するか、deploy 後の post-flight test で発見前提
+4. spec の chart 関連記述は **brainstorming 時 snapshot, 実装時 + post-flight 時 re-verify 前提** (= 4-2 L4 + 本 sub-project で再 validate)
+
+### L2: brainstorming 段階での chart capability assumption の限界 (= new lesson)
+
+本 sub-project の oauth2-proxy multi-upstream issue (= runtime issue #2) は **brainstorming で 2 approaches 比較済** で Approach 1 (= 1 instance shared multi-upstream) を recommended として採用したが、**chart の technical limitation で realisable でなかった**:
+
+```
+brainstorming で議論した想定: "oauth2-proxy v7+ の `upstreams` config が host-based multi-upstream routing をサポート"
+                                ↓
+                    chart docs を fully 確認せず採用
+                                ↓
+                  実 deploy で startup error 発覚、
+                  Approach 2 (= 4 instances) へ migration 必要
+```
+
+**Why (= 失敗の構造)**:
+
+- brainstorming 段階で chart docs の **superficial 確認** (= "multi-upstream config exists" と認識) で深堀りせず、 path-based routing only という制約を見落とし
+- L1 chart binary verify は **structure / values key の確認** で、**capability semantics の確認** (= path-based vs host-based) は範囲外
+- design choice と chart capability の整合確認が **brainstorming の段階で gap 化**
+
+**How to apply**:
+
+1. brainstorming 段階で **chart docs を full read**、特に proposed architecture が chart の **example / use case** に対応する設計か検証
+2. chart の **GitHub issues / community example を参照** (= 例: oauth2-proxy `multiple upstreams host routing` で issue 検索) で他 user の deployment pattern を確認
+3. **本 lesson を brainstorming skill の "Working in existing codebases" 補強として認識**: 既存 chart の capability を assumption ではなく citation (= official docs / example) で裏付ける
+4. design choice が "Approach 1 vs Approach 2" の trade-off case では、**両方の technical feasibility を brainstorming で verify** してから選択
+
+### L3: Pod Identity webhook の timing-sensitive injection pattern (= new lesson)
+
+Phase 4-2 ESO Pod が **22 時間 dormant な Pod Identity injection 不在状態** で running、Phase 4-3 で初の actual AWS API call で発覚:
+
+```
+Phase 4-2 deploy 時刻 vs Pod Identity Association 作成時刻:
+  - ESO Pod created: 2026-05-08T10:10:25Z (= helmfile apply 時)
+  - Pod Identity Association: terragrunt apply 時 (= 別 step、timing 不明)
+                              ↓
+        webhook (= failurePolicy: Ignore) が injection skip
+                              ↓
+              ESO Pod は 22 時間 instance role で API call (= 4-2 deploy では actual fetch なし)
+                              ↓
+              Phase 4-3 ExternalSecret で初の `GetSecretValue` で AccessDenied
+```
+
+**Why (= 重要 pattern)**:
+
+- EKS Pod Identity webhook は **failurePolicy: Ignore** で、association 不在時は **silent skip** (= Pod 起動 success、env injection なし)
+- 4-2 deploy 時に terragrunt apply (= IAM role + Pod Identity Association) と helmfile apply (= ESO Pod) の **順序が前後する場合**、ESO Pod は injection なしで起動可能
+- ClusterSecretStore の `Capabilities=ReadWrite` は **provider type-derived static field** で actual AWS API access を test しない、4-2 deploy 時は "deploy success" と判定
+- application-level の actual `GetSecretValue` まで AWS auth chain は test されない (= 4-2 L5 が想定した hidden gap)
+
+**How to apply**:
+
+1. **Pod Identity を使う chart deploy では deploy 順序を厳守**: terragrunt apply (= IAM role + Pod Identity Association) → helmfile apply (= Pod creation) の順、または application apply 後に **Pod restart で webhook re-trigger** を default step に組込
+2. Sub-project 4-2 L5 の "application-level indirect proof" を **post-flight check の primary signal に**: AWS direct verify が AccessDenied なら **必ず application-level test (= e.g., test Secret fetch) を post-flight に追加**
+3. ESO 等の AWS-integrated chart の post-flight check に **"deploy 後 1 つの ExternalSecret を作成して sync verify"** step を default で組込
+4. Phase 6+ post-flight 自動化 (= 引き継ぎ #5) で本 pattern を検出する automated check (= 例: ESO Pod env に `AWS_CONTAINER_CREDENTIALS_FULL_URI` 存在確認) を実装
+
+### L4: Distributed system の replication_factor vs replica count 整合 (= new lesson)
+
+Phase 3 Sub-project 2 (Mimir) で `ingester.replicas: 1` を明示 (= small cluster 用の意図的選択) したが、**chart default replication_factor=3 を override せず**、23 時間 silent failure:
+
+```
+Mimir distributor:
+  replication_factor=3 (= chart default)
+  → 全 write に対し quorum=RF/2+1=2 を要求
+  → 1 ingester 構成では quorum 永続的に不成立
+  → 全 write 500 reject
+  ↓
+  ただし Pod / Service / health endpoint は all green
+  → static health check では "Mimir 動作中" と判定される
+```
+
+**Why (= 重要 pattern)**:
+
+- Mimir / Loki / Tempo (= 一般に Cortex 系 distributed system) は **ring + replication_factor** で write/read consistency を保証
+- chart default `replication_factor` は **production 想定の 3** が default、small / dev cluster の 1 replica 構成では明示 override 必須
+- replica count を変更したのに replication_factor が default のままだと、設定の **論理整合が破綻**
+- distributor / querier の health endpoint は **個別 component の up/down** のみ check、ring quorum (= cross-component consistency) は **actual write/read query で初発覚**
+
+**How to apply**:
+
+1. **distributed system chart で replica count を変更する場合、replication_factor を必ず同 PR 内で更新**:
+   - `replicas: 1` → `replication_factor: 1`
+   - `replicas: 3` → `replication_factor: 3` (chart default)
+   - `replicas: 5` → `replication_factor: 3 or 5` (= read scale 用に明示判断)
+2. Phase 3 Sub-project 2 + 3 + 4a で deploy 済の Loki / Tempo / Cortex 系 component の **replication_factor 設定を全部 audit** (= 本 sub-project では Loki / Tempo は monolithic mode で問題なし、Mimir のみ修正)
+3. distributed system chart の post-flight check に **"actual write + read を 1 サンプル実行して success 確認"** step を default で組込 (= ring quorum を end-to-end で test)
+4. Phase 6+ post-flight 自動化で **Prometheus remote-write の actual success rate** + **Loki / Tempo の actual ingest count** を Grafana dashboard で可視化、silent failure を検出
+
+### L5: post-flight check の end-to-end browser test の重要性 (= 4-2 L5 再 validate + extension)
+
+Phase 4-2 L5 (= AWS direct verify AccessDenied → application-level indirect proof) を **本 sub-project で 3 件の runtime issue 発見に extension**:
+
+| Issue | static health check | end-to-end test で発見 |
+|---|---|---|
+| Pod Identity injection 不在 | ESO Pod 1/1 Running、ClusterSecretStore Ready=True | ExternalSecret 作成 → AccessDenied で初発覚 |
+| oauth2-proxy multi-upstream | (= startup fail で Pod が即 Pending、static check でも発見可能) | 5min stage で CrashLoopBackOff 即発見 |
+| Mimir RF=3 vs 1 ingester | distributor / ingester Pod 1/1 Running、health endpoint 200 | Grafana datasource query で `ring unhealthy` 初発覚 |
+
+= **Pod Running + Service Endpoint + health check 200** の static health 3 点セットでは捕捉できない issue が **3 件中 2 件**。
+
+**How to apply**:
+
+1. post-flight check の **5min / 30min / 60min** 3 段階 framework を継続 (= 本 sub-project plan で確立した pattern):
+   - 5min: K8s resource exists (= static health)
+   - 30min: end-to-end browser test (= application-level)
+   - 60min: rotation / refresh test (= dynamic state validation)
+2. **30min stage の browser test を必須化**: AWS / K8s direct verify で OK でも browser での actual data flow を verify
+3. Phase 6+ で post-flight 自動化する場合、static check (= 5min) + application-level synthetic check (= 30min) の 2 段階で実装
+
+### L6: observability stack の多段 push pipeline での label promotion (= Phase 6+ 引き継ぎ条件)
+
+本 sub-project post-flight で発覚した Loki / Tempo の状態:
+
+| Datasource | 状態 | Phase 4-3 closure 時の判断 |
+|---|---|---|
+| Loki | Fluent Bit 経由で 26K lines/5min ingestion 動作、ただし Loki labels = `["__stream_shard__","service_name"]` の 2 件のみ (= K8s metadata は Structured Metadata として保存、label 化されない) | Phase 6+ 引き継ぎ #7 (= Hubble flow logs → Loki) と関連、Loki OTLP push の label promotion 設定を再 design |
+| Tempo | infrastructure ready、trace 0 件 (= Beyla 未 deploy + application code 不在) | Phase 5 nginx + Beyla 投入で解消予定 (= 引き継ぎ #6) |
+
+**Why (= 多段 pipeline での attribute → label 変換の制約)**:
+
+- Fluent Bit が K8s metadata (= namespace / pod / container / labels) を log record に enrich
+- OTLP gRPC で OTel Collector に push、OTel Collector が OTLP HTTP で Loki gateway に forward
+- Loki OTLP push API は **default で label cardinality 制御**: `service_name` 等の限定 attribute のみ Loki label に promote、他は Structured Metadata として保存
+- Grafana Loki query は **label query (= `{namespace="xxx"}`) が高速**、Structured Metadata query は filter として後処理
+- 結果: Grafana log explorer で `namespace` 等の label filter が動作せず、user は "logs が見れない" と認識
+
+**How to apply (= Phase 6+ 引き継ぎ追加項目)**:
+
+1. **Loki OTLP push の label promotion 設定を再 design**: `loki.distributor.otlp_config.default_resource_attributes_as_index_labels` で K8s namespace / pod / container を promotion 対象に追加
+2. **OTel Collector pipeline で attribute → resource attribute 変換**: Loki OTLP receiver の特定 resource attribute のみ label promote される spec 確認
+3. local Fluent Bit OTLP gRPC 統一 (= 引き継ぎ #8) と **同 timing で対応**: 両方とも Fluent Bit + OTel + Loki pipeline の consistency 改善
+
+### Sub-project 1-4-2 learnings 適用 review
+
+| Learning | Applied | Effect |
+|---|---|---|
+| L1 (= chart binary verify systematic step) | ✅ Plan Task 1 で適用、oauth2-proxy chart 10.4.3 の 4 spec/reality gap を発見・解消 | Effective (= structure level の差分は完全に発見) |
+| L2 (= chart-fixed value detection) | ✅ Task 1 / Task 2 で適用、`metrics.serviceMonitor` (oauth2-proxy) + `annotations` (grafana subchart) を発見 | Effective |
+| L3 (= helmfile hydration Capabilities gate) | ✅ verify、本 sub-project では gate 不在 | N/A |
+| L4 (= 急進化 chart の design assumption gap calibration) | ✅ chart 10.4.3 + grafana subchart 12.3.0 で 2 件 deviation を documented inline note で handle | Effective (= deviation 発覚 + documented で 後続作業者の confusion 回避) |
+| L5 (= AWS direct verify AccessDenied → application-level indirect proof) | ✅ post-flight で 3 件 issue 全部 application-level test で初発覚 | **Strongly effective、本 sub-project で extension 形成 (= L5 in this learnings)** |
+| L6 (= subagent-driven development cadence) | ✅ Task 1 / 2 / 3 subagent dispatch + 2-stage review、Task 2 で 1 fix amend のみ | Stable maintained (= 3 sub-project 連続) |
+| 4-1 L5 (= chart version placeholder pattern) | ✅ helmfile.yaml で actual `10.4.3` pinned | Effective |
+
+### Phase 4 引き継ぎ事項 update (= 4-3 完了時)
+
+| 項目 | 4-3 完了時の状態 |
+|---|---|
+| 1. gp3 StorageClass Layer 2 documented exception 化 | Phase 6+ 引き継ぎ (= 不変) |
+| 2. bucket-per-env migration | Phase 6+ 引き継ぎ (= 不変) |
+| 3. multi-tenant 化 + retention rules | Phase 6+ 引き継ぎ (= 不変) |
+| 4. OTel Operator deploy 検討 | Phase 5 |
+| 5. post-flight check 自動化 | Phase 6+ 引き継ぎ (= **本 sub-project L5 で end-to-end browser test 必須化を design 指針追加**) |
+| 6. Beyla deploy + OTel Collector metrics pipeline | Phase 5 (= **本 sub-project L6 で Tempo empty 状態を Phase 5 解消 と確認**) |
+| 7. Hubble flow logs → Loki | Phase 6+ 引き継ぎ (= **本 sub-project L6 で Loki label promotion 再 design と関連**) |
+| 8. local Fluent Bit OTLP gRPC 統一 | Phase 6+ 引き継ぎ (= **本 sub-project L6 で同 timing 対応と判明**) |
+| 9. Pod CPU requests audit + rightsizing | Phase 5 |
+| 10. OTel Collector exporter alias check 自動化 | Phase 6+ 引き継ぎ (= 不変) |
+| 11. Google Workspace 契約後の OAuth Internal 化 (= 4-3 で追加) | Phase 6+ 引き継ぎ |
+| 12. AWS Secrets Manager Automatic Rotation (= 4-3 で追加) | Phase 6+ 引き継ぎ |
+| 13. Cilium Gateway API east-west 利用 (= 4-3 で追加) | Phase 6+ 引き継ぎ |
+| 14. monitoring UIs 公開範囲拡張 (= 4-3 で追加) | Phase 6+ 引き継ぎ (= on-demand) |
+| **15. Pod Identity webhook timing-sensitive injection の自動 detection (= 本 sub-project L3 で追加)** | Phase 6+ 引き継ぎ |
+| **16. distributed system chart の replica count + replication_factor 整合 audit (= 本 sub-project L4 で追加)** | Phase 6+ 引き継ぎ |
+| **17. Loki OTLP label promotion 再 design (= 本 sub-project L6 で追加)** | Phase 6+ 引き継ぎ (= #7 + #8 と統合可) |
+
+= 4-3 完了で **明示的に解消した引き継ぎ事項なし**、ただし **新規 3 項目 (= #15-17) を追加**。引き継ぎ #5 / #6 / #7 / #8 に本 sub-project 由来の design 指針を追加。
+
+### Phase 4 完了状態 (= 4-3 完了時)
+
+- ✅ Phase 4-1: cert-manager + selfsigned-cluster-issuer + Cilium TLS migration
+- ✅ Phase 4-2: ESO + ClusterSecretStore `aws-secrets-manager` + Reloader
+- ✅ Phase 4-3: Grafana 認証ゲート + 4 monitoring UIs 公開 + adminPassword ESO 化 + oauth2-proxy 共通 gate (= 4 instances 1 per backend) + Mimir replication_factor 整合
+- 🔜 Phase 5: nginx + Beyla + KEDA + ExternalSecret end-to-end validation
+
+= **Phase 4 (= Secrets & App readiness) の完了**、Phase 5 nginx 投入の全 prerequisite 達成 (= cert-manager / ESO / Reloader / Grafana auth + 公開 / Mimir healthy ring / Loki ingestion + Tempo infrastructure 全部 ready)。
+
+### 次 sub-project (= Phase 5 nginx + Beyla + KEDA) への適用
+
+1. **L1 即適用**: nginx chart + Beyla chart + KEDA ScaledObject 関連 chart の chart binary verify step を Plan に組込
+2. **L2 即適用 (= new)**: chart capability assumption を brainstorming 段階で **公式 docs + community example** で裏付け、Approach 1 vs Approach 2 比較時は両方の technical feasibility を verify
+3. **L3 即適用 (= new)**: Pod Identity を使う chart (= Beyla 等) の deploy 後に **Pod restart step を default で組込**、または ExternalSecret 経由 secret fetch を post-flight test で必須化
+4. **L4 即適用 (= new)**: distributed system 系 chart (= Mimir / Loki / Tempo は既 deploy 済、Phase 5 で新規追加 chart) の replica count + replication_factor 整合を deploy 前に必ず verify
+5. **L5 即適用**: post-flight 5min / 30min / 60min の 3 段階 framework を踏襲、特に 30min browser test を必須化
+6. **L6 観測**: Phase 5 で Beyla 投入 = Tempo に traces 流入開始 → 本 sub-project で発覚した Tempo empty 状態の解消を end-to-end で validate
