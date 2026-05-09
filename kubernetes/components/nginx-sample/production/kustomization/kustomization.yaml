@@ -1,0 +1,16 @@
+# =============================================================================
+# nginx-sample production kustomization
+# =============================================================================
+# Phase 5-2 (= End-to-end validation) の demo nginx application。
+# Plain K8s manifests (= chart 不在、kustomization-only component) で
+# gateway-api component の reference pattern を踏襲。
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - scaled-object.yaml
+  - external-secret.yaml

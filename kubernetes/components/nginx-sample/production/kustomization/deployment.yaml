@@ -1,0 +1,63 @@
+# =============================================================================
+# nginx Deployment for end-to-end validation (Phase 5-2)
+# =============================================================================
+# Phase 1-4 全 component を nginx 投入で end-to-end validate するための demo
+# application。Plain nginx Welcome page を serve、env var DEMO_MESSAGE を
+# AWS Secrets Manager 由来 K8s Secret 経由で injection。Reloader annotation で
+# Secret 変更時に auto-rollout、KEDA ScaledObject で cpu + prometheus
+# multi-trigger scaling、Beyla eBPF auto-instrumentation で traces + metrics
+# 生成。
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: default
+  labels:
+    app: nginx
+  annotations:
+    # Reloader watch (= K8s Secret nginx-demo 変更時に Pod auto-rollout)。
+    # Phase 4-2 で deploy 済 Reloader が監視。
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+              name: http
+              protocol: TCP
+          env:
+            - name: DEMO_MESSAGE
+              valueFrom:
+                secretKeyRef:
+                  name: nginx-demo
+                  key: message
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20

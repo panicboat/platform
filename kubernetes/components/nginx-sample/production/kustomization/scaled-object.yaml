@@ -1,0 +1,32 @@
+# =============================================================================
+# KEDA ScaledObject for end-to-end validation (Phase 5-2)
+# =============================================================================
+# multi-trigger (= cpu + prometheus) で nginx Deployment scaling。
+# - cpu trigger: 50% threshold (= roadmap Phase 5 #6 HPA cpu 50%)
+# - prometheus trigger: Beyla RED metrics rate > 1 RPS (= roadmap #7 +
+#   Phase 5-1 Beyla actual end-to-end validation)
+#
+# KEDA が内部で HPA resource を auto-create + 管理 (= standalone HPA 不在、
+# conflict 完全回避)。replicas 2 → 10 で scale。
+# =============================================================================
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: nginx
+  namespace: default
+spec:
+  scaleTargetRef:
+    name: nginx
+  minReplicaCount: 2
+  maxReplicaCount: 10
+  triggers:
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: "50"
+    - type: prometheus
+      metadata:
+        serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+        threshold: "1"
+        query: |
+          sum(rate(http_server_request_duration_seconds_count{service_name="nginx"}[1m]))
