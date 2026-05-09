@@ -9,8 +9,38 @@ grafana:
   testFramework:
     enabled: false
 
-  # TODO: (Phase 4) External Secrets Operator + AWS Secrets Manager 経由で secret 化
-  adminPassword: "panicboat-2026"
+  # admin password は ESO + AWS Secrets Manager 経由 (= ExternalSecret
+  # grafana-admin-external-secret.yaml で K8s Secret grafana-admin に sync)。
+  # adminPassword hardcode は廃止、existingSecret で Secret 参照。
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+
+  # Reloader watch annotation (= Phase 4-2 deploy 済)。
+  # Secret grafana-admin (= ExternalSecret 由来) の変更を検知して auto-rollout、
+  # AWS Secrets Manager 側の admin-password rotation で Grafana を再起動する。
+  # NOTE: grafana subchart 12.3.0 では Deployment metadata.annotations は
+  # `annotations` key で inject される (= `deploymentAnnotations` という値は無視される)。
+  annotations:
+    reloader.stakater.com/auto: "true"
+
+  # -------------------------------------------------------------------------
+  # Authentication: auth.proxy mode (= oauth2-proxy 連携)
+  # -------------------------------------------------------------------------
+  # oauth2-proxy が X-Forwarded-User header に email を inject、Grafana が
+  # 同 header から user を auto-create + role mapping する。direct admin login
+  # (= existingSecret password) は緊急時の fallback として並走。
+  grafana.ini:
+    auth.proxy:
+      enabled: true
+      header_name: X-Forwarded-User
+      header_property: username
+      auto_sign_up: true
+      sync_ttl: 60
+    users:
+      auto_assign_org: true
+      auto_assign_org_role: Admin
 
   resources:
     requests:
