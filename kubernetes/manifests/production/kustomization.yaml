@@ -16,6 +16,7 @@ resources:
   - ./nginx-sample
   - ./oauth2-proxy
   - ./opentelemetry-collector
+  - ./opentelemetry
   - ./prometheus-operator
   - ./reloader
   - ./tempo
