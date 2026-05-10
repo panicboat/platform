@@ -2224,7 +2224,7 @@ spec:
     httpProtocolIPv6: disabled
     httpPutResponseHopLimit: 2
     httpTokens: required
-  role: Karpenter-eks-production-20260504154319852600000007
+  role: Karpenter-eks-production
   securityGroupSelectorTerms:
   - tags:
       aws:eks:cluster-name: eks-production
