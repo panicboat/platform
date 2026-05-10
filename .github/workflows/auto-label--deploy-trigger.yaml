@@ -77,7 +77,6 @@ jobs:
       environment: ${{ matrix.env.environment }}
       services: ${{ toJson(matrix.env.services) }}
       app-id: ${{ vars.APP_ID }}
-      pr-number: ${{ github.event.pull_request.number }}
     secrets:
       private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
@@ -100,7 +99,6 @@ jobs:
       aws-region: ${{ matrix.target.aws_region }}
       working-directory: ${{ matrix.target.working_directory }}
       app-id: ${{ vars.APP_ID }}
-      pr-number: ${{ github.event.pull_request.number }}
     secrets:
       private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
@@ -123,7 +121,6 @@ jobs:
       service-name: ${{ matrix.target.service }}
       environment: ${{ matrix.target.environment }}
       app-id: ${{ vars.APP_ID }}
-      pr-number: ${{ github.event.pull_request.number }}
     secrets:
       private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
