@@ -58,17 +58,19 @@
 **Files:**
 - Modify: `aws/eks-logs/modules/main.tf`
 
+注: S3 bucket は raw `aws_s3_bucket` resource ではなく `module "s3"` 経由 (= `terraform-aws-modules/s3-bucket/aws` v5.13.0) で作成されている。`force_destroy` は同 module の input variable としてサポートされているため、module block の top-level argument として追加する。
+
 - [ ] **Step 1: 現状確認**
 
 ```bash
-grep -A8 "aws_s3_bucket\b" aws/eks-logs/modules/main.tf
+grep -B1 -A10 'module "s3"' aws/eks-logs/modules/main.tf
 ```
 
-Expected: `aws_s3_bucket` resource が `force_destroy` を含まない
+Expected: `module "s3"` ブロックに `force_destroy` 引数が無い
 
 - [ ] **Step 2: `force_destroy = true` を追加**
 
-`aws/eks-logs/modules/main.tf` の `resource "aws_s3_bucket"` ブロック内（既存属性の末尾、`tags` 行の直前）に追加:
+`aws/eks-logs/modules/main.tf` の `module "s3"` ブロック内、`bucket = local.bucket_name` の直後（空行を挟んで）に追加:
 
 ```hcl
   force_destroy = true
@@ -113,10 +115,10 @@ Phase 1 of docs/superpowers/specs/2026-05-10-eks-production-teardown-recreate-de
 - [ ] **Step 1: 現状確認 + 同じ変更を `aws/eks-metrics/modules/main.tf` に適用**
 
 ```bash
-grep -A8 "aws_s3_bucket\b" aws/eks-metrics/modules/main.tf
+grep -B1 -A10 'module "s3"' aws/eks-metrics/modules/main.tf
 ```
 
-Task 1.1 と同じく `force_destroy = true` を `aws_s3_bucket` resource に追加。
+Task 1.1 と同じく `force_destroy = true` を `module "s3"` ブロックに追加 (= `bucket = local.bucket_name` の直後)。
 
 - [ ] **Step 2: terraform fmt + plan**
 
@@ -145,7 +147,7 @@ Phase 1 of docs/superpowers/specs/2026-05-10-eks-production-teardown-recreate-de
 
 - [ ] **Step 1: 同じ変更を `aws/eks-traces/modules/main.tf` に適用**
 
-`force_destroy = true` を `aws_s3_bucket` resource に追加。
+`force_destroy = true` を `module "s3"` ブロックに追加 (= `bucket = local.bucket_name` の直後)。
 
 - [ ] **Step 2: terraform fmt + plan**
 
@@ -206,7 +208,7 @@ CI apply ジョブが SUCCESS したことを確認。
 - [ ] **Step 5: terragrunt show で state に force_destroy 反映確認**
 
 ```bash
-cd aws/eks-logs/envs/production && TG_TF_PATH=tofu terragrunt show -json | jq '.values.root_module.resources[] | select(.type == "aws_s3_bucket") | .values.force_destroy'
+cd aws/eks-logs/envs/production && TG_TF_PATH=tofu terragrunt show -json | jq '.. | objects | select(.type? == "aws_s3_bucket") | .values.force_destroy' | head -5
 ```
 
 Expected: `true`
