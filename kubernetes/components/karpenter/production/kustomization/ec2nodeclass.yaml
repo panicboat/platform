@@ -24,7 +24,9 @@ spec:
   securityGroupSelectorTerms:
     - tags:
         "aws:eks:cluster-name": eks-production
-  role: Karpenter-eks-production-20260504154319852600000007
+  # STABLE: aws/karpenter/modules/main.tf で node_iam_role_use_name_prefix = false +
+  # node_iam_role_name = "Karpenter-eks-${var.environment}" に固定済、recreate でも変化しない
+  role: Karpenter-eks-production
   blockDeviceMappings:
     - deviceName: /dev/xvda
       ebs:
