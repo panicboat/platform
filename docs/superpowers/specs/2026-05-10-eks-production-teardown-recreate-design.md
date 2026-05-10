@@ -8,6 +8,37 @@
 
 ---
 
+## 0. Errata (post-implementation revision)
+
+PR #326 (Phase 2) 実装時に CI で fail し、本 spec の **hydrate-time exec 案 (= §3 Decision 7 / §5 Phase 2 / §8 Q2 で記述) は採用不可** であることが判明した。
+
+### 不採用の理由
+
+- 現 CI flow (= `gruntwork-io/terragrunt-action@v3.2.0` ベース) は **PR-time に hydrate / plan、merge 後に apply** という ordering
+- `{{ exec terragrunt output -raw <name> }}` を helmfile に書くと、新規 output (= `cluster_endpoint_hostname`) が **PR-time の state に未反映**で `Output not found` で fail
+- IRSA rotation も同様に、PR-time hydrate は OLD 名を読んでしまい、apply 後 (= rotation 完了後) には manifest と実 role 名が乖離
+
+### 採用した設計 (= 本 spec の Phase 2 / Phase 3 を以下で読み替え)
+
+| 値 | 性質 | 取り扱い |
+|---|---|---|
+| `albControllerRoleArn` / `externalDnsRoleArn` | Phase 2 で deterministic 化 (= recreate 後も同名) | `helmfile.yaml.gotmpl` に **hardcoded literal** を NEW 名で書く (= IRSA naming 変更と同一 PR で atomic) |
+| `nodeRoleName` (Karpenter) | 同上 | 同上 |
+| `interruptionQueueName` | 既に deterministic | 変更なし |
+| `eksApiEndpoint` | cluster 作成のたびに変化 | hardcoded、Phase 3 lifecycle script `60-flux-bootstrap.sh` で recreate 後に sed で in-place 更新 |
+| `vpcId` | VPC 作成のたびに変化 | 同上 |
+
+### 本 spec の以下の記述は読み替え
+
+- §3 Decision 7: 「hydrate-time substitution」を「deterministic naming + Phase 3 sed-replace for cluster/VPC IDs」と読み替え
+- §5 Phase 2: aqua / hydrate workflow 拡張は **撤回**。helmfile は exec ではなく hardcoded NEW 値
+- §5 Phase 3 60-flux-bootstrap.sh: **sed-replace step を追加** (= terragrunt output で新 cluster_endpoint_hostname / vpc_id を取得 → helmfile.yaml.gotmpl + 子 helmfile を sed で in-place 更新 → make hydrate)
+- §8 Open Q2 (CI hydrate workflow に terragrunt + AWS auth): 不要、closed
+
+詳細は `docs/superpowers/plans/2026-05-10-eks-production-teardown-recreate.md` の Errata 節を参照。
+
+---
+
 ## 1. Goals
 
 1. `eks-production` cluster とその周辺 AWS stack を、手元 1 コマンドで temporary 削除できる
