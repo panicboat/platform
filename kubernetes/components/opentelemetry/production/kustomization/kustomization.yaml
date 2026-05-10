@@ -1,0 +1,11 @@
+# =============================================================================
+# OpenTelemetry production kustomization (= Instrumentation CR)
+# =============================================================================
+# OTel Operator (= 6-1 deploy 済) の Instrumentation CR を namespace default
+# に deploy、 application Pod が auto-injection 受ける。
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - instrumentation.yaml
