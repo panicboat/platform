@@ -33,6 +33,8 @@ module "s3" {
 
   bucket = local.bucket_name
 
+  force_destroy = true
+
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
