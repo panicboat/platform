@@ -40,20 +40,17 @@ closure doc (= `docs/superpowers/specs/2026-05-10-eks-production-phase-5-closure
 
 ## 2. 6-1 Foundation scope (= 5 components A-E)
 
-### Component A: Cilium Gateway API enable
+### Component A: Cilium Gateway API enable status (= 既達成、validation のみ)
 
 #### Goal
 
-Cilium Gateway API を enable し、application 側の HTTPRoute resource (= monorepo `services/reverse-proxy/kubernetes/base/httproute.yaml`、parentRef `cilium-gateway` namespace `default`) を 6-2 で reconcile 可能にする。
+Cilium Gateway API が application 側 HTTPRoute resource (= monorepo `services/reverse-proxy/kubernetes/base/httproute.yaml`、parentRef `cilium-gateway` namespace `default`) を 6-2 で reconcile 可能な状態であることを確認する。
 
-#### Implementation
+#### Status: 既達成
 
-- platform 既 deploy 済 Cilium chart の `values.yaml.gotmpl` に Gateway API enable 設定を追加
-- Cilium 1.16+ で Gateway API CRD (= `gateway.networking.k8s.io/v1` Gateway / HTTPRoute / GRPCRoute) 自動 install
-- GatewayClass `cilium` が auto-provision (= Cilium 自身が Gateway controller として function)
-- 既 enable 済 Cilium 機能 (= chaining mode, WireGuard transparent encryption, Hubble L7 visibility) との conflict なし、coexist
+platform の Cilium chart は 1.18.6 が deploy 済 (= `kubernetes/components/cilium/production/helmfile.yaml`)、`values.yaml.gotmpl` で `gatewayAPI.enabled: true` 設定済 (= "Gateway API（東西用、北南は ALB Controller）" section)。GatewayClass `cilium` も `kubernetes/components/cilium/production/kustomization/gateway-class.yaml` で deploy 済。
 
-具体的な values 修正は plan 段階で確定 (= chart version + 既 values 構造を見て決定)。
+→ Component A は **Phase 1-5 で既達成**、6-1 で追加の chart values 修正なし。validation のみ実施。
 
 #### Architecture position
 
@@ -64,32 +61,41 @@ ClusterIP Services (= L3/L4 routing, 既)
    ↓
 Cilium L3/L4 + WireGuard + Hubble (= 既)
    ↓
-Cilium Gateway API (= 6-1 で enable、L7 east-west routing 機能)
-   ↓ 6-2 で利用
-HTTPRoute / Gateway (= application 側 manifests、6-2 で monorepo cascading deploy)
+Cilium Gateway API (= 1.18.6 で既 enable、GatewayClass cilium 既 deploy)
+   ↓ 6-1 で Gateway resource 追加 → 6-2 で利用
+HTTPRoute (= application 側 manifests、6-2 で monorepo cascading deploy)
 ```
 
-#### Validation
+#### Validation (= 既達成確認のみ)
 
 - `kubectl get gatewayclass cilium` → `Accepted=True`
 - `kubectl get crd | grep gateway.networking.k8s.io` で Gateway API CRD 存在確認
-- 既 Cilium 機能 (= Hubble metrics 流入継続, WireGuard tunnel 確立継続, chaining mode で Pod IP 割当継続) regression なし
+- 既 Cilium 機能 (= Hubble metrics 流入継続, WireGuard tunnel 確立継続, chaining mode で Pod IP 割当継続) regression なし (= 6-1 で chart 修正なしのため baseline 維持の確認)
 
 ---
 
-### Component B: Cilium Gateway resource (= kustomization-only pattern)
+### Component B: Cilium Gateway resource (= 共有 Gateway 採用 + platform 設計コメント update)
 
 #### Goal
 
-monorepo の HTTPRoute (= `parentRefs.name: cilium-gateway`, `namespace: default`) が attach する Gateway resource を deploy。
+monorepo の HTTPRoute (= `parentRefs.name: cilium-gateway`, `namespace: default`) が attach する 共有 Gateway resource を deploy。同時に platform の既存設計コメント (= "production の Gateway resources は per-service で個別作成、cilium-gateway のような共有 Gateway は production では作らない") を **Phase 6 application 投入で共有 Gateway 採用** の方針に update。
+
+#### Design 方針 (= P3、共有 Gateway 採用の根拠)
+
+- panicboat は個人運用 + 1 application (= monolith + frontend + reverse-proxy = 1 application set)
+- monorepo の base manifests (= `services/reverse-proxy/kubernetes/base/httproute.yaml`) が **共有 cilium-gateway 前提** で設計済
+- per-service Gateway は multi-team / multi-application 環境で benefit 顕在化、現 panicboat scope では関係薄
+- monorepo 既存設計尊重 (= application 開発者 workflow 一貫、 production overlay 大幅修正回避)
+- 将来 multi-application 化時に per-service Gateway を再評価する方針 (= 引き継ぎ事項として記録不要、コメントで明示)
 
 #### Implementation
 
-- Location: `kubernetes/clusters/eks-production/components/cilium-gateway/`
-- Pattern: kustomization-only (= Phase 5-2 L4 lesson 適用、`gateway-api` / `nginx-sample` reference)
-- Files:
-  - `kustomization.yaml`
-  - `gateway.yaml` (= Gateway resource 1 つ)
+- Location: `kubernetes/components/cilium/production/kustomization/`
+  - 既存 `gateway-class.yaml` (= GatewayClass cilium) と同 directory に共有 Gateway resource を追加
+  - 新 file: `cilium-gateway.yaml` (= Gateway resource 1 つ)
+  - 既存 `kustomization.yaml` の `resources` に `cilium-gateway.yaml` 追加
+  - 既存 `kustomization.yaml` のヘッダコメントを update (= "per-service 個別作成" → "Phase 6 application 投入で共有 Gateway 採用、将来 multi-application 化時に再評価")
+- Pattern: 既存 cilium kustomization-only pattern を踏襲 (= Phase 5-2 L4 lesson 適用)
 
 #### Gateway resource content (= 期待値)
 
@@ -110,12 +116,13 @@ spec:
           from: Same
 ```
 
-(= application 側 HTTPRoute は `default` namespace から attach 想定。allowedRoutes の namespace 範囲は plan 段階で確定)
+(= application 側 HTTPRoute は `default` namespace から attach 想定。allowedRoutes の namespace 範囲 + listener TLS 設定は plan 段階で確定。本 6-1 では HTTP listener 1 つのみ、HTTPS / TLS は 6-3 DNS / ACM phase で必要時追加)
 
 #### Validation
 
 - `kubectl get gateway -n default cilium-gateway` → `Accepted=True, Programmed=True`
 - `kubectl describe gateway -n default cilium-gateway` で listener `http` Ready
+- platform 設計コメント update が PR review で confirm 済 (= 既存 review 前提と異なる旨を PR description に明記)
 
 ---
 
@@ -268,7 +275,7 @@ manager:
 
 ##### Section 4: latent issue 検出 (= 5-1 L2 / 5-2 L1 pattern 4 連続 validate)
 
-- Cilium chart values 修正後の rollout で発覚する設定 conflict (= 例: gatewayAPI と既 enable 機能の interference)
+- Cilium 共有 Gateway resource deploy 後の既 Cilium 機能 regression (= L3/L4 / WireGuard / Hubble / GatewayClass cilium の動作継続性)、Cilium agent の Gateway controller 動作で latent issue 発覚 risk
 - monorepo Flux Kustomization suspend 状態の Reconcile loop で発覚する設定不整合
 - OTel Operator chart deploy で発覚する admission webhook 設定 (= cert-manager との integration、namespace 関連、5-1 L3 lesson の SelfSigned 不採用 verify)
 - 検出時は fix forward PR で resolve
@@ -287,15 +294,16 @@ manager:
 
 | Lesson | 適用箇所 |
 |---|---|
-| 5-1 L1 (= chart binary verify systematic step) | OTel Operator chart deploy + 必要時 Cilium chart upgrade で binary verify (= 5 連続 validate 機会) |
+| 5-1 L1 (= chart binary verify systematic step) | OTel Operator chart deploy で binary verify (= 5 連続 validate 機会、Cilium chart は本 6-1 で修正なし) |
 | 5-1 L2 / 5-2 L1 (= post-flight regression check) | Component E で 4 連続 validate |
-| 5-2 L4 (= kustomization-only component pattern) | Component B (= Cilium Gateway resource) |
+| 5-2 L4 (= kustomization-only component pattern) | Component B (= Cilium 共有 Gateway resource を既存 cilium kustomization に追加) |
 | 5-1 L3 (= cert-manager SelfSigned mTLS 不可) | OTel Operator admission webhook で CA-based ClusterIssuer 確認 (= SelfSigned 回避) |
 
 ### New lesson 候補 (= 6-1 deploy で観察対象)
 
 - 6-1 deploy で Phase 1-5 の latent issue を **4 連続 validate** で検出した場合: 5-1 L2 / 5-2 L1 pattern の継続性確認 + new latent issue category の整理
-- Cilium chart values 修正の **既機能 regression** 観察 (= chaining mode / WireGuard / Hubble の動作継続性) → "in-place chart values 変更時の既機能 baseline 比較" pattern の lesson 候補
+- Cilium 共有 Gateway resource 追加の **既機能 regression** 観察 (= L3/L4 / WireGuard / Hubble / GatewayClass の動作継続性) → "既 chart の付随 resource 追加時の既機能 baseline 比較" pattern の lesson 候補
+- platform 既存設計コメントを application 投入 phase で update する pattern (= "既存設計の意図を変更する場合は PR description で明示 + コメント update を scope に含める")
 
 ---
 
@@ -303,7 +311,7 @@ manager:
 
 | # | 項目 | 6-1 での対応 |
 |---|---|---|
-| #13 | Cilium Gateway API east-west 利用 | **解消** (= Component A + B で enable + Gateway resource deploy) |
+| #13 | Cilium Gateway API east-west 利用 | **解消** (= Phase 1-5 で既 enable + 6-1 Component B で共有 Gateway resource deploy + platform 設計コメント update) |
 
 (他 引き継ぎ事項は 6-2 / 6-3 で対応、または incremental)
 
@@ -334,19 +342,20 @@ manager:
 
 | Risk | Mitigation |
 |---|---|
-| Cilium chart values 修正で既機能 regression (= chaining mode / WireGuard / Hubble) | rollout 前に既機能 健全性 baseline 取得、rollout 後比較 (= Component E Section 1) |
+| Cilium 共有 Gateway resource 追加で既 Cilium 機能 regression (= L3/L4 / WireGuard / Hubble / GatewayClass) | rollout 前に既機能 健全性 baseline 取得、rollout 後比較 (= Component E Section 1) |
+| platform 設計コメント update が既存 review 前提と異なる (= "per-service 個別作成" → "共有 Gateway 採用") | PR description で意図変更を明示 + コメント update を 6-1 scope に明記 (= 既存 review 前提との差分を明確化) |
 | GitRepository public repo access 失敗 (= rate limit / network) | GitHub public repo の 5 min interval は問題なし、必要時 PAT secret 追加 |
 | OTel Operator admission webhook の cert-manager integration 失敗 (= 5-1 L3 lesson 関連) | CA-based ClusterIssuer 既 deploy 済 (= Phase 4-1 + 5-1 PR #316) を利用、SelfSigned 回避を values で確認 |
 | monorepo PR 並行 merge timing 不整合 (= platform PR merge 後 monorepo PR 未 merge で nginx Pod cascading deploy) | Kustomization suspend 状態で deploy するため cascading なし、6-1 完了 = suspend 状態で nginx も deploy されない |
-| Cilium 1.16+ 未満 で Gateway API 機能不足 | 既 deploy version を plan 段階で確認、必要時 chart upgrade を 6-1 scope に追加 (= 5-1 L1 binary verify 適用) |
 | OTel Operator chart 1.x で API 変更 | plan 段階で chart latest stable + values 構造確認、必要時 version pin |
 
 ---
 
 ## 7. Validation checklist (= 6-1 完了条件)
 
-- [ ] Cilium chart values 修正 deploy 完了 + GatewayClass `cilium` Accepted
+- [ ] GatewayClass `cilium` Accepted (= 既達成確認のみ、本 6-1 で chart 修正なし)
 - [ ] Gateway `cilium-gateway` (= namespace default) Accepted + Programmed
+- [ ] platform `kubernetes/components/cilium/production/kustomization/kustomization.yaml` のヘッダコメント update 完了 (= 共有 Gateway 採用方針への変更)
 - [ ] GitRepository `monorepo` Ready + Fetched
 - [ ] Kustomization `monorepo-cluster` Suspended (= 6-2 で resume 想定)
 - [ ] monorepo PR (= nginx 削除) merge 完了 + GitRepository が最新 commit を fetch
