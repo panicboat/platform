@@ -27,9 +27,29 @@ manager:
     repository: otel/opentelemetry-collector-contrib
     tag: 0.151.0  # 6-2 application 投入時に最新 stable に update 検討
 
+  # ---------------------------------------------------------------------------
+  # Metrics endpoint auth (= controller-runtime built-in auth) 無効化
+  # ---------------------------------------------------------------------------
+  # chart 0.112.1 default で `--metrics-secure=true` (= HTTPS + TokenReview /
+  # SubjectAccessReview による auth) が active。 ただし chart は SA
+  # `opentelemetry-operator` の ClusterRole に `tokenreviews` permission を
+  # 付与しないため、 30s 周期で `tokenreviews.authentication.k8s.io is
+  # forbidden` ERROR log が出力される (= Phase 6-1 post-flight latent issue)。
+  #
+  # panicboat は OTel Operator self-metrics を直接活用しないため (= application
+  # Instrumentation CR が deploy 目的)、 `secure: false` (= insecure HTTP
+  # metrics endpoint) に切替。 cluster 内 ServiceMonitor scrape のみ
+  # accessible で security 影響限定。 ServiceMonitor の metricsEndpoints も
+  # http scheme に合わせて override (= chart default は https + bearerToken)。
+  metrics:
+    secure: false
+
   # Prometheus integration (= 既 deploy 済 prometheus-operator 利用)
   serviceMonitor:
     enabled: true
+    metricsEndpoints:
+      - port: metrics
+        scheme: http
   prometheusRule:
     enabled: false
 
