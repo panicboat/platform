@@ -2,12 +2,9 @@ name: 'Auto Label - Label Resolver'
 
 on:
   pull_request:
-    types: [labeled]
+    types: [labeled, closed]
     branches:
       - '**'
-  push:
-    branches:
-      - main
 
 permissions:
   id-token: write
@@ -15,12 +12,13 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: deploy-trigger-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: deploy-trigger-${{ github.event.pull_request.number }}-${{ github.event.action }}
+  cancel-in-progress: ${{ github.event.action == 'labeled' }}
 
 jobs:
   deploy-trigger:
     name: 'Deployment Trigger'
+    if: github.event.action == 'labeled' || (github.event.action == 'closed' && github.event.pull_request.merged == true)
     runs-on: ubuntu-latest
     outputs:
       targets: ${{ steps.resolver.outputs.targets }}
@@ -34,20 +32,12 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
 
-      - name: Get PR information
-        id: pr-info
-        uses: jwalton/gh-find-current-pr@f3d61b485d2801773f7a07b2aaa3306bd8f8e653 # v1.3.5
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          state: all
-        continue-on-error: true
-
       - name: Label Resolver
         id: resolver
         uses: panicboat/deploy-actions/label-resolver@3399490d98d6e4d4ff1a06badfd63d9f9a0c8699 # v1.1.0
         with:
           repository: ${{ github.repository }}
-          pr-number: ${{ steps.pr-info.outputs.number }}
+          pr-number: ${{ github.event.pull_request.number }}
           github-token: ${{ steps.app-token.outputs.token }}
           config-path: 'workflow-config.yaml'
 
@@ -55,6 +45,7 @@ jobs:
     name: 'Group Kubernetes Targets by Environment'
     needs: deploy-trigger
     if: |
+      github.event.action == 'labeled' &&
       needs.deploy-trigger.outputs.has-targets == 'true' &&
       contains(needs.deploy-trigger.outputs.targets, '"stack":"kubernetes"')
     runs-on: ubuntu-latest
@@ -103,8 +94,8 @@ jobs:
     with:
       service-name: ${{ matrix.target.service }}
       environment: ${{ matrix.target.environment }}
-      action-type: ${{ matrix.target.stack == 'terragrunt' && (github.event_name == 'pull_request' && 'plan' || 'apply') || '' }}
-      iam-role: ${{ github.event_name == 'pull_request' && matrix.target.iam_role_plan || matrix.target.iam_role_apply }}
+      action-type: ${{ matrix.target.stack == 'terragrunt' && (github.event.pull_request.merged && 'apply' || 'plan') || '' }}
+      iam-role: ${{ github.event.pull_request.merged && matrix.target.iam_role_apply || matrix.target.iam_role_plan }}
       aws-region: ${{ matrix.target.aws_region }}
       working-directory: ${{ matrix.target.working_directory }}
       app-id: ${{ vars.APP_ID }}
@@ -115,6 +106,7 @@ jobs:
     name: 'Deploy Kubernetes (${{ matrix.target.service }}:${{ matrix.target.environment }})'
     needs: [deploy-trigger, deploy-kubernetes-hydrate]
     if: |
+      github.event.action == 'labeled' &&
       needs.deploy-trigger.outputs.has-targets == 'true' &&
       contains(needs.deploy-trigger.outputs.targets, '"stack":"kubernetes"')
     strategy:
