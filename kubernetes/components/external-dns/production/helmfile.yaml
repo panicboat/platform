@@ -8,11 +8,11 @@
 environments:
   production:
     # NOTE: helmfile v1.4 は親 helmfile.yaml.gotmpl の environments values を
-    # 子 helmfile に auto-inherit しないため、ここで再定義する。
-    # externalDnsRoleArn は kubernetes/helmfile.yaml.gotmpl の production env
-    # block と同期すること。
+    # 子 helmfile に auto-inherit しないため、ここで再定義する。RECREATE marker
+    # convention は kubernetes/helmfile.yaml.gotmpl 参照。値は親 helmfile と同期。
     values:
       - cluster:
+          # STABLE: aws/eks/modules/addons.tf で deterministic 化済
           externalDnsRoleArn: arn:aws:iam::559744160976:role/eks-production-external-dns
 ---
 repositories:

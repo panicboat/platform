@@ -8,12 +8,13 @@
 environments:
   production:
     # NOTE: helmfile v1.4 は親 helmfile.yaml.gotmpl の environments values を
-    # 子 helmfile に auto-inherit しないため、ここで再定義する。
-    # 値は kubernetes/helmfile.yaml.gotmpl の production env block と
-    # 同期すること（vpcId / albControllerRoleArn）。
+    # 子 helmfile に auto-inherit しないため、ここで再定義する。RECREATE marker
+    # convention は kubernetes/helmfile.yaml.gotmpl 参照。値は親 helmfile と同期。
     values:
       - cluster:
+          # RECREATE: cd aws/vpc/envs/production && TG_TF_PATH=tofu terragrunt output -raw vpc_id
           vpcId: vpc-02ea5d0ed3b7a3266
+          # STABLE: aws/eks/modules/addons.tf で deterministic 化済
           albControllerRoleArn: arn:aws:iam::559744160976:role/eks-production-alb-controller
 ---
 repositories:
