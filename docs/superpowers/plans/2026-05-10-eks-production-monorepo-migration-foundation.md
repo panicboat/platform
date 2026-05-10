@@ -1037,3 +1037,138 @@ learnings 候補:
 - [ ] 6-1 追加 component health 全 PASS
 - [ ] latent issue 検出時 fix forward PR で resolve
 - [ ] post-execution learnings doc 作成 (= 別 PR、本 plan に section 追加)
+
+---
+
+## Post-execution learnings (= Phase 6-1 完了後、別 PR で記録)
+
+### 完了 summary
+
+| 項目 | 内容 |
+|---|---|
+| platform PR | [#323](https://github.com/panicboat/platform/pull/323) (= 5 components A-E deploy、 8 commits、 2026-05-10 merged) |
+| 並行 monorepo PR | [#590](https://github.com/panicboat/monorepo/pull/590) (= services/nginx 削除、 16 files deletion only、 同日 merged) |
+| fix forward PR | [#327](https://github.com/panicboat/platform/pull/327) (= OTel Operator metrics auth、 post-flight 検出 → fix forward → merge 完了) |
+| 引き継ぎ事項解消 | #13 (= Cilium Gateway API east-west 利用) |
+| Phase 1-5 既 deploy 済 component zero regression | ✅ achieved |
+| post-flight 4 連続 validate (= 5-1 L2 / 5-2 L1 pattern) | ✅ established + new lesson 候補 |
+
+### 累計 fix forward PR (= Phase 4-6 で 6 件)
+
+| PR # | Title | 起因 sub-project | Resolution |
+|---|---|---|---|
+| #305 | observability DaemonSets PriorityClass system-node-critical | 4b regression | merged |
+| #311 | oauth2-proxy 4 instances per backend | 4-3 設計起因 | merged |
+| #312 | Mimir replication_factor 1 for single-replica ring | 3 Sub-project 2 latent | merged |
+| #314 | Mimir cardinality limit + apiserver bucket drop | 3 Sub-project 2 latent | merged |
+| #316 | Cilium Hubble CA-based ClusterIssuer for mTLS | 4-1 latent | merged |
+| **#327** | **OTel Operator metrics auth disable (= 6-1 fix forward)** | **6-1 自身の chart default 起因** | **merged** |
+
+= **6 件中 4 件が past sub-project の latent issue、 2 件が現 sub-project 設計起因** (= 4-3 oauth2-proxy / 6-1 OTel Operator)。
+
+---
+
+### L1 (= 6-1 L1): chart actual structure を helmfile + values 設計時に systematic verify
+
+**Title**: chart upstream structure と plan template の用語差を fix forward 前に early-detect する pattern
+
+**Context**: Phase 6-1 plan で OTel Operator metrics auth 無効化方針を `kubeRBACProxy.enabled: false` と記述したが、 chart 0.112.1 actual structure は **kubeRBACProxy sidecar pattern ではなく controller-runtime built-in auth** (= `manager.metrics.secure: false` flag)。 fix forward subagent が chart values 確認で actual key を特定し adjust。
+
+**Lesson**:
+
+- chart の概念名 (= "kubeRBACProxy" / "auth proxy" / "secure metrics") が **複数の chart で異なる implementation** を持つ
+- plan / spec で chart values を記述する前に **`helm show values <chart> --version <pin>`** で actual structure を verify する systematic step
+- 5-1 L1 (= chart binary verify) の延長 (= binary だけでなく values structure も verify)
+
+**Apply to 6-2+**:
+
+- application Instrumentation CR (= OTel Operator) 設計時に chart values 構造を確認
+- 各 application chart (= application 投入なら custom Dockerfile + K8s manifests のみで chart 不要、 ただし `nginx-ingress` 等の sub-component chart 利用時に適用)
+- helmfile + values pattern を維持する全 chart (= cert-manager / ESO / Mimir / Loki / Tempo etc) で base 設定の **chart upstream change** に追随する pattern として general 化
+
+---
+
+### L2 (= 6-1 L2): Makefile hydrate-component の kube-version 固定
+
+**Title**: `make hydrate-component` の kube-version mismatch を Makefile で固定する improvement
+
+**Context**: Phase 6-1 fix forward (= PR #327) で hydrate 実行時、 local helm の default kube-version (= 1.33+) で render すると CI baseline (= 1.32) と差異発生。 chart の `semverCompare ">=1.33-0"` 条件分岐 (= 例: `nodes/proxy ↔ nodes/pods`) で noise diff 発生。 subagent が `--kube-version v1.32.0` 指定で回避。
+
+**Lesson**:
+
+- Makefile `hydrate-component` target が `--kube-version` flag を渡さない設計
+- local helm version の default が cluster の actual version と異なる場合 noise diff
+- chart の semverCompare 条件分岐は他 chart にも潜在 (= 既 Phase 1-5 で同 issue が dormant)
+
+**Apply to 6-2+**:
+
+- 別 fix forward PR (= "feat(eks): hydrate-component に --kube-version flag 固定") を Phase 6-2 開始前に実施推奨
+- Makefile に `KUBE_VERSION` variable + `hydrate-component` target で `--kube-version $(KUBE_VERSION)` を渡す形
+- 既 production cluster version (= 1.32 想定) を default、 cluster upgrade 時に Makefile 変更で同期
+
+**新規引き継ぎ事項候補** (= 引き継ぎ #22): Makefile hydrate-component の kube-version 固定。
+
+---
+
+### L3 (= 6-1 L3): post-flight regression check の "issue category" 整理
+
+**Title**: 5-1 L2 / 5-2 L1 pattern の 4 連続 validate で issue category が分化、 pattern 完全機能 confirmation
+
+**Context**: 5-1 L2 / 5-2 L1 で 3 連続 validate established (= 4-3 / 5-1 / 5-2 で過去 sub-project の dormant issue 表面化)。 6-1 で 4 連続 validate 機会、 検出された latent issue は **6-1 自身の chart default 起因** (= 4-3 oauth2-proxy 4 instances PR #311 と類似)。 過去 sub-project (= Phase 1-5) の dormant issue 表面化は 0 件。
+
+**Lesson**:
+
+- post-flight regression check の検出 issue は **2 つの category** に分化:
+  1. **過去 sub-project の dormant issue 表面化** (= chart の latent bug、 設定 conflict、 4-3 / 5-1 / 5-2 で 3 連続)
+  2. **現 sub-project 自身の chart default 起因 latent issue** (= 4-3 oauth2-proxy 4 instances、 6-1 OTel Operator metrics auth)
+- pattern 完全機能 confirmation: 検出 mechanism (= post-flight check) は両 category で機能、 issue が出ない sub-project は前者 category 0、 後者 category も chart 設定見直しで 0 が natural goal
+- 4 連続 validate established (= "Phase 1-5 既存 zero regression" + "現 sub-project chart default 起因 1 件"、 過去 dormant 検出 0 は **既 sub-project が stable に成熟** を示す)
+
+**Apply to 6-2+**:
+
+- learnings doc に **issue category 別整理** を構造化 (= dormant 系 / 現設計起因系)
+- Phase 6-2 (= application deploy) post-flight で:
+  - 過去 sub-project の dormant 検出: Mimir #21 (= max-label-names-per-series) が application 投入時に再発見見込み
+  - 現 sub-project chart default 起因: OTel SDK init / Instrumentation CR 設計の chart values の trap が候補
+- pattern を **Phase 6-3 までで 5-6 連続 validate** に extend、 panicboat platform の "zero regression baseline" 確立
+
+---
+
+### L4 (= 6-1 L4): parallel PR scope に documentation 同期を含める pattern
+
+**Title**: manifest 削除 PR で documentation drift を early-detect する pattern
+
+**Context**: Phase 6-1 並行 monorepo PR (= [#590](https://github.com/panicboat/monorepo/pull/590)) で `services/nginx/` + `clusters/develop/services/nginx/` 削除。 Code quality reviewer (= Task 6) が `README.md` / `README-ja.md` の getting-started (= `127.0.0.1 nginx.local`) / mermaid architecture (= `nginx.local → App Pod services/nginx`) / 30m auto-bump 説明 (= `nginx additionally uses ImageRepository ... auto-bump`) の **未更新を detect**。 plan Task 6 scope は manifest 削除のみで documentation 同期は scope 外と integration、 follow-up 候補として記録。
+
+**Lesson**:
+
+- manifest 削除と documentation reference 同期は **同 PR scope に含める** 方が clean
+- code quality reviewer による detection は遅すぎる timing (= PR draft 後)
+- plan Task brainstorming 段階で "削除対象 file の reference を grep で検索" を pattern 化
+
+**Apply to 6-2+**:
+
+- Phase 6-2 application deploy で **monorepo の README / docs 更新** を scope に明示 (= application architecture 説明、 deploy 手順、 OTel SDK init 説明)
+- Phase 6-3 で DNS / ACM phase の domain 公開時に panicboat homepage / docs の URL 一覧更新
+- 一般化: **plan Task brainstorming で "対象 file の grep search → reference list 列挙" を systematic step に追加**
+
+**新規引き継ぎ事項候補** (= 引き継ぎ #23): monorepo README documentation drift の resolve (= nginx 削除 follow-up、 軽微なので Phase 6-2 で reverse-proxy / frontend documentation update 時に同時更新)。
+
+---
+
+### Phase 6-2 / 6-3 への handoff (= 引き継ぎ事項 update)
+
+| 項目 | 6-1 完了時の状態 |
+|---|---|
+| 引き継ぎ #21 (= Mimir max-label-names-per-series 30 → 35) | Phase 6-2 application 投入時に Beyla histogram reject で再発見見込み |
+| 引き継ぎ #19 (= mTLS chain verify default 化) | Phase 6 で mTLS 不採用 decision、 skip |
+| 引き継ぎ #18 (= cert-manager SelfSigned 限定 docs) | 6-1 で OTel Operator (= server-only TLS) 用 lesson reinforced、 docs 化は spec Component D Validation 文言更新で部分対応推奨 |
+| **新引き継ぎ #22** | **Makefile hydrate-component の kube-version 固定** (= 別 fix forward PR、 Phase 6-2 開始前に対応推奨) |
+| **新引き継ぎ #23** | **monorepo README documentation drift** (= nginx 削除 follow-up、 Phase 6-2 documentation 更新時に同時) |
+
+### accumulated 引き継ぎ事項 final list (= Phase 5 closure doc 21 項目 + 6-1 追加 2 項目 = 23 項目)
+
+Phase 6-2 開始時に reference として活用。 大半は 6-2 / 6-3 で incremental 解消、 一部は永続的に postpone (= 個人運用 cluster 前提と矛盾)。
+
+詳細は Phase 5 closure doc Section 4 (= [docs/superpowers/specs/2026-05-10-eks-production-phase-5-closure-design.md](../specs/2026-05-10-eks-production-phase-5-closure-design.md)) + 本 learnings の 新引き継ぎ #22 / #23 を参照。
+
