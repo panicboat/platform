@@ -38,6 +38,14 @@ module "karpenter" {
   # variable description が直接このユースケースを推奨)。
   enable_inline_policy = true
 
+  # Karpenter sub-module v21.19.0: by default node_iam_role_use_name_prefix = true
+  # which appends a timestamp suffix. Setting both name + use_name_prefix=false yields
+  # a deterministic name "Karpenter-eks-${var.environment}" that survives
+  # destroy/recreate cycles. Required for kubernetes/helmfile.yaml.gotmpl exec
+  # terragrunt output -raw node_role_name to be stable across recreates.
+  node_iam_role_name            = "Karpenter-eks-${var.environment}"
+  node_iam_role_use_name_prefix = false
+
   # Node role: SSM Session Manager access (no SSH key, port 22 closed)
   node_iam_role_additional_policies = {
     AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
