@@ -17,7 +17,16 @@ module "eks" {
   authentication_mode                      = "API"
   enable_cluster_creator_admin_permissions = false
 
-  enabled_log_types                      = ["audit", "authenticator"]
+  # `audit` is intentionally omitted: it accounted for ~99.7% of bytes in
+  # /aws/eks/<cluster>/cluster (4.32 GiB/day vs 14 MiB/day for authenticator)
+  # and grew from 2.16 GB/day → 4.70 GB/day over a week as Karpenter / ALB
+  # Controller / Flux / observability stacks were rolled out (leader-election
+  # + reconcile traffic). EKS managed control plane does not allow custom
+  # audit policies, and Vended Logs Delivery to S3/Firehose is unsupported
+  # (only `AUTO_MODE_*` log types are eligible), so on-source filtering is
+  # not possible. Re-enable only if K8s API audit is required for compliance
+  # / incident response — and budget the ~$80–100 / month CW Logs ingest.
+  enabled_log_types                      = ["authenticator"]
   cloudwatch_log_group_retention_in_days = var.log_retention_days
 
   # Disable Secrets envelope encryption (spec decision: Out of Scope).
