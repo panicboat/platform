@@ -4,6 +4,7 @@ resources:
   - ./beyla
   - ./cert-manager
   - ./cilium
+  - ./dashboard
   - ./external-dns
   - ./external-secrets
   - ./fluent-bit
