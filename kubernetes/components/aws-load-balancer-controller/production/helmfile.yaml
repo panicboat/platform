@@ -14,7 +14,7 @@ environments:
     values:
       - cluster:
           vpcId: vpc-02ea5d0ed3b7a3266
-          albControllerRoleArn: arn:aws:iam::559744160976:role/eks-production-alb-controller-20260503163503969700000004
+          albControllerRoleArn: arn:aws:iam::559744160976:role/eks-production-alb-controller
 ---
 repositories:
   - name: eks

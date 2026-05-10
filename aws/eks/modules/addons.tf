@@ -51,6 +51,7 @@ module "alb_controller_irsa" {
   version = "~> 6.6"
 
   name                                   = "eks-${var.environment}-alb-controller"
+  use_name_prefix                        = false
   attach_load_balancer_controller_policy = true
 
   oidc_providers = {
@@ -68,6 +69,7 @@ module "external_dns_irsa" {
   version = "~> 6.6"
 
   name                          = "eks-${var.environment}-external-dns"
+  use_name_prefix               = false
   attach_external_dns_policy    = true
   external_dns_hosted_zone_arns = [module.route53.zones.panicboat_net.arn]
 

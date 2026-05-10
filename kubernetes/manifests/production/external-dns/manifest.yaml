@@ -111,7 +111,7 @@ metadata:
     app.kubernetes.io/version: "0.21.0"
     app.kubernetes.io/managed-by: Helm
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::559744160976:role/eks-production-external-dns-20260503163503968100000002
+    eks.amazonaws.com/role-arn: arn:aws:iam::559744160976:role/eks-production-external-dns
 automountServiceAccountToken: true
 ---
 # Source: external-dns/templates/clusterrole.yaml

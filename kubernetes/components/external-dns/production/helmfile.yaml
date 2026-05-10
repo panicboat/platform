@@ -13,7 +13,7 @@ environments:
     # block と同期すること。
     values:
       - cluster:
-          externalDnsRoleArn: arn:aws:iam::559744160976:role/eks-production-external-dns-20260503163503968100000002
+          externalDnsRoleArn: arn:aws:iam::559744160976:role/eks-production-external-dns
 ---
 repositories:
   - name: external-dns

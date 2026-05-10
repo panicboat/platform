@@ -10,6 +10,11 @@ output "cluster_endpoint" {
   value       = module.eks.cluster_endpoint
 }
 
+output "cluster_endpoint_hostname" {
+  description = "EKS cluster API endpoint hostname (without https:// prefix). Consumed by Cilium k8sServiceHost via helmfile exec."
+  value       = replace(module.eks.cluster_endpoint, "https://", "")
+}
+
 output "cluster_version" {
   description = "EKS cluster Kubernetes version"
   value       = module.eks.cluster_version
