@@ -1,0 +1,25 @@
+# =============================================================================
+# OpenTelemetry Operator Helmfile for production
+# =============================================================================
+# OTel Operator は OpenTelemetry SDK auto-injection (= Instrumentation CR) と
+# OTel Collector CRD (= OpenTelemetryCollector) の管理を提供する。
+# Phase 6-1 で deploy、Instrumentation CR は 6-2 で application namespace に追加。
+#
+# admission webhook TLS は cert-manager (= selfsigned-cluster-issuer) を利用。
+# webhook は K8s API server ↔ webhook の server-only TLS のため、SelfSigned で OK
+# (= 5-1 L3 lesson の mTLS 不可は server-only TLS には影響しない)。
+# =============================================================================
+environments:
+  production:
+---
+repositories:
+  - name: opentelemetry
+    url: https://open-telemetry.github.io/opentelemetry-helm-charts
+
+releases:
+  - name: opentelemetry-operator
+    namespace: opentelemetry-operator-system
+    chart: opentelemetry/opentelemetry-operator
+    version: "0.112.1"
+    values:
+      - values.yaml.gotmpl

@@ -1,0 +1,43 @@
+# =============================================================================
+# OpenTelemetry Operator Configuration for production
+# =============================================================================
+# Phase 6-1 で deploy。Instrumentation CR は 6-2 で application namespace に追加。
+# =============================================================================
+
+# =============================================================================
+# Admission Webhooks (= cert-manager integration)
+# =============================================================================
+# webhook は K8s API server ↔ Operator webhook の server-only TLS、SelfSigned
+# で十分 (= 5-1 L3 lesson の mTLS 不可は server-only TLS には影響しない)。
+admissionWebhooks:
+  certManager:
+    enabled: true
+    issuerRef:
+      name: selfsigned-cluster-issuer
+      kind: ClusterIssuer
+  autoGenerateCert:
+    enabled: false  # cert-manager 利用のため無効
+
+# =============================================================================
+# Manager Configuration
+# =============================================================================
+manager:
+  # Default collector image (= Instrumentation CR で個別指定可能)
+  collectorImage:
+    repository: otel/opentelemetry-collector-contrib
+    tag: 0.151.0  # 6-2 application 投入時に最新 stable に update 検討
+
+  # Prometheus integration (= 既 deploy 済 prometheus-operator 利用)
+  serviceMonitor:
+    enabled: true
+  prometheusRule:
+    enabled: false
+
+  # Resource limits (= local 設定踏襲、6-2 application 投入で application 数に応じて調整)
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
