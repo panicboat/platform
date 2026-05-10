@@ -19,27 +19,42 @@ environments:
           name: k8s-local
           isLocal: true
   production:
+    # =====================================================================
+    # RECREATE marker convention
+    # =====================================================================
+    # `# RECREATE: <command>` directly above a value means: when the cluster
+    # / VPC / underlying AWS resources are destroyed and recreated (= via
+    # scripts/eks-lifecycle), run the given command and replace the next
+    # line's value with the command's stdout. Only `eksApiEndpoint` and
+    # `vpcId` are subject to recreate (= cluster ID and VPC ID change every
+    # creation).
+    #
+    # `# STABLE: <reason>` means the value is deterministic by design and
+    # does NOT need updating on recreate (= IRSA / Karpenter naming was
+    # made deterministic in Phase 2 of the teardown/recreate spec; bucket
+    # names are account-id keyed).
+    #
+    # The Phase 3 lifecycle script `60-flux-bootstrap.sh` greps for these
+    # markers and prompts the operator to apply the listed updates manually
+    # (Plan A in the spec Errata). This avoids hydrate-time exec which is
+    # incompatible with the panicboat CI ordering (see spec §0 Errata).
+    # =====================================================================
     values:
       - cluster:
           name: eks-production
           isLocal: false
-          # eks-production cluster の API server endpoint hostname（https:// は含まない）
+          # RECREATE: cd aws/eks/envs/production && TG_TF_PATH=tofu terragrunt output -raw cluster_endpoint_hostname
           eksApiEndpoint: BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com
-          # VPC ID where the cluster lives. Used by AWS Load Balancer Controller.
-          # Source: aws/eks/envs/production terragrunt output vpc_id
+          # RECREATE: cd aws/vpc/envs/production && TG_TF_PATH=tofu terragrunt output -raw vpc_id
           vpcId: vpc-02ea5d0ed3b7a3266
-          # IRSA role ARNs for foundation addons. Source: aws/eks/envs/production
-          # terragrunt output {alb_controller_role_arn, external_dns_role_arn}.
-          # Phase 2 で use_name_prefix = false 化し timestamp suffix を排した deterministic 名。
+          # STABLE: aws/eks/modules/addons.tf で use_name_prefix = false に設定済、timestamp suffix なしの deterministic 名
           albControllerRoleArn: arn:aws:iam::559744160976:role/eks-production-alb-controller
+          # STABLE: 同上
           externalDnsRoleArn: arn:aws:iam::559744160976:role/eks-production-external-dns
         karpenter:
-          # Source: aws/karpenter/envs/production terragrunt output.
-          # Pod Identity 採用のため controllerRoleArn は不要 (Pod Identity
-          # Association が SA-to-role mapping を直接管理)。
-          # Phase 2 で node_iam_role_use_name_prefix = false + 明示 name 指定し
-          # timestamp suffix を排した deterministic 名。
+          # STABLE: aws/karpenter/modules/main.tf で node_iam_role_name + node_iam_role_use_name_prefix = false に設定済
           nodeRoleName: Karpenter-eks-production
+          # STABLE: Karpenter sub-module が cluster_name から決定論的に生成
           interruptionQueueName: Karpenter-eks-production
         mimir:
           # Source: aws/eks-metrics/envs/production terragrunt output
