@@ -183,7 +183,35 @@ kubernetes/manifests/production/kustomization.yaml                       ← flu
 
 `make hydrate-component COMPONENT=opentelemetry-collector ENV=production` + `make hydrate-index ENV=production` で生成。
 
-### 変更点 4: Beyla / Tempo / Loki / Mimir / prometheus-operator は **無修正**
+### 変更点 4: `kubernetes/README.md` の Fluent Bit 言及削除
+
+production の architecture を記述している箇所から Fluent Bit 関連の言及のみを削除する。新しい historical commentary (= "PR ... で撤去済" 等) は **追加しない** (= CLAUDE.md Naming 原則の精神、現在状態のみ記述)。
+
+具体的な変更:
+
+1. **アーキテクチャ図** (line 11- の `EKS Cluster (eks-production)` mermaid)
+   - `OTelCol "...(Deployment)"` → `(DaemonSet)`
+   - `FluentBit "Fluent Bit (DaemonSet)"` 行を削除
+   - `App -.->|stdout| FluentBit` / `FluentBit -->|OTLP gRPC| OTelCol` の 2 行を削除
+   - `App -.->|stdout (file tail)| OTelCol` の 1 行を追加
+   - `OTelCol -->|loki exporter logs| Loki` → `OTelCol -->|OTLP HTTP logs| Loki`
+2. **役割分離の説明文** (line 80)
+   - `(Beyla + Fluent Bit + OTel Collector)` → `(Beyla + OTel Collector)`
+   - 説明文を per-node DaemonSet で完結する旨に書き換え
+3. **Dataflow 図** (line 89-)
+   - `FB["Fluent Bit"]` ノード削除
+   - `L -->|stdout| FB` / `FB -->|OTLP gRPC| OTel` の 2 行を削除
+   - `L -.->|file tail| OTel` の 1 行を追加
+   - `OTel -->|loki exporter logs| LO` → `OTel -->|OTLP HTTP logs| LO`
+4. **監視スタック component list** (line 232 周辺)
+   - `- **Fluent Bit**: ログ収集` 行を削除
+   - `- **OpenTelemetry Collector**: テレメトリ統合` を `(traces / logs を per-node DaemonSet で集約)` を追記する形に拡張
+5. **Sub-project 3 の名前空間共有説明** (line 374)
+   - `Sub-project 3 (Loki + Fluent Bit)` → `Sub-project 3 (Loki)` (= 「+ Fluent Bit」の文字列のみを除去、新たな history は追加せず)
+
+(README に既存する別の historical commentary — `Plan N で導入` / `Phase N で追加予定` / `(撤去済 in PR N)` 等 — は **本 PR の scope 外**。別 PR で全面 cleanup する。)
+
+### 変更点 5: Beyla / Tempo / Loki / Mimir / prometheus-operator は **無修正**
 
 - Beyla の OTLP endpoint は Service DNS。Deployment → DaemonSet 化されても Service の selector が DaemonSet pods を拾うため自動継続。
 - 他の component は受信側、何も変わらず。
@@ -279,6 +307,7 @@ reconcile 完了後、cluster 状態 = manifest = main branch が一致する dr
 - **Tempo metrics-generator 有効化** (= Service Graph 復活): 別 PR (PR-B)
 - **既存 dashboard JSON の修正**: PR #331 の query は本 PR の修正で動作するはず、変更不要
 - **Loki の OTLP attribute → label mapping 調整** (低 cardinality 化): production scale が顕在化したら別 PR
+- **kubernetes/README.md の historical commentary 全面 cleanup**: 既存の `Plan N で導入` / `Phase N で追加予定` / `(撤去済 in PR N)` 等は別 PR で一括処理 (= 本 PR では Fluent Bit 言及の削除のみ)
 
 ---
 
