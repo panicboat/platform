@@ -1,16 +1,11 @@
 # =============================================================================
 # OpenTelemetry Collector Helmfile for production
 # =============================================================================
-# Phase 3 Sub-project 4a で deploy する Traces stack の OTel Collector。
-# Deployment mode で 1 replica の集約 hub として deploy。4a では OTLP receivers
-# + Tempo exporter のみの traces pipeline を完成、metrics / logs pipelines は
-# 4b で sources (Beyla / Hubble / Fluent Bit) 接続と同時に追加。
-#
-# Decision references:
-# - D2: OpenTelemetry Operator は production deploy しない (YAGNI)
-# - D4: Deployment + replicas=1 (集約 hub、HA upgrade path 保持)
-# - D6: chart version v0.153.0 (= local 揃い、最新と一致)
-# - D11: 4a では traces pipeline のみ scope、metrics / logs は 4b で追加
+# DaemonSet で per-node に deploy。Beyla からの traces (OTLP gRPC、Service DNS) と
+# container logs (chart preset logsCollection で filelog receiver) を受けて
+# Tempo / Loki に export する。fluent-bit は OTel-native 移行で撤去済 (= log 収集も
+# OTel に統合)。chart preset logsCollection + kubernetesAttributes が log pipeline
+# の中核 (filelog receiver + k8sattributes processor + RBAC を chart 自動構成)。
 # =============================================================================
 environments:
   production:
