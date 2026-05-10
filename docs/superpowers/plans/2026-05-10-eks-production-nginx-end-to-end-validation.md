@@ -872,3 +872,231 @@ Expected: Draft PR created、PR URL 表示
 - [x] `http_server_request_duration_seconds_count` Beyla metric name (= Task 1 scaled-object.yaml prometheus query): Phase 5-1 で確認済 Beyla expose metric name
 - [x] `1` (= 1 RPS) prometheus threshold + `50` cpu threshold: spec Decisions と整合
 - [x] commit subject prefix: `feat(eks):` (= 2 commits)、Sub-project 4a / 4b / 4-1 / 4-2 / 4-3 / 5-1 と整合
+
+## Lessons Learned (post-execution)
+
+PR #318 (= 本 sub-project initial merge) で deploy 後の post-flight check は **runtime issue 0 件 (= Phase 5-2 起因)** で完了、Phase 4-3 + 5-1 と同等の clean implementation を再現。**roadmap Phase 5 完了条件 13 checklist を essentially 13/13 達成**、Phase 1-4 で構築した全 component (= Cilium chaining + ALB + external-dns + ACM + cert-manager + ESO + Reloader + Beyla + KEDA + metrics-server + Mimir + Loki + Tempo + Hubble) を nginx 投入で actual data flow validation。
+
+post-flight regression check で **新 latent issue 1 件発覚** (= Mimir `validation.max-label-names-per-series: 30` 超過、Beyla `http_server_request_body_size_bytes_bucket` series が 31 labels)、Phase 5-1 L2 (= post-flight regression check が past sub-project の latent issue を発見) を **3 連続 validate** で完全 established。Phase 4-3 で Mimir RF (= 3 Sub-project 2 latent) → 5-1 で Cilium Hubble TLS (= 4-1 latent) → 5-2 で Mimir label limit (= 3 Sub-project 2 latent + Phase 5-1 Beyla 投入で表面化)。
+
+### Phase 3-5 全体 runtime issue 数 update
+
+| Sub-project | initial deploy | runtime fix | 計 |
+|---|---|---|---|
+| Sub-project 1 (AWS infra) | 0 | 0 | 0 |
+| Sub-project 2 (Mimir) | 5 | 0 (= ただし RF + cardinality limit + label-names-per-series が 4-3 / 5-1 / 5-2 で発覚、PR #312 + #314 で 2 件 resolve、1 件 Phase 6+ 引き継ぎ) | 5 |
+| Sub-project 3 (Loki + Fluent Bit) | 4 | 0 | 4 |
+| Sub-project 4a (Tempo + OTel Collector) | 0 | 0 | 0 |
+| Sub-project 4b (logs path completion) | 3 | 0 | 3 |
+| Sub-project 4-1 (cert-manager + Cilium TLS) | 0 | 0 (= ただし SelfSigned vs mTLS が 5-1 で発覚、PR #316 で resolve) | 0 |
+| Sub-project 4-2 (ESO + Reloader) | 0 (= ただし Pod Identity timing が 4-3 で発覚) | 0 | 0 |
+| Sub-project 4-3 (Grafana auth + Ingress) | 3 | 2 (= PR #311 + #312) | 3 |
+| Sub-project 5-1 (Beyla foundation) | 0 | 0 | 0 |
+| **Sub-project 5-2 (nginx end-to-end validation)** | **0** | **0** | **0** |
+| **Phase 3-5 累計** | | | **15** (= 5-1 完了時の 15 から不変) |
+
+= 5-2 で **設計起因 0 件**、latent issue 1 件発覚 (= 元 Phase 3 Sub-project 2 由来、Phase 6+ 引き継ぎ #21 として記録)、累計 15 維持。Phase 4-3 + 5-1 と同等の clean implementation を **3 連続維持** (= subagent-driven development cadence の効果再 validate)。
+
+### Phase 5-2 で発覚 → 引き継ぎ事項として記録した latent issue
+
+| # | Issue | 起因 sub-project | Discovery method | Resolution |
+|---|---|---|---|---|
+| 1 | **Mimir `validation.max-label-names-per-series: 30` 超過** = Beyla `http_server_request_body_size_bytes_bucket` series が 31 labels (= container / endpoint / exported_instance / exported_job / http_request_method / http_response_status_code / instance / job / namespace / network_protocol_name / network_protocol_version / otel_scope_name / otel_scope_schema_url / otel_scope_version / server_address / server_port / service_name / service_namespace / telemetry_sdk_language / telemetry_sdk_name / telemetry_sdk_version / url_path / url_scheme / le 等) | Phase 3 Sub-project 2 (= Mimir chart default、5-2 で Beyla nginx 投入で表面化) | Phase 5-2 post-flight Section E regression check で `httpCode=400 err-mimir-max-label-names-per-series` reject 発覚 | **Phase 6+ 引き継ぎ #21 として記録** (= demo 段階で必要性低、KEDA scaling は `_count` で影響なし、Grafana p95 query 利用時に `validation.max-label-names-per-series: 30 → 35` 拡大の fix forward 候補) |
+
+### L1: post-flight regression check pattern の **3 連続 validate established** (= 4-3 + 5-1 + 5-2)
+
+5-1 L2 で establish した pattern (= post-flight regression check が past sub-project の latent issue を発見) が 3 連続で validate された:
+
+| Phase | 発覚した latent issue | 起因 sub-project | Resolution |
+|---|---|---|---|
+| 4-3 | Mimir replication_factor 不整合 (= RF=3 vs 1 ingester) | Phase 3 Sub-project 2 | PR #312 fix forward |
+| 5-1 | Cilium Hubble TLS architectural issue (= SelfSigned ClusterIssuer の mTLS 不可) | Phase 4-1 | PR #316 fix forward |
+| **5-2** | **Mimir max-label-names-per-series 超過** (= Beyla histogram 31 labels) | Phase 3 Sub-project 2 | **Phase 6+ 引き継ぎ #21** |
+
+= **3 連続 sub-project で post-flight regression check が past sub-project の latent issue を発見**、5-1 L2 が完全 established となる。
+
+**Why (= 重要 pattern)**:
+
+- Phase 5-2 のような **end-to-end validation** sub-project は **既存 component に新たな data flow を加える** ため、過去 deploy 時に dormant だった issue を表面化する trigger になる
+- 過去 sub-project 完了時の post-flight check は **当 sub-project 範囲のみ verify**、cross-sub-project の interaction (= 例: Mimir cardinality limit + 全 ServiceMonitor scrape の累計、cert-manager + Cilium chart の TLS 接続、Beyla histogram series の label 数 + Mimir label-names-per-series limit) は test されない
+- **trigger** で latent issue が visible になる pattern が established、Phase 6+ 引き継ぎ #5 (= post-flight check 自動化) でこの pattern を automated detection に組込む方針
+
+**How to apply**:
+
+1. **post-flight check の "regression check" stage を必須化** (= 5-1 plan 以降確立済、Phase 5-3 / Phase 6+ で継続)
+2. **latent issue は元 sub-project の延長** として扱う (= 現 sub-project の runtime issues 集計には含めず、引き継ぎ事項に追加)
+3. Phase 6+ post-flight 自動化で **cross-sub-project regression check を automated に**: 例えば全 mTLS connection の actual handshake test、Mimir distributor reject rate の time-series monitoring、各 chart の Mimir-bound metrics の label 数 monitoring
+4. **新 application 投入** sub-project では **既存 stack の cardinality / label limit / API rate limit に対する負荷増加** を意識、deploy 前に余裕確認 step を必須化 (= Phase 5-2 Plan Task 0 Step 9 で active_series 余裕確認した pattern)
+
+### L2: KEDA ScaledObject multi-trigger の actual scaling validation (= 4-2 / 4-3 / 5-1 L5 extension)
+
+4-2 L5 で establish した pattern (= AWS direct verify AccessDenied → application-level indirect proof) を **autoscaling protocol-level に extension**:
+
+Phase 5-2 post-flight Section C で **actual load test (= 60 秒、~50 RPS HTTP load)** を実施:
+
+```
+Before:        replicas: 2、TARGETS: 0/1 (avg)、cpu 2%/50%
+30s 経過:      replicas: 4、TARGETS: 3137m/1 (avg)、cpu 2%/50%
+60s 経過:      replicas: 10、TARGETS: 4241m/1 (avg)、cpu 11%/50%  ← max replicas 到達
+```
+
+= KEDA ScaledObject **prometheus trigger** (= 4.241 RPS >> 1 RPS threshold) で **2 → 10 replicas full scale-up 完全動作**。CPU trigger は load test 中 11% で threshold 50% 未到達 (= configured/functioning だが load 不足)、actual scale-up は prometheus trigger driven。
+
+**Why (= 重要 pattern)**:
+
+- ScaledObject `Ready=True` + KEDA-managed HPA `keda-hpa-nginx` create の static check は **infra layer のみ verify**、actual scale event は load 必要
+- KEDA ScaledObject の multi-trigger 設計 (= cpu OR prometheus) で **両 trigger の OR semantic** を実証 (= prometheus 単独 trigger でも scale)、KEDA docs の正統的使い方
+- Phase 5-1 で deploy した Beyla の **production-grade end-to-end validation**: Beyla → Mimir → KEDA Prometheus query → ScaledObject → HPA → Pod scale の full chain
+
+**How to apply**:
+
+1. **autoscaling resource (= HPA / KEDA ScaledObject) の post-flight check に actual load test を必須化**: static `Ready=True` だけでなく **load → metrics > threshold → scale event** を end-to-end validate
+2. **KEDA multi-trigger 設計** で複数 metric を OR semantic で同居、conflict なく安全
+3. KEDA-managed HPA は **`keda-hpa-<scaledobject-name>`** prefix で auto-create、`kubectl get hpa` で確認可、KEDA non-active 時は metric 0 で表示 (= KEDA stabilization window)
+4. demo / staging で load test 短時間 (= 60 秒) で十分 scale-up validate 可能、production load profile に応じて threshold 調整
+
+### L3: ESO + Reloader rotation chain の actual end-to-end test (= 4-2 + 4-3 design intent の production-grade validation)
+
+Phase 4-2 で deploy 済の ESO + Reloader が、Phase 5-2 で **AWS Secrets Manager 更新 → ESO refresh → K8s Secret update → Reloader detect → nginx Deployment auto-rollout → 新 env value 反映** の **完全 chain を actual に validate**:
+
+```
+Before:
+  AWS secret value: "Hello from AWS Secrets Manager"
+  Pod: nginx-84d9479999-7bz69 (= start time 00:00:35Z)
+  env DEMO_MESSAGE: "Hello from AWS Secrets Manager"
+
+Operations:
+  1. aws secretsmanager update-secret panicboat/nginx/demo
+     → "Hello from rotation test at 090220"
+  2. kubectl annotate externalsecret nginx-demo force-sync=now
+     → ESO immediate refresh
+  3. wait 30s
+
+After:
+  Pod: nginx-6f4b8bfbfd-9hv6j (= 新 ReplicaSet ID、start time 00:02:36Z = 2 分後)
+  env DEMO_MESSAGE: "Hello from rotation test at 090220" ✅
+```
+
+= ESO + Reloader integration の actual data flow を **end-to-end validate**、Phase 4-2 deploy 時の "deploy success" status から **production-grade rotation evidence** に拡大。
+
+**Why (= 重要 pattern)**:
+
+- ESO `force-sync` annotation で **manual refresh trigger** が即時動作、`refreshInterval: 1h` の auto-refresh を待たず test 可能
+- Reloader の Secret detection は **annotation `reloader.stakater.com/auto: "true"`** で自動 watch (= 別途 explicit Secret 名指定不要)
+- ReplicaSet ID 変化 (= `nginx-84d9479999-7bz69` → `nginx-6f4b8bfbfd-9hv6j`) で actual Deployment rollout を proof
+- env injection は Pod recreation で更新 (= K8s 仕様)、in-place env modify は不可
+
+**How to apply**:
+
+1. **ESO 経由 secret rotation の post-flight 必須化**: 4-2 / 4-3 / 5-2 で 3 連続採用、Phase 6+ application でも同 pattern
+2. **`force-sync` annotation を post-flight test の primary tool に**: 1h auto-refresh 待ちは inefficient、production application で同 pattern (= manual refresh + 即時 rollout 確認) を運用 procedure に組込
+3. ReplicaSet ID 比較で **rollout actual evidence** を取得 (= start time だけだと "Pod 再起動" と "Pod 削除→再 create" の区別困難、ReplicaSet ID で明確)
+4. Phase 6+ post-flight 自動化 (= 引き継ぎ #5) で synthetic secret rotation test を組込候補
+
+### L4: kustomization-only component pattern の application implementation
+
+Phase 5-2 で **kustomization-only component (= helmfile 不在、Plain K8s manifests)** を新 pattern として採用、`gateway-api` reference を踏襲しつつ **複数 K8s resource** (= Deployment + Service + Ingress + ScaledObject + ExternalSecret) を 1 component に集約:
+
+```
+kubernetes/components/nginx-sample/
+└── production/
+    └── kustomization/
+        ├── kustomization.yaml          # 5 resources roll-up
+        ├── deployment.yaml             # Workload
+        ├── service.yaml                # Service expose
+        ├── ingress.yaml                # ALB Ingress
+        ├── scaled-object.yaml          # KEDA autoscaling
+        └── external-secret.yaml        # ESO secret sync
+```
+
+= **chart binary verify (= L1 systematic step) 不要 + helmfile Capabilities gate (= L3) 不要**で、Phase 4-3 / 5-1 と異なる pattern。
+
+**Why (= chart wrapping vs Plain manifests の trade-off)**:
+
+| 観点 | Helm chart (= Phase 4-1 ~ 5-1 既存 14 components) | Plain manifests (= 5-2 nginx-sample) |
+|---|---|---|
+| application | 既存 OSS chart (= cert-manager / ESO / oauth2-proxy / Beyla 等) | demo / 自製 application |
+| L1 chart binary verify | 必要 (= chart structure / key path / chart-fixed value) | 不要 (= no chart) |
+| version pinning | helmfile.yaml の `version:` field | image tag / CRD apiVersion で pin |
+| upstream change tracking | chart upgrade で management | manifest direct edit |
+| operational footprint | 大 (= chart values + helmfile + values.yaml.gotmpl + kustomization) | 小 (= kustomization のみ) |
+
+**How to apply**:
+
+1. **chart 提供 OSS component (= cert-manager / ESO / oauth2-proxy 等) は helmfile pattern を継続**、Phase 4-1 ~ 5-1 で確立した chart binary verify systematic step を踏襲
+2. **demo / 自製 application は kustomization-only pattern** を採用、`gateway-api` + `nginx-sample` reference を活用
+3. **Phase 6+ panicboat monorepo migration** で application code (= Hanami / Next.js) 投入時は kustomization-only pattern を **base** に採用、application 固有 manifest を直接管理
+4. **chart binary verify 不要 component の plan** では Task 1 step 1-2 (= chart binary verify) を skip、Task 数 minimal (= Phase 5-2 は 4 tasks: pre-flight + deploy + hydrate + PR)
+
+### L5: Beyla auto-instrumentation の production-grade application validation (= 5-1 L4 extension)
+
+Phase 5-1 で smoke test (= test Pod) で部分 validate、**5-2 で nginx 正式投入による production-grade Beyla validation** に拡大:
+
+| 観点 | Phase 5-1 (smoke test) | Phase 5-2 (production-grade) |
+|---|---|---|
+| target Pod | 一時 test Pod (`kubectl run --rm`) | 正式 Deployment (= 永続的) |
+| traffic | manual `kubectl exec` curl 5 回 | ALB → external user simulated load test 60 秒 ~50 RPS |
+| Beyla detection | `instrumenting process cmd=/usr/sbin/nginx pid=...` | 同 (= L4 pattern 再 validate)、複数 Pod に対し eBPF probe 並行 attach |
+| Tempo trace flow | `service.name=test-nginx` で確認 | `service.name=nginx` で確認、actual application traffic 由来 traces |
+| Mimir RED metrics | (= 部分 validate なし) | `http_server_request_duration_seconds_count` rate query で **0.733 → 4.241 RPS** measurable |
+| KEDA Prometheus trigger | (= 5-1 では trigger source 不在) | Beyla RED metrics で actual scaling trigger validation |
+
+= 5-1 で establish した Beyla pipeline が **production data flow で完全動作**、Phase 4-3 L6 (= Tempo empty / Loki minimal labels) の partial 解消 + KEDA scaling 統合を 5-2 で実証。
+
+**How to apply**:
+
+1. **infrastructure deploy** (= Phase 5-1 smoke test) と **production validation** (= Phase 5-2 actual application) は **2 段階で構築**、各段階で適切な test pattern を採用
+2. **Beyla auto-instrumentation の actual workload validation** は application 投入 sub-project の post-flight で必須、static "Beyla DaemonSet Ready" だけでは不十分
+3. **Beyla RED metrics の cardinality 影響** は application 投入で初観測、Mimir limit 余裕確認 (= 5-2 Plan Task 0 Step 9 pattern) を必須化、5-2 で発覚した label-names-per-series 超過 (= 引き継ぎ #21) のような latent issue を pre-deploy で検出可能性高
+
+### Sub-project 1-5-1 learnings 適用 review
+
+| Learning | Applied | Effect |
+|---|---|---|
+| L1 (= chart binary verify) | N/A (= Plain manifests)、ただし KEDA + ESO CRD apiVersion を Task 0 で確認 | N/A → L4 (= kustomization-only pattern) として new lesson 形成 |
+| L2 (= chart capability assumption) | KEDA Prometheus trigger query syntax を docs full read で裏付け、Beyla `service_name="nginx"` literal を 5-1 smoke test で確認済 | Effective (= 事前検証で deploy 後 issue ゼロ) |
+| L3 (= Pod Identity webhook timing) | nginx は AWS access 不要、Phase 4-2 ESO Pod Identity 継続動作前提を Task 0 で verify | N/A direct、ただし dependency chain 確認は適用 |
+| L4 (= distributed system replica / RF) | nginx に ring 構造なし、適用なし | N/A |
+| L5 (= application-level test) | post-flight Section C / D で actual scaling test + secret rotation test、static health check を超えて end-to-end proof | **Strongly effective、本 sub-project で L2 + L3 in this learnings として extension** |
+| L6 (= subagent-driven development cadence) | 4 tasks (= AWS なし + chart なし + kustomization のみ)、minimum complexity、subagent dispatch は Task 1 + 2 のみ | Stable maintained (= 5 連続 sub-project) |
+| 5-1 L2 (= post-flight regression check が past sub-project の latent issue を発見) | Phase 5-2 で 3 連続 validate (= 4-3 + 5-1 + 5-2)、本 sub-project の core lesson | **Established pattern、本 learnings の L1 として記録** |
+| 5-1 L4 (= Beyla smoke test → production-grade test) | nginx 正式投入で full application-level validation、smoke test → production-grade test に拡大 | **Effective、本 learnings の L5 として extension** |
+| 4-1 L5 (= chart version placeholder) | nginx image actual `1.27-alpine` で pinned | Effective |
+
+### Phase 5 引き継ぎ事項 update (= 5-2 完了時)
+
+| 項目 | 5-2 完了時の状態 |
+|---|---|
+| 1-3. gp3 / bucket-per-env / multi-tenant | Phase 6+ 引き継ぎ (= 不変) |
+| 4. OTel Operator deploy 検討 | Phase 6+ 引き継ぎ (= 5-1 で evaluation 確定) |
+| 5. post-flight check 自動化 | Phase 6+ 引き継ぎ (= **本 sub-project L1 で 3 連続 regression check pattern を automated detection に組込む方針追加**、L2 で actual load test の synthetic 化、L3 で secret rotation synthetic test の組込) |
+| 6. Beyla deploy + OTel Collector metrics pipeline | Phase 5-1 part 1 解消済、part 2 (= OTel Collector metrics pipeline 拡張) は Phase 6+ #10 と統合 |
+| 7-8. Hubble flow logs / local Fluent Bit OTLP | Phase 6+ 引き継ぎ (= 不変) |
+| 9. Pod CPU requests audit + rightsizing | **Phase 5-3 で解消予定** |
+| 10. OTel Collector exporter alias check 自動化 | Phase 6+ 引き継ぎ (= 不変) |
+| 11-14. Workspace OAuth / AWS rotation / Cilium Gateway / monitoring UIs 拡張 | Phase 6+ 引き継ぎ (= 不変) |
+| 15-17. Pod Identity webhook detection / mTLS verify / Loki OTLP label promotion | Phase 6+ 引き継ぎ (= **#17 Loki label promotion は本 sub-project で再 validate、`service_name="unknown_service"` のみ promotion 確認**) |
+| 18-20. SelfSigned vs CA-based / mTLS sha256 verify / Beyla discovery deprecation | Phase 6+ 引き継ぎ (= 不変) |
+| **21. Mimir `validation.max-label-names-per-series: 30 → 35` 拡大** (= 5-2 で発覚した Beyla histogram 31 labels reject、demo 段階で必要性低、application 投入時 fix forward) | **Phase 6+ 引き継ぎ (= 5-2 で新規追加)** |
+
+= 5-2 完了で **新規引き継ぎ #21 を追加**、引き継ぎ #5 (= post-flight 自動化) に L1 / L2 / L3 由来 design 指針 3 件追加。Phase 5-3 で 引き継ぎ #9 (= rightsizing) を解消予定。
+
+### Phase 5 全体 perspective update (= 5-2 完了時)
+
+| Sub-project | scope | runtime issues | 状態 |
+|---|---|---|---|
+| **5-1 Beyla foundation** | Beyla DaemonSet 1 chart deploy | 0 件 (= 5-1 起因) + 2 件 latent fix forward (= PR #314 + #316) | ✅ 完了 |
+| **5-2 nginx + Ingress + ESO + HPA + KEDA** | nginx Plain manifests + 13 checklist end-to-end validate | **0 件 (= 5-2 起因)** + 1 件 latent (= 引き継ぎ #21、demo 段階で fix 不要) | ✅ 完了 |
+| **5-3 rightsizing audit** | Pod CPU requests audit、引き継ぎ #9 解消、Phase 5 全体 closure | 0-1 件想定 | 🔜 5-2 完了 + 数日 traffic 観測後 |
+
+= 5-2 完了で **roadmap Phase 5 完了条件 13/13 essentially達成**、Phase 5-3 は **closure + rightsizing 専用** (= roadmap 直接対応なし、引き継ぎ #9 のみ解消 + Phase 5 学習総括)。
+
+### 次 sub-project (= Phase 5-3 rightsizing audit) への適用
+
+1. **L1 即適用**: Phase 5-3 post-flight でも **regression check** を継続、4 連続 validate を期待 (= ただし 5-3 は rightsizing 主体で、application 投入なし、新 latent issue 表面化の可能性は低い)
+2. **L2 適用**: Phase 5-3 では new autoscaling resource 投入なし、適用機会なし
+3. **L3 適用**: Phase 5-3 では new secret rotation なし、適用機会なし
+4. **L4 適用**: Phase 5-3 は audit + values 修正中心、kustomization-only pattern 不要
+5. **L5 適用**: Phase 5-3 で nginx + 数日 traffic 観測後の actual usage data で audit、5-2 で確立した actual data pattern を活用
+
+= Phase 5-3 は **modest scope** (= 引き継ぎ #9 解消のみ)、本 sub-project learnings 5 件全部の applicability は限定的、ただし regression check (= L1) は継続適用。
