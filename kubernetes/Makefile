@@ -29,6 +29,7 @@
 SHELL := /bin/bash
 CLUSTER_NAME ?= k8s-local
 ENV ?= local
+KUBE_VERSION ?= v1.35.0
 
 # Colors for output
 GREEN  := \033[0;32m
@@ -84,7 +85,7 @@ hydrate-component: ## Hydrate single component (usage: make hydrate-component CO
 	mkdir -p "$$out_dir"; \
 	: > "$$out_dir/manifest.yaml"; \
 	if [ -f "$$component_dir/helmfile.yaml" ]; then \
-		helmfile -f "$$component_dir/helmfile.yaml" -e $(ENV) template --include-crds --skip-tests >> "$$out_dir/manifest.yaml"; \
+		helmfile -f "$$component_dir/helmfile.yaml" -e $(ENV) template --include-crds --skip-tests --kube-version $(KUBE_VERSION) >> "$$out_dir/manifest.yaml"; \
 	fi; \
 	if [ -d "$$component_dir/kustomization" ]; then \
 		echo "---" >> "$$out_dir/manifest.yaml"; \
