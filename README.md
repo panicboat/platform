@@ -33,7 +33,7 @@
 
 | Stack | Path Convention | Tooling |
 |-------|-----------------|---------|
-| AWS Infrastructure | `aws/{service}/envs/{environment}` | Terragrunt 0.83.2 + OpenTofu 1.6.0 (`gruntwork-io/terragrunt-action@v3.2.0`) |
+| AWS Infrastructure | `aws/{service}/envs/{environment}` | Terragrunt + OpenTofu (`gruntwork-io/terragrunt-action`) |
 | Kubernetes Platform | `kubernetes/components/{service}/{environment}` | Helmfile + Kustomize hydration (`reusable--kubernetes-builder.yaml`) / Flux CD |
 | GitHub Repo Settings | `github/repository` | Terraform |
 
