@@ -31,10 +31,6 @@ on:
         required: true
         type: string
         description: 'GitHub App ID for authentication'
-      pr-number:
-        required: true
-        type: string
-        description: 'Pull request number for posting plan/apply result comment'
     secrets:
       private-key:
         required: true
@@ -54,6 +50,14 @@ jobs:
           private-key: ${{ secrets.private-key }}
           owner: ${{ github.repository_owner }}
 
+      - name: Get PR information
+        id: pr-info
+        uses: jwalton/gh-find-current-pr@f3d61b485d2801773f7a07b2aaa3306bd8f8e653 # v1.3.5
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          state: all
+        continue-on-error: true
+
       - name: Execute Terragrunt
         uses: panicboat/panicboat-actions/terragrunt-run@f917fa0921e06ec7b08941df04958361c43253fb # main
         with:
@@ -64,4 +68,4 @@ jobs:
           iam-role: ${{ inputs.iam-role }}
           aws-region: ${{ inputs.aws-region }}
           working-directory: ${{ inputs.working-directory }}
-          pr-number: ${{ inputs.pr-number }}
+          pr-number: ${{ steps.pr-info.outputs.number }}
