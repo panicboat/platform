@@ -6,10 +6,10 @@ metadata:
   name: beyla
   namespace: monitoring
   labels:
-    helm.sh/chart: beyla-1.16.6
+    helm.sh/chart: beyla-1.16.7
     app.kubernetes.io/name: beyla
     app.kubernetes.io/instance: beyla
-    app.kubernetes.io/version: "3.9.8"
+    app.kubernetes.io/version: "3.14.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: beyla
     app.kubernetes.io/component: rbac
@@ -22,10 +22,10 @@ metadata:
   name: beyla
   namespace: monitoring
   labels:
-    helm.sh/chart: beyla-1.16.6
+    helm.sh/chart: beyla-1.16.7
     app.kubernetes.io/name: beyla
     app.kubernetes.io/instance: beyla
-    app.kubernetes.io/version: "3.9.8"
+    app.kubernetes.io/version: "3.14.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: beyla
     app.kubernetes.io/component: config
@@ -69,10 +69,10 @@ kind: ClusterRole
 metadata:
   name: beyla
   labels:
-    helm.sh/chart: beyla-1.16.6
+    helm.sh/chart: beyla-1.16.7
     app.kubernetes.io/name: beyla
     app.kubernetes.io/instance: beyla
-    app.kubernetes.io/version: "3.9.8"
+    app.kubernetes.io/version: "3.14.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: beyla
     app.kubernetes.io/component: rbac
@@ -90,10 +90,10 @@ kind: ClusterRoleBinding
 metadata:
   name: beyla
   labels:
-    helm.sh/chart: beyla-1.16.6
+    helm.sh/chart: beyla-1.16.7
     app.kubernetes.io/name: beyla
     app.kubernetes.io/instance: beyla
-    app.kubernetes.io/version: "3.9.8"
+    app.kubernetes.io/version: "3.14.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: beyla
     app.kubernetes.io/component: rbac
@@ -113,10 +113,10 @@ metadata:
   name: beyla
   namespace: monitoring
   labels:
-    helm.sh/chart: beyla-1.16.6
+    helm.sh/chart: beyla-1.16.7
     app.kubernetes.io/name: beyla
     app.kubernetes.io/instance: beyla
-    app.kubernetes.io/version: "3.9.8"
+    app.kubernetes.io/version: "3.14.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: beyla
     app.kubernetes.io/component: networking
@@ -138,10 +138,10 @@ metadata:
   name: beyla
   namespace: monitoring
   labels:
-    helm.sh/chart: beyla-1.16.6
+    helm.sh/chart: beyla-1.16.7
     app.kubernetes.io/name: beyla
     app.kubernetes.io/instance: beyla
-    app.kubernetes.io/version: "3.9.8"
+    app.kubernetes.io/version: "3.14.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: beyla
     app.kubernetes.io/component: workload
@@ -156,12 +156,12 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 5bf6e5e9211aa0f14a97de49dfae63b0d60e38c34409046f4cce9f80079c069d
+        checksum/config: c15dab87042aa3c7c48e411bc253ee4b70e9bf4de03867299520007c42ff7161
       labels:
-        helm.sh/chart: beyla-1.16.6
+        helm.sh/chart: beyla-1.16.7
         app.kubernetes.io/name: beyla
         app.kubernetes.io/instance: beyla
-        app.kubernetes.io/version: "3.9.8"
+        app.kubernetes.io/version: "3.14.0"
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/part-of: beyla
         app.kubernetes.io/component: workload
@@ -172,7 +172,7 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: beyla
-          image: docker.io/grafana/beyla:3.9.8
+          image: docker.io/grafana/beyla:3.14.0
           imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true
@@ -203,10 +203,10 @@ metadata:
   name: beyla
   namespace: monitoring
   labels:
-    helm.sh/chart: beyla-1.16.6
+    helm.sh/chart: beyla-1.16.7
     app.kubernetes.io/name: beyla
     app.kubernetes.io/instance: beyla
-    app.kubernetes.io/version: "3.9.8"
+    app.kubernetes.io/version: "3.14.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: beyla
     app.kubernetes.io/component: metrics
@@ -218,10 +218,10 @@ spec:
   jobLabel: beyla
   selector:
     matchLabels:
-      helm.sh/chart: beyla-1.16.6
+      helm.sh/chart: beyla-1.16.7
       app.kubernetes.io/name: beyla
       app.kubernetes.io/instance: beyla
-      app.kubernetes.io/version: "3.9.8"
+      app.kubernetes.io/version: "3.14.0"
       app.kubernetes.io/managed-by: Helm
       app.kubernetes.io/part-of: beyla
 
