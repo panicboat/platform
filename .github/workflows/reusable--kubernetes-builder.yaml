@@ -15,6 +15,10 @@ on:
         required: true
         type: string
         description: 'GitHub App ID for authentication'
+      pr-number:
+        required: true
+        type: string
+        description: 'Pull request number for posting kustomize diff comment'
     secrets:
       private-key:
         required: true
@@ -37,14 +41,6 @@ jobs:
           private-key: ${{ secrets.private-key }}
           owner: ${{ github.repository_owner }}
 
-      - name: Get PR information
-        id: pr-info
-        uses: jwalton/gh-find-current-pr@f3d61b485d2801773f7a07b2aaa3306bd8f8e653 # v1.3.5
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          state: all
-        continue-on-error: true
-
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -59,4 +55,4 @@ jobs:
           service-name: ${{ inputs.service-name }}
           environment: ${{ inputs.environment }}
           path: kubernetes/manifests/${{ inputs.environment }}/${{ inputs.service-name }}
-          pr-number: ${{ steps.pr-info.outputs.number }}
+          pr-number: ${{ inputs.pr-number }}
