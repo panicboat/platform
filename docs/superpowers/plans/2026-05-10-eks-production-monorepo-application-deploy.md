@@ -4,9 +4,9 @@
 
 **Goal:** EKS production cluster (`eks-production`) に panicboat monorepo の **monolith + frontend + reverse-proxy** 3 services を actual deploy。AWS RDS PostgreSQL provision で K8s 内 PostgreSQL から切替、 OTel SDK init (= L1) + Instrumentation CR (= L2) で 3-layer observability foundation 整備、 Flux Image Update Automation (= digest reflection) で main merge → auto-deploy chain 確立。
 
-**Architecture:** **3 PRs structure**: (1) Pre-merge fix forward PR (= 引き継ぎ #22 Makefile hydrate-component の kube-version flag 固定) を 6-2 開始前に merge、 (2) 並行 monorepo PR で terragrunt RDS provision + application code OTel SDK init + K8s manifests 修正 + Flux Image Update Automation 設定 + README documentation update、 (3) Platform PR で Instrumentation CR deploy + monorepo Flux Kustomization resume (= suspend: true → false)。 並行 monorepo + platform PR は同日 merge。
+**Architecture:** **2 PRs structure**: (1) 並行 monorepo PR で terragrunt RDS provision + application code OTel SDK init + K8s manifests 修正 + Flux Image Update Automation 設定 + README documentation update、 (2) Platform PR で Instrumentation CR deploy + monorepo Flux Kustomization resume (= suspend: true → false)。 並行 monorepo + platform PR は同日 merge。 注: 旧 plan 案で "Pre-merge fix forward PR for Makefile #22" を 3 PRs structure に含めていたが、 真因 re-diagnosis (= subagent aqua 未利用) で Makefile 修正不要と判断、 PR structure は 2 PRs に simplify。
 
-**Tech Stack:** AWS RDS for PostgreSQL 17.x (= `db.t4g.micro` Single-AZ) / monorepo terragrunt scaffolding (= `template/terragrunt/` template) / Hanami 2.3 + `opentelemetry-sdk` + `opentelemetry-instrumentation-all` / Next.js 16 + `@opentelemetry/sdk-node` + `@opentelemetry/auto-instrumentations-node` / OTel Operator chart 0.112.1 (= 6-1 deploy 済) + Instrumentation CR / Flux v1.1.1 ImageUpdateAutomation + `digestReflectionPolicy: Always` (= latest tag の digest auto-track) / cert-manager `selfsigned-cluster-issuer` (= 既存)
+**Tech Stack:** AWS RDS for PostgreSQL 17.x (= `db.t4g.micro` Single-AZ) / monorepo terragrunt scaffolding (= `template/terragrunt/` template) / Hanami 2.3 + `opentelemetry-sdk` + `opentelemetry-instrumentation-all` / Next.js 16 + `@opentelemetry/sdk-node` + `@opentelemetry/auto-instrumentations-node` / OTel Operator chart 0.112.1 (= 6-1 deploy 済) + Instrumentation CR / Flux v1.1.1 ImageUpdateAutomation + `digestReflectionPolicy: Always` (= latest tag の digest auto-track) / cert-manager `selfsigned-cluster-issuer` (= 既存) / **aqua-pinned tools** (= helm v3.17.3 / helmfile v0.169.2 / kustomize v5.6.0、 全 actor で deterministic hydrate ensure)
 
 **Spec:** `docs/superpowers/specs/2026-05-10-eks-production-monorepo-application-deploy-design.md`
 
@@ -31,12 +31,6 @@ kubernetes/clusters/production/repositories/monorepo.yaml       # 修正 (= Kust
 
 ```
 kubernetes/manifests/production/opentelemetry/manifest.yaml    # 修正 (= Instrumentation CR の hydrate 結果追加)
-```
-
-### Pre-merge fix forward PR (= 別 PR、 別 worktree、 6-2 開始前)
-
-```
-kubernetes/Makefile     # 修正 (= hydrate-component target に --kube-version flag 固定)
 ```
 
 ### monorepo 新規作成 / 修正 (= 並行 monorepo PR)
@@ -171,15 +165,15 @@ Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.
 
 → wildcard `secret:*` access、 新 secret `panicboat/monolith/database` も自動 access 可、 platform `aws/eks-secrets/` 修正不要 (= spec Risk #2 mitigation 確定)
 
-- [ ] **Step 5: Pre-merge fix forward PR (= 引き継ぎ #22) merge 状態確認**
+- [ ] **Step 5: 引き継ぎ #22 status 確認 (= re-diagnosis 後)**
+
+引き継ぎ #22 は re-diagnosis 結果 "subagent aqua 未利用" が真因と判明、 Makefile 修正不要 (= Pre-merge fix forward PR #336 は close 済)。 解消は Step 7 (= aqua install) で対応。
 
 ```bash
-gh pr list --repo panicboat/platform --state merged --search "Makefile hydrate-component kube-version" --json number,title,mergedAt 2>&1 | head -10
+gh pr view 336 --repo panicboat/platform --json state 2>&1 | head -3
 ```
 
-Expected: PR が merged (= 確定 number は Task 1 で生成)、 もしくは "no results" (= Task 1 で実施が必要)。
-
-注: 本 task 0 で Pre-merge fix forward PR が unmerged な場合、 Task 1 で先 merge してから Task 2+ に進む order constraint。
+Expected: PR #336 `state: CLOSED` (= Makefile 修正 approach は close、 root cause fix = aqua 利用)。
 
 - [ ] **Step 6: monorepo PR 用 worktree 作成 (= 並行 monorepo PR の base)**
 
@@ -195,148 +189,79 @@ Expected:
 - worktree 作成成功 (= branch `feat/phase-6-2-application-deploy`)
 - services/ に 3 ディレクトリ (= frontend / monolith / reverse-proxy、 nginx は 6-1 削除済)
 
+- [ ] **Step 7: aqua install (= 引き継ぎ #22 root cause fix)**
+
+panicboat platform は aqua で tool version pin (= `helm v3.17.3` / `helmfile v0.169.2` / `kustomize v5.6.0`)、 全 actor で deterministic hydrate ensure。 subagent dispatch 時に aqua install を実施し、 aqua's helm / helmfile / kustomize で hydrate を行う。
+
+```bash
+cd /Users/takanokenichi/GitHub/panicboat/platform/.claude/worktrees/eks-monorepo-application-deploy
+which aqua || (curl -L https://raw.githubusercontent.com/aquaproj/aqua-installer/v3.0.1/aqua-installer | bash)
+aqua install --config .github/aqua.yaml
+helm version --short
+helmfile version
+kustomize version
+```
+
+Expected:
+- aqua install 成功
+- `helm version`: `v3.17.3` (= aqua-pinned)
+- `helmfile version`: `v0.169.2`
+- `kustomize version`: `v5.6.0`
+
+注: 各 subsequent task で subagent dispatch 時に **aqua install + aqua-pinned tools 利用** を controller instruction で明示する (= 全 task の hydrate / template / build 動作を deterministic に保つ)。
+
 ---
 
-## Task 1: Pre-merge fix forward PR — Makefile hydrate-component kube-version flag (= 引き継ぎ #22)
+## Task 1: 引き継ぎ #22 root cause fix (= subagent aqua 利用 confirm、 Makefile 修正不要)
 
-**Files (= 別 worktree):**
-- Modify: `kubernetes/Makefile`
+**Files:** (修正なし、 Task 0 Step 7 で aqua install 実施済の確認のみ)
 
-**Context:** 引き継ぎ #22 の解消。 `make hydrate-component` が `--kube-version` flag を渡さない問題。 local helm の default kube-version (= 1.33+) と CI baseline (= 1.32) の差異で chart の semverCompare 条件分岐 (= 例 `nodes/proxy ↔ nodes/pods`) で noise diff 発生。 6-2 PR の hydrate output (= Instrumentation CR の opentelemetry/manifest.yaml 更新) を clean にするため、 6-2 開始前に先 merge。
+**Context:** 引き継ぎ #22 (= 旧 categorize "Makefile hydrate-component の kube-version 固定") の re-diagnosis。 真因は subagent が aqua-pinned helm (= v3.17.3) を利用していないこと (= helm version 差で chart の semverCompare 分岐結果が differ、 noise diff 発生)。 Makefile に `--kube-version` flag 追加は defensive measure に留まり root cause fix でない。
 
-別 worktree (= `claude/fix-makefile-hydrate-kube-version`) で independent PR 作成 + merge。
+**Root cause fix**: subagent dispatch instruction で aqua install + aqua-pinned helm / helmfile / kustomize 利用を明示。 panicboat platform の standard tool version (= aqua で pin 済) を全 actor で利用 ensure。
 
-- [ ] **Step 1: 別 worktree 作成**
-
-```bash
-cd /Users/takanokenichi/GitHub/panicboat/platform
-git fetch origin main
-git worktree add -b claude/fix-makefile-hydrate-kube-version .claude/worktrees/fix-makefile-hydrate-kube-version origin/main
-cd .claude/worktrees/fix-makefile-hydrate-kube-version
-```
-
-Expected: 新 worktree active、 origin/main HEAD base
-
-- [ ] **Step 2: Makefile hydrate-component target 修正**
-
-`kubernetes/Makefile` の `hydrate-component` target を以下に修正 (= 既存内容に `--kube-version $(KUBE_VERSION)` flag を helmfile template に追加 + variable default):
-
-`kubernetes/Makefile` の冒頭 Variables section (= 既存) に追加:
-
-```makefile
-# =============================================================================
-# Variables
-# =============================================================================
-SHELL := /bin/bash
-CLUSTER_NAME ?= k8s-local
-ENV ?= local
-KUBE_VERSION ?= v1.32.0
-```
-
-`kubernetes/Makefile` の `hydrate-component` target を修正 (= 既存 helmfile template line に `--kube-version` 追加):
-
-```makefile
-.PHONY: hydrate-component
-hydrate-component: ## Hydrate single component (usage: make hydrate-component COMPONENT=cilium ENV=local)
-	@set -euo pipefail; \
-	component_dir="components/$(COMPONENT)/$(ENV)"; \
-	out_dir="manifests/$(ENV)/$(COMPONENT)"; \
-	mkdir -p "$$out_dir"; \
-	: > "$$out_dir/manifest.yaml"; \
-	if [ -f "$$component_dir/helmfile.yaml" ]; then \
-		helmfile -f "$$component_dir/helmfile.yaml" -e $(ENV) template --include-crds --skip-tests --kube-version $(KUBE_VERSION) >> "$$out_dir/manifest.yaml"; \
-	fi; \
-	if [ -d "$$component_dir/kustomization" ]; then \
-		echo "---" >> "$$out_dir/manifest.yaml"; \
-		kustomize build "$$component_dir/kustomization" >> "$$out_dir/manifest.yaml"; \
-	fi; \
-	printf "resources:\n  - manifest.yaml\n" > "$$out_dir/kustomization.yaml"; \
-	if git ls-files --error-unmatch "$$out_dir/manifest.yaml" >/dev/null 2>&1; then \
-		if git diff --quiet -I '^[[:space:]]*(ca\.crt|ca\.key|tls\.crt|tls\.key|caBundle):' -- "$$out_dir/manifest.yaml"; then \
-			git checkout -- "$$out_dir/manifest.yaml"; \
-		fi; \
-	fi
-```
-
-注: 修正箇所は **2 つ**:
-1. Variables section に `KUBE_VERSION ?= v1.32.0` 追加 (= EKS production cluster の actual version 1.32 と整合)
-2. helmfile template line に `--kube-version $(KUBE_VERSION)` 追加 (= helmfile の `>> "$$out_dir/manifest.yaml"` 直前に flag を flow control に追加)
-
-- [ ] **Step 3: validate fix (= 既存 component を hydrate して noise diff なし確認)**
+- [ ] **Step 1: aqua install 確認 (= Task 0 Step 7 で実施済の re-verify)**
 
 ```bash
-cd kubernetes
+cd /Users/takanokenichi/GitHub/panicboat/platform/.claude/worktrees/eks-monorepo-application-deploy
+helm version --short
+helmfile version
+kustomize version
+```
+
+Expected:
+- `helm version`: `v3.17.3` (= aqua-pinned)
+- `helmfile version`: `v0.169.2`
+- `kustomize version`: `v5.6.0`
+
+aqua install されていない場合は Task 0 Step 7 を再実施。
+
+- [ ] **Step 2: hydrate validation (= aqua-pinned tools で既 baseline と一致確認)**
+
+```bash
+cd /Users/takanokenichi/GitHub/panicboat/platform/.claude/worktrees/eks-monorepo-application-deploy/kubernetes
 make hydrate-component COMPONENT=opentelemetry ENV=production
 git diff manifests/production/opentelemetry/manifest.yaml | head -10
 ```
 
-Expected: diff 0 line (= 6-1 fix forward の hydrate 結果 + 同 KUBE_VERSION で再 hydrate して同一 output、 noise diff なし)
+Expected: diff 0 line (= aqua-pinned helm v3.17.3 で hydrate、 既 baseline と一致、 noise diff なし)
 
-- [ ] **Step 4: commit + push + draft PR + merge**
+注: もし diff が出る場合、 既 baseline が異なる helm version で生成された可能性あり。 その場合は別 PR で全 component re-hydrate (= deterministic baseline 確立) を検討。
 
-```bash
-cd /Users/takanokenichi/GitHub/panicboat/platform/.claude/worktrees/fix-makefile-hydrate-kube-version
-git add kubernetes/Makefile
-git commit -s -m "feat(eks): Makefile hydrate-component に --kube-version flag 固定" -m "Phase 6-1 learnings 引き継ぎ #22 解消。
-make hydrate-component が --kube-version flag を渡さないため、 local
-helm の default kube-version (= 1.33+) と CI baseline (= 1.32) の差異
-で chart の semverCompare 条件分岐 (= 例 nodes/proxy ↔ nodes/pods)
-で noise diff 発生していた。" -m "Fix:
-- Variables section に KUBE_VERSION ?= v1.32.0 追加 (= EKS production
-  cluster の actual version 1.32 と整合)
-- hydrate-component target の helmfile template line に
-  --kube-version \$(KUBE_VERSION) flag 追加" -m "Phase 6-2 (= application deploy) の hydrate output (= Instrumentation
-CR の opentelemetry/manifest.yaml 更新) を clean に保つための 6-2
-開始前 fix forward PR。"
-git push -u origin HEAD
-gh pr create --draft --title "feat(eks): Makefile hydrate-component に --kube-version flag 固定" --body "## Summary
+- [ ] **Step 3: subsequent task subagent dispatch instruction の note**
 
-Phase 6-1 learnings 引き継ぎ #22 の解消。 Phase 6-2 (= application deploy) 開始前の Pre-merge fix forward PR。
+各 subsequent task (= Task 2-) の subagent dispatch 時に controller が以下を instruction に含める:
 
-## Issue
-
-\`make hydrate-component\` target が \`--kube-version\` flag を渡さない設計のため、 local helm の default kube-version (= 1.33+) で render すると CI baseline (= 1.32) と差異発生。 chart の \`semverCompare\` 条件分岐 (= 例 \`nodes/proxy ↔ nodes/pods\` の API path 切替) で noise diff が発生していた (= Phase 6-1 fix forward PR #327 で初めて顕在化、 subagent が \`--kube-version v1.32.0\` 直接指定で回避)。
-
-## Fix
-
-- Variables section に \`KUBE_VERSION ?= v1.32.0\` 追加 (= EKS production cluster の actual version 1.32 と整合)
-- \`hydrate-component\` target の helmfile template line に \`--kube-version \$(KUBE_VERSION)\` flag 追加
-
-cluster upgrade 時に Makefile の \`KUBE_VERSION\` 値を update することで一元管理。
-
-## Files changed
-
-- \`kubernetes/Makefile\` (= +1 line variable + 1 line flag)
-
-## Validation
-
-\`make hydrate-component COMPONENT=opentelemetry ENV=production\` 実行で manifests/production/opentelemetry/manifest.yaml に noise diff なし (= Phase 6-1 fix forward PR #327 の hydrate 結果と同一)。
-
-## Phase 6-2 への影響
-
-本 PR merged 後、 Phase 6-2 PR の hydrate output が clean になる (= Instrumentation CR 追加分の diff のみ)。"
+```
+aqua install --config /Users/takanokenichi/GitHub/panicboat/platform/.claude/worktrees/eks-monorepo-application-deploy/.github/aqua.yaml
+helm version --short  # v3.17.3 確認
+helmfile version      # v0.169.2 確認
+kustomize version     # v5.6.0 確認
 ```
 
-Expected: PR url 取得 (= 例 #330)
+aqua install + version 確認 step を全 task の冒頭に組み込む (= Phase 6-1 で missing だった、 6-2 で systematic 化)。
 
-- [ ] **Step 5: PR ready + merge**
-
-```bash
-gh pr ready <pr-number>
-gh pr merge <pr-number> --squash --delete-branch
-```
-
-注: review 簡潔 (= +2 line Makefile fix)、 merge 後に Step 6 で worktree 削除。
-
-- [ ] **Step 6: 別 worktree 削除**
-
-```bash
-cd /Users/takanokenichi/GitHub/panicboat/platform
-git worktree remove .claude/worktrees/fix-makefile-hydrate-kube-version
-git fetch origin main
-```
-
-Expected: worktree 削除完了、 origin/main は本 PR merged commit を含む
+注: 本 task は file 修正 commit なし、 確認のみで完了。 Task 2 (= monorepo terragrunt RDS provision) に進む。
 
 ---
 
@@ -1946,9 +1871,6 @@ learnings 候補:
 ---
 
 ## 完了条件 (= spec Section 8 Validation checklist 再掲)
-
-### Pre-merge (= fix forward PR、 別 worktree)
-- [ ] Makefile hydrate-component の kube-version flag 固定 PR merged
 
 ### Platform PR + 並行 monorepo PR (= 同日 merge)
 - [ ] AWS RDS instance Available + Secrets Manager secret 登録

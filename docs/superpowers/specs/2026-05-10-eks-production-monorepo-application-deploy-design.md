@@ -32,7 +32,7 @@
 | # | 項目 | 6-2 での対応 |
 |---|---|---|
 | #21 | Mimir max-label-names-per-series 30 → 35 | application 投入時 Beyla histogram reject で再発見 → **post-flight reactive fix forward** |
-| #22 | Makefile hydrate-component の kube-version 固定 | **6-2 開始前に別 fix forward PR で先 merge** (= 6-2 PR の hydrate output が clean になる) |
+| #22 | Makefile hydrate-component の kube-version 固定 (= 旧 categorize) | **Re-diagnosed root cause**: 真因は subagent が aqua-pinned helm (= v3.17.3) を利用していないこと (= helm version 差で chart の semverCompare 分岐結果が differ、 noise diff 発生)。 Makefile に `--kube-version` 追加は defensive measure に留まり root cause fix でない。 真の解決 = subagent dispatch instruction で aqua install + aqua's helm / helmfile / kustomize 利用を明示。 Phase 6-2 plan の Task 0 で確立、 各 Task で subagent dispatch 時に明示。 |
 | #23 | monorepo README documentation drift | **monorepo PR scope に含めて同 PR で解消** |
 
 ---
@@ -392,17 +392,9 @@ resume 後、 monorepo の `clusters/develop/services/{monolith,frontend,reverse
 
 ---
 
-## 3. 並行 PR structure (= 2 PRs + Pre-merge fix forward 1 件)
+## 3. 並行 PR structure (= 2 PRs)
 
-### Pre-merge fix forward PR (= 6-2 開始前、 別 PR)
-
-**Title**: `feat(eks): Makefile hydrate-component に kube-version flag 固定`
-
-**Scope** (= 引き継ぎ #22 解消):
-- `kubernetes/Makefile` の `hydrate-component` target に `--kube-version $(KUBE_VERSION)` flag 追加
-- `KUBE_VERSION ?= v1.32.0` 等の variable で default 値設定
-
-**理由**: 6-2 PR の hydrate output (= Instrumentation CR + 必要時 Mimir #21 fix) を clean に保つ。
+注: 旧 spec 案で "Pre-merge fix forward PR for Makefile #22" を 3 PR structure に含めていたが、 真因 re-diagnosis (= subagent aqua 未利用) で Makefile 修正不要と判断、 PR structure は 2 PRs に simplify。 引き継ぎ #22 の解消は Phase 6-2 plan Task 0 の subagent aqua install step で対応。
 
 ### Platform PR
 
@@ -467,7 +459,7 @@ resume 後、 monorepo の `clusters/develop/services/{monolith,frontend,reverse
 | # | 項目 | 6-2 での対応 |
 |---|---|---|
 | #21 | Mimir max-label-names-per-series 30 → 35 | post-flight reactive fix forward (= 検出時) |
-| #22 | Makefile hydrate-component の kube-version 固定 | **Pre-merge fix forward PR で 6-2 開始前 解消** |
+| #22 | Makefile hydrate-component の kube-version 固定 (= 旧 categorize) | **Re-diagnosed root cause = subagent aqua 未利用、 Phase 6-2 plan の subagent dispatch instruction で解消** (= aqua install + aqua-pinned helm / helmfile / kustomize 利用を明示)。 Makefile 修正不要。 |
 | #23 | monorepo README documentation drift | **monorepo PR scope で解消** |
 | #4 | OTel Operator deploy + Hanami / Next.js OTel SDK + Instrumentation CR | **完全解消** (= 6-1 で Operator deploy + 6-2 で SDK init + Instrumentation CR) |
 
@@ -508,9 +500,6 @@ resume 後、 monorepo の `clusters/develop/services/{monolith,frontend,reverse
 ---
 
 ## 8. Validation checklist (= 6-2 完了条件)
-
-### Pre-merge (= fix forward PR)
-- [ ] Makefile hydrate-component の kube-version flag 固定 PR merged
 
 ### Platform PR + 並行 monorepo PR (= 同日 merge)
 - [ ] AWS RDS instance Available + Secrets Manager secret 登録
