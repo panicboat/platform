@@ -14,8 +14,7 @@ data:
             ttl 30
         }
         prometheus :9153
-        # TODO: (local) Using public DNS forwarders for k3d compatibility
-        # In production, this would use the VPC DNS resolver
+        # Public DNS forwarders are used for k3d compatibility.
         forward . 8.8.8.8 8.8.4.4 1.1.1.1 {
             max_concurrent 1000
         }
