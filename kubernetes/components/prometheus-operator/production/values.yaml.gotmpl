@@ -137,6 +137,21 @@ grafana:
 prometheus:
   prometheusSpec:
     # -------------------------------------------------------------------------
+    # Metric / Label Name Validation
+    # -------------------------------------------------------------------------
+    # Prometheus 3.x default は UTF-8 metric/label name 保持 (= dotted name pass-through)、
+    # 下流 Mimir distributor は Prometheus 2.x 互換 strict validator (= ^[a-zA-Z_][a-zA-Z0-9_]*$)
+    # で reject。OTel Collector v0.120.0+ が self-monitoring metrics に semconv 由来の
+    # dotted label (= server.address / host.name / k8s.pod.name 等) を expose する仕様に
+    # 切り替わっており、Prometheus 入口で legacy validation を強制して Mimir downstream の
+    # 能力に uniform 整合させる。Mimir が UTF-8 label 対応するまでの bridging。
+    # https://prometheus.io/docs/guides/utf8/
+    # NOTE: chart 84.5.0 は nameEscapingScheme 未対応 (= template 上 nameValidationScheme
+    # のみ pass-through)。legacy validation 単独で UTF-8 source への scrape は
+    # Prometheus default escaping (= underscores) で自動 escape される挙動を期待。
+    nameValidationScheme: Legacy
+
+    # -------------------------------------------------------------------------
     # ServiceMonitor / PodMonitor Discovery
     # -------------------------------------------------------------------------
     serviceMonitorSelectorNilUsesHelmValues: false
