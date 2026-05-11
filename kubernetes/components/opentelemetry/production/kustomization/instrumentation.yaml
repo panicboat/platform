@@ -11,7 +11,8 @@
 # NodeSDK) がそれらを detect + use する pattern。
 #
 # auto-instrumentation image version は 5-1 L1 chart binary verify 適用、
-# specific version (= ruby 0.59.0 / nodejs 0.62.0) を pin (= :latest 不採用)。
+# specific version (= nodejs 0.62.0) を pin (= :latest 不採用)。
+# ruby は chart 0.112.1 で未 support、 後続 chart upgrade で追加予定 (= 引き継ぎ事項 #25)。
 # =============================================================================
 apiVersion: opentelemetry.io/v1alpha1
 kind: Instrumentation
@@ -27,7 +28,5 @@ spec:
   sampler:
     type: parentbased_traceidratio
     argument: "1.0"
-  ruby:
-    image: ghcr.io/open-telemetry/opentelemetry-ruby-instrumentation:0.59.0
   nodejs:
     image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-nodejs:0.62.0

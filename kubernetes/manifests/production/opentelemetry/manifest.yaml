@@ -18832,8 +18832,6 @@ spec:
   propagators:
   - tracecontext
   - baggage
-  ruby:
-    image: ghcr.io/open-telemetry/opentelemetry-ruby-instrumentation:0.59.0
   sampler:
     argument: "1.0"
     type: parentbased_traceidratio
