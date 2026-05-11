@@ -31,4 +31,4 @@ spec:
   sourceRef:
     kind: GitRepository
     name: monorepo
-  suspend: true  # 6-2 で resume して各 service Kustomization 有効化
+  suspend: false  # Phase 6-2 で resume (= 6-1 で suspend deploy 済)

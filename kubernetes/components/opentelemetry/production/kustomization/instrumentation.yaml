@@ -1,0 +1,33 @@
+# =============================================================================
+# OpenTelemetry Instrumentation CR (= L2 auto-injection)
+# =============================================================================
+# namespace default に 1 つ deploy で全 application Pod (= monolith / frontend)
+# が instrumentation.opentelemetry.io/inject-{ruby,nodejs} annotation で
+# auto-injection を受ける。
+#
+# Operator が Pod の init container で OTel SDK auto-instrumentation library
+# を inject、 application container の env vars (= OTEL_EXPORTER_OTLP_ENDPOINT
+# 等) を設定。 L1 (= application code 側 OpenTelemetry::SDK.configure /
+# NodeSDK) がそれらを detect + use する pattern。
+#
+# auto-instrumentation image version は 5-1 L1 chart binary verify 適用、
+# specific version (= ruby 0.59.0 / nodejs 0.62.0) を pin (= :latest 不採用)。
+# =============================================================================
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: panicboat-application
+  namespace: default
+spec:
+  exporter:
+    endpoint: http://opentelemetry-collector.monitoring.svc.cluster.local:4317
+  propagators:
+    - tracecontext
+    - baggage
+  sampler:
+    type: parentbased_traceidratio
+    argument: "1.0"
+  ruby:
+    image: ghcr.io/open-telemetry/opentelemetry-ruby-instrumentation:0.59.0
+  nodejs:
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-nodejs:0.62.0
