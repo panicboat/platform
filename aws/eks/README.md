@@ -9,7 +9,6 @@ EKS clusters `eks-${env}` for the panicboat platform.
 | Environment | Region | Cluster Name | Status |
 |---|---|---|---|
 | `production` | `ap-northeast-1` | `eks-production` | Active |
-| `develop` | `us-east-1` | `eks-develop` | 未作成（必要時に `envs/production/` を複製して `envs/develop/` を新設） |
 
 新環境を追加する際は、対応する `aws_region` を `envs/${env}/env.hcl` に書き、`panicboat/ansible` 側の `eks-login.sh` の `case` 文にも region を追加すること（DRY 違反の二重管理だが現状は許容）。
 
@@ -22,7 +21,7 @@ EKS clusters `eks-${env}` for the panicboat platform.
 | Version | tracked via Renovate (`endoflife-date/amazon-eks`); see `envs/production/env.hcl` |
 | Endpoint | public + private 両方有効 |
 | Authentication | EKS Access Entries (`authentication_mode = "API"`) |
-| Compute | Managed Node Group `system` (m6g.large × 2-4, AL2023 ARM64, gp3 50 GiB) |
+| Compute | Managed Node Group `system` (Graviton ARM64, gp3 EBS root) |
 | Add-ons | vpc-cni / coredns / aws-ebs-csi-driver / eks-pod-identity-agent (all AWS-managed; kube-proxy は Cilium kubeProxyReplacement で代替) |
 | IRSA | enabled; vpc-cni と aws-ebs-csi-driver は別途 IRSA role |
 | Secrets envelope encryption | 無効 (Out of Scope, spec 参照) |
@@ -39,7 +38,6 @@ EKS clusters `eks-${env}` for the panicboat platform.
 ```bash
 source ~/Workspace/eks-login.sh                          # → eks-production / ap-northeast-1
 source ~/Workspace/eks-login.sh production               # 同上 (明示)
-source ~/Workspace/eks-login.sh develop                  # → eks-develop / us-east-1 (将来 cluster 追加時)
 source ~/Workspace/eks-login.sh staging us-west-2        # 未知 env は region 必須
 ```
 
@@ -58,8 +56,8 @@ source ~/Workspace/eks-login.sh staging us-west-2        # 未知 env は region
 ### Manual login (script なし)
 
 ```bash
-ENV=production    # or develop
-REGION=ap-northeast-1   # production の場合。develop なら us-east-1。
+ENV=production
+REGION=ap-northeast-1
 
 ADMIN_ROLE_ARN=$(cd aws/eks/envs/${ENV} && TG_TF_PATH=tofu terragrunt output -raw admin_role_arn)
 CREDS=$(aws sts assume-role \
@@ -92,10 +90,6 @@ apply role の credentials が必要（CI と同じ `github-oidc-auth-production
 
 ## Architecture
 
-- 設計詳細: `docs/superpowers/specs/2026-04-30-aws-eks-production-design.md`
-- 実装プラン: `docs/superpowers/plans/2026-05-01-aws-eks-production.md`
-- VPC cross-stack lookup（`module "vpc"` の参照規約）: `docs/superpowers/specs/2026-04-29-aws-vpc-cross-stack-design.md`
-
 主な設計ハイライト：
 
 - **CNI**: VPC CNI を IPAM として残し、別途 Cilium を chaining mode で乗せる前提（次の Kubernetes spec で扱う）。node IAM role には `AmazonEKS_CNI_Policy` を付与せず、IRSA で aws-node SA に渡す（`iam_role_attach_cni_policy = false` + addon 側の `before_compute = true`）。
@@ -110,7 +104,7 @@ apply role の credentials が必要（CI と同じ `github-oidc-auth-production
 | `kubectl: error: ... credentials` after switching shells | 新 shell では assume-role の env vars が引き継がれない。再 source。 |
 | `aws sts assume-role: AccessDenied` | 実行している IAM principal に `sts:AssumeRole` resource permission がない。IAM 側で付与（リポジトリ管理外）。 |
 | `update-kubeconfig: ResourceNotFoundException: No cluster found` | cluster が destroy 済 or 別 region。region と cluster name 確認。 |
-| Node が `NotReady` / Pod scheduling 不能 | vpc-cni / IRSA まわりの bootstrap 順序問題の可能性。spec の Errata E-2 を参照（`before_compute = true` で対処済）。 |
+| Node が `NotReady` / Pod scheduling 不能 | vpc-cni / IRSA まわりの bootstrap 順序問題の可能性。`before_compute = true` で vpc-cni addon の registration が node 作成より前に完了するように指定している (= 早期 register によって IRSA based aws-node SA が起動時に既に bound されている状態を保証)。 |
 
 ## Renovate
 
