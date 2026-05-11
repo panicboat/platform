@@ -73,9 +73,8 @@ PR-B (#345) の code review で挙がった非 blocking の指摘:
 # Title + 概要
 
 ## 🏗️ アーキテクチャ
-  - Mermaid: Main architecture diagram (parse error 修正)
+  - Mermaid: architecture diagram (LR layout、EKS Cluster wrapper 除去、Beyla / OTel Collector を別 subgraph で funnel 強調)
   - 役割分離
-  - Mermaid: Dataflow
   - Backend role separation
 
 ## 💡 設計思想
@@ -130,24 +129,24 @@ PR-B (#345) の code review で挙がった非 blocking の指摘:
 
 | Component / Resource | 配置 | 役割 |
 |---|---|---|
-| `kubernetes/components/loki/production/` | `monitoring` namespace | chart `grafana/loki` v6.x (SingleBinary mode)。container log の OTLP HTTP ingest (= OTel Collector からの push)、LogQL query、Grafana datasource の primary log backend |
-| Loki S3 backend | `loki-559744160976/production/` | long-term log retention 30 日 (S3 lifecycle policy) |
-| Loki Pod Identity | `monitoring:loki` SA → `eks-production-loki` IAM role | Loki pod が S3 backend へ access するため |
+| `kubernetes/components/loki/production/` | `monitoring` namespace | chart `grafana-community/loki` (SingleBinary mode)。container log の OTLP HTTP ingest (= OTel Collector からの push)、LogQL query、Grafana datasource の primary log backend |
+| Loki S3 backend | `loki-<account-id>/production/` | long-term log retention 30 日 (S3 lifecycle policy) |
+| Loki Pod Identity | `monitoring:loki` SA → `eks-${env}-loki` IAM role | Loki pod が S3 backend へ access するため |
 
 **Traces stack:**
 
 | Component / Resource | 配置 | 役割 |
 |---|---|---|
-| `kubernetes/components/tempo/production/` | `monitoring` namespace | chart `grafana/tempo` v1.24.4 (monolithic mode)。Beyla 由来 trace の OTLP gRPC ingest (= OTel Collector 経由)、TraceQL query、Grafana datasource の primary trace backend。metrics-generator (service-graphs processor) で service-graph metrics を生成し Mimir へ remote_write |
-| Tempo S3 backend | `tempo-559744160976/production/` | long-term trace retention 7 日 (S3 lifecycle policy) |
-| Tempo Pod Identity | `monitoring:tempo` SA → `eks-production-tempo` IAM role | Tempo pod が S3 backend へ access するため |
+| `kubernetes/components/tempo/production/` | `monitoring` namespace | chart `grafana/tempo` (monolithic mode)。Beyla 由来 trace の OTLP gRPC ingest (= OTel Collector 経由)、TraceQL query、Grafana datasource の primary trace backend。metrics-generator (service-graphs processor) で service-graph metrics を生成し Mimir へ remote_write |
+| Tempo S3 backend | `tempo-<account-id>/production/` | long-term trace retention 7 日 (S3 lifecycle policy) |
+| Tempo Pod Identity | `monitoring:tempo` SA → `eks-${env}-tempo` IAM role | Tempo pod が S3 backend へ access するため |
 
 **Application Telemetry:**
 
 | Component / Resource | 配置 | 役割 |
 |---|---|---|
-| `kubernetes/components/beyla/production/` | `beyla` namespace | chart `grafana/beyla` v1.x (DaemonSet)。eBPF auto-instrumentation で app の HTTP / SQL / gRPC を計装、OTLP gRPC で OTel Collector に traces + RED metrics (= `http_server_*` / `http_client_*` 等) を export |
-| `kubernetes/components/opentelemetry-collector/production/` | `monitoring` namespace | chart `open-telemetry/opentelemetry-collector` (DaemonSet、per-node)。Beyla からの OTLP gRPC traces を Tempo に route、chart preset `logsCollection` の filelog receiver で container log を tail し Loki に OTLP HTTP で export、`kubernetesAttributes` preset で k8s resource attribute を enrich |
+| `kubernetes/components/beyla/production/` | `monitoring` namespace | chart `grafana/beyla` (DaemonSet)。eBPF auto-instrumentation で app の HTTP / SQL / gRPC を計装、OTLP gRPC で OTel Collector に traces + RED metrics (= `http_server_*` / `http_client_*` 等) を export |
+| `kubernetes/components/opentelemetry-collector/production/` | `monitoring` namespace | chart `opentelemetry/opentelemetry-collector` (DaemonSet、per-node)。Beyla からの OTLP gRPC traces を Tempo に route、chart preset `logsCollection` の filelog receiver で container log を tail し Loki に OTLP HTTP で export、`kubernetesAttributes` preset で k8s resource attribute を enrich |
 
 ### 撤去済 row (`system` MNG)
 
@@ -160,7 +159,7 @@ L400 の `system` MNG | (撤去済 in PR 3) | ... 行を **完全削除**。Plan
 | 406 | `Alertmanager (receiver は Phase 4 で追加)` | `Alertmanager (receivers 未設定、外部通知 wire up なし)` |
 | 406 | `Grafana (data source は Mimir primary、Loki / Tempo は Sub-project 3 / 4 で追加)` | `Grafana (data source: Mimir primary、Prometheus local secondary、Loki、Tempo)` |
 | 408 | `Mimir S3 backend ... Sub-project 1 で provision、Sub-project 2 Task 1 で rename。long-term metrics retention 90 日` | `Mimir S3 backend ... long-term metrics retention 90 日 (S3 lifecycle policy)` |
-| 410 | `共有 namespace ... Phase 3 全 sub-projects 共有。Sub-project 3 (Loki) / Sub-project 4 (Tempo + OpenTelemetry + Beyla + Hubble OTLP) も同 namespace を利用予定だが、各々別 spec で扱う` | `共有 namespace ... Mimir / Loki / Tempo / OpenTelemetry Collector / Prometheus / Grafana / Alertmanager が同 namespace で deploy。Beyla は別 namespace (` + "`beyla`" + `)` |
+| 410 | `共有 namespace ... Phase 3 全 sub-projects 共有。Sub-project 3 (Loki) / Sub-project 4 (Tempo + OpenTelemetry + Beyla + Hubble OTLP) も同 namespace を利用予定だが、各々別 spec で扱う` | `共有 namespace ... Mimir / Loki / Tempo / OpenTelemetry Collector / Prometheus / Grafana / Alertmanager / Beyla がすべて同 namespace で deploy` |
 | 460 | `# Hubble UI（Phase 4 で外部公開予定、現状は port-forward only）` | `# Hubble UI (= https://hubble.panicboat.net/ 、oauth2-proxy 経由で外部公開)` |
 | 494 | `# Ingress / ALB / Route53 record の確認 (Phase 5 nginx 投入後)` | `# Ingress / ALB / Route53 record の確認` |
 
