@@ -1396,18 +1396,34 @@ Phase 3 of docs/superpowers/specs/2026-05-10-eks-production-teardown-recreate-de
 **Files:**
 - Create: `scripts/eks-lifecycle/lib/60-flux-bootstrap.sh`
 
-> **Errata (post-PR-#326)**: 当初は helmfile.yaml.gotmpl 内で `{{ exec terragrunt output ... }}` で hydrate-time に動的取得する想定だったが、CI ordering で破綻 (= spec §0 Errata 参照)。本 task は **sed-replace で in-place 更新** する形に改めた。
+> **Errata (post-PR-#326 / #330 / #332)**: 当初は helmfile.yaml.gotmpl 内で `{{ exec terragrunt output ... }}` で hydrate-time に動的取得する想定だったが、CI ordering で破綻 (= spec §0 Errata 参照)。
 >
-> - IRSA / Karpenter naming は Phase 2 で deterministic 化済 → recreate 後も同名で安定、sed 不要
-> - 動的更新が要るのは `eksApiEndpoint` (= cluster ID 変動) と `vpcId` (= VPC 変動) のみ
-> - 対象ファイル: `kubernetes/helmfile.yaml.gotmpl` と子 helmfile 2 ファイル (`cilium`, `aws-load-balancer-controller`)
+> 中間案として「lifecycle script が sed で in-place 更新」も検討したが、最終的に **Plan A: operator-prompted manual updates** を採用した (= user 選択):
+>
+> - `# RECREATE: <command>` marker (= PR #330 で導入) を grep して列挙
+> - 各 marker の command を **operator が手で実行**、出力で次行を編集
+> - operator が編集完了したら lifecycle script に y で進行を許可
+> - script は hydrate + git commit + push を担当
+>
+> ## 採用理由
+>
+> - sed-replace は **regex pattern** に依存しすぎ (= 値の format が想定外なら誤置換のリスク)
+> - PR #326 の事故で「audit pass scope が不完全だった」反省 (= kustomization/*.yaml 漏れ) を踏まえ、**operator が目で確認する** 方が confidence ↑
+> - 個人運用 panicboat 文脈で recreate cycle 数が限定的 = 自動化 amortize が小さい
+>
+> ## 動的更新が要る値 (= recreate のたびに変化)
+>
+> - `eksApiEndpoint` (= cluster ID 変動): kubernetes/helmfile.yaml.gotmpl + cilium 子 helmfile
+> - `vpcId` (= VPC 変動): kubernetes/helmfile.yaml.gotmpl + aws-load-balancer-controller 子 helmfile
+>
+> IRSA / Karpenter naming は Phase 2 で deterministic 化済 (= `# STABLE` marker 付与)、recreate 後も同名で sed 不要。
 
-- [ ] **Step 1: sed-replace + hydrate + git push + flux bootstrap**
+- [ ] **Step 1: operator-prompted update + hydrate + git push + flux bootstrap**
 
 ```bash
 #!/usr/bin/env bash
-# 60-flux-bootstrap.sh - Re-hydrate manifests with new cluster IDs, push
-# to main, then apply Flux bootstrap manifests.
+# 60-flux-bootstrap.sh - Prompt operator to update RECREATE-marked values,
+# then re-hydrate, push to main, and apply Flux bootstrap manifests.
 
 LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
@@ -1416,7 +1432,7 @@ LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "${LIB_DIR}/00-auth.sh"
 
 require_env
-require_cmd kubectl flux git make sed
+require_cmd kubectl flux git make grep
 
 if [ "${CLUSTER_EXISTS:-}" != "true" ]; then
   error "Cluster not reachable. Run make eks-recreate-aws ENV=${ENV} first."
@@ -1428,33 +1444,46 @@ use_admin_creds
 info "Step 60.1: Wait for system MNG nodes to be Ready"
 run kubectl wait --for=condition=Ready node --all --timeout=300s
 
-info "Step 60.2: Read new cluster_endpoint_hostname / vpc_id from terragrunt output"
-use_apply_creds  # = terragrunt output needs apply role
-NEW_ENDPOINT=$(cd "${REPO_ROOT}/aws/eks/envs/${ENV}" && TG_TF_PATH=tofu terragrunt output -raw cluster_endpoint_hostname)
-NEW_VPC_ID=$(cd "${REPO_ROOT}/aws/vpc/envs/${ENV}" && TG_TF_PATH=tofu terragrunt output -raw vpc_id)
-info "  cluster_endpoint_hostname = ${NEW_ENDPOINT}"
-info "  vpc_id = ${NEW_VPC_ID}"
+info "Step 60.2: List # RECREATE: markers in helmfile + kustomization sources"
+# RECREATE marker convention is documented in kubernetes/helmfile.yaml.gotmpl:
+#   # RECREATE: <command>
+#   <key>: <value>
+# Operator runs the command, replaces the next-line value.
+echo ""
+echo "================================================================="
+echo " The following values must be updated MANUALLY before continuing."
+echo " For each '# RECREATE: <command>' line, run the command and"
+echo " replace the next line's value with the command's stdout."
+echo "================================================================="
+echo ""
+RECREATE_FILES=$(grep -REl '# RECREATE:' \
+  "${REPO_ROOT}/kubernetes/helmfile.yaml.gotmpl" \
+  "${REPO_ROOT}/kubernetes/components" 2>/dev/null)
+for f in $RECREATE_FILES; do
+  rel="${f#${REPO_ROOT}/}"
+  echo "## $rel"
+  grep -n -B0 -A1 '# RECREATE:' "$f" | sed 's/^/  /'
+  echo ""
+done
 
-info "Step 60.3: sed-replace eksApiEndpoint / vpcId in helmfile sources"
-# Replace 全 eksApiEndpoint hostname (= 既存値の \\.gr<digits>\\.<region>\\.eks\\.amazonaws\\.com pattern)
-HELMFILE_PARENT="${REPO_ROOT}/kubernetes/helmfile.yaml.gotmpl"
-HELMFILE_CILIUM="${REPO_ROOT}/kubernetes/components/cilium/${ENV}/helmfile.yaml"
-HELMFILE_ALB="${REPO_ROOT}/kubernetes/components/aws-load-balancer-controller/${ENV}/helmfile.yaml"
+if [ "${DRY_RUN:-0}" = "1" ]; then
+  info "[DRY-RUN] Skipping operator prompt and downstream steps."
+  exit 0
+fi
 
-# eksApiEndpoint pattern: <32-hex>.gr<digits>.<region>.eks.amazonaws.com
-ENDPOINT_RE='[A-F0-9]\{32\}\.gr[0-9]\{1,\}\.[a-z0-9-]\{1,\}\.eks\.amazonaws\.com'
-if [ "${DRY_RUN:-0}" != "1" ]; then
-  sed -i.bak -E "s|${ENDPOINT_RE}|${NEW_ENDPOINT}|g" "$HELMFILE_PARENT" "$HELMFILE_CILIUM"
-  rm -f "${HELMFILE_PARENT}.bak" "${HELMFILE_CILIUM}.bak"
-  # vpcId pattern: vpc-<17-hex>
-  sed -i.bak -E "s|vpc-[a-f0-9]{17}|${NEW_VPC_ID}|g" "$HELMFILE_PARENT" "$HELMFILE_ALB"
-  rm -f "${HELMFILE_PARENT}.bak" "${HELMFILE_ALB}.bak"
-else
-  printf "${YELLOW}[DRY-RUN]${NC} sed -i -E 's|...endpoint_re...|%s|g' %s %s\n" "$NEW_ENDPOINT" "$HELMFILE_PARENT" "$HELMFILE_CILIUM"
-  printf "${YELLOW}[DRY-RUN]${NC} sed -i -E 's|vpc-[a-f0-9]{17}|%s|g' %s %s\n" "$NEW_VPC_ID" "$HELMFILE_PARENT" "$HELMFILE_ALB"
+confirm "Have you updated all RECREATE-marked values? (y to continue)"
+
+info "Step 60.3: Audit pass - any RECREATE-marked file unchanged from origin/main?"
+# Sanity check: warn if no RECREATE-marked file got modified. operator may
+# have skipped editing.
+DIFF_FILES=$(cd "$REPO_ROOT" && git diff --name-only origin/main -- kubernetes/ 2>/dev/null)
+if [ -z "$DIFF_FILES" ]; then
+  warn "No file changed under kubernetes/. Either values are already correct, or operator skipped editing."
+  confirm "Continue anyway? (y to proceed)"
 fi
 
 info "Step 60.4: Re-hydrate kubernetes/manifests/${ENV}/"
+use_apply_creds  # = hydrate may need terragrunt output (= legacy paths)
 COMPONENTS=$(ls -d "${REPO_ROOT}/kubernetes/components/"*/ 2>/dev/null | xargs -n1 basename)
 for comp in $COMPONENTS; do
   if [ -d "${REPO_ROOT}/kubernetes/components/${comp}/${ENV}" ]; then
@@ -1468,23 +1497,19 @@ info "Step 60.5: Show diff and confirm git commit"
 ( cd "$REPO_ROOT" && run git status kubernetes/ )
 ( cd "$REPO_ROOT" && run git diff --stat kubernetes/ )
 
-if [ "${DRY_RUN:-0}" = "1" ]; then
-  info "[DRY-RUN] Skipping git commit + push"
-else
-  if [ -n "$(cd "$REPO_ROOT" && git status --porcelain kubernetes/)" ]; then
-    confirm "Commit + push helmfile + hydrated manifests to main?"
-    ( cd "$REPO_ROOT" && \
-      git add kubernetes/ && \
-      git commit -s -m "chore(kubernetes): refresh helmfile + manifests after cluster recreate
+if [ -n "$(cd "$REPO_ROOT" && git status --porcelain kubernetes/)" ]; then
+  confirm "Commit + push helmfile + hydrated manifests to main?"
+  ( cd "$REPO_ROOT" && \
+    git add kubernetes/ && \
+    git commit -s -m "chore(kubernetes): refresh helmfile + manifests after cluster recreate
 
-eksApiEndpoint = ${NEW_ENDPOINT}
-vpcId = ${NEW_VPC_ID}
+Phase 3 lifecycle script (60-flux-bootstrap.sh) で operator が
+RECREATE-marked 値を手動更新後、hydrate を実行した結果。
 
 Flux が次の reconcile で pickup する。" && \
-      git push origin main )
-  else
-    info "No changes (= helmfile values already match new cluster, recreate likely no-op)."
-  fi
+    git push origin main )
+else
+  info "No changes (= helmfile values already match new cluster, recreate likely no-op)."
 fi
 
 use_admin_creds  # = back to admin for kubectl ops
@@ -1501,6 +1526,8 @@ run flux get kustomizations -A
 
 ok "Flux bootstrap complete"
 ```
+
+> **Audit pass scope expansion (= 学び from PR #326 incident)**: `RECREATE_FILES` の grep 範囲は `kubernetes/helmfile.yaml.gotmpl` (= 親) + `kubernetes/components/` 配下全体 (= 子 helmfile + kustomization/*.yaml)。PR #326 では `kubernetes/components/karpenter/production/kustomization/ec2nodeclass.yaml` の hardcoded role 更新が漏れて事故になった。grep -R で **全 source file** を対象にすることで、helmfile / kustomize の経路差異に関わらず marker を捕捉する。
 
 - [ ] **Step 2: shellcheck**
 

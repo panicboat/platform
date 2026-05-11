@@ -22,18 +22,35 @@ PR #326 (Phase 2) 実装時に CI で fail し、本 spec の **hydrate-time exe
 
 | 値 | 性質 | 取り扱い |
 |---|---|---|
-| `albControllerRoleArn` / `externalDnsRoleArn` | Phase 2 で deterministic 化 (= recreate 後も同名) | `helmfile.yaml.gotmpl` に **hardcoded literal** を NEW 名で書く (= IRSA naming 変更と同一 PR で atomic) |
+| `albControllerRoleArn` / `externalDnsRoleArn` | Phase 2 で deterministic 化 (= recreate 後も同名) | `helmfile.yaml.gotmpl` に **hardcoded literal** を NEW 名で書く (= IRSA naming 変更と同一 PR で atomic)、`# STABLE` marker 付与 |
 | `nodeRoleName` (Karpenter) | 同上 | 同上 |
-| `interruptionQueueName` | 既に deterministic | 変更なし |
-| `eksApiEndpoint` | cluster 作成のたびに変化 | hardcoded、Phase 3 lifecycle script `60-flux-bootstrap.sh` で recreate 後に sed で in-place 更新 |
+| `interruptionQueueName` | 既に deterministic | 変更なし、`# STABLE` marker 付与 |
+| `eksApiEndpoint` | cluster 作成のたびに変化 | hardcoded、`# RECREATE: <command>` marker 付与 (= PR #330)、Phase 3 lifecycle script で operator が手動更新 |
 | `vpcId` | VPC 作成のたびに変化 | 同上 |
+
+### Phase 3 lifecycle script の手法選択
+
+`# RECREATE:` marker (= PR #330) の処理について、3 案を検討:
+
+1. **hydrate-time exec** (= 当初 spec): CI ordering で破綻 (= PR #326 で実証)、不採用
+2. **lifecycle script が sed で自動置換** (= 中間案、commit `d3ba15f` で plan 反映): pattern 依存度が高く誤置換リスク、PR #326 audit 漏れの反省を踏まえ不採用
+3. **Plan A: operator-prompted manual updates** (= 最終採用): script は marker を grep して列挙、operator が手で edit、y/N で進行
 
 ### 本 spec の以下の記述は読み替え
 
-- §3 Decision 7: 「hydrate-time substitution」を「deterministic naming + Phase 3 sed-replace for cluster/VPC IDs」と読み替え
-- §5 Phase 2: aqua / hydrate workflow 拡張は **撤回**。helmfile は exec ではなく hardcoded NEW 値
-- §5 Phase 3 60-flux-bootstrap.sh: **sed-replace step を追加** (= terragrunt output で新 cluster_endpoint_hostname / vpc_id を取得 → helmfile.yaml.gotmpl + 子 helmfile を sed で in-place 更新 → make hydrate)
+- §3 Decision 7: 「hydrate-time substitution」を「deterministic naming + RECREATE marker convention + Phase 3 operator-prompted manual update」と読み替え
+- §5 Phase 2: aqua / hydrate workflow 拡張は **撤回**。helmfile は exec ではなく hardcoded NEW 値、`# RECREATE:` / `# STABLE:` marker 付与
+- §5 Phase 3 60-flux-bootstrap.sh: **operator-prompted step を採用** (= grep '# RECREATE:' → 列挙して提示 → operator が手で edit → y/N → hydrate → commit + push)
 - §8 Open Q2 (CI hydrate workflow に terragrunt + AWS auth): 不要、closed
+
+### Phase 2 incident の学び (= 2026-05-10)
+
+PR #326 apply 時、`kubernetes/components/karpenter/production/kustomization/ec2nodeclass.yaml` の hardcoded `role: Karpenter-eks-production-2026...` が更新漏れで、IRSA rotation 後に EC2NodeClass が削除済 OLD role を参照する状態に。新規 NodeClaim の EC2 instance が bootstrap できず cluster 一時 degraded。PR #332 の hot-fix で復旧。
+
+**反省点と Phase 3 反映**:
+- audit pass scope を `kubernetes/components/*/production/` の helmfile.yaml だけでなく **kustomization/*.yaml も含む全 source file** に拡張
+- Phase 3 の `60-flux-bootstrap.sh` の grep は `kubernetes/helmfile.yaml.gotmpl` + `kubernetes/components/` 配下全体を対象とする (= helmfile / kustomize の経路差異に関わらず marker 捕捉)
+- IRSA rotation で running EC2 instance のクレデンシャルが失効する **構造的問題** は別 spec 化を検討 (= node IAM role 変更時は instance profile の段階的更新が必要、本 lifecycle の scope 外)
 
 詳細は `docs/superpowers/plans/2026-05-10-eks-production-teardown-recreate.md` の Errata 節を参照。
 
