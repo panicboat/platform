@@ -449,7 +449,7 @@ aws eks list-pod-identity-associations --cluster-name eks-production --namespace
 | `flux reconcile` が `not ready` で止まる | `kubectl describe gitrepository flux-system -n flux-system` で fetch error を確認。多くは GitHub への egress 失敗か platform repo の private 化 |
 | `Kustomization` が `BuildFailed` | `flux logs --kind=Kustomization` で kustomize build エラーを確認。`kubectl get kustomizations.kustomize.toolkit.fluxcd.io -n flux-system flux-system -o yaml` で `.status.conditions` も見る |
 | Flux が main の最新を sync しない | GitRepository の `interval` が効いているか確認。OOM / pod restart の可能性なら `kubectl get pods -n flux-system` |
-| `kubectl: error: ... credentials` | `eks-login.sh production` を再 source（session が expire したら） |
+| `kubectl: error: ... credentials` | `eks-login production` を再 source（session が expire したら） |
 | EKS managed addon を削除したが Kubernetes DaemonSet が残る | EKS terraform module (`terraform-aws-modules/eks/aws`) の `aws_eks_addon` が state に `preserve = true` を設定する場合がある。terragrunt apply は addon registration だけ削除し DaemonSet は残す挙動。`kubectl delete daemonset <name> -n kube-system` で手動削除 |
 | `cilium status` で `Cluster Pods: X/Y managed by Cilium` の差分（Y - X）が常に 0 にならない | hostNetwork pod（cilium-agent / cilium-envoy / cilium-operator 等）は Cilium endpoint を持たないため Cilium 管理対象外。差分が `cilium DaemonSet replicas × node + cilium-operator replicas` 程度なら steady state |
 | Cilium install 前から動いていた pod が Cilium 管理下に入らない | chaining mode では Cilium 設定が CNI conf に反映されるのは Pod 再作成時。`kubectl rollout restart -n flux-system deployment` 等で再作成すると chained になる |
