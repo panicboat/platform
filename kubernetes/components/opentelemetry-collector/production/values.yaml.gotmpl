@@ -1,53 +1,102 @@
 # OpenTelemetry Collector Configuration for production
-# Deployment mode、traces + logs pipelines を実 sink (Tempo / Loki) に接続
+# OTel-native log collection: per-node DaemonSet で Beyla traces (OTLP gRPC) と
+# container logs (filelog receiver) を 1 collector で集約し Tempo / Loki に export。
+# fluent-bit DaemonSet は本構成で撤去し、log 収集も OTel に統合する。
 
 # =============================================================================
-# Deployment Mode (Decision 4)
+# Fullname Override
 # =============================================================================
-mode: deployment
-replicaCount: 1
+# chart の DaemonSet mode は Service / DaemonSet 名を `<release>-agent` で生成する
+# (= opentelemetry-collector-agent)。Beyla の endpoint config (= beyla/production/
+# values.yaml.gotmpl) は `opentelemetry-collector.monitoring.svc.cluster.local:4317`
+# を hardcode しており Beyla 側を無修正に保つため、chart の generated name を
+# release 名そのままに固定する。
+fullnameOverride: opentelemetry-collector
 
 # =============================================================================
-# Image (contrib for k8sattributes processor 等の拡張機能)
+# Deployment Mode
+# =============================================================================
+# Beyla も container log file も per-node のため DaemonSet が自然。1 collector が
+# node 内の Beyla トレースと container log を受けて backend に直接 export し、
+# cluster 中央 hub を経由しない構成。
+mode: daemonset
+
+# =============================================================================
+# Image (contrib for filelog receiver / k8sattributes / batch processor)
 # =============================================================================
 image:
   repository: otel/opentelemetry-collector-contrib
   tag: 0.151.0
 
 # =============================================================================
-# Resources (small production)
+# Resources (per node)
 # =============================================================================
+# fluent-bit (cpu 100m / mem 128Mi req) の代替 + Beyla traces forward 分の処理を
+# 賄う per-node サイズ。Limits は集約 hub だった旧 Deployment より小さくして per-node
+# 分散効果を反映。
 resources:
   requests:
     cpu: 100m
     memory: 256Mi
   limits:
     cpu: 500m
-    memory: 1Gi
+    memory: 512Mi
 
 # =============================================================================
-# Service Configuration
+# Tolerations (全 node に schedule)
+# =============================================================================
+# cluster 全 node の logs / traces を確実に収集するため master / 特殊 node の
+# taint も全許容 (= fluent-bit と等価)。
+tolerations:
+  - effect: NoSchedule
+    operator: Exists
+  - effect: NoExecute
+    operator: Exists
+
+# =============================================================================
+# Priority Class (観測基盤の前提条件)
+# =============================================================================
+# CPU 逼迫 node でも preempt 動作で確実に schedule (= fluent-bit と同 priority)。
+priorityClassName: system-node-critical
+
+# =============================================================================
+# Service Configuration (Beyla / ServiceMonitor の宛先として ClusterIP)
 # =============================================================================
 service:
+  # chart の `mode: daemonset` では service は default disabled。Beyla が
+  # Service DNS (opentelemetry-collector.monitoring.svc.cluster.local:4317) で
+  # 接続するため明示的に enable する。
+  enabled: true
   type: ClusterIP
 
 # =============================================================================
-# Ports (= metrics port を必ず enable、ServiceMonitor 用)
+# Ports (metrics for ServiceMonitor)
 # =============================================================================
-# NOTE: chart README に明記「The metrics port is disabled by default. However
-# you need to enable the port in order to use the ServiceMonitor」。
-# ServiceMonitor が機能するよう metrics port を明示的に enable する。
+# chart README に明記「The metrics port is disabled by default. However you need
+# to enable the port in order to use the ServiceMonitor」。
 ports:
   metrics:
     enabled: true
     containerPort: 8888
     servicePort: 8888
     protocol: TCP
+  # chart default で jaeger-compact / jaeger-grpc / jaeger-thrift / zipkin の
+  # receiver port が enabled。本 production では traces 受信は OTLP のみで
+  # jaeger / zipkin は未使用、かつ DaemonSet mode では hostPort として全 node の
+  # node IP に bind されてしまう (= attack surface 拡大)。明示的に disable。
+  jaeger-compact:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  zipkin:
+    enabled: false
 
 # =============================================================================
 # ServiceMonitor (Prometheus auto-scrape)
 # =============================================================================
-# NOTE: chart の serviceMonitor key 名は `extraLabels` (OTel Collector chart 固有)。
+# chart の serviceMonitor key 名は `extraLabels` (OTel Collector chart 固有)。
 # Tempo chart の `additionalLabels`、fluent-bit chart の `selector` とは異なる
 # key 名のため注意。
 serviceMonitor:
@@ -59,47 +108,74 @@ serviceMonitor:
       interval: 15s
 
 # =============================================================================
+# Chart Presets (OTel-native log collection の中核)
+# =============================================================================
+# logsCollection: filelog receiver + hostPath volumes (/var/log/pods,
+#                 /var/lib/docker/containers) を chart が自動構成。containerd CRI
+#                 format パース + multiline recombine も chart 側で処理する。
+# kubernetesAttributes: k8sattributes processor + ClusterRole/Binding を chart が
+#                       自動構成。全 pipeline に auto-inject される。
+presets:
+  logsCollection:
+    enabled: true
+    # collector 自身の log は除外、self-loop 防止
+    includeCollectorLogs: false
+    # node 再起動で tail 位置を resume
+    storeCheckpoints: true
+  kubernetesAttributes:
+    enabled: true
+
+# =============================================================================
 # Collector Config
 # =============================================================================
-# OTel Collector の receivers / processors / exporters / pipelines 設定。
-# chart default で全 pipeline (traces / logs / metrics) が pre-configure されており、
-# 各 pipeline で必要な exporter のみ override する方針:
-#   - traces: otlp_grpc/tempo exporter で Tempo に export
-#   - logs: otlp_http/loki exporter で Loki OTLP endpoint (/otlp) に push
-#   - metrics: chart default の debug exporter のまま (= Phase 4 で Beyla source 接続時に再 design)
-#
-# NOTE: contrib `loki` exporter は 2024-07 deprecate / 2024-11 削除済 (issue #38374)。
-# Loki 3.0+ は OTLP HTTP を native ingest するため、`otlp_http` exporter で
-# `/otlp` endpoint に直接 push する (Grafana Loki 公式 docs 推奨)。
+# chart preset で receivers.filelog / processors.k8sattributes が auto-inject される。
+# 本 values では exporters と pipelines の exporter 結線、cluster.name 上書き、
+# filelog 初回起動時の backfill 防止 (start_at: end)、未使用 receiver (jaeger / zipkin)
+# の削除のみ書く。
 config:
+  receivers:
+    filelog:
+      # chart preset の filelog default は start_at: beginning。初回起動で既存 log
+      # 全件 backfill が走り Loki に大量 push される問題を避けるため end (= 新規
+      # log 行のみ) に override。以降は storeCheckpoints: true で tail 位置を resume。
+      start_at: end
+    # chart default では jaeger / zipkin receiver が enabled。本 production では
+    # traces 受信は OTLP のみで jaeger / zipkin は未使用のため削除。
+    jaeger: null
+    zipkin: null
+
+  processors:
+    resource:
+      attributes:
+        # cluster identification (Beyla 等の他 source と横断クエリ可能にする)
+        - key: cluster.name
+          value: eks-production
+          action: upsert
+
   exporters:
     # Tempo exporter: traces を gRPC で push
     otlp_grpc/tempo:
       endpoint: tempo.monitoring.svc.cluster.local:4317
       tls:
         insecure: true
-    # Loki OTLP exporter: Fluent Bit からの logs を Loki gateway に OTLP HTTP で push
+    # Loki OTLP exporter: logs を Loki gateway に OTLP HTTP で push
+    # Loki 3.0+ は OTLP HTTP を native ingest、resource attribute を label に変換。
     otlp_http/loki:
       endpoint: http://loki-gateway.monitoring.svc.cluster.local:80/otlp
       tls:
         insecure: true
+
   service:
     pipelines:
       traces:
-        # chart default の exporters: [debug] を otlp_grpc/tempo に override
-        exporters:
-          - otlp_grpc/tempo
-        processors:
-          - memory_limiter
-          - batch
-        receivers:
-          - otlp
+        receivers: [otlp]
+        processors: [memory_limiter, k8sattributes, resource, batch]
+        exporters: [otlp_grpc/tempo]
       logs:
-        # chart default の exporters: [debug] を otlp_http/loki に override
-        exporters:
-          - otlp_http/loki
-        processors:
-          - memory_limiter
-          - batch
-        receivers:
-          - otlp
+        # filelog のみ。fluent-bit が撤去されたため OTLP receiver 経由の log push は不要。
+        receivers: [filelog]
+        processors: [memory_limiter, k8sattributes, resource, batch]
+        exporters: [otlp_http/loki]
+      # production では metrics pipeline 未接続 (Beyla は /metrics 直接 expose)。
+      # chart default の debug exporter pipeline を残す意義がないため明示削除。
+      metrics: null

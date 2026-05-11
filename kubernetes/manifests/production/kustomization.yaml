@@ -7,7 +7,6 @@ resources:
   - ./dashboard
   - ./external-dns
   - ./external-secrets
-  - ./fluent-bit
   - ./gateway-api
   - ./karpenter
   - ./keda
