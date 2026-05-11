@@ -1,5 +1,4 @@
 # Cilium CNI Configuration for production (eks-production)
-# Reference: docs/superpowers/specs/2026-05-03-eks-production-cilium-chaining-design.md
 
 # =============================================================================
 # CNI Chaining Mode（VPC CNI が IPAM/datapath、Cilium は L7/policy/observability）
@@ -21,7 +20,7 @@ ipv6:
 # =============================================================================
 # Kube Proxy Replacement: 完全置換
 # =============================================================================
-# kube-proxy addon は spec の Migration sequence Step 5 で terragrunt 経由で削除
+# kube-proxy addon is removed at the terragrunt layer (Cilium KPR replaces it)
 kubeProxyReplacement: true
 k8sServiceHost: {{ .Values.cluster.eksApiEndpoint }}
 k8sServicePort: 443
@@ -32,7 +31,7 @@ k8sServicePort: 443
 operator:
   replicas: 2
   rollOutPods: true
-  prometheus:                         # Sub-project 4b で新規追加
+  prometheus:
     enabled: true
     serviceMonitor:
       enabled: true
@@ -59,7 +58,7 @@ socketLB:
   enabled: true
 
 # =============================================================================
-# Hubble（UI は port-forward only、Phase 4 で Ingress 公開）
+# Hubble（UI は port-forward only）
 # =============================================================================
 hubble:
   enabled: true

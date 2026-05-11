@@ -1,7 +1,7 @@
 # outputs.tf - Outputs for the eks-metrics module.
 
 output "bucket_name" {
-  description = "S3 bucket name for Mimir long-term metrics storage. Referenced by Sub-project 2 helmfile values (mimir chart common.storage.s3.bucket)."
+  description = "S3 bucket name for Mimir long-term metrics storage. Referenced by kubernetes/components/mimir/ helmfile values (mimir chart common.storage.s3.bucket)."
   value       = module.s3.s3_bucket_id
 }
 

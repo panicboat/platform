@@ -1,5 +1,5 @@
 # Tempo Configuration for production
-# Monolithic mode + S3 backend (Sub-project 1 outputs) + Pod Identity (tempo SA)
+# Monolithic mode + S3 backend + Pod Identity (tempo SA)
 
 # =============================================================================
 # Tempo Core Configuration
@@ -20,7 +20,7 @@ tempo:
       memory: 2Gi
 
   # -------------------------------------------------------------------------
-  # Storage Config (S3 backend, Sub-project 1 outputs)
+  # Storage Config (S3 backend)
   # -------------------------------------------------------------------------
   storage:
     trace:
@@ -29,7 +29,7 @@ tempo:
         bucket: {{ .Values.tempo.bucketName }}
         endpoint: s3.ap-northeast-1.amazonaws.com
         region: ap-northeast-1
-        # application-level env scope (= Sub-project 3 L2 適用、IAM bucket-wide と整合)
+        # application-level env scope (IAM bucket-wide と整合)
         prefix: {{ .Values.tempo.bucketPathPrefix }}
         # AWS S3 native (HTTPS) = insecure: false (default)
         # Pod Identity 経由のため access_key / secret_key 不要
@@ -49,7 +49,7 @@ tempo:
   # Retention 機能は OFF (= chart default に任せる、Decision 5)
   # -------------------------------------------------------------------------
   # NOTE: 3 stack で application retention は OFF + S3 lifecycle で uniform 担保
-  # の panicboat pattern (Sub-project 3 L4 適用)。Tempo 内 retention 機能は
+  # の panicboat pattern。Tempo 内 retention 機能は
   # per-tenant rules 等の advanced feature 用、panicboat の uniform 7d retention
   # は aws/eks-traces/ S3 lifecycle で担保。
 
@@ -120,7 +120,7 @@ persistence:
 # NOTE: chart default で PDB が enable の場合、replicas=1 で minAvailable=1 に
 # なり node drain 時に block する。Loki/production の SingleBinary podDisruptionBudget
 # と同じく明示 disable して node drain operations を安全に保つ。
-# (Tempo chart v1.24.4 は PDB テンプレートを持たないが、将来の chart upgrade に
+# (Tempo chart v1.24.4 は PDB テンプレートを持たないが、chart upgrade に
 # 備えて明示 disable で意図を文書化する)
 podDisruptionBudget:
   enabled: false
@@ -135,8 +135,7 @@ service:
 # ServiceMonitor (Prometheus auto-scrape, Decision 9)
 # =============================================================================
 # NOTE: chart の serviceMonitor key 名は `additionalLabels` (Tempo chart 固有)。
-# OTel Collector chart の `extraLabels` とは別 key 名なので注意 (Sub-project 3 L3
-# = chart probe / serviceMonitor key 確認の実装段階精査の結果)。
+# OTel Collector chart の `extraLabels` とは別 key 名なので注意。
 serviceMonitor:
   enabled: true
   additionalLabels:

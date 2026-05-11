@@ -1,7 +1,7 @@
 # outputs.tf - Outputs for the eks-traces module.
 
 output "bucket_name" {
-  description = "S3 bucket name for Tempo trace data. Referenced by Sub-project 4 helmfile values (tempo chart storage.trace.s3)."
+  description = "S3 bucket name for Tempo trace data. Referenced by kubernetes/components/tempo/ helmfile values (tempo chart storage.trace.s3)."
   value       = module.s3.s3_bucket_id
 }
 

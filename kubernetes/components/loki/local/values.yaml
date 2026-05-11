@@ -115,7 +115,7 @@ write:
 # =============================================================================
 # Monitoring
 # =============================================================================
-# NOTE: grafana-community/loki v13 では monitoring.selfMonitoring セクションは削除された
+# NOTE: grafana-community/loki v13 では monitoring.selfMonitoring セクションは存在しない
 monitoring:
   serviceMonitor:
     enabled: true

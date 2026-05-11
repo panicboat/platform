@@ -33,5 +33,5 @@ reloader:
     # で全 SM を pick up するため、release: kube-prometheus-stack label なしでも収集される。
     # 他 component (cert-manager / external-secrets 等) は release: kube-prometheus-stack
     # label を付けて統一しているが、Reloader chart の template 構造上 conflict を avoid する
-    # ため label を省略している。Prometheus が将来 serviceMonitorSelector で label filter
+    # ため label を省略している。Prometheus が serviceMonitorSelector で label filter
     # に切替えた場合は再検討必要。
