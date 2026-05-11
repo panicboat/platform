@@ -34,8 +34,24 @@ data:
     attributes:
       kubernetes:
         enable: true
+      select:
+        http_*:
+          include:
+          - http_request_method
+          - http_response_status_code
+          - http_route
+          - url_scheme
+          - server_address
+          - server_port
+          - service_name
+          - service_namespace
+          - k8s_namespace_name
+          - k8s_deployment_name
+          - k8s_pod_name
     discovery:
-      services:
+      exclude_instrument:
+      - k8s_deployment_name: monolith
+      instrument:
       - k8s_namespace: default
     filter:
       network:
@@ -147,7 +163,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: cb1df18d938b5272501119ec010f0e9a205c437e21d95f2f15a871e3795dd3f1
+        checksum/config: 51b7da78d034a4968865455944586b4f9d3281adc829de7e9045a72f29cd5ff6
       labels:
         helm.sh/chart: beyla-1.16.7
         app.kubernetes.io/name: beyla
