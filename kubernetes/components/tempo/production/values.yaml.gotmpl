@@ -5,7 +5,7 @@
 # Tempo Core Configuration
 # =============================================================================
 tempo:
-  # 1 tenant 運用 (panicboat) のため multitenancy OFF (Decision 8)
+  # 1 tenant 運用 (panicboat) のため multitenancy OFF
   multitenancyEnabled: false
 
   # -------------------------------------------------------------------------
@@ -46,7 +46,7 @@ tempo:
           endpoint: 0.0.0.0:4318
 
   # -------------------------------------------------------------------------
-  # Retention 機能は OFF (= chart default に任せる、Decision 5)
+  # Retention 機能は OFF (= chart default に任せる)
   # -------------------------------------------------------------------------
   # NOTE: 3 stack で application retention は OFF + S3 lifecycle で uniform 担保
   # の panicboat pattern。Tempo 内 retention 機能は
@@ -105,7 +105,7 @@ serviceAccount:
   annotations: {}
 
 # =============================================================================
-# Persistence (= WAL + 短期 compactor cache、Decision 12)
+# Persistence (= WAL + 短期 compactor cache)
 # =============================================================================
 persistence:
   enabled: true
@@ -132,7 +132,7 @@ service:
   type: ClusterIP
 
 # =============================================================================
-# ServiceMonitor (Prometheus auto-scrape, Decision 9)
+# ServiceMonitor (Prometheus auto-scrape)
 # =============================================================================
 # NOTE: chart の serviceMonitor key 名は `additionalLabels` (Tempo chart 固有)。
 # OTel Collector chart の `extraLabels` とは別 key 名なので注意。

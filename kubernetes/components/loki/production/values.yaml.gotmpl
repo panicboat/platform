@@ -2,7 +2,7 @@
 # Monolithic mode (= 公式 docs の "Single Binary Mode") + S3 backend + Pod Identity (loki SA)
 
 # =============================================================================
-# Deployment Mode (Decision 2)
+# Deployment Mode
 # =============================================================================
 # Monolithic = chart 内蔵の single binary deploy (= 公式 docs の "Single Binary Mode")。
 # 1 StatefulSet (replicas=1) で distributor / ingester / querier / query-frontend /
@@ -15,7 +15,7 @@ deploymentMode: Monolithic
 # Loki Core Configuration
 # =============================================================================
 loki:
-  # 1 tenant 運用 (panicboat) のため auth 不要 (Decision 3)
+  # 1 tenant 運用 (panicboat) のため auth 不要
   auth_enabled: false
 
   # -------------------------------------------------------------------------
@@ -23,7 +23,7 @@ loki:
   # -------------------------------------------------------------------------
   commonConfig:
     path_prefix: /var/loki
-    # SingleBinary 1 replica なので replication_factor=1 (Decision 2)
+    # SingleBinary 1 replica なので replication_factor=1
     # HA upgrade 時は SimpleScalable 3 replicas + replication_factor=3 に変更
     replication_factor: 1
 
@@ -75,7 +75,7 @@ loki:
       s3forcepathstyle: false
 
   # -------------------------------------------------------------------------
-  # Limits Config (retention 30d、Decision 3)
+  # Limits Config (retention 30d)
   # -------------------------------------------------------------------------
   limits_config:
     # logs entry の最大保持期間 = aws/eks-logs/ S3 lifecycle 30d と整合
@@ -96,7 +96,7 @@ loki:
     retention_enabled: false
 
   # -------------------------------------------------------------------------
-  # Ingester (= flush 間隔短縮、Decision 11 軽減策)
+  # Ingester (= flush 間隔短縮)
   # -------------------------------------------------------------------------
   ingester:
     # WAL chunk を S3 に flush する間隔 (default は 5 min、AZ 障害時のロスト window
@@ -117,7 +117,7 @@ serviceAccount:
   annotations: {}
 
 # =============================================================================
-# SingleBinary StatefulSet (Decision 2)
+# SingleBinary StatefulSet
 # =============================================================================
 singleBinary:
   enabled: true

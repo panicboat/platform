@@ -110,7 +110,7 @@ grafana:
           access: proxy
           isDefault: false
           jsonData:
-            # 1 tenant 運用 (= Decision 3)
+            # 1 tenant 運用のため X-Scope-OrgID を anonymous 固定
             httpHeaderName1: X-Scope-OrgID
           secureJsonData:
             httpHeaderValue1: anonymous
@@ -122,7 +122,7 @@ grafana:
           access: proxy
           isDefault: false
           jsonData:
-            # 1 tenant 運用 (= Decision 8、multitenancy OFF)
+            # 1 tenant 運用 (= multitenancy OFF)
             httpMethod: GET
             tracesToLogsV2:
               datasourceUid: loki
