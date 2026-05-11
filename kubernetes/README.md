@@ -196,8 +196,8 @@ make phase4
 
 ### Full automatic setup
 ```bash
-make up              # Phase 1-4 全自動実行
-make down            # クラスター完全削除
+make up              # Run phases 1-4 end-to-end
+make down            # Tear down the cluster
 ```
 
 ### Individual operations
