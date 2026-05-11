@@ -1,7 +1,7 @@
 # outputs.tf - Outputs for the eks-logs module.
 
 output "bucket_name" {
-  description = "S3 bucket name for Loki log chunks. Referenced by Sub-project 3 helmfile values (loki chart storage_config.aws.s3)."
+  description = "S3 bucket name for Loki log chunks. Referenced by kubernetes/components/loki/ helmfile values (loki chart storage_config.aws.s3)."
   value       = module.s3.s3_bucket_id
 }
 

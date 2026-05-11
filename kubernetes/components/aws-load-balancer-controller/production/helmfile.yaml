@@ -2,8 +2,9 @@
 # AWS Load Balancer Controller Helmfile for production
 # =============================================================================
 # Provisions ALBs from Ingress resources. IngressGroup `panicboat-platform`
-# is used to share one ALB across multiple Ingresses (see spec for the
-# rationale on choosing Option B over TargetGroupBinding).
+# is used to share one ALB across multiple Ingresses, keeping the per-month
+# ALB cost flat regardless of how many Ingresses participate, while still
+# letting each Ingress own its own listener rules.
 # =============================================================================
 environments:
   production:

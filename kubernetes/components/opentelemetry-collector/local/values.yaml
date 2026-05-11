@@ -54,7 +54,6 @@ config:
     resource:
       attributes:
         - key: cluster.name
-          # TODO: (local) Change to actual cluster name in production
           value: k8s-local
           action: upsert
     memory_limiter:

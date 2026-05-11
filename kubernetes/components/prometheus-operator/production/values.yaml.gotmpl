@@ -6,6 +6,8 @@
 # =============================================================================
 grafana:
   enabled: true
+  # chart's helm-test pod is not used in CI; disabled to avoid a dangling
+  # Pod that would require manual cleanup after `helm test`.
   testFramework:
     enabled: false
 
@@ -17,7 +19,7 @@ grafana:
     userKey: admin-user
     passwordKey: admin-password
 
-  # Reloader watch annotation (= Phase 4-2 deploy 済)。
+  # Reloader watch annotation。
   # Secret grafana-admin (= ExternalSecret 由来) の変更を検知して auto-rollout、
   # AWS Secrets Manager 側の admin-password rotation で Grafana を再起動する。
   # NOTE: grafana subchart 12.3.0 では Deployment metadata.annotations は
@@ -100,7 +102,7 @@ grafana:
           jsonData:
             httpMethod: POST
             timeInterval: 30s
-        # Phase 3 Sub-project 3 (Logs stack)
+        # Logs stack
         - name: Loki
           uid: loki
           type: loki
@@ -108,11 +110,11 @@ grafana:
           access: proxy
           isDefault: false
           jsonData:
-            # 1 tenant 運用 (= Decision 3)
+            # 1 tenant 運用のため X-Scope-OrgID を anonymous 固定
             httpHeaderName1: X-Scope-OrgID
           secureJsonData:
             httpHeaderValue1: anonymous
-        # Phase 3 Sub-project 4a (Traces stack foundation)
+        # Traces stack
         - name: Tempo
           uid: tempo
           type: tempo
@@ -120,7 +122,7 @@ grafana:
           access: proxy
           isDefault: false
           jsonData:
-            # 1 tenant 運用 (= Decision 8、multitenancy OFF)
+            # 1 tenant 運用 (= multitenancy OFF)
             httpMethod: GET
             tracesToLogsV2:
               datasourceUid: loki
@@ -196,7 +198,7 @@ prometheus:
 # =============================================================================
 # Alertmanager Configuration
 # =============================================================================
-# NOTE: receiver 設定 (Slack / SNS / PagerDuty) は Phase 4 で追加
+# NOTE: receiver 設定 (Slack / SNS / PagerDuty) は未設定
 alertmanager:
   enabled: true
   alertmanagerSpec:

@@ -3,7 +3,7 @@
 # =============================================================================
 # This chart installs:
 #   - Prometheus (scrape agent + remote write to Mimir)
-#   - Alertmanager (alerting hub、receiver は Phase 4 で追加)
+#   - Alertmanager (alerting hub; receivers / wire-up は別 component で扱う)
 #   - Grafana (visualization、Mimir data source primary)
 #   - node-exporter (host metrics)
 #   - kube-state-metrics (K8s API metrics)

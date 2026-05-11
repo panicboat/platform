@@ -4,8 +4,8 @@
 # =============================================================================
 # Deployment Mode
 # =============================================================================
-# TODO: (production) Use "distributed" mode for high availability in production
-# NOTE: "SingleBinary" は grafana-community/loki v13 で deprecated。正式名称は "Monolithic"
+# NOTE: chart key "SingleBinary" is deprecated in grafana-community/loki v13;
+# the canonical name is "Monolithic".
 deploymentMode: Monolithic
 
 # =============================================================================
@@ -13,21 +13,18 @@ deploymentMode: Monolithic
 # =============================================================================
 loki:
   # Disable multi-tenancy for simplicity in local
-  # TODO: (production) Enable auth for multi-tenant environments
   auth_enabled: false
 
   # -------------------------------------------------------------------------
   # Common Configuration
   # -------------------------------------------------------------------------
   commonConfig:
-    # TODO: (production) Increase replication_factor to 3 for HA
     replication_factor: 1
 
   # -------------------------------------------------------------------------
   # Storage Configuration
   # -------------------------------------------------------------------------
   storage:
-    # TODO: (production) Use S3 or MinIO for long-term storage
     # Example for S3:
     #   type: s3
     #   s3:
@@ -76,11 +73,9 @@ loki:
 # Single Binary Mode Configuration
 # =============================================================================
 singleBinary:
-  # TODO: (production) Increase replicas for HA
   replicas: 1
   persistence:
     enabled: true
-    # TODO: (production) Increase storage size based on log volume
     size: 5Gi
   resources:
     requests:
@@ -120,7 +115,7 @@ write:
 # =============================================================================
 # Monitoring
 # =============================================================================
-# NOTE: grafana-community/loki v13 では monitoring.selfMonitoring セクションは削除された
+# NOTE: grafana-community/loki v13 では monitoring.selfMonitoring セクションは存在しない
 monitoring:
   serviceMonitor:
     enabled: true

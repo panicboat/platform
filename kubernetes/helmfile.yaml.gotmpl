@@ -9,7 +9,6 @@
 #   helmfile -e local template          # Generate manifests
 #   helmfile -e local apply             # Deploy to cluster
 #
-# TODO: (staging) Add staging environment when eks-staging cluster is provisioned
 # =============================================================================
 
 environments:
@@ -31,10 +30,9 @@ environments:
     #
     # `# STABLE: <reason>` means the value is deterministic by design and
     # does NOT need updating on recreate (= IRSA / Karpenter naming was
-    # made deterministic in Phase 2 of the teardown/recreate spec; bucket
-    # names are account-id keyed).
+    # made deterministic by design; bucket names are account-id keyed).
     #
-    # The Phase 3 lifecycle script `60-flux-bootstrap.sh` greps for these
+    # The lifecycle script `60-flux-bootstrap.sh` greps for these
     # markers and prompts the operator to apply the listed updates manually
     # (Plan A in the spec Errata). This avoids hydrate-time exec which is
     # incompatible with the panicboat CI ordering (see spec §0 Errata).
@@ -58,7 +56,6 @@ environments:
           interruptionQueueName: Karpenter-eks-production
         mimir:
           # Source: aws/eks-metrics/envs/production terragrunt output
-          # Sub-project 1 で provision + Task 1 で Mimir 用に rename された
           # S3 backend / Pod Identity role を mimir-distributed chart が consume。
           # helmfile v1.4 は親→子 の auto-inherit をしないため、
           # kubernetes/components/mimir/production/helmfile.yaml の
@@ -78,7 +75,6 @@ environments:
           bucketName: tempo-559744160976
           bucketPathPrefix: production
           podIdentityRoleName: eks-production-tempo
-  # TODO: (staging) Uncomment and configure when staging cluster is provisioned
   # staging:
   #   values:
   #     - cluster:

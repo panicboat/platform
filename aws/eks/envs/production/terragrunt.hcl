@@ -14,9 +14,9 @@ include "env" {
 # Reference to Terraform modules.
 # Use go-getter `//` subdir notation so the entire `aws/` tree is copied to
 # the Terragrunt cache. This lets `module "vpc"` in modules/lookups.tf
-# resolve `../../vpc/lookup` from within the cache. See
-# docs/superpowers/specs/2026-04-29-aws-vpc-cross-stack-design.md for the
-# convention.
+# resolve `../../vpc/lookup` from within the cache (each producer stack
+# exposes a `lookup/` submodule that downstream stacks reference for
+# cross-stack data, replacing terraform_remote_state with a typed contract).
 terraform {
   source = "../../..//eks/modules"
 }

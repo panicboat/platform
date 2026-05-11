@@ -1,21 +1,21 @@
 # Loki Configuration for production
-# Monolithic mode (= 公式 docs の "Single Binary Mode") + S3 backend (Sub-project 1 outputs) + Pod Identity (loki SA)
+# Monolithic mode (= 公式 docs の "Single Binary Mode") + S3 backend + Pod Identity (loki SA)
 
 # =============================================================================
-# Deployment Mode (Decision 2)
+# Deployment Mode
 # =============================================================================
 # Monolithic = chart 内蔵の single binary deploy (= 公式 docs の "Single Binary Mode")。
 # 1 StatefulSet (replicas=1) で distributor / ingester / querier / query-frontend /
-# store-gateway / compactor を全部 in-process。small production 向け、HA は将来
-# SimpleScalable に upgrade。
-# NOTE: chart v13 で `SingleBinary` は削除され `Monolithic` に rename された。
+# store-gateway / compactor を全部 in-process。small production 向け、HA upgrade path は
+# SimpleScalable (3 replicas + replication_factor=3) を保持。
+# NOTE: chart v13 では deploymentMode key 名は `Monolithic` (legacy alias: `SingleBinary`)。
 deploymentMode: Monolithic
 
 # =============================================================================
 # Loki Core Configuration
 # =============================================================================
 loki:
-  # 1 tenant 運用 (panicboat) のため auth 不要 (Decision 3)
+  # 1 tenant 運用 (panicboat) のため auth 不要
   auth_enabled: false
 
   # -------------------------------------------------------------------------
@@ -23,12 +23,12 @@ loki:
   # -------------------------------------------------------------------------
   commonConfig:
     path_prefix: /var/loki
-    # SingleBinary 1 replica なので replication_factor=1 (Decision 2)
+    # SingleBinary 1 replica なので replication_factor=1
     # HA upgrade 時は SimpleScalable 3 replicas + replication_factor=3 に変更
     replication_factor: 1
 
   # -------------------------------------------------------------------------
-  # Storage Config (S3 backend, Sub-project 1 outputs)
+  # Storage Config (S3 backend)
   # -------------------------------------------------------------------------
   # NOTE: chart v13 で `loki.storage.bucketNames.{chunks, ruler}` は chart の独自
   # abstraction で、rendered manifest の `common.storage.s3.bucketnames` には届かない
@@ -75,7 +75,7 @@ loki:
       s3forcepathstyle: false
 
   # -------------------------------------------------------------------------
-  # Limits Config (retention 30d、Decision 3)
+  # Limits Config (retention 30d)
   # -------------------------------------------------------------------------
   limits_config:
     # logs entry の最大保持期間 = aws/eks-logs/ S3 lifecycle 30d と整合
@@ -90,16 +90,13 @@ loki:
   # NOTE: Loki 3.x の retention enforcement は delete request store
   # (`<bucket>/index/delete_requests/`) を bucket root 固定 path で使い、
   # aws/eks-logs/ IAM policy の `<bucket>/<env>/*` Resource scope と整合しない。
-  # 代替として retention は aws/eks-logs/ S3 lifecycle 30d (= Sub-project 1 で
-  # provision 済) で担保。compactor 自体は chunks compaction (= S3 IO 効率化)
-  # のため起動を維持、retention 機能のみ off。
-  # 細かい per-tenant / per-stream retention rules を要する場合は
-  # Phase 4 (advanced features) で IAM policy 設計を見直す。
+  # 代替として retention は aws/eks-logs/ S3 lifecycle 30d で担保。
+  # compactor 自体は chunks compaction (= S3 IO 効率化) のため起動を維持、retention 機能のみ off。
   compactor:
     retention_enabled: false
 
   # -------------------------------------------------------------------------
-  # Ingester (= flush 間隔短縮、Decision 11 軽減策)
+  # Ingester (= flush 間隔短縮)
   # -------------------------------------------------------------------------
   ingester:
     # WAL chunk を S3 に flush する間隔 (default は 5 min、AZ 障害時のロスト window
@@ -120,7 +117,7 @@ serviceAccount:
   annotations: {}
 
 # =============================================================================
-# SingleBinary StatefulSet (Decision 2)
+# SingleBinary StatefulSet
 # =============================================================================
 singleBinary:
   enabled: true
@@ -161,7 +158,7 @@ gateway:
       cpu: 200m
       memory: 256Mi
   # Gateway は stateless (PVC なし)、1 replica + RollingUpdate で OK
-  # (= Sub-project 2 L3 の Multi-Attach 罠は PVC なしのため発生しない)
+  # (PVC を使わないため Multi-Attach 罠は発生しない)
 
 # =============================================================================
 # Disable subcomponents (Monolithic mode で不要)
@@ -199,7 +196,7 @@ networkPolicy:
 # =============================================================================
 # Monitoring (ServiceMonitor for Prometheus auto-scrape)
 # =============================================================================
-# NOTE: chart v13 で monitoring.selfMonitoring section は削除されたため記述しない
+# NOTE: chart v13 では monitoring.selfMonitoring section は存在しないため記述しない
 monitoring:
   # Self-monitoring metrics を Prometheus が scrape
   serviceMonitor:
@@ -209,10 +206,10 @@ monitoring:
       release: kube-prometheus-stack
     interval: 15s
 
-  # Prometheus Rules (= alerting rules)、Phase 4 で alertmanager 設定時に有効化
+  # Prometheus Rules (= alerting rules)。alertmanager 未設定のため無効。
   rules:
     enabled: false
 
-  # Loki dashboards (chart 内蔵 ConfigMap)、Phase 4 で別途 Grafana に投入
+  # Loki dashboards (chart 内蔵 ConfigMap)。Grafana に統合するまで無効。
   dashboards:
     enabled: false

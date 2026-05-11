@@ -1,8 +1,8 @@
 # =============================================================================
 # External Repositories Kustomization for production
 # =============================================================================
-# Phase 6-1 で新規作成。platform 外 repository (= panicboat monorepo) の
-# Flux GitRepository + Kustomization を集約管理。
+# Aggregates Flux GitRepository + Kustomization for repositories outside the
+# platform (currently: panicboat monorepo).
 # =============================================================================
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

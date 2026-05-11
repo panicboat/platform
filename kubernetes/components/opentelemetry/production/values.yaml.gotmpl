@@ -1,14 +1,14 @@
 # =============================================================================
 # OpenTelemetry Operator Configuration for production
 # =============================================================================
-# Phase 6-1 で deploy。Instrumentation CR は 6-2 で application namespace に追加。
+# OTel Operator + Instrumentation CR for application namespaces.
 # =============================================================================
 
 # =============================================================================
 # Admission Webhooks (= cert-manager integration)
 # =============================================================================
 # webhook は K8s API server ↔ Operator webhook の server-only TLS、SelfSigned
-# で十分 (= 5-1 L3 lesson の mTLS 不可は server-only TLS には影響しない)。
+# で十分 (mTLS が不可な経路ではないため server-only TLS で十分)。
 admissionWebhooks:
   certManager:
     enabled: true
@@ -34,7 +34,7 @@ manager:
   # SubjectAccessReview による auth) が active。 ただし chart は SA
   # `opentelemetry-operator` の ClusterRole に `tokenreviews` permission を
   # 付与しないため、 30s 周期で `tokenreviews.authentication.k8s.io is
-  # forbidden` ERROR log が出力される (= Phase 6-1 post-flight latent issue)。
+  # forbidden` ERROR log が出力される (latent issue)。
   #
   # panicboat は OTel Operator self-metrics を直接活用しないため (= application
   # Instrumentation CR が deploy 目的)、 `secure: false` (= insecure HTTP
@@ -50,6 +50,8 @@ manager:
     metricsEndpoints:
       - port: metrics
         scheme: http
+  # PrometheusRule (= alerting rules for OTel Operator) is not configured;
+  # no OTel Operator-specific alerts are defined for this deployment.
   prometheusRule:
     enabled: false
 

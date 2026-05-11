@@ -7,7 +7,7 @@
 # 含むリソース:
 #   - manifests/production: ハイドレーション済 Kubernetes manifests
 #   - repositories/: 外部 repository (= panicboat monorepo) の Flux
-#     GitRepository + Kustomization (= Phase 6-1 で追加)
+#     GitRepository + Kustomization
 # =============================================================================
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

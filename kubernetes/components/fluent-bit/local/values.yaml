@@ -26,8 +26,7 @@ config:
   # -------------------------------------------------------------------------
   # Inputs
   # -------------------------------------------------------------------------
-  # TODO: (local) Systemd input is disabled to prevent /etc/machine-id mount errors in k3d
-  # In production (EKS), you may want to enable systemd input for system logs
+  # Systemd input is disabled to prevent /etc/machine-id mount errors on k3d.
   inputs: |
     [INPUT]
         Name tail

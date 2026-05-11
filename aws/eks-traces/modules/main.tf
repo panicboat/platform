@@ -14,8 +14,8 @@
 #    - cluster_name は aws/eks/lookup module の output から取得
 #
 # env 分離は bucket 内 prefix `${var.environment}/` で行う。
-# Sub-project 4 (Tempo + OpenTelemetry chart 導入) は本 stack の outputs を
-# terragrunt output 経由で取得し、helmfile values に渡す。
+# 本 stack の outputs は terragrunt output 経由で取得し、
+# kubernetes/components/tempo/ helmfile values に渡す。
 
 data "aws_caller_identity" "current" {}
 
@@ -87,9 +87,9 @@ resource "aws_iam_role" "pod_identity" {
 
 # IAM policy for S3 access (bucket-wide, application-level prefix で env scope 担保)
 # 3 statement: BucketLevelListing / BucketLocation / ObjectLevelOperations
-# NOTE: Sub-project 1 で env-scoped IAM (= ${bucket}/${env}/*) としていたが、Loki 3.x
-# compactor の delete request store が bucket root の固定 path (index/delete_requests/)
-# を使うため不整合 (Sub-project 3 runtime fix で判明)。公式 docs (Loki / Tempo / Mimir
+# NOTE: env-scoped IAM (= ${bucket}/${env}/*) ではなく bucket-wide にしている理由:
+# Loki 3.x compactor の delete request store が bucket root の固定 path (index/delete_requests/)
+# を使うため env-scoped Resource では不整合が生じる。公式 docs (Loki / Tempo / Mimir
 # community discussion) でも `${bucket}` + `${bucket}/*` 形式が推奨。env 分離は各 stack
 # の application-level prefix (= mimir.blocks_storage.storage_prefix /
 # tempo.storage.trace.s3.prefix) で担保し、3 sibling stack の IAM template は同形を維持。

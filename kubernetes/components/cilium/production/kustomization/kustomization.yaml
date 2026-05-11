@@ -5,13 +5,11 @@
 # release output:
 #   - GatewayClass: registers Cilium as the gateway-api controller
 #   - Gateway "cilium-gateway" (= namespace default): shared east-west L7
-#     routing entry point. Phase 6-1 (= monorepo migration foundation) で
-#     application 共有 Gateway として deploy (= P3 decision)。
+#     routing entry point for applications.
 #
-# Note: north-south は ALB Controller、east-west は cilium-gateway 経由。
-# panicboat 個人運用 + 1 application 構成で per-service Gateway は YAGNI、
-# 共有 Gateway を採用。将来 multi-application 化時に per-service Gateway
-# 設計を再評価。
+# Note: north-south traffic goes through the ALB Controller; east-west goes
+# through cilium-gateway. The current 1-application footprint does not
+# justify per-service Gateways (YAGNI), so a single shared Gateway is used.
 # =============================================================================
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

@@ -15,7 +15,7 @@ environments:
   production:
     # NOTE: helmfile v1.x は親 helmfile.yaml.gotmpl の values を child に
     # auto-inherit しないため、ここで再定義 (cilium / karpenter 同パターン)。
-    # 値は kubernetes/helmfile.yaml.gotmpl の production env block と同期 (Task 4 で追加)。
+    # 値は kubernetes/helmfile.yaml.gotmpl の production env block と同期。
     values:
       - mimir:
           # Source: aws/eks-metrics/envs/production terragrunt output bucket_name
