@@ -41,9 +41,8 @@ config:
     # -------------------------------------------------------------------------
     # Service Discovery
     # -------------------------------------------------------------------------
-    # Use Kubernetes namespace-based discovery for service name resolution
-    # Beyla will use the deployment/pod name as the service name
-    # TODO: If the namespaces to be traced increases, additional entries are required.
+    # Use Kubernetes namespace-based discovery for service name resolution.
+    # Beyla uses the deployment/pod name as the service name.
     discovery:
       services:
         - k8s_namespace: "default"

@@ -2,8 +2,7 @@
 # ConfigMap: oauth2-proxy email allowlist
 # =============================================================================
 # oauth2-proxy の authenticated_emails_file が参照する allowlist。1 行 1 email、
-# panicboat@gmail.com のみ。Workspace 契約後は config.configFile の
-# email_domains に切替予定 (= Phase 6+ 引き継ぎ #11)。
+# panicboat@gmail.com のみ。
 # Reloader が ConfigMap 変更を検知して oauth2-proxy auto-rollout
 # (= deploymentAnnotations の reloader.stakater.com/auto: "true")。
 # =============================================================================

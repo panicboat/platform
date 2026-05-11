@@ -1,17 +1,15 @@
 # =============================================================================
-# Cilium 共有 Gateway (= namespace default, listener HTTP port 80)
+# Cilium shared Gateway (namespace default, listener HTTP port 80)
 # =============================================================================
-# Phase 6-1 (= monorepo migration foundation) で application 共有 Gateway として
-# deploy。monorepo の services/reverse-proxy/kubernetes/base/httproute.yaml が
-# parentRefs.name: cilium-gateway namespace: default を指定する設計。
+# Application-shared Gateway. The monorepo's reverse-proxy HTTPRoute targets
+# this Gateway via `parentRefs.name: cilium-gateway` / `namespace: default`.
 #
-# panicboat 個人運用 + 1 application (= monolith + frontend + reverse-proxy)
-# 構成で per-service Gateway は YAGNI、共有 Gateway を採用 (= P3 decision)。
-# 将来 multi-application 化時に per-service Gateway 設計を再評価。
+# The current single-application footprint does not justify per-service
+# Gateways (YAGNI), so a single shared Gateway is used.
 #
-# listener: HTTP port 80 のみ (= internal east-west routing 用、reverse-proxy
-# Pod が upstream として cilium-gateway を呼ぶ)。HTTPS / TLS listener は 6-3
-# DNS / ACM phase で必要時追加。
+# Listener: HTTP port 80 only (internal east-west routing; reverse-proxy
+# Pods call cilium-gateway as their upstream). HTTPS / TLS listeners can be
+# added if external traffic via this Gateway becomes required.
 # =============================================================================
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway

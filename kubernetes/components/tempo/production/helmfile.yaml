@@ -1,19 +1,16 @@
 # =============================================================================
 # Tempo Helmfile for production
 # =============================================================================
-# Phase 3 Sub-project 4a で deploy する Traces stack の Tempo 本体。
-# Monolithic mode (= chart 内蔵の single binary deploy、distributor + ingester +
-# querier + compactor を 1 process に統合、small production OK の Tempo 公式
-# position に準拠)。S3 backend は Sub-project 1 で provision 済の
-# tempo-559744160976 を Pod Identity 経由でアクセス。
-#
-# Decision references:
-# - D3: Monolithic mode (HA upgrade path 保持、Phase 4 で grafana/tempo-distributed への切替検討)
-# - D5: application retention OFF (chart default)、S3 lifecycle 7d で担保
-# - D7: bucket-wide IAM (Sub-project 3 fix で 3 stack 同型済) + application-level
-#       prefix env scope (s3.prefix: production)
-# - D8: multitenancy OFF (1 tenant 運用、Mimir / Loki と対称)
-# - D12: PVC 10Gi gp3 (WAL + 短期 compactor cache)
+# Traces stack の Tempo 本体。Monolithic mode (chart 内蔵の single binary
+# deploy、distributor + ingester + querier + compactor を 1 process に統合、
+# Tempo 公式が small production OK とする position に準拠)。grafana/tempo-
+# distributed への切替は HA / scale 要件が顕在化した時点で再評価する。
+# S3 backend は `tempo-559744160976` を Pod Identity 経由でアクセス、IAM role
+# は bucket-wide (3 stack 同型) + application-level prefix env scope
+# (`s3.prefix: production`) で隔離。
+# multitenancy は OFF (1 tenant 運用、Mimir / Loki と対称)。retention は
+# application 側 OFF (chart default)、S3 lifecycle 7d で担保。
+# PVC 10Gi gp3 は WAL + 短期 compactor cache 用。
 # =============================================================================
 environments:
   production:

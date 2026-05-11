@@ -9,7 +9,6 @@ tempo:
   tag: 2.6.1
 
   # Trace retention period
-  # TODO: (production) Increase retention and use object storage for long-term retention
   retention: 24h
 
   # -------------------------------------------------------------------------
@@ -28,7 +27,6 @@ tempo:
   # -------------------------------------------------------------------------
   storage:
     trace:
-      # TODO: (production) Use S3/GCS for long-term trace storage
       # Example for S3:
       #   backend: s3
       #   s3:
@@ -58,7 +56,6 @@ tempo:
     registry:
       external_labels:
         source: tempo
-        # TODO: (local) Change cluster name in production
         cluster: k8s-local
     processor:
       service_graphs:
@@ -82,7 +79,6 @@ tempo:
 # =============================================================================
 persistence:
   enabled: true
-  # TODO: (production) Increase storage size based on trace volume
   size: 5Gi
 
 # =============================================================================

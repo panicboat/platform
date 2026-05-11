@@ -9,7 +9,7 @@
 #   reconcile-loop で中断耐性あり)
 # - instance-category: m only (general-purpose、c/r は consolidation で
 #   ほぼ選ばれず spec ノイズとして除外)
-# - instance-generation: Gt 5 (= 実質 Ge 6 = m6g, m7g, m8g, 将来 m9g+。
+# - instance-generation: Gt 5 (= 実質 Ge 6 = m6g, m7g, m8g, ...。
 #   K8s NodeSelectorRequirement に Ge / Le 演算子は存在しないため Gt 5
 #   で表現。利用可能 instance type:
 #   https://karpenter.sh/docs/reference/instance-types/)
@@ -17,7 +17,7 @@
 #   bin-packing 悪化、metal は不要)
 # - disruption: WhenEmptyOrUnderutilized + 30 日 expireAfter (OS patching
 #   用 forced cycle)
-# - limits.cpu: 200 (cluster 暴走時の上限、Phase 5 nginx + monorepo 想定)
+# - limits.cpu: 200 (cluster 暴走時の安全上限)
 # =============================================================================
 apiVersion: karpenter.sh/v1
 kind: NodePool
@@ -44,7 +44,7 @@ spec:
           operator: In
           values: ["m"]
         # Gt 5 は実質 Ge 6 の意 (K8s NodeSelectorRequirement 仕様に Ge / Le
-        # 演算子は存在しない)。generation 6 以降 (m6g, m7g, m8g, 将来 m9g+) を
+        # 演算子は存在しない)。generation 6 以降 (m6g, m7g, m8g, ...) を
         # 含める。利用可能 instance type は Karpenter docs を参照:
         # https://karpenter.sh/docs/reference/instance-types/
         - key: karpenter.k8s.aws/instance-generation
@@ -56,7 +56,7 @@ spec:
       expireAfter: 720h  # 30 days
   disruption:
     # Karpenter v1+ valid values: WhenEmpty | WhenEmptyOrUnderutilized
-    # (v0.x の WhenUnderutilized は廃止。Plan 2 hotfix #274 で修正済)
+    # (v0.x の WhenUnderutilized は廃止されているので使えない)。
     consolidationPolicy: WhenEmptyOrUnderutilized
     consolidateAfter: 30s
   limits:

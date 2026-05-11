@@ -1,9 +1,9 @@
 # =============================================================================
 # nginx-sample production kustomization
 # =============================================================================
-# Phase 5-2 (= End-to-end validation) の demo nginx application。
-# Plain K8s manifests (= chart 不在、kustomization-only component) で
-# gateway-api component の reference pattern を踏襲。
+# Demo nginx application used for end-to-end validation of the platform.
+# Plain K8s manifests (no chart; kustomization-only component) following
+# the same reference pattern as the gateway-api component.
 # =============================================================================
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

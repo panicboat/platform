@@ -19,8 +19,6 @@
 #                                  -> Loki (logs via Fluent-bit)
 #                                  -> Prometheus (metrics)
 #   All data visualized in Grafana
-#
-# TODO: (production) For EKS deployment, create separate environment configs
 # =============================================================================
 
 # =============================================================================

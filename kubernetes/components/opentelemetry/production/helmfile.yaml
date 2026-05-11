@@ -3,11 +3,10 @@
 # =============================================================================
 # OTel Operator は OpenTelemetry SDK auto-injection (= Instrumentation CR) と
 # OTel Collector CRD (= OpenTelemetryCollector) の管理を提供する。
-# Phase 6-1 で deploy、Instrumentation CR は 6-2 で application namespace に追加。
 #
 # admission webhook TLS は cert-manager (= selfsigned-cluster-issuer) を利用。
 # webhook は K8s API server ↔ webhook の server-only TLS のため、SelfSigned で OK
-# (= 5-1 L3 lesson の mTLS 不可は server-only TLS には影響しない)。
+# (mTLS が必要な経路ではないため client trust chain は不要)。
 # =============================================================================
 environments:
   production:

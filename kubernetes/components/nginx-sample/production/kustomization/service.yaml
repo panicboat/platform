@@ -1,5 +1,5 @@
 # =============================================================================
-# nginx ClusterIP Service for end-to-end validation (Phase 5-2)
+# nginx ClusterIP Service for end-to-end validation
 # =============================================================================
 # nginx Pod を cluster 内 + ALB Ingress backend として expose。
 # port 80 → targetPort http (= containerPort 80) の標準 mapping。

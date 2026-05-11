@@ -9,7 +9,6 @@ grafana:
   testFramework:
     enabled: false
 
-  # TODO: (production) Use secure password management (e.g., Kubernetes secrets, Vault)
   adminPassword: "password"
 
   # -------------------------------------------------------------------------
@@ -91,7 +90,6 @@ prometheus:
     # -------------------------------------------------------------------------
     # Retention
     # -------------------------------------------------------------------------
-    # TODO: (production) Increase retention for production
     retention: 2d
 
     # -------------------------------------------------------------------------
@@ -120,7 +118,6 @@ prometheus:
         spec:
           resources:
             requests:
-              # TODO: (production) Increase storage size based on metrics volume
               storage: 2Gi
 
 # =============================================================================
