@@ -36,3 +36,19 @@ module "vpc" {
 
   tags = var.common_tags
 }
+
+# S3 Gateway VPC Endpoint
+# Why: Mimir / Loki / Tempo の ingester / compactor および ECR image layer の S3 取得経路を
+# NAT Gateway 経由から Gateway Endpoint 経由に切替え、NAT data processing 料金 ($0.062/GB) を回避する。
+# Gateway Endpoint は時間料金もデータ処理料金も発生しない (= 完全無料)。
+# 関連付け対象は private route table のみ。public は IGW 直結、database は S3 通信源ではないため除外。
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = module.vpc.vpc_id
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = module.vpc.private_route_table_ids
+
+  tags = merge(var.common_tags, {
+    Name = "vpce-s3-${var.environment}"
+  })
+}
