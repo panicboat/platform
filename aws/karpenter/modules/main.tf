@@ -57,8 +57,8 @@ module "karpenter" {
 # karpenter_controller_host managed node group.
 #
 # Standalone eks-managed-node-group submodule (not part of `module "eks"`)
-# because we want Karpenter-related AWS resources to live in this stack
-# rather than aws/eks/. See Plan 2 spec Decision 5 for rationale.
+# because Karpenter-related AWS resources are scoped to this stack to keep
+# EKS cluster management (aws/eks/) separate from workload scheduling infra.
 
 module "karpenter_controller_host" {
   source  = "terraform-aws-modules/eks/aws//modules/eks-managed-node-group"
@@ -140,15 +140,13 @@ module "karpenter_controller_host" {
   # `karpenter-controller-host-eks-node-group` (40 chars, within the
   # IAM role name 64-chars limit).
   #
-  # 採用根拠: spec Decision 1 が AWS 物理名 `karpenter-controller-host`
-  # を要件として固定しているため、name_prefix を諦めて fixed name を
-  # 採用した。短縮名で name_prefix を保つ代替案 (例: `karpenter-ctrl-host`)
-  # は spec の物理名規約に反するため不採用。
+  # The AWS physical name `karpenter-controller-host` is fixed by external
+  # contract (eks-login script / dashboard references), so name_prefix is
+  # disabled and a deterministic role name is used.
   #
-  # Side effect: fixed IAM role name は immutable なので、将来この MNG
-  # を再 rename する場合 create_before_destroy が role name 重複で fail
-  # する。再 rename 時は旧 role を先に destroy してから apply する
-  # 2-step 運用が必要 (本 PR と同種の操作の繰り返しでない限り発生しない)。
+  # Side effect: a fixed IAM role name is immutable, so a future rename of
+  # this MNG would make create_before_destroy fail with a role-name conflict.
+  # If renamed, destroy the old role first, then apply (a 2-step operation).
   iam_role_use_name_prefix = false
 
   tags = var.common_tags
