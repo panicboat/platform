@@ -1885,3 +1885,178 @@ learnings 候補:
 - [ ] post-flight 5 連続 validate 確認 (= 5-1 L2 / 5-2 L1 pattern)
 - [ ] latent issue 検出時 fix forward PR で resolve (= #21 Mimir reject / その他)
 - [ ] post-execution learnings doc 作成 (= 別 PR、 plan に section 追加)
+
+---
+
+## Post-execution learnings (= Phase 6-2 完了後、 別 PR で記録)
+
+### 完了 summary
+
+| 項目 | 内容 |
+|---|---|
+| platform PR (= main) | [#343](https://github.com/panicboat/platform/pull/343) (= spec / plan / Instrumentation CR / Kustomization resume) |
+| 並行 monorepo PR (= main) | [#600](https://github.com/panicboat/monorepo/pull/600) (= terragrunt RDS + application code OTel SDK + K8s manifests + Flux Image Update Automation + README) |
+| Fix forward PR (= platform) | [#344](https://github.com/panicboat/platform/pull/344) (= Instrumentation CR `spec.ruby` block 削除) |
+| Fix forward PR (= monorepo) | [#601](https://github.com/panicboat/monorepo/pull/601) (= monolith OTel env hardcode + terragrunt secret_version 削除) + [#602](https://github.com/panicboat/monorepo/pull/602) (= ImagePolicy `interval` 追加) |
+| user manual operation | `terragrunt state rm aws_secretsmanager_secret_version.monolith_database` |
+| Phase 1-5 + 6-1 既 deploy 済 zero regression | achieved |
+| post-flight 6 連続 validate (= 5-1 L2 / 5-2 L1 pattern) | achieved |
+
+### 累計 fix forward PR (= Phase 4-6 で 9 件)
+
+| PR # | repo | 起因 | Resolution |
+|---|---|---|---|
+| #305 | platform | 4b regression | observability DaemonSets PriorityClass |
+| #311 | platform | 4-3 設計起因 | oauth2-proxy 4 instances per backend |
+| #312 | platform | 3 Sub-project 2 latent | Mimir RF=1 for single-replica |
+| #314 | platform | 3 Sub-project 2 latent | Mimir cardinality limit |
+| #316 | platform | 4-1 latent | Cilium Hubble CA-based ClusterIssuer |
+| #327 | platform | 6-1 chart default 起因 | OTel Operator metrics auth disable |
+| **#344** | platform | 6-2 chart schema 起因 | Instrumentation CR `spec.ruby` 削除 |
+| **#601 (3rd commit) / #602** | monorepo | 6-2 設計起因 | monolith OTel env + secret_version + ImagePolicy interval |
+
+= **9 件中 4 件 past sub-project latent**、 **5 件 現 sub-project 設計起因** (= chart default / schema / Flux validation rule 等)。
+
+---
+
+### L1 (= 6-2 L1): chart actual structure を helmfile + values / Instrumentation CR 設計時に systematic verify (= 6-1 L1 extension)
+
+**Title**: chart upstream の CRD schema / values structure を **plan 段階で `helm show values` / `kubectl explain CRD`** で verify
+
+**Context**: 6-2 spec / plan で OTel Operator chart 0.112.1 の Instrumentation CR は `spec.ruby` で Ruby auto-injection 可能と前提。 actual chart 0.112.1 の CRD schema には `ruby` field 不在 (= upstream 0.155.0+ で追加された可能性)、 deploy 時 schema validation error で flux-system Kustomization 全体 reconcile failure、 6-2 application stack 全 deploy block。
+
+**Lesson**:
+
+- chart の概念名 (= "Ruby auto-injection") が **chart version 依存**、 plan 記述前に `kubectl explain instrumentation.spec --recursive` で actual schema 確認必須
+- 6-1 L1 (= `helm show values` で chart values structure 確認) の延長: **CRD schema** も verify 対象
+
+**Apply going forward**:
+
+- application chart / CRD 利用時に **`kubectl explain` + `helm show values`** を systematic step として subagent dispatch instruction に含める
+- chart version pin (= 5-1 L1 binary verify) と schema verify (= 6-1 L1 + 6-2 L1) の 2 段階確認
+
+---
+
+### L2 (= 6-2 L2): multi-actor tool version 統一の重要性 (= 引き継ぎ #24 root cause)
+
+**Title**: panicboat 全 repo (= monorepo + platform) で tool version 管理の single source of truth 確立、 multi-actor (= local human / subagent / CI runner) で deterministic な tool 利用
+
+**Context**: 6-2 で OpenTofu version mismatch が deploy chain で複数顕在化:
+
+- monorepo CI runner = mise install (= OpenTofu 1.11.6 + terragrunt 1.0.2、 `.tool-versions` 不在で mise-action input 経由)
+- platform CI = aqua install (= helm 3.17.3 + helmfile 0.169.2 + kustomize 5.6.0、 `.github/aqua.yaml` で pin)
+- local human / subagent = tfenv / mise / aqua / local default 混在 (= deterministic でない)
+
+monorepo PR #600 で template terraform.tf `required_version = "1.15.1"` (= Hashicorp Terraform pin) が CI OpenTofu 1.11.6 と不整合、 CI fail → fix forward `">= 1.11.0"` で resolve。
+
+**Lesson**:
+
+- tool version 管理は **single source of truth** で multi-actor 整合必須
+- panicboat monorepo は mise (= CI で使用)、 platform は aqua、 2 manager 並立 = 統一推奨
+
+**Apply going forward**:
+
+- 引き継ぎ #24 (= panicboat 全 repo tool version 管理統一) で systematic 対応、 別 phase
+- 全 actor (= local / subagent / CI) で同 manager (= 例 aqua) 経由 install + version pin
+
+---
+
+### L3 (= 6-2 L3): terragrunt state refresh と plan role design philosophy の整合
+
+**Title**: `aws_secretsmanager_secret_version` の state refresh で `GetSecretValue` 必要、 panicboat plan role (= read-only) 思想と conflict。 secret value を IaC scope 外で manage する pattern 確立
+
+**Context**: 6-2 で `aws_secretsmanager_secret_version.monolith_database` を terragrunt provision (= IaC で secret value 管理)。 panicboat の plan role は read-only 思想で `secretsmanager:GetSecretValue` 権限を意図的に除外 (= secret value 漏洩防止)。 state refresh で plan fail。
+
+`lifecycle.ignore_changes` は **diff 計算 skip するが state refresh skip しない** = ineffective。 真の解決: secret_version resource を terragrunt scope から除外、 secret value は IaC 外で manage (= AWS Console / CLI / Lambda)、 ESO は引き続き secret value を read。
+
+**Lesson**:
+
+- terragrunt の `lifecycle.ignore_changes` は state refresh phase に影響しない
+- secret value provision を IaC scope に含めると plan role design (= read-only) と conflict
+- 解決 pattern: **secret container (= `aws_secretsmanager_secret`) のみ terragrunt manage、 secret value は IaC 外**
+
+**Apply going forward**:
+
+- panicboat の secret management 設計 standard として記録 (= 引き継ぎ #12 = AWS Secrets Manager Automatic Rotation の design と整合、 rotation も IaC 外)
+- future application で secret value provision するなら、 ESO + AWS Secrets Manager + IaC 外 manual / Lambda の pattern を踏襲
+
+---
+
+### L4 (= 6-2 L4): Flux ImagePolicy `digestReflectionPolicy: Always` で `interval` required (= controller validation rule)
+
+**Title**: image-reflector-controller v1.1.x で `digestReflectionPolicy: Always` 利用時に `spec.interval` 必須化 (= CEL validation rule)、 chart / controller version-specific validation rule の事前確認
+
+**Context**: 6-2 で monolith / frontend に新規追加した ImagePolicy で `digestReflectionPolicy: Always` 設定、 `spec.interval` 省略。 image-reflector-controller v1.1.x の CEL validation で reject、 monorepo-cluster Kustomization 全体 dry-run fail → application stack deploy block。 既 nginx pattern (= 既削除済、 6-1 で nginx 削除) には interval 設定済、 6-2 新規追加で漏れ。
+
+**Lesson**:
+
+- Flux controller version-specific validation rule (= CEL) の chart / CRD level 確認必須
+- 既存 reference pattern (= 既 nginx) があっても、 controller version upgrade で validation 強化される可能性
+
+**Apply going forward**:
+
+- chart / Flux CRD 利用時に **`kubectl get crd <name> -o yaml` で CEL rule + required fields 確認**
+- 6-2 L1 / 6-1 L1 と同 systematic step (= `helm show values` + `kubectl explain` + `kubectl get crd`)
+
+---
+
+### L5 (= 6-2 L5): 5-1 L2 / 5-2 L1 pattern 6 連続 validate established
+
+**Title**: post-flight regression check pattern の 6 連続 validate (= 4-3 / 5-1 / 5-2 / 6-1 / 6-2 + 本 fix forward chain)、 issue category 分布の確認
+
+**Context**: Phase 4-6 累計 9 件 fix forward PR の category 分布:
+
+- **past sub-project latent issue 表面化** (= 4 件): #305 / #312 / #314 / #316 (= 3 / 4-1 / 4b 設計の latent issue が 4-3 / 5-1 / 5-2 で表面化)
+- **現 sub-project 設計起因** (= 5 件): #311 / #327 / #344 / #601 commits / #602 (= 4-3 / 6-1 / 6-2 の chart default / schema / Flux validation 起因)
+
+**Lesson**:
+
+- post-flight regression check は **両 category** で機能、 deploy 後の latent issue を確実に検出
+- 6 連続 validate で pattern **完全機能** confirmation
+- category 比率は **時期に依存** (= 早期 phase は past latent 比率高、 後期 phase は現設計起因比率上昇)
+
+**Apply going forward**:
+
+- 6-3 以降の sub-project でも post-flight check pattern 継続、 latent issue category 別 record
+- 引き継ぎ事項 update を learnings doc に systematic 記録
+
+---
+
+### 引き継ぎ事項 final list (= Phase 6-2 完了時点 28 項目)
+
+Phase 1-6 累計引き継ぎ事項を **8 categories** に整理 (= Phase 5 closure doc 6 categories + 6-1 で +2 + 6-2 で +5):
+
+#### Category G (= 6-2 で追加): Multi-repo Tooling + Documentation
+
+| # | 項目 | Status |
+|---|---|---|
+| #24 | panicboat 全 repo で tool version 管理の仕組みを統一 (= mise / aqua / 他 single source of truth) | Phase 6+ で別 PR / 別 phase 対応 |
+| #25 | OTel Operator chart upgrade for Ruby auto-injection support (= chart 0.155.0+ で `spec.ruby` field 取得、 monolith env hardcode 撤去 + `inject-ruby` annotation 復活) | chart upgrade timing で対応 |
+| #26 | 既 commit comments の "when" / "future" 記述 cleanup (= CLAUDE.md Documentation rule 遵守) | systematic 別 PR で対応 |
+
+#### Category H (= 6-2 で追加): Application stack issues
+
+| # | 項目 | Status |
+|---|---|---|
+| #27 | ImageUpdateAutomation commitTemplate `.Updated` field deprecation (= Flux 新版で `.Changed` migrate) | 別 fix forward PR (= scope 小) |
+| #28 | monolith Hanami migration failure investigation (= Sequel migrator fallback で起動継続、 DB schema 未 initialize 可能性) | 6-3 application traffic validation で再現確認 + fix forward |
+
+#### Category B 継続 (= 5 closure doc から)
+
+- #21 Mimir max-label-names-per-series 30 → 35 (= application 投入で増えず、 nginx 由来のみ、 6-3 traffic 投入で再 observation 推奨)
+
+#### 他 categories (= Phase 5 closure doc + 6-1 learnings reference)
+
+Phase 5 closure doc Section 4 + Phase 6-1 learnings に既記録、 詳細省略。
+
+---
+
+### Phase 6-3 + 後続 phase への handoff
+
+- **Phase 6-3** (= application traffic validation + DNS / ACM domain 公開 + 3-layer observability validation): 6-2 で deploy 完了の application stack を utilize、 actual traffic + observability chain (= Beyla + Hubble + OTel) 確認
+- **別 fix forward PR**: #27 ImageUpdateAutomation `.Updated` → `.Changed` migration
+- **別 phase**: #24 tool version 統一、 #25 OTel chart upgrade、 #26 comments cleanup、 #28 migration investigation
+
+panicboat 個人運用 cluster の Phase 1-6 maturity:
+
+- foundation (= Phase 1-4) + observability (= Phase 3-4) + secrets / auth (= Phase 4) + monitoring stack (= Phase 3-4) + demo validation (= Phase 5) + monorepo migration foundation (= Phase 6-1) + application deploy (= Phase 6-2) = **production-grade cluster on individual scale** 達成。
