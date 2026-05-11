@@ -1,6 +1,6 @@
 # EKS Production: Tempo Metrics-Generator + Service Graph Design
 
-> **Goal**: production の Tempo に metrics-generator を有効化し、`service-graphs` processor が生成する pairwise service edge metrics を Mimir に remote-write する。Grafana の Tempo datasource に `serviceMap` 設定を追加し、Application / Unified Monitoring dashboard の Service Graph panel を動かす。
+> **Goal**: production の Tempo に metrics-generator を有効化し、`service-graphs` processor が生成する pairwise service edge metrics を Mimir に remote-write する。Grafana の Tempo datasource に `serviceMap` 設定を追加し、Application / Unified Monitoring dashboard の Service Graph panel を動かす。併せて `kubernetes/README.md` の architecture 図 2 つを新規矢印で update。
 
 ---
 
@@ -145,11 +145,62 @@ Tempo datasource の `jsonData` に `serviceMap` を追加:
       datasourceUid: mimir
 ```
 
-### 3. Dashboard JSON は変更不要
+### 3. `kubernetes/README.md`
+
+architecture が変わる (Tempo metrics-generator → Mimir 矢印が新規追加) ため、README の 2 つの Mermaid 図を更新する。
+
+**3-1. Main architecture diagram (L9-70):**
+
+新規矢印追加 + 既存の visualization 矢印 3 本を convention 統一のため反転 (実線 push → 点線 pull):
+
+```diff
+     %% Long-term storage
+     Mimir --> S3Mimir
+     Tempo --> S3Tempo
+     Loki --> S3Loki
+
++    %% Tempo metrics-generator → Mimir (service-graph metrics)
++    Tempo -->|remote_write<br/>traces_service_graph_*| Mimir
+
+     %% Visualization
+-    Mimir --> Grafana
+-    Tempo --> Grafana
+-    Loki --> Grafana
++    Grafana -.-> Mimir
++    Grafana -.-> Tempo
++    Grafana -.-> Loki
+```
+
+**3-2. Dataflow diagram (L87-122):**
+
+同様に Tempo → Mimir remote_write 矢印を追加 + visualization 矢印反転:
+
+```diff
+     OTel -.->|self-metrics scraped| P
+     OTel -->|OTLP| T
+     OTel -->|OTLP HTTP logs| LO
+
+-    P --> Grafana
+-    T --> Grafana
+-    LO --> Grafana
++    T -->|remote_write<br/>traces_service_graph_*| P
++
++    Grafana -.-> P
++    Grafana -.-> T
++    Grafana -.-> LO
+```
+
+**3-3. 統合監視スタック section (L223-230) は変更しない:**
+
+Tempo の 1 行説明文 (`- **Tempo**: 分散トレーシングバックエンド`) は触らない。図で十分表現できる + 本文に詳細を入れると PR-C の cleanup 対象と混ざる。
+
+**Convention note:** visualization 矢印反転は厳密な data-flow direction と異なる (Grafana → datasource は "depends on / queries" direction)。図内に "data flow" convention の点線 (`Hubble -.-> Prometheus` 等) と混在するが、telemetry 側は data flow / Grafana 側は dependency direction という読み手にとって自然な使い分けを優先。
+
+### 4. Dashboard JSON は変更不要
 
 `kubernetes/components/dashboard/production/kustomization/grafana/app-monitoring.json:446` の `queryType: "serviceMap"` panel は Tempo datasource の `serviceMap.datasourceUid` jsonData を参照する。datasource 側の設定で自動的に動作する。
 
-### 4. local 構成は変更しない
+### 5. local 構成は変更しない
 
 local の Tempo は既に metrics-generator 有効 + `service-graphs` + `span-metrics` の両 processor で稼働中。本 PR は production 側のみ変更し、local の歴史的構成を尊重する (surgical changes 原則)。local の `span-metrics` 削除 / local Tempo datasource への `serviceMap` 追加等は別 PR (= local の OTel-native 化 / dashboard 統一の文脈) で扱う。
 
@@ -191,6 +242,9 @@ iteration 中の手元 commit は push せず、まとめて最終 commit にす
    - Beyla 由来の `http_server_*` 系 metrics が継続して Mimir に流入していること (= Application Monitoring dashboard が引き続き動作)
    - Mimir の `up{job="tempo"}` が継続して 1
 
+6. **README diagram の整合性確認**
+   - `kubernetes/README.md` の 2 つの Mermaid 図を local エディタの preview か GitHub web UI で表示し、syntax error が無く新規矢印 (`Tempo --> Mimir`) と反転後の visualization 矢印が正しく描画されることを確認
+
 ---
 
 ## Risks / Open Questions
@@ -202,6 +256,7 @@ iteration 中の手元 commit は push せず、まとめて最終 commit にす
 | service-graphs の cardinality 増加 | Mimir 書き込み量 / cost 増 | 現状 service 数 ~数個 (nginx-sample + system)、影響軽微。実観測で大量 series が発生したら別 PR で `dimensions` 制限 |
 | Tempo Pod 再起動時の monolithic mode における metrics-gen + ingester の競合 | 起動失敗 | 公式に monolithic mode + metrics-generator は同居可、Tempo 2.6.1 でサポート済 |
 | Grafana datasource provisioning の reload tail | datasource 設定の反映に Grafana Pod restart が必要な可能性 | chart の Grafana sidecar が ConfigMap reload を検知して自動再読込、効かなければ `kubectl rollout restart deploy/kube-prometheus-stack-grafana` で対応 |
+| README Mermaid 図の syntax error | GitHub web UI で図が描画されない | local エディタの preview で先に確認、PR 作成後の GitHub preview で再確認 |
 
 ---
 
@@ -212,4 +267,4 @@ iteration 中の手元 commit は push せず、まとめて最終 commit にす
 - Mimir 側の retention / tenant 設計変更
 - local の構成変更 (local Tempo の `span-metrics` 削除、local Tempo datasource の `serviceMap` 追加等)
 - Tempo の HA 化 / replica 数増 (= 別 phase)
-- `kubernetes/README.md` の historical commentary 整理 (= PR-C で一括)
+- `kubernetes/README.md` の historical commentary 整理 (= `Plan N で導入` / `撤去済 in PR N` 等の累積 annotation 削除は PR-C で一括)。本 PR で touch する README 編集は architecture 図の "what" 更新に限定。
