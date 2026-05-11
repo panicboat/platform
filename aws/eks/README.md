@@ -31,7 +31,7 @@ EKS clusters `eks-${env}` for the panicboat platform.
 
 人間が kubectl を叩く経路は **`eks-admin-production` IAM role を assume する 1 本のみ**。CI 上の apply role は AWS API のみで Kubernetes API は触らない（GitOps 原則）。
 
-### Quick start (推奨: login script)
+### Quick start (recommended: login script)
 
 `panicboat/ansible` で deploy される `eks-login.sh` を source する：
 
@@ -53,7 +53,7 @@ source ~/Workspace/eks-login.sh staging us-west-2        # 未知 env は region
 
 > Source 必須（実行しても export が parent shell に反映されない）。スクリプトは `source` チェックで弾く。
 
-### Manual login (script なし)
+### Manual login (without script)
 
 ```bash
 ENV=production
@@ -75,7 +75,7 @@ aws eks update-kubeconfig --region "${REGION}" --name "eks-${ENV}"
 
 session を破棄するには `unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN`。
 
-## terragrunt 操作
+## terragrunt operations
 
 通常は CI が PR 経由で plan / apply を実行する（merge 時に main push が trigger）。手元から流したい場合：
 

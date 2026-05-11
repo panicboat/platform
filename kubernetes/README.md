@@ -1,10 +1,10 @@
 # Kubernetes Platform with Cilium Service Mesh & GitOps
 
-## 概要
+## Overview
 
 **Ciliumサイドカーレスサービスメッシュ**と**FluxCD GitOps**を組み合わせたKubernetesプラットフォーム。**Helmfile Hydration Pattern** により、HelmチャートとKustomizeマニフェストを一元管理し、純粋なYAMLとしてGit管理することで、GitOpsの信頼性と可視性を向上させています。
 
-## 🏗️ アーキテクチャ
+## 🏗️ Architecture
 
 ```mermaid
 flowchart LR
@@ -73,7 +73,7 @@ flowchart LR
     Grafana -.-> Loki
 ```
 
-### 役割分離
+### Role separation
 
 Signal は role 別に 2 funnel で流す。
 
@@ -121,23 +121,23 @@ production で S3 を選ぶのは scale 要件の一致による:
 
 local 環境では同じ backend が local PVC で動作する (= dev サイクル短期 retention で S3 不要)。production-specific な storage choice。
 
-## 💡 設計思想
+## 💡 Design principles
 
-### Hydration Pattern 戦略
+### Hydration pattern strategy
 
 **Why Hydration?**
 1.  **可視性 (Visibility)**: 実際に適用される YAML が `manifests/` に存在するため、コミットログで変更理由が明確になる。
 2.  **安全性 (Safety)**: Helm チャートのレンダリング結果を承認してからデプロイ可能。予期せぬ Breaking Change を防ぐ。
 3.  **環境分離 (Isolation)**: `helmfile -e <env>` により環境ごとの差異を吸収しつつ、バージョン管理を厳密化。
 
-### 構成管理
+### Configuration management
 
 - **Components (`components/`)**: アプリケーションのソース（Helm Values, Kustomize Base/Overlays）。
 - **Manifests (`manifests/`)**: 自動生成される最終成果物。
 
 ## 🚀 Local Development
 
-### Phase 1: Foundation Setup (基盤構築)
+### Phase 1: Foundation Setup
 ```bash
 make phase1
 ```
@@ -146,14 +146,14 @@ make phase1
 - **Cilium CNI** + Gateway Controller (kube-proxy置換)
 - CoreDNS修正・DNS解決確認
 
-### Phase 2: FluxCD Installation (GitOps基盤)
+### Phase 2: FluxCD Installation
 ```bash
 make phase2
 ```
 - FluxCD コントローラーインストール
 - GitOps基盤構築
 
-### Phase 3: Hydration & Sync (アプリ展開)
+### Phase 3: Hydration & Sync
 ```bash
 make phase3
 ```
@@ -194,13 +194,13 @@ make phase4
 
 ### Make commands
 
-### 完全自動セットアップ
+### Full automatic setup
 ```bash
 make up              # Phase 1-4 全自動実行
 make down            # クラスター完全削除
 ```
 
-### 個別操作
+### Individual operations
 ```bash
 make hydrate                              # 全コンポーネント生成 (components -> manifests)
 make hydrate-component COMPONENT=<name> ENV=<env>  # 単一コンポーネントのみ再生成（CI 用）
@@ -210,7 +210,7 @@ make cilium-install  # Cilium Bootstrap
 make status          # クラスター状態確認
 ```
 
-### GitOps管理
+### GitOps operations
 ```bash
 make gitops-setup    # FluxCD GitOps設定
 make gitops-enable   # 全コンポーネントGitOps化
@@ -219,39 +219,39 @@ make gitops-status   # GitOps状態確認
 
 ### Local troubleshooting
 
-### よくある問題
+### Common issues
 ```bash
-# DNS解決失敗
+# DNS resolution failure
 make coredns-update
 
-# Gateway Controller未起動
+# Gateway Controller not running
 kubectl -n kube-system rollout restart deployment/cilium-operator
 
-# HelmRelease状態確認
+# HelmRelease status check
 kubectl get helmreleases -A
 flux logs
 ```
 
-### ログ確認
+### Log inspection
 ```bash
 flux get all -A              # FluxCD状態
 cilium status               # Cilium状態
 kubectl logs -n kube-system -l k8s-app=cilium
 ```
 
-### 開発ワークフロー
+### Development workflow
 
-### ローカル開発 (高速)
+### Local development (fast)
 ```bash
 make up                     # 2-3分で完全環境
-# 開発・テスト・実験
+# development / test / experiment
 make down && make up        # 高速リセット
 ```
 
-### 本番運用移行
+### Production transition
 ```bash
 make phase4                 # Bootstrap → GitOps
-# 継続的デプロイメント開始
+# start continuous deployment
 ```
 
 ## 🏢 Production Operations
@@ -350,16 +350,16 @@ Web UI は ALB IngressGroup `panicboat-platform` で 1 ALB を共有、ExternalD
 cluster を新規作成した直後に 1 回だけ実行する。すでに完了済の場合は skip。
 
 ```bash
-# 1. eks-admin role を assume して kubectl 接続
+# 1. Assume eks-admin role and connect via kubectl
 eks-login production
 
-# 2. Flux controllers を install
+# 2. Install Flux controllers
 make flux-install ENV=production
 
-# 3. Self-sync 設定を apply（main ブランチからの GitOps 開始）
+# 3. Apply self-sync config (start GitOps from main branch)
 make gitops-setup ENV=production
 
-# 4. Sync が成功したことを確認
+# 4. Verify sync succeeded
 make gitops-status ENV=production
 ```
 
@@ -368,32 +368,32 @@ make gitops-status ENV=production
 GitOps が enable されているため、manifests の変更は **常に main ブランチへの merge 経由** で行う。直接 `kubectl apply` は drift を生むので避ける。
 
 ```bash
-# Flux の sync 状況を確認
+# Check Flux sync status
 make gitops-status ENV=production
 
-# Flux の reconciliation を手動 trigger（main の最新を即座に sync）
+# Manually trigger Flux reconciliation (sync latest main immediately)
 flux reconcile source git flux-system -n flux-system
 flux reconcile kustomization flux-system -n flux-system
 
-# 全 GitOps リソースを一覧
+# List all GitOps resources
 flux get all -A
 ```
 
 ### Cilium-specific operations
 
 ```bash
-# Cilium 全体ヘルスチェック
+# Cilium overall health check
 cilium status
 
-# 接続性テスト（test namespace を作る、数分かかる）
+# Connectivity test (creates test namespace, takes a few minutes)
 cilium connectivity test --test '!check-log-errors'
-# 完了後の test namespace 手動削除
+# Manually delete test namespace after completion
 kubectl delete namespace cilium-test-1 cilium-test-ccnp1 cilium-test-ccnp2 --ignore-not-found
 
-# Hubble flow 観測
+# Observe Hubble flows
 hubble observe --last 20
 
-# Hubble UI (= https://hubble.panicboat.net/ 、oauth2-proxy 経由で外部公開)
+# Hubble UI (= https://hubble.panicboat.net/, exposed via oauth2-proxy)
 cilium hubble ui
 ```
 
@@ -423,11 +423,11 @@ kubectl logs -n kube-system deploy/aws-load-balancer-controller --tail=20
 kubectl get deployment -n external-dns external-dns
 kubectl logs -n external-dns deploy/external-dns --tail=20
 
-# ACM cert (terragrunt 管理、ALB Controller が auto-discovery)
+# ACM cert (managed by terragrunt, ALB Controller auto-discovers)
 aws acm list-certificates --region ap-northeast-1 \
   --query "CertificateSummaryList[?DomainName=='*.panicboat.net']"
 
-# Ingress / ALB / Route53 record の確認
+# Check Ingress / ALB / Route53 records
 kubectl get ingress -A
 kubectl describe ingress <name> -n <ns>                              # ALB DNS / cert ARN
 aws route53 list-resource-record-sets --hosted-zone-id <zone-id>     # ExternalDNS が作った record
@@ -465,13 +465,13 @@ aws eks list-pod-identity-associations --cluster-name eks-production --namespace
 | Pending pod があるのに Karpenter が node を起動しない | NodePool の requirements にマッチする instance type が region で出ない (capacity 不足) or `limits.cpu` に達している。`kubectl describe pod <pending-pod>` の events で Karpenter の判断ログを確認、必要なら一時的に NodePool requirements を緩める (e.g., `instance-generation` の下限を下げる、`instance-category` に他 series を追加) |
 | Karpenter pod が IAM role に assume できない | Pod Identity Association 未設定 or aws-pod-identity-agent (addon) が未稼働。`aws eks list-pod-identity-associations --cluster-name eks-production --namespace karpenter` で association 確認、`kubectl logs -n kube-system daemonset/eks-pod-identity-agent` で agent 状態確認 |
 
-### GitOps 原則
+### GitOps principles
 
 - **kubectl で直接 apply / edit / delete しない**: Flux と drift して reconciliation で上書きされる
 - **緊急 rollback** が必要な場合は `git revert` で main に戻す。main を直接 force-push するのは禁止
 - **Flux 自体の障害**で sync が止まった場合は、`flux suspend kustomization flux-system -n flux-system` で一時停止し、原因究明後に `flux resume` で再開
 
-## 障害調査例
+## Incident investigation examples
 
 ```mermaid
 flowchart LR
