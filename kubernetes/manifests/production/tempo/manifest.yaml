@@ -78,8 +78,27 @@ data:
     query_frontend:
           {}
     overrides:
-          defaults: {}
+          defaults:
+            metrics_generator:
+              processors:
+              - service-graphs
           per_tenant_override_config: /conf/overrides.yaml
+    metrics_generator:
+      processor:
+            service_graphs:
+              max_items: 10000
+              wait: 10s
+      registry:
+            external_labels:
+              cluster: eks-production
+      storage:
+        path: "/tmp/tempo"
+        remote_write:
+              - headers:
+                  X-Scope-OrgID: anonymous
+                url: http://mimir-distributed-gateway.monitoring.svc.cluster.local/api/v1/push
+      traces_storage:
+        path: "/tmp/traces"
 ---
 # Source: tempo/templates/service.yaml
 apiVersion: v1
@@ -169,7 +188,7 @@ spec:
         app.kubernetes.io/name: tempo
         app.kubernetes.io/instance: tempo
       annotations:
-        checksum/config: 534d0042ccea663a2c5008515724c6ce56539d5e2cb48600ecd9e4a47612199f
+        checksum/config: dcf1e4227dbd17c2c3acd77d5e30210491073428338e8b0db39748c2ecdbbced
     spec:
       serviceAccountName: tempo
       automountServiceAccountToken: true
@@ -236,6 +255,8 @@ spec:
           name: tempo-conf
         - mountPath: /var/tempo
           name: storage
+        - mountPath: /tmp
+          name: tmp
       securityContext:
         fsGroup: 10001
         runAsGroup: 10001
@@ -245,6 +266,8 @@ spec:
       - configMap:
           name: tempo
         name: tempo-conf
+      - name: tmp
+        emptyDir: {}
   updateStrategy:
     type:
       RollingUpdate

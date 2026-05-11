@@ -54,10 +54,44 @@ tempo:
   # は aws/eks-traces/ S3 lifecycle で担保。
 
   # -------------------------------------------------------------------------
-  # Metrics generator は OFF (= advanced features、Phase 4 で再検討)
+  # Metrics generator
   # -------------------------------------------------------------------------
+  # service_graphs processor のみ enable し、生成される traces_service_graph_*
+  # を Mimir に remote_write する。Beyla が既に http_server_* で RED metrics を
+  # 出しているため span_metrics は併走させない (cardinality 二重持ち回避)。
+  # tenant header (X-Scope-OrgID: anonymous) は既存 Prometheus remote_write と同値。
+  # external_labels.cluster は multi-cluster 集約時の expectation に備えて付与。
+  #
+  # NOTE: chart v1.24.4 は metricsGenerator.remoteWriteHeaders field を持たない。
+  # tenant header を渡すには storage.remote_write をフルリストで指定する
+  # (chart template が空でない時のみリストをそのまま使うため remoteWriteUrl は無視される)。
   metricsGenerator:
-    enabled: false
+    enabled: true
+    registry:
+      external_labels:
+        cluster: eks-production
+    processor:
+      service_graphs:
+        wait: 10s
+        max_items: 10000
+    storage:
+      path: /tmp/tempo
+      remote_write:
+        - url: http://mimir-distributed-gateway.monitoring.svc.cluster.local/api/v1/push
+          headers:
+            X-Scope-OrgID: anonymous
+
+  # -------------------------------------------------------------------------
+  # Overrides (multitenancy OFF でも processor を起動させるために必要)
+  # -------------------------------------------------------------------------
+  # Tempo の仕様: per-tenant `metrics_generator.processors` が空だと processor は
+  # 起動しない。multitenancy OFF (1 tenant anonymous) でも `defaults` 経由で明示
+  # 列挙が必要。
+  overrides:
+    defaults:
+      metrics_generator:
+        processors:
+          - service-graphs
 
 # =============================================================================
 # ServiceAccount (Pod Identity for S3 access)
