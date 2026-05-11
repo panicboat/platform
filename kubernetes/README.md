@@ -63,10 +63,13 @@ flowchart TB
     Tempo --> S3Tempo
     Loki --> S3Loki
 
+    %% Tempo metrics-generator → Mimir (service-graph metrics)
+    Tempo -->|remote_write<br/>traces_service_graph_*| Mimir
+
     %% Visualization
-    Mimir --> Grafana
-    Tempo --> Grafana
-    Loki --> Grafana
+    Grafana -.-> Mimir
+    Grafana -.-> Tempo
+    Grafana -.-> Loki
 ```
 
 ### 役割分離
@@ -116,10 +119,48 @@ flowchart LR
     OTel -->|OTLP| T
     OTel -->|OTLP HTTP logs| LO
 
-    P --> Grafana
-    T --> Grafana
-    LO --> Grafana
+    T -->|remote_write<br/>traces_service_graph_*| P
+
+    Grafana -.-> P
+    Grafana -.-> T
+    Grafana -.-> LO
 ```
+
+### Backend role separation
+
+3 つの telemetry backend (Mimir / Tempo / Loki) と短期 buffer の Prometheus は、signal type ごとに役割を分離して並走させる。
+
+| Component | Signal | Mode | Backing store | Retention | Receives |
+|---|---|---|---|---|---|
+| Prometheus (kube-prometheus-stack) | metrics | scraper + 短期 buffer | local PVC (gp3 EBS) | 24h | ServiceMonitor / PodMonitor から active scrape |
+| Mimir (mimir-distributed) | metrics | passive store + query gateway | S3 (`mimir-…`) | 90d | Prometheus からの `remote_write` (+ Tempo metrics-generator) |
+| Tempo (monolithic) | traces | trace ingest + metrics-generator | S3 (`tempo-…`) | 7d | OTel Collector からの OTLP traces |
+| Loki (SingleBinary) | logs | log ingest | S3 (`loki-…`) | 30d | OTel Collector からの OTLP logs |
+
+**Prometheus と Mimir で metrics を 2 段に分ける理由:**
+
+Prometheus は cluster 内の active scraper で ServiceMonitor / PodMonitor から metrics を pull する責務。disk 制約から retention は 24h と短い。Mimir は Prometheus が `remote_write` で送ってくる metrics を S3 に堆積する passive store で、長期保存 (90d) と Grafana への query 提供が役割。短期 scrape と長期 store を分離して、両者の retention / capacity を独立に運用する。
+
+Prometheus を agent mode で動かす alternative もあるが、Alertmanager / Prometheus Operator CRD が必要なため full Prometheus を維持している。
+
+**Tempo metrics-generator の delegation pattern:**
+
+Tempo は trace を S3 に保管する primary role に加え、metrics-generator が trace を集計して service-graph metrics を生成する。Tempo は PromQL を喋らないため、生成された metrics は metrics 専門の Mimir に `remote_write` で委譲する。Grafana の Service Graph panel は Tempo datasource を経由しつつ、裏で Mimir に PromQL クエリを投げる構造 (Tempo datasource の `serviceMap.datasourceUid` で Mimir を指定)。
+
+Tempo は「自分の trace を集計した metrics を、metrics 専門の Mimir に委ねる」role separation を取る。
+
+**S3 を共通 backing store にする理由:**
+
+3 backend (Mimir / Tempo / Loki) が ingest / index / query を担う本体で、S3 は **それぞれの永続化層** に位置づく。S3 単独では telemetry data の format (= TSDB block / trace block / chunk + index) を解釈できないため、データ access は必ず backend を経由する (= S3 にデータが先にあって backend がそれを読みに行く、という関係ではない)。
+
+production で S3 を選ぶのは scale 要件の一致による:
+- **durability**: Pod 削除でデータが失われない (EBS は AZ-local、Pod 横断 attach 不可)
+- **retention**: 7d-90d の長期保管
+- **cost**: 数十 GB-数百 GB を EBS で持つより S3 が安価
+- **elastic**: backend pod の replica 数変更で storage rebalance 不要
+
+local 環境では同じ backend が local PVC で動作する (= dev サイクル短期 retention で S3 不要)、production-specific な storage choice。
+
 
 ## 🚀 セットアップ
 

@@ -126,6 +126,10 @@ grafana:
               datasourceUid: loki
             tracesToMetrics:
               datasourceUid: mimir
+            # Service Graph panel: Tempo metrics-generator が remote_write した
+            # traces_service_graph_* metrics を Mimir 経由で query する
+            serviceMap:
+              datasourceUid: mimir
 
 # =============================================================================
 # Prometheus Configuration
