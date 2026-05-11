@@ -91,7 +91,7 @@ monolith OTel trace / metric が Tempo / Prometheus に 0 件流入 (= 引き継
 #### Validation
 
 - post-merge で monolith application が Tempo に span 流入 (= `service.name=monolith` で query 可能)
-- Beyla 復活 investigation は別 (= 引き継ぎ #31)
+- monolith は Beyla 3.x の Ruby/gRPC 非対応により Beyla 経由観測対象外 (= Beyla discovery で `exclude_instrument` 済)、 OTel SDK L1+L2 が単独 trace 担当
 
 ### Component F4: terragrunt module 設計修正 (= 環境名 modules 除外)
 
@@ -199,13 +199,12 @@ Beyla + Hubble + OTel SDK の **3-layer trace 同 trace_id 結合** を validati
 #### Validation items
 
 - **OTel SDK (= L1)**: monolith / frontend application code 内 span 生成、 Tempo で `service.name=monolith` / `service.name=frontend` query 可能
-- **Beyla (= eBPF)**: Beyla 復活 investigation 後 (= 引き継ぎ #31)、 application traffic で Beyla 由来 RED metrics (= Prometheus `http_server_request_duration_seconds`) + span (= Tempo) 確認
+- **Beyla (= eBPF)**: monolith は Beyla 対象外 (= Ruby/gRPC 非対応のため `exclude_instrument` 済、 OTel SDK L1+L2 が担当)。 frontend / reverse-proxy / nginx は Beyla attach 済、 application traffic 投入で Beyla 由来 RED metrics (= Prometheus `http_server_request_duration_seconds`) + span (= Tempo) 確認
 - **Hubble (= Cilium L7 flow)**: cluster 内 L7 flow visualize (= hubble.panicboat.net UI)、 application traffic で frontend → monolith ConnectRPC flow 確認
-- **trace_id 結合**: 同 application request で 3 layer の span が同 trace_id で結合 (= Tempo / Grafana で 1 trace 内に 3 layer span 表示)
+- **trace_id 結合**: 同 application request で 3 layer の span が同 trace_id で結合 (= Tempo / Grafana で 1 trace 内に 3 layer span 表示、 monolith は OTel SDK 由来のみで 2 layer)
 
 #### Out of scope (= 6-3 内では partial cover)
 
-- Beyla 復活 (= 引き継ぎ #31)、 ただし 6-3 で fix forward 可能なら対応
 - multi-cluster trace propagation (= panicboat 1 cluster のため不要)
 
 ### Component 13 checklist application 化
@@ -225,8 +224,8 @@ Phase 5-2 で nginx で達成した 13 checklist を application (= monolith + f
 7. KEDA ScaledObject Prometheus scale (= application traffic 投入時に scale、 6-3 では mechanism 確認 + 引き継ぎ事項候補)
 8. Karpenter node 増加 (= 既 4 nodes で十分、 mechanism 既 deploy 済)
 9. Hubble L3/L4/L7 flow (= application traffic で flow 確認)
-10. Beyla traces → Tempo (= 引き継ぎ #31 復活前提)
-11. Loki logs (= Fluent Bit → OTel → Loki、 ただし Pre-merge fix forward で Loki backend 復旧)
+10. Beyla traces → Tempo (= frontend / reverse-proxy / nginx、 monolith は OTel SDK L1+L2 で別経路)
+11. Loki logs (= OTel Collector → Loki、 `service_name` label 抽出済、 application 流入 validate)
 12. Mimir metrics + Grafana dashboard (= application RED metrics 流入 + Grafana 表示)
 13. ESO secret env 注入 (= 既 6-2 で monolith-database secret 動作確認)
 14. Reloader rollout (= secret rotation で monolith Pod auto-rollout)
@@ -249,23 +248,25 @@ Phase 5-2 で nginx で達成した 13 checklist を application (= monolith + f
 
 ## 3. PR structure
 
-### Pre-merge fix forward PR (= 6-3 開始前、 別 PR)
-
-**Title**: `fix(eks): Loki backend live replica 復旧 (= 6-3 prerequisite)`
-
-**Scope**:
-- `kubernetes/components/loki/production/values.yaml.gotmpl` で replica count / resource limit / scheduling 修正 (= root cause 調査 + fix)
-- hydrate
-
-**理由**: 6-3 で application log を Loki に流入させる前提、 Loki backend 復旧が 13 checklist item 11 (= Loki logs) の前提条件。
-
-### Platform PR
+### Platform PR (= Phase 6-3 本体)
 
 **Title**: `feat(eks): Phase 6-3 — application end-to-end validation`
 
 **Scope**:
 - `kubernetes/components/nginx-sample/` 削除
 - `kubernetes/manifests/production/` で nginx-sample 関連 hydrate cleanup (= make hydrate ENV=production)
+
+### Pre PR (= Monitoring stack hardening)
+
+**Title**: `fix(eks/monitoring): Phase 6-3 Theme B monitoring stack hardening`
+
+**Scope**:
+- `kubernetes/components/prometheus-operator/production/values.yaml.gotmpl` (= `nameValidationScheme: Legacy` で OTel Collector self-metric dotted label を Mimir 互換に escape)
+- `kubernetes/components/beyla/production/values.yaml.gotmpl` (= `attributes.select.http_*` で label 数を 18→11 削減して Mimir limit 内、 `discovery.instrument` への 3.x syntax 移行、 `exclude_instrument: monolith` で Ruby/gRPC 非対応の対象外明示)
+- `kubernetes/manifests/production/{prometheus-operator,beyla}/` hydrate
+- `docs/superpowers/specs/2026-05-12-eks-production-monitoring-stack-hardening-investigation.md` (= root cause + best practice 選定の investigation doc)
+
+**理由**: 13 checklist item 10 / 11 / 12 (= Beyla traces / Loki logs / Mimir metrics) の前提として monitoring stack の reject 0 件状態を確立。 Phase 7 Theme B の主要 work を 6-3 内で fix forward 完了。
 
 ### 並行 monorepo PR
 
@@ -337,11 +338,15 @@ panicboat monorepo の **最終形達成**:
 - K8s namespace 分離 (= namespace `develop` / `staging` / `production`、 1 cluster で並立)
 - 3 RDS instance (= monolith-{develop,staging,production}、 cost ~$45/month)
 
-### Theme B. Monitoring stack hardening (= 引き継ぎ #21 + #31)
+### Theme B. Monitoring stack hardening (= 6-3 Pre PR で fix forward 完了、 残 watch のみ)
 
-- Mimir `validation.max-label-names-per-series: 30 → 35` (= application 投入時 beyla histogram 31 labels reject 解消)
-- Loki backend resilience (= 6-3 Pre-merge fix forward 後の long-term recovery + retention 設計)
-- Beyla 復活 investigation (= eBPF gRPC capture が 0 件の root cause 調査 + fix、 WireGuard / TLS 経路問題確認)
+- 6-3 Pre PR で 3 problem 全 fix 完了 (= investigation doc 参照):
+  - Mimir `max-label-names-per-series` reject (= 引き継ぎ #21、 Beyla `attributes.select` で label 数 18→11 削減で解消)
+  - OTel Collector self-metric dotted label reject (= Prometheus `nameValidationScheme: Legacy` で escape)
+  - Beyla traces 片肺 (= 引き継ぎ #31、 monolith は Ruby/gRPC 非対応で exclude_instrument 済、 frontend / reverse-proxy は application traffic 投入で確認)
+- 残 Phase 7+ watch:
+  - Beyla 公式 Ruby gRPC support 動向 (= 対応されれば monolith の `exclude_instrument` 撤去 + Beyla 経由 distributed trace 取得可能)
+  - Mimir UTF-8 label name 対応 (= 対応されれば Prometheus `nameValidationScheme` を default UTF8 に戻し native dotted attribute 直送可能)
 
 ### Theme C. Platform tool version 統一 + cleanup (= 引き継ぎ #24 + #26)
 
@@ -373,10 +378,8 @@ panicboat monorepo の **最終形達成**:
 - **release-please integration** (= Theme A、 Phase 7 で systematic)
 - **staging + production env active 化** (= Theme A、 Phase 7)
 - **dystopia.city public 公開** (= Theme A、 Phase 7 で develop.panicboat.net から migrate)
-- **Beyla 復活 investigation** (= 引き継ぎ #31、 6-3 で fix forward 可能なら対応、 ただし scope 外)
 - **OTel Operator chart upgrade** (= 引き継ぎ #25、 Theme D)
 - **base / overlays 設計再評価** (= 引き継ぎ #29、 Theme A 内)
-- **Mimir max-label-names-per-series 30 → 35** (= 引き継ぎ #21、 application 投入時 reactive fix forward 可能性、 ただし 6-3 で必須でない)
 - **6-2 で base に修正した env-specific 内容を overlays/develop に migrate** (= 引き継ぎ #29 と同 axis、 Theme A 内)
 - **Phase 6 closure doc 作成** (= Phase 5 closure pattern と同様、 6-3 完了後の別 PR で作成)
 
@@ -391,14 +394,16 @@ panicboat monorepo の **最終形達成**:
 | DNS develop.panicboat.net 公開で NLB internet-facing + ACM cert 紐付け unsuccess | reverse-proxy Service annotation の AWS LB Controller 解釈確認 (= ACM cert ARN annotation の actual deploy 結果) |
 | F4 terragrunt module 修正で AWS resource accidental destroy | `terragrunt plan` で diff 0 を必ず確認、 module 修正前後で resource name 不変 verify |
 | nginx delete で ALB monitoring-uis IngressGroup 動作影響 | Phase 4-3 で 4 monitoring UIs と並立、 nginx 削除で 4 UIs は影響なし想定、 post-flight で再 validate |
-| Pre-merge Loki backend 復旧 fix forward が 6-3 開始を delay | Pre-merge は 6-3 と並行作業可能 (= 別 PR、 別 worktree)、 ただし Loki recovery が 13 checklist item 11 validation の前提 |
 
 ---
 
 ## 9. Validation checklist (= 6-3 完了条件)
 
-### Pre-merge (= fix forward PR)
-- [ ] Loki backend live replica 復旧 PR merged (= 13 checklist item 11 の前提)
+### Pre PR (= Monitoring stack hardening)
+- [ ] Mimir distributor reject 0 件 / 1min (= invalid-label + max-label-names-per-series)
+- [ ] Beyla `/metrics` の http_server_request_duration_seconds_bucket series が ≤ 12 labels
+- [ ] Beyla DaemonSet 2/2 Running、 frontend + reverse-proxy + nginx attach 維持、 monolith 不 attach
+- [ ] Prometheus scrape config に `metric_name_validation_scheme: legacy` 反映確認
 
 ### Platform PR + 並行 monorepo PR (= 同日 merge)
 
@@ -429,8 +434,8 @@ panicboat monorepo の **最終形達成**:
 - [ ] ALB rule 自動削除確認
 
 #### 3-layer observability + 13 checklist application 化
-- [ ] 13 checklist 全 item application 化 validate (= 一部は引き継ぎ事項 reactive、 例 Beyla #31 / Mimir #21)
-- [ ] OTel SDK + Hubble の 2 layer trace 結合 (= Beyla 復活前提なら 3 layer)
+- [ ] 13 checklist 全 item application 化 validate
+- [ ] OTel SDK + Beyla + Hubble の 3 layer trace 結合 (= monolith は Beyla 対象外なので OTel SDK + Hubble の 2 layer)
 
 #### post-flight 7 連続 validate
 - [ ] Phase 1-5 + 6-1 + 6-2 既存 component zero regression
