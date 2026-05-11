@@ -50,6 +50,8 @@ manager:
     metricsEndpoints:
       - port: metrics
         scheme: http
+  # PrometheusRule (= alerting rules for OTel Operator) is not configured;
+  # no OTel Operator-specific alerts are defined for this deployment.
   prometheusRule:
     enabled: false
 

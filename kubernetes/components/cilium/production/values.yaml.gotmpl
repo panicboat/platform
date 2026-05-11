@@ -13,7 +13,10 @@ cni:
 routingMode: native
 endpointRoutes:
   enabled: true
+# VPC CNI with native routing handles L3 forwarding at the VPC level;
+# Cilium masquerade would double-NAT and break pod IP visibility.
 enableIPv4Masquerade: false
+# EKS cluster is IPv4-only (no IPv6 CIDR allocated to the VPC or node groups).
 ipv6:
   enabled: false
 

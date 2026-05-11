@@ -6,6 +6,8 @@
 # =============================================================================
 grafana:
   enabled: true
+  # chart's helm-test pod is not used in CI; disabled to avoid a dangling
+  # Pod that would require manual cleanup after `helm test`.
   testFramework:
     enabled: false
 
