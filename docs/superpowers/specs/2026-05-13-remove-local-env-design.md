@@ -27,6 +27,7 @@ local と production は同名 component でも構成が異なる別物（例: l
   `isLocal` は `components/` 配下で参照ゼロ（`grep -rn 'isLocal' kubernetes/components/` で 0 hit）のため production 側からも除去する。
 
 - `kubernetes/README.md` の local 関連章（k3d セットアップ、`*.local` ホスト名、phase1-4、`make ENV=local` 等の記述）
+- `workflow-config.yaml` の `local` environment entry（CI が deploy-trigger 時にこの env を読み、`components/*/local/` を hydrate しに行こうとするため、削除しないと CI が壊れる）
 
 ## Hydrate Logic Migration
 
