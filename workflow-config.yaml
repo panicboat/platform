@@ -1,6 +1,4 @@
 environments:
-  - environment: local
-
   - environment: develop
     stacks:
       terragrunt:
