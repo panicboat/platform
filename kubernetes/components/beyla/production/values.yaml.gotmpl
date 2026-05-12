@@ -47,9 +47,20 @@ config:
     # (= infra Pod 不在)、全 listening port auto-discover で運用 friction 最小。
     # microservice 追加時に Beyla config 更新不要 (= 新 service の任意 port が
     # 自動 trace 対象)。
+    # NOTE: discovery.services は Beyla 3.x で deprecated (= startup log で warning)、
+    # 新 syntax discovery.instrument に migration。
+    # exclude_instrument: monolith (= Ruby gruf gRPC) は Beyla 3.x の対応外
+    # (= Ruby prober は HTTP only、 gRPC capture 非対応、 attach 成功でも prober
+    # 起動せず trace/metric emit 0 件)。 Ruby observability は OTel SDK L1
+    # (= Gemfile opentelemetry-instrumentation-all) + L2 (= gruf custom interceptor)
+    # の 2-layer 体制で systematic 担当。
+    # https://grafana.com/docs/beyla/latest/configure/service-discovery/
+    # https://grafana.com/docs/beyla/latest/distributed-traces/
     discovery:
-      services:
-        - k8s_namespace: "default"
+      instrument:
+        - k8s_namespace: default
+      exclude_instrument:
+        - k8s_deployment_name: monolith
 
     # -------------------------------------------------------------------------
     # Route Configuration (= heuristic で URL path から route name 自動推論)
@@ -58,11 +69,37 @@ config:
       unmatched: heuristic
 
     # -------------------------------------------------------------------------
-    # Kubernetes Attributes (= service name resolution に K8s metadata を使用)
+    # Attributes (= metric label set 制御)
     # -------------------------------------------------------------------------
+    # kubernetes.enable: K8s metadata を service name resolution + decorator として使用。
+    # select.'*': 全 metric pattern (= http_* / rpc_* / db_client_* / messaging_* 等)
+    # 共通で不要な K8s decorator labels を drop。 exclude 方式採用で forward compatible:
+    # 新言語 / 新 protocol を持つ service が投入されても (= Go gRPC service の rpc_* /
+    # Java SQL service の db_client_* / Kafka producer の messaging_* etc.)、 Beyla 側
+    # auto-detect で metric が emit され、 k8s_* meta 系は同 rule で自動的に絞り込み済。
+    # platform 構成を service 拡張ごとに更新する anti-pattern を回避。
+    # exclude する 6 labels の選定理由:
+    # - k8s_container_name: multi-container Pod 未使用 (= sidecar なし構成)
+    # - k8s_kind / k8s_owner_name: k8s_deployment_name で代用十分
+    # - k8s_pod_start_time: 不要
+    # - k8s_pod_uid: recreate 識別不要、 series churn 抑制 (= 必要時に追加検討)
+    # - k8s_replicaset_name: rollout 追跡は deployment + version dimension で代用
+    # 残す K8s labels (= 4 個): k8s_namespace_name / k8s_deployment_name / k8s_pod_name
+    # / k8s_node_name (= Node 障害切り分け用)。 Mimir max-label-names-per-series=30
+    # default に対し http_*_bucket series で 25 labels (= margin 5)。
+    # https://grafana.com/docs/beyla/latest/configure/metrics-traces-attributes/
     attributes:
       kubernetes:
         enable: true
+      select:
+        '*':
+          exclude:
+            - k8s_container_name
+            - k8s_kind
+            - k8s_owner_name
+            - k8s_pod_start_time
+            - k8s_pod_uid
+            - k8s_replicaset_name
 
     # -------------------------------------------------------------------------
     # Network Filter (= infra Pod の trace を exclude、observation noise 削減)

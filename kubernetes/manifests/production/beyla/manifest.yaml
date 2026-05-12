@@ -34,8 +34,19 @@ data:
     attributes:
       kubernetes:
         enable: true
+      select:
+        '*':
+          exclude:
+          - k8s_container_name
+          - k8s_kind
+          - k8s_owner_name
+          - k8s_pod_start_time
+          - k8s_pod_uid
+          - k8s_replicaset_name
     discovery:
-      services:
+      exclude_instrument:
+      - k8s_deployment_name: monolith
+      instrument:
       - k8s_namespace: default
     filter:
       network:
@@ -147,7 +158,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: cb1df18d938b5272501119ec010f0e9a205c437e21d95f2f15a871e3795dd3f1
+        checksum/config: 1288bb46314b906053376de5bc069612e440d815a261c6b3cc8aa6bb39afa3fc
       labels:
         helm.sh/chart: beyla-1.16.7
         app.kubernetes.io/name: beyla
