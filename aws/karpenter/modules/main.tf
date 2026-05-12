@@ -21,7 +21,7 @@
 
 module "karpenter" {
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"
-  version = "21.19.0"
+  version = "21.20.0"
 
   cluster_name = module.eks.cluster.name
 
@@ -62,7 +62,7 @@ module "karpenter" {
 
 module "karpenter_controller_host" {
   source  = "terraform-aws-modules/eks/aws//modules/eks-managed-node-group"
-  version = "21.19.0"
+  version = "21.20.0"
 
   name         = "karpenter-controller-host"
   cluster_name = module.eks.cluster.name
