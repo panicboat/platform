@@ -175,7 +175,7 @@ git commit -s -m "refactor(monolith/terragrunt): remove environment name hardcod
 module 側 (= modules/main.tf) の identifier / SG name / subnet group name から
 \${var.environment} interpolation を除去、 全て env 別 envs/{env}/terragrunt.hcl
 の inputs で明示。 staging / production env 追加時に module 触らず env 追加のみで
-完結する pattern (= Phase 7 Theme A multi-env active 化の前提)。
+完結する pattern。
 
 Validation: terragrunt plan で resource diff 0 確認、 既 deployed RDS / SG /
 subnet group に変更なし。"
@@ -1060,19 +1060,18 @@ aws secretsmanager delete-secret \
 
 ```bash
 git add kubernetes/
-git commit -s -m "chore(eks): remove nginx-sample component (= Phase 5-2 demo finalized)
+git commit -s -m "chore(eks): remove nginx-sample component
 
-Phase 5-2 で deploy した nginx-sample (= 13 checklist validation 用 demo
-component) は Phase 6-3 application stack (= monolith + frontend + reverse-proxy)
-で代替されたため削除:
+nginx-sample (= 13 checklist validation demo) を削除:
 
 - kubernetes/components/nginx-sample/ (= source values + helmfile)
 - kubernetes/manifests/production/nginx-sample/ (= hydrated manifests)
 - kubernetes/manifests/production/kustomization.yaml (= resources 行)
 
-Flux Kustomization flux-system が reconcile + prune で cluster 上の nginx-sample
-resource を自動削除。 AWS Secrets Manager の panicboat/nginx/demo secret は IaC
-外の manual operation で削除 (= 引き継ぎ #34、 PR closure doc に記録)。"
+application stack (= monolith + frontend + reverse-proxy) が同 cluster で
+稼働しており demo は不要。 Flux Kustomization flux-system が reconcile + prune
+で cluster 上の nginx-sample resource を自動削除。 AWS Secrets Manager の
+panicboat/nginx/demo secret は IaC 外 manual operation で削除 (= 引き継ぎ #34)。"
 ```
 
 ---
