@@ -1,8 +1,5 @@
 environments:
   - environment: local
-    # local environment is kubernetes-only
-    stacks:
-      kubernetes: {}
 
   - environment: develop
     stacks:
@@ -10,7 +7,6 @@ environments:
         aws_region: us-east-1
         iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-develop-github-actions-plan-role
         iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-develop-github-actions-apply-role
-      kubernetes: {}
 
   - environment: production
     stacks:
@@ -18,7 +14,6 @@ environments:
         aws_region: ap-northeast-1
         iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-production-github-actions-plan-role
         iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-production-github-actions-apply-role
-      kubernetes: {}
 
 stack_conventions:
   - root: "aws/{service}"
