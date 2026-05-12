@@ -5,18 +5,13 @@
 # It defines environments and includes component-specific helmfiles.
 #
 # Usage:
-#   helmfile -e local list              # List all releases
-#   helmfile -e local template          # Generate manifests
-#   helmfile -e local apply             # Deploy to cluster
+#   helmfile -e production list         # List all releases
+#   helmfile -e production template     # Generate manifests
+#   helmfile -e production apply        # Deploy to cluster
 #
 # =============================================================================
 
 environments:
-  local:
-    values:
-      - cluster:
-          name: k8s-local
-          isLocal: true
   production:
     # =====================================================================
     # RECREATE marker convention
@@ -40,7 +35,6 @@ environments:
     values:
       - cluster:
           name: eks-production
-          isLocal: false
           # RECREATE: cd aws/eks/envs/production && TG_TF_PATH=tofu terragrunt output -raw cluster_endpoint_hostname
           eksApiEndpoint: BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com
           # RECREATE: cd aws/vpc/envs/production && TG_TF_PATH=tofu terragrunt output -raw vpc_id
@@ -79,7 +73,6 @@ environments:
   #   values:
   #     - cluster:
   #         name: eks-staging
-  #         isLocal: false
 
 # Include all component helmfiles for the current environment
 helmfiles:

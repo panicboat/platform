@@ -14,9 +14,9 @@
 │   ├── github-oidc-auth/
 │   └── vpc/
 ├── kubernetes/
-│   ├── clusters/local/        # Flux bootstrap (flux-system, repositories)
+│   ├── clusters/production/   # Flux bootstrap (flux-system, repositories)
 │   ├── components/            # Cilium, Prometheus, Loki, Tempo, OTel, Beyla, etc.
-│   └── manifests/local/       # Rendered manifests (per-component subdirectories)
+│   └── manifests/production/  # Rendered manifests (per-component subdirectories)
 ├── github/repository/         # Terraform for GitHub repo settings
 ├── docs/
 └── workflow-config.yaml       # Environments and deployment targets
@@ -39,11 +39,10 @@
 
 ### Environments
 
-`workflow-config.yaml` で定義。`local`、`develop`、`production` が有効。
+`workflow-config.yaml` で定義。`develop`、`production` が有効。
 
 | Environment | AWS Region | AWS Account | Status |
 |-------------|------------|-------------|--------|
-| local | - | - | Active (kubernetes only, k3d cluster) |
 | develop | us-east-1 | 559744160976 | Active |
 | production | ap-northeast-1 | 559744160976 | Active |
 
@@ -96,7 +95,7 @@ flowchart LR
   Apply --> AWS
   Resolver -->|stack: kubernetes| Group
   Group --> Hydrator
-  Hydrator -->|make hydrate-component<br/>+ hydrate-index| Commit
+  Hydrator -->|hydrate-component.sh<br/>+ hydrate-index.sh| Commit
   Hydrator -->|index diff| IndexComment
   Commit --> Builder
   Builder --> CompComment
@@ -109,12 +108,12 @@ AWS 認証は GitHub OIDC 経由。`aws/github-oidc-auth/envs/{environment}` が
 
 ### GitOps Sync (Flux CD)
 
-- `kubernetes/clusters/local/flux-system/gotk-sync.yaml` が Flux の bootstrap 構成。
+- `kubernetes/clusters/production/flux-system/gotk-sync.yaml` が Flux の bootstrap 構成。
 - 2 本の `GitRepository` を持つ（poll interval 1 分）:
-  - **platform repo**: `./kubernetes/clusters/local` を同期 → プラットフォーム共通コンポーネント（Cilium, CoreDNS, Prometheus-Operator, Grafana, Loki, Tempo, OpenTelemetry, Beyla など）を展開。
+  - **platform repo**: `./kubernetes/clusters/production` を同期 → プラットフォーム共通コンポーネント（Cilium, CoreDNS, Prometheus-Operator, Grafana, Loki, Tempo, OpenTelemetry, Beyla など）を展開。
   - **monorepo**: `./clusters/develop` を同期 → アプリケーションワークロードを展開（10 分間隔で reconcile）。
 - Platform と Monorepo は Flux を介して疎結合に接続される。
-- `kubernetes/components/` を変更する PR では CI が自動で `make hydrate` を実行し、レンダリング済みマニフェストをコミットする。`main` との差分は PR コメントとして投稿されレビューに供される。
+- `kubernetes/components/` を変更する PR では CI が自動で `scripts/kubernetes-hydrate/hydrate-component.sh` と `hydrate-index.sh` を実行し、レンダリング済みマニフェストをコミットする。`main` との差分は PR コメントとして投稿されレビューに供される。
 
 ### Claude Code Integration
 

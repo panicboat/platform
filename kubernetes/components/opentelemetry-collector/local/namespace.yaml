@@ -1,9 +1,0 @@
-# =============================================================================
-# OpenTelemetry Collector Namespace
-# =============================================================================
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: opentelemetry-system
-  labels:
-    app.kubernetes.io/name: opentelemetry-collector

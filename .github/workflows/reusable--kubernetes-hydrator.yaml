@@ -70,13 +70,13 @@ jobs:
         run: |
           set -euo pipefail
           for svc in $(echo "$SERVICES_JSON" | jq -r '.[]'); do
-            make -C kubernetes hydrate-component COMPONENT="$svc" ENV="${{ inputs.environment }}"
+            bash scripts/kubernetes-hydrate/hydrate-component.sh "$svc" "${{ inputs.environment }}"
           done
 
       - name: Hydrate index
         env:
           AQUA_CONFIG: ${{ github.workspace }}/.github/aqua.yaml
-        run: make -C kubernetes hydrate-index ENV=${{ inputs.environment }}
+        run: bash scripts/kubernetes-hydrate/hydrate-index.sh "${{ inputs.environment }}"
 
       - name: Commit and push hydrated manifests
         id: auto-commit

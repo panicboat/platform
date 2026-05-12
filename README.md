@@ -14,9 +14,9 @@
 │   ├── github-oidc-auth/
 │   └── vpc/
 ├── kubernetes/
-│   ├── clusters/local/        # Flux bootstrap (flux-system, repositories)
+│   ├── clusters/production/   # Flux bootstrap (flux-system, repositories)
 │   ├── components/            # Cilium, Prometheus, Loki, Tempo, OTel, Beyla, etc.
-│   └── manifests/local/       # Rendered manifests (per-component subdirectories)
+│   └── manifests/production/  # Rendered manifests (per-component subdirectories)
 ├── github/repository/         # Terraform for GitHub repo settings
 ├── docs/
 └── workflow-config.yaml       # Environments and deployment targets
@@ -39,11 +39,10 @@
 
 ### Environments
 
-Defined in `workflow-config.yaml`. `local`, `develop`, and `production` are active.
+Defined in `workflow-config.yaml`. `develop` and `production` are active.
 
 | Environment | AWS Region | AWS Account | Status |
 |-------------|------------|-------------|--------|
-| local | - | - | Active (kubernetes only, k3d cluster) |
 | develop | us-east-1 | 559744160976 | Active |
 | production | ap-northeast-1 | 559744160976 | Active |
 
@@ -96,7 +95,7 @@ flowchart LR
   Apply --> AWS
   Resolver -->|stack: kubernetes| Group
   Group --> Hydrator
-  Hydrator -->|make hydrate-component<br/>+ hydrate-index| Commit
+  Hydrator -->|hydrate-component.sh<br/>+ hydrate-index.sh| Commit
   Hydrator -->|index diff| IndexComment
   Commit --> Builder
   Builder --> CompComment
@@ -109,12 +108,12 @@ AWS authentication uses GitHub OIDC. `aws/github-oidc-auth/envs/{environment}` i
 
 ### GitOps Sync (Flux CD)
 
-- `kubernetes/clusters/local/flux-system/gotk-sync.yaml` defines the Flux bootstrap.
+- `kubernetes/clusters/production/flux-system/gotk-sync.yaml` defines the Flux bootstrap.
 - Two `GitRepository` sources (poll interval: 1 minute):
-  - **platform repo**: syncs `./kubernetes/clusters/local` — deploys shared platform components (Cilium, CoreDNS, Prometheus-Operator, Grafana, Loki, Tempo, OpenTelemetry, Beyla, etc.).
+  - **platform repo**: syncs `./kubernetes/clusters/production` — deploys shared platform components (Cilium, CoreDNS, Prometheus-Operator, Grafana, Loki, Tempo, OpenTelemetry, Beyla, etc.).
   - **monorepo**: syncs `./clusters/develop` — deploys application workloads (reconciled every 10 minutes).
 - Platform and Monorepo are loosely coupled via Flux.
-- When `kubernetes/components/` changes in a PR, the CI pipeline automatically runs `make hydrate` and commits the rendered manifests. The diff against `main` is posted as a PR comment for review.
+- When `kubernetes/components/` changes in a PR, the CI pipeline automatically runs `scripts/kubernetes-hydrate/hydrate-component.sh` and `hydrate-index.sh` and commits the rendered manifests. The diff against `main` is posted as a PR comment for review.
 
 ### Claude Code Integration
 
