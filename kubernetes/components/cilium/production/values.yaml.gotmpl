@@ -1,5 +1,10 @@
 # Cilium CNI Configuration for production (eks-production)
 
+# TODO: Remove after upgrade to 1.19.x is confirmed stable.
+# upgradeCompatibility instructs the new chart to preserve the 1.18 datapath
+# encoding during rolling replacement, preventing in-flight connection drops.
+upgradeCompatibility: "1.18"
+
 # =============================================================================
 # CNI Chaining Mode（VPC CNI が IPAM/datapath、Cilium は L7/policy/observability）
 # =============================================================================
