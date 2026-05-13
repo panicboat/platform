@@ -494,5 +494,5 @@ panicboat の roadmap (= 2026-05-02 design doc) は Phase 1-5 のみ static defi
 - Phase 6 PRs (= deploy + fix forward + closure): 14
 - Phase 6 累計 runtime issue 数: 9 (= fix forward 9 件 で 解消)
 - Phase 6 解消 引き継ぎ事項: 13 件 (= 7 件 Phase 5 closure 由来 + 6 件 Phase 6 新規)
-- Phase 7+ 残 引き継ぎ事項: 24 件 (= 14 件 Phase 5 closure 由来 持ち越し + 10 件 Phase 6 新規)
+- Phase 7+ 残 引き継ぎ事項: 25 件 (= 14 件 Phase 5 closure 由来 持ち越し + 11 件 Phase 6 新規)
 - post-flight 連続 validate 達成: **7 連続** (= 4-3 / 5-1 / 5-2 / 6-1 / 6-2 / 6-2 fix forward chain / 6-3)
