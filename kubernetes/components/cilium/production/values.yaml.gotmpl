@@ -1,6 +1,8 @@
 # Cilium CNI Configuration for production (eks-production)
 
-# TODO: Remove after upgrade to 1.19.x is confirmed stable.
+# TODO: Remove once the 1.19.4 upgrade is fully rolled out across all nodes
+# and cluster stability is confirmed (= no pre-upgrade nodes remain、 in-flight
+# connection 保護不要 state)。
 # upgradeCompatibility instructs the new chart to preserve the 1.18 datapath
 # encoding during rolling replacement, preventing in-flight connection drops.
 upgradeCompatibility: "1.18"
