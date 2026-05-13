@@ -56,10 +56,20 @@ envoy:
   enabled: true
 
 # =============================================================================
-# Gateway API（東西用、北南は ALB Controller）
+# Gateway API（北南: ALB Controller 経由で hostNetwork mode の Cilium Gateway を expose、
+# 東西: 同 Cilium Gateway で internal routing。 北南統一で reverse-proxy 不要、
+# Cilium Gateway + CiliumEnvoyConfig で JWT validation 余地確保）
 # =============================================================================
+# hostNetwork.enabled: true は LoadBalancer Service auto-create を disable
+# (= 公式 mutual exclusive)、 cilium-gateway-cilium-gateway Service が ClusterIP に。
+# eks-pod-identity-agent が hostNetwork で port 80 占有のため Gateway listener は
+# port 8080 (= cilium-gateway.yaml)、 1024 未満特権 port 回避で NET_BIND_SERVICE
+# capability 不要。
+# https://docs.cilium.io/en/v1.19/network/servicemesh/gateway-api/host-network-mode/
 gatewayAPI:
   enabled: true
+  hostNetwork:
+    enabled: true
 
 # =============================================================================
 # Socket-level LB（Beyla / hostNetwork Pod が ClusterIP に到達するため）

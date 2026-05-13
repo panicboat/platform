@@ -1,0 +1,42 @@
+# =============================================================================
+# Ingress: application IngressGroup (= cilium-gateway hostNetwork backend)
+# =============================================================================
+# Cilium Gateway hostNetwork mode (= values.yaml.gotmpl gatewayAPI.hostNetwork.enabled)
+# で 全 node の host port 8080 に cilium-envoy が listen、 ALB がそれを backend
+# として target-type=ip で Pod IP (= node IP) に register。
+#
+# ACM cert auto-discovery: ALB Controller が wildcard cert *.panicboat.net を
+# 自動 attach (= Ingress.host が SAN match)。explicit certificate-arn annotation
+# 不要。
+#
+# external-dns annotation: hostname を Route53 record として auto-create
+# (= aws-load-balancer-controller / external-dns 連携)。
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: application
+  namespace: default
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/group.name: application
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    external-dns.alpha.kubernetes.io/hostname: develop.panicboat.net
+spec:
+  ingressClassName: alb
+  rules:
+    - host: develop.panicboat.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: cilium-gateway-cilium-gateway
+                port:
+                  number: 8080
