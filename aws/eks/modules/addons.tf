@@ -142,11 +142,18 @@ locals {
       resolve_conflicts_on_create = "OVERWRITE"
       resolve_conflicts_on_update = "OVERWRITE"
       # CoreDNS Pod を system_critical MNG (= karpenter stack の bootstrap
-      # MNG) に schedule する。 taint `dedicated=system-critical:NoSchedule`
-      # を tolerate して default node には流さない (= cluster bootstrap で
-      # 必須な DNS resolution を control-plane-adjacent な MNG に閉じ込め、
-      # Karpenter-provisioned node の Ready 化に依存させない)。
+      # MNG) に pin する。 nodeSelector + tolerations の双方が必須:
+      #   - tolerations: taint `dedicated=system-critical:NoSchedule` 回避
+      #     (= 同 MNG への schedule を可能にする)
+      #   - nodeSelector: label `node-role/system-critical=true` で配置先を
+      #     system_critical MNG に限定 (= toleration 単独では default node
+      #     や Karpenter-provisioned spot にも流れうる)
+      # cluster bootstrap で必須な DNS resolution を control-plane-adjacent な
+      # MNG に閉じ込め、 Karpenter-provisioned node の Ready 化に依存させない。
       configuration_values = jsonencode({
+        nodeSelector = {
+          "node-role/system-critical" = "true"
+        }
         tolerations = [
           {
             key      = "dedicated"
