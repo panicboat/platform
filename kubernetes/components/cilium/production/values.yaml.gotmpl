@@ -58,7 +58,8 @@ envoy:
 # =============================================================================
 # Gateway API（北南: ALB Controller 経由で hostNetwork mode の Cilium Gateway を expose、
 # 東西: 同 Cilium Gateway で internal routing。 北南統一で reverse-proxy 不要、
-# Cilium Gateway + CiliumEnvoyConfig で JWT validation 余地確保）
+# 全 ingress traffic が Cilium Gateway (= Envoy) を経由するため CiliumEnvoyConfig
+# CR + Envoy jwt_authn filter で Gateway 層 JWT 検証を実装可能な architecture）
 # =============================================================================
 # hostNetwork.enabled: true は LoadBalancer Service auto-create を disable
 # (= 公式 mutual exclusive)、 cilium-gateway-cilium-gateway Service が ClusterIP に。

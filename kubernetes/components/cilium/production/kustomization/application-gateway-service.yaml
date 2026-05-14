@@ -19,6 +19,10 @@ metadata:
   namespace: kube-system
 spec:
   type: ClusterIP
+  # FALLBACK: k8s-app: cilium-envoy は Cilium chart 内部 label (= cilium-envoy
+  # DaemonSet の matchLabels)。 Cilium chart upgrade で label rename された場合、
+  # 本 Service の EndpointSlice が targets=0 で silent fail する risk。 Cilium
+  # upgrade 時は manifest の DaemonSet labels を verify、 必要時 selector 更新。
   selector:
     k8s-app: cilium-envoy
   ports:

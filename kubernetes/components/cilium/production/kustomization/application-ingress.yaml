@@ -16,6 +16,9 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: application
+  # namespace は backend Service (= application-gateway) と同一が必須 (= K8s
+  # Ingress backend 仕様制約、 cross-namespace 不可)。 cilium-envoy DaemonSet
+  # が kube-system 配下のため Service 経由で本 Ingress も kube-system。
   namespace: kube-system
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
