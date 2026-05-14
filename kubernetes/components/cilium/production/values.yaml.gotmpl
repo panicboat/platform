@@ -61,9 +61,16 @@ tolerations:
 # =============================================================================
 # operator は EC2 API を呼ぶ cluster の brain、 Karpenter-provisioned node が
 # Ready になるためにも先に動いている必要があるため system_critical MNG に固定。
+# nodeSelector + tolerations の双方が必須: toleration 単独だと taint を回避
+# できる "schedule 可" を満たすだけで application node にも流れうる。 label
+# `node-role/system-critical=true` で配置先を system_critical MNG に絞り、 同
+# MNG が縮退中の場合に Pending で stay させる (= Karpenter-provisioned spot に
+# drift して EC2 ENI 制御 loop を失う事故を防ぐ)。
 operator:
   replicas: 2
   rollOutPods: true
+  nodeSelector:
+    node-role/system-critical: "true"
   tolerations:
     - key: dedicated
       operator: Equal

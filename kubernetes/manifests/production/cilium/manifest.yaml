@@ -2147,6 +2147,7 @@ spec:
             topologyKey: kubernetes.io/hostname
       nodeSelector:
         kubernetes.io/os: linux
+        node-role/system-critical: "true"
       tolerations:
         - effect: NoSchedule
           key: dedicated
