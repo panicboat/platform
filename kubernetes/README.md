@@ -139,18 +139,18 @@ EKS production cluster `eks-production`（`ap-northeast-1`）の運用手順。
 
 ### Cluster overview
 
-`eks-production` cluster は **Cilium が chaining mode (VPC CNI 共存)** で稼働し、`kubeProxyReplacement: true` で kube-proxy を eBPF で代替している。
+`eks-production` cluster は **Cilium が native CNI (ENI mode)** で稼働し、`kubeProxyReplacement: true` で kube-proxy を eBPF で代替している。
 
 | 層 | 担当 |
 |---|---|
-| CNI / IPAM / datapath | VPC CNI（AWS managed addon）|
+| CNI / IPAM / datapath | Cilium native (ENI mode、cilium-operator が EC2 ENI / secondary IP を直接管理、Pod IP は VPC subnet IP) |
 | L3/L4/L7 NetworkPolicy | Cilium |
 | Service routing (kube-proxy 代替) | Cilium KPR（eBPF）|
 | L7 proxy | Cilium Envoy DaemonSet（独立、`envoy.enabled: true`）|
 | 東西の HTTPRoute / Gateway API | Cilium Gateway Controller（東西専用、北南は ALB Controller）|
-| Observability | Hubble（TLS は `cronJob` mode で cluster 内自動 rotate）|
+| Observability | Hubble（TLS は cert-manager で自動 rotate）|
 
-EKS managed addons: `vpc-cni` / `coredns` / `aws-ebs-csi-driver` / `eks-pod-identity-agent`。`kube-proxy` は使用しない (Cilium KPR で代替するため)。
+EKS managed addons: `coredns` / `aws-ebs-csi-driver` / `eks-pod-identity-agent`。 `vpc-cni` は使用しない (Cilium native CNI で代替)。 `kube-proxy` は使用しない (Cilium KPR で代替)。 cluster 作成時に `bootstrap_self_managed_addons = false` で EKS の自動 addon install を抑止し、 cilium-agent が CNI plugin を /opt/cni/bin に置くまで node を NotReady に保つ (= 公式 BYOCNI bootstrap flow)。
 
 #### Foundation layer (Gateway API / autoscaling)
 
@@ -175,7 +175,7 @@ EKS managed addons: `vpc-cni` / `coredns` / `aws-ebs-csi-driver` / `eks-pod-iden
 | Addon / Resource | 配置 | 役割 |
 |---|---|---|
 | Karpenter controller | `karpenter` namespace | Pod 需要に応じて EC2 instance を動的 provision（system-components NodePool が起動する Graviton (ARM64) instance、category `m`）。`karpenter:karpenter` ServiceAccount は **Pod Identity Association** 経由で IAM role assume |
-| `karpenter_controller_host` MNG | (小規模 ARM MNG、2 nodes) | Karpenter controller pod 専用の最小構成 EKS managed nodegroup。taint `karpenter.sh/controller=true:NoSchedule` で他 pod 排除、label `node-role/karpenter-controller-host=true` で nodeSelector |
+| `system_critical` MNG | (小規模 ARM MNG、2 nodes) | cluster bootstrap-critical workload (= Karpenter controller / cilium-operator / CoreDNS) 専用の最小構成 EKS managed nodegroup。 taint `dedicated=system-critical:NoSchedule` で application workload を排除、 label `node-role/system-critical=true` で nodeSelector。 host pin 対象は各 chart values で個別設定 (chart に通知できない CoreDNS は EKS addon `configuration_values` で tolerations を inject) |
 | EC2NodeClass `system-components` | (cluster-scoped) | AMI (AL2023 ARM64) / subnet `Tier=private` / SG `aws:eks:cluster-name` / Node IAM / EBS gp3 / IMDSv2 |
 | NodePool `system-components` | (cluster-scoped) | requirements: arm64 / spot 優先 + on-demand fallback / general-purpose family / 中型 size 帯。consolidation policy で utilization-driven scale-down、定期的に node expire させて OS patch サイクルを回す |
 | Karpenter sub-module (aws/karpenter stack) | (AWS) | SQS interruption queue + EventBridge rules + Controller IAM role + Pod Identity Association + Node IAM role + EC2 Instance Profile を独立 stack で集約 |
@@ -334,7 +334,7 @@ aws eks list-pod-identity-associations --cluster-name eks-production --namespace
 | `kubectl: error: ... credentials` | `eks-login production` を再 source（session が expire したら） |
 | EKS managed addon を削除したが Kubernetes DaemonSet が残る | EKS terraform module (`terraform-aws-modules/eks/aws`) の `aws_eks_addon` が state に `preserve = true` を設定する場合がある。terragrunt apply は addon registration だけ削除し DaemonSet は残す挙動。`kubectl delete daemonset <name> -n kube-system` で手動削除 |
 | `cilium status` で `Cluster Pods: X/Y managed by Cilium` の差分（Y - X）が常に 0 にならない | hostNetwork pod（cilium-agent / cilium-envoy / cilium-operator 等）は Cilium endpoint を持たないため Cilium 管理対象外。差分が `cilium DaemonSet replicas × node + cilium-operator replicas` 程度なら steady state |
-| Cilium install 前から動いていた pod が Cilium 管理下に入らない | chaining mode では Cilium 設定が CNI conf に反映されるのは Pod 再作成時。`kubectl rollout restart -n flux-system deployment` 等で再作成すると chained になる |
+| Cilium install 前から動いていた pod が Cilium 管理下に入らない | native CNI で Cilium が CNI plugin を /opt/cni/bin に置くのは cilium-agent install 時。 同 plugin で endpoint を持つようになるのは Pod 再作成時のため、 `kubectl rollout restart -n flux-system deployment` 等で再作成すると Cilium endpoint を持つ |
 | `cilium connectivity test` で ICMP のみ失敗（TCP/HTTP は pass） | EKS Cluster SG が ICMP を明示許可していない可能性。production アプリが TCP のみなら無視で OK。ICMP が必要なら別 issue で SG ルール追加 |
 | `kubectl top` が `Metrics API not available` を返す | metrics-server が未 Ready or kubelet certs / preferred address types の不一致。`kubectl logs -n kube-system deploy/metrics-server` で確認 |
 | `GatewayClass cilium` が `Programmed: False` | Cilium operator が CRDs を picking up していない。`kubectl logs -n kube-system deploy/cilium-operator` で確認、Cilium pod の rolling restart が必要なケースあり |
@@ -342,7 +342,7 @@ aws eks list-pod-identity-associations --cluster-name eks-production --namespace
 | Ingress 作成しても `ADDRESS` が空のまま | aws-load-balancer-controller pod が unhealthy or IRSA 認証失敗。`kubectl logs -n kube-system deploy/aws-load-balancer-controller` で確認、`AccessDenied` 系なら IRSA role policy / trust policy を再確認 |
 | ExternalDNS が Route53 record を作らない | domainFilters にマッチしない hostname、または ExternalDNS pod が unhealthy。`kubectl logs -n external-dns deploy/external-dns --tail=50` で `panicboat.net` 以外の record を skip しているか確認 |
 | HTTPS Ingress で `ERR_CERT_AUTHORITY_INVALID` | ACM cert auto-discovery が走っていない（Ingress の `host` が ACM cert SAN にマッチしない）or ACM cert が `ISSUED` でない。`aws acm describe-certificate --certificate-arn ...` で status 確認 |
-| Karpenter pod が `karpenter_controller_host` MNG 以外の node に schedule される | values.yaml.gotmpl の nodeSelector / tolerations が rendered manifest に反映されていない or controller_host MNG の label / taint が誤り。`kubectl get pod -n karpenter -o wide` で 配置 node を確認、`kubectl get node -L node-role/karpenter-controller-host` で label 確認 |
+| Karpenter pod が `system_critical` MNG 以外の node に schedule される | values.yaml.gotmpl の nodeSelector / tolerations が rendered manifest に反映されていない or MNG の label / taint が誤り。`kubectl get pod -n karpenter -o wide` で 配置 node を確認、`kubectl get node -L node-role/system-critical` で label 確認 |
 | `kubectl get nodepool system-components` が `Ready=False` | EC2NodeClass の参照先 (Node IAM role) や subnet selector が誤り。`kubectl describe nodepool system-components` で詳細を確認、`aws iam get-role --role-name <ec2nodeclass.spec.role>` で role 存在確認 |
 | Pending pod があるのに Karpenter が node を起動しない | NodePool の requirements にマッチする instance type が region で出ない (capacity 不足) or `limits.cpu` に達している。`kubectl describe pod <pending-pod>` の events で Karpenter の判断ログを確認、必要なら一時的に NodePool requirements を緩める (e.g., `instance-generation` の下限を下げる、`instance-category` に他 series を追加) |
 | Karpenter pod が IAM role に assume できない | Pod Identity Association 未設定 or aws-pod-identity-agent (addon) が未稼働。`aws eks list-pod-identity-associations --cluster-name eks-production --namespace karpenter` で association 確認、`kubectl logs -n kube-system daemonset/eks-pod-identity-agent` で agent 状態確認 |
