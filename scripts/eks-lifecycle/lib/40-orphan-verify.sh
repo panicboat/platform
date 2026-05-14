@@ -83,6 +83,11 @@ if [ -n "$LG_NAMES" ]; then
 fi
 
 if [ "$ORPHAN_FOUND" -eq 1 ]; then
+  if [ "${DRY_RUN:-0}" = "1" ]; then
+    warn "[DRY-RUN] Resources listed above are CURRENT live-cluster resources, not real orphans. In a real teardown this step would require operator cleanup before proceeding."
+    info "[DRY-RUN] Exiting 0 so the make chain (= eks-teardown) can continue end-to-end validation."
+    exit 0
+  fi
   error "Orphan resources detected. Resolve manually using the delete commands above, then re-run make eks-teardown-verify to confirm."
   exit 1
 fi
