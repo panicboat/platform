@@ -6,7 +6,7 @@ metadata:
   name: opentelemetry-collector
   namespace: monitoring
   labels:
-    helm.sh/chart: opentelemetry-collector-0.153.0
+    helm.sh/chart: opentelemetry-collector-0.154.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
     app.kubernetes.io/version: "0.151.0"
@@ -21,7 +21,7 @@ metadata:
   name: opentelemetry-collector-agent
   namespace: monitoring
   labels:
-    helm.sh/chart: opentelemetry-collector-0.153.0
+    helm.sh/chart: opentelemetry-collector-0.154.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
     app.kubernetes.io/version: "0.151.0"
@@ -172,7 +172,7 @@ kind: ClusterRole
 metadata:
   name: opentelemetry-collector
   labels:
-    helm.sh/chart: opentelemetry-collector-0.153.0
+    helm.sh/chart: opentelemetry-collector-0.154.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
     app.kubernetes.io/version: "0.151.0"
@@ -196,7 +196,7 @@ kind: ClusterRoleBinding
 metadata:
   name: opentelemetry-collector
   labels:
-    helm.sh/chart: opentelemetry-collector-0.153.0
+    helm.sh/chart: opentelemetry-collector-0.154.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
     app.kubernetes.io/version: "0.151.0"
@@ -219,7 +219,7 @@ metadata:
   name: opentelemetry-collector
   namespace: monitoring
   labels:
-    helm.sh/chart: opentelemetry-collector-0.153.0
+    helm.sh/chart: opentelemetry-collector-0.154.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
     app.kubernetes.io/version: "0.151.0"
@@ -257,7 +257,7 @@ metadata:
   name: opentelemetry-collector-agent
   namespace: monitoring
   labels:
-    helm.sh/chart: opentelemetry-collector-0.153.0
+    helm.sh/chart: opentelemetry-collector-0.154.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
     app.kubernetes.io/version: "0.151.0"
@@ -276,7 +276,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: e6f78461fc9e2963d0fbea21ab6264f43337caa36d3891003b49da511a3b1535
+        checksum/config: ff62f416b1b96b66f6a72c4312c0786ee9d9e71fd67e5f88e10efa1441efa5f4
         
       labels:
         app.kubernetes.io/name: opentelemetry-collector
@@ -410,7 +410,7 @@ metadata:
   name: opentelemetry-collector
   namespace: monitoring
   labels:
-    helm.sh/chart: opentelemetry-collector-0.153.0
+    helm.sh/chart: opentelemetry-collector-0.154.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
     app.kubernetes.io/version: "0.151.0"
