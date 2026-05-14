@@ -43,6 +43,8 @@ environments:
           albControllerRoleArn: arn:aws:iam::559744160976:role/eks-production-alb-controller
           # STABLE: 同上
           externalDnsRoleArn: arn:aws:iam::559744160976:role/eks-production-external-dns
+          # STABLE: 同上 (= Cilium ENI mode で cilium-operator が EC2 ENI / IP API を IRSA 経由で呼ぶ)
+          ciliumOperatorRoleArn: arn:aws:iam::559744160976:role/eks-production-cilium-operator
         karpenter:
           # STABLE: aws/karpenter/modules/main.tf で node_iam_role_name + node_iam_role_use_name_prefix = false に設定済
           nodeRoleName: Karpenter-eks-production
