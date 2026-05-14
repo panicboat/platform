@@ -125,7 +125,7 @@ marker convention の design rationale は `kubernetes/helmfile.yaml.gotmpl` 冒
 - partial state からの再 run は idempotent: `make eks-teardown` / `make eks-recreate` は何度叩いても安全
 - ロールバックは前進復旧のみ (= teardown 中断は再 teardown、recreate 中断は再 recreate)
 - admin role 一時 credentials の expire (= 1h STS session) は `30-destroy-stacks.sh` / `50-apply-stacks.sh` の各 stack 開始時に `creds_expiring_soon` (< 5min) で検出して `00-auth.sh` を re-source、admin role を assume し直す
-- `40-orphan-verify.sh` は read-only verify で auto-delete しない (= false-positive 含み得る出力を operator が目視精査し、必要なら提示された AWS CLI コマンドで個別削除)
+- `40-orphan-verify.sh` は read-only verify で auto-delete しない (= false-positive 含み得る出力を operator が目視精査し、必要なら提示された AWS CLI コマンドで個別削除)。検出時の exit code は live run = 1 (= operator 注意喚起 + make chain 停止)、DRY_RUN=1 = 0 (= live cluster の現役 resource を warn として列挙、make chain は継続)
 
 ## What is preserved through teardown
 
