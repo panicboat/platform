@@ -18,3 +18,4 @@ resources:
   - gateway-class.yaml
   - cilium-gateway.yaml
   - application-ingress.yaml
+  - application-gateway-service.yaml

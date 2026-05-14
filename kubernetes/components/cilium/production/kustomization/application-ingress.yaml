@@ -16,13 +16,20 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: application
-  namespace: default
+  namespace: kube-system
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
     alb.ingress.kubernetes.io/group.name: application
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-path: /
+    # success-codes workaround: HTTPRoute install 前 + cilium-envoy が routing
+    # 不在で 404 / 503 返す状態でも ALB target healthy 扱い (= ALB Controller
+    # v3 の正式 annotation key は success-codes、 healthcheck-matcher は無効)。
+    # actual service error (= cilium-envoy internal 5xx) も healthy 扱いになる
+    # silent fail risk あり、 将来 healthcheck-path を frontend HTTPRoute install
+    # 後の 200 OK 返す endpoint に変更検討。
+    alb.ingress.kubernetes.io/success-codes: "200-499"
     alb.ingress.kubernetes.io/healthcheck-port: traffic-port
     alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
     alb.ingress.kubernetes.io/ssl-redirect: "443"
@@ -37,6 +44,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: cilium-gateway-cilium-gateway
+                name: application-gateway
                 port:
                   number: 8080
