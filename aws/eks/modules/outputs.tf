@@ -71,6 +71,11 @@ output "external_dns_role_arn" {
   value       = module.external_dns_irsa.arn
 }
 
+output "cilium_operator_role_arn" {
+  description = "IRSA role ARN for Cilium operator (ENI mode IPAM、EC2 API での ENI / IP 操作)"
+  value       = module.cilium_operator_irsa.arn
+}
+
 output "vpc_id" {
   description = "VPC ID where the EKS cluster lives (for ALB Controller chart values)"
   value       = module.vpc.vpc.id
