@@ -1,0 +1,32 @@
+# =============================================================================
+# Service: application-gateway (= cilium-envoy hostNetwork backend pointer)
+# =============================================================================
+# Cilium 1.19.4 hostNetwork mode で cilium operator が auto-create する
+# cilium-gateway-cilium-gateway Service の EndpointSlice には dummy endpoint
+# (= 192.192.192.192:9999) が設定される (= LoadBalancer Service auto-create
+# 防止が cilium operator の intentional design)、 これは AWS LB Controller の
+# target-type=ip と incompatible。
+#
+# 本 Service は selector で cilium-envoy DaemonSet pod (= hostNetwork=true、
+# pod IP = node IP) を直接 target、 K8s controller-manager auto-generate の
+# EndpointSlice が node IP:8080 を populate、 ALB Ingress backend として
+# target-type=ip で healthy targets 確保。
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: application-gateway
+  namespace: kube-system
+spec:
+  type: ClusterIP
+  # FALLBACK: k8s-app: cilium-envoy は Cilium chart 内部 label (= cilium-envoy
+  # DaemonSet の matchLabels)。 Cilium chart upgrade で label rename された場合、
+  # 本 Service の EndpointSlice が targets=0 で silent fail する risk。 Cilium
+  # upgrade 時は manifest の DaemonSet labels を verify、 必要時 selector 更新。
+  selector:
+    k8s-app: cilium-envoy
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP

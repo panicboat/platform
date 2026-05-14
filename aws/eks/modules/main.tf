@@ -41,3 +41,34 @@ module "eks" {
 
   tags = var.common_tags
 }
+
+# Read the node SG state after module apply to detect the cluster tag.
+# depends_on = [module.eks] ensures this runs after the module applies the tag,
+# so triggers_replace captures the "owned" value and triggers local-exec cleanup.
+data "aws_security_group" "node_sg" {
+  id = module.eks.node_security_group_id
+
+  depends_on = [module.eks]
+}
+
+# Remove the cluster tag from the node SG after every apply.
+# terraform-aws-modules/eks/aws hardcodes kubernetes.io/cluster/<name>=owned on
+# the node SG (node_groups.tf merge block), and node_security_group_tags only
+# supports map(string) so null-value key removal is not possible via variable.
+# AWS LB Controller identifies the target endpoint SG by checking if the tag key
+# exists (value-independent check, pkg/networking/networking_manager.go line 561),
+# so both the EKS cluster SG (eks-cluster-sg-*) and the node SG would match,
+# causing "expected exactly one securityGroup" panic.
+# The data source re-reads the SG after module.eks applies "owned", changing the
+# trigger and causing local-exec to delete the tag on the same apply run.
+resource "terraform_data" "node_sg_cluster_tag_removal" {
+  triggers_replace = [
+    try(data.aws_security_group.node_sg.tags["kubernetes.io/cluster/eks-${var.environment}"], "")
+  ]
+
+  depends_on = [data.aws_security_group.node_sg]
+
+  provisioner "local-exec" {
+    command = "aws ec2 delete-tags --region ${var.aws_region} --resources ${module.eks.node_security_group_id} --tags Key=kubernetes.io/cluster/eks-${var.environment} 2>/dev/null || true"
+  }
+}

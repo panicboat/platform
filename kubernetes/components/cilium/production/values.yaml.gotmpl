@@ -1,5 +1,12 @@
 # Cilium CNI Configuration for production (eks-production)
 
+# TODO: Remove once the 1.19.4 upgrade is fully rolled out across all nodes
+# and cluster stability is confirmed (= no pre-upgrade nodes remain、 in-flight
+# connection 保護不要 state)。
+# upgradeCompatibility instructs the new chart to preserve the 1.18 datapath
+# encoding during rolling replacement, preventing in-flight connection drops.
+upgradeCompatibility: "1.18"
+
 # =============================================================================
 # CNI Chaining Mode（VPC CNI が IPAM/datapath、Cilium は L7/policy/observability）
 # =============================================================================
@@ -49,10 +56,21 @@ envoy:
   enabled: true
 
 # =============================================================================
-# Gateway API（東西用、北南は ALB Controller）
+# Gateway API（北南: ALB Controller 経由で hostNetwork mode の Cilium Gateway を expose、
+# 東西: 同 Cilium Gateway で internal routing。 北南統一で reverse-proxy 不要、
+# 全 ingress traffic が Cilium Gateway (= Envoy) を経由するため CiliumEnvoyConfig
+# CR + Envoy jwt_authn filter で Gateway 層 JWT 検証を実装可能な architecture）
 # =============================================================================
+# hostNetwork.enabled: true は LoadBalancer Service auto-create を disable
+# (= 公式 mutual exclusive)、 cilium-gateway-cilium-gateway Service が ClusterIP に。
+# eks-pod-identity-agent が hostNetwork で port 80 占有のため Gateway listener は
+# port 8080 (= cilium-gateway.yaml)、 1024 未満特権 port 回避で NET_BIND_SERVICE
+# capability 不要。
+# https://docs.cilium.io/en/v1.19/network/servicemesh/gateway-api/host-network-mode/
 gatewayAPI:
   enabled: true
+  hostNetwork:
+    enabled: true
 
 # =============================================================================
 # Socket-level LB（Beyla / hostNetwork Pod が ClusterIP に到達するため）
