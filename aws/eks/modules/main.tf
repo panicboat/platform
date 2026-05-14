@@ -14,6 +14,15 @@ module "eks" {
   endpoint_public_access  = true
   endpoint_private_access = true
 
+  # EKS が cluster create 時に自動 install する self-managed addons
+  # (vpc-cni / coredns / kube-proxy) を抑止する。 panicboat は Cilium native
+  # CNI を使うため vpc-cni 不要、 KPR で kube-proxy 不要、 coredns は AWS
+  # managed addon として local.cluster_addons で明示的に配備する。 false に
+  # することで node 起動時に自動で aws-node DaemonSet が降ってくる default
+  # 動作を止め、 cilium-agent が CNI plugin を /opt/cni/bin に置くまで node
+  # を NotReady のままに保つ (= 公式 BYOCNI bootstrap flow と整合)。
+  bootstrap_self_managed_addons = false
+
   authentication_mode                      = "API"
   enable_cluster_creator_admin_permissions = false
 
