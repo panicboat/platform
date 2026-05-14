@@ -47,7 +47,6 @@ if [ -n "$TG_ARNS" ]; then
 fi
 
 info "Step 40.4: Security groups"
-# shellcheck disable=SC2016
 SG_IDS=$(aws ec2 describe-security-groups --region "$REGION" \
   --filters "Name=tag:Environment,Values=${ENV}" "Name=tag:Project,Values=eks" \
   --query 'SecurityGroups[?GroupName != `default`].GroupId' --output text)
@@ -67,7 +66,6 @@ if [ -n "$HOSTED_ZONE_ID" ] && [ "$HOSTED_ZONE_ID" != "None" ]; then
     --output text)
   if [ -n "$STALE_RECORDS" ]; then
     warn "Stale Route53 records (= external-dns owned, not auto-cleaned):"
-    # shellcheck disable=SC2001
     echo "$STALE_RECORDS" | sed 's/^/    /'
     warn "  delete: aws route53 change-resource-record-sets --hosted-zone-id ${HOSTED_ZONE_ID} --change-batch ..."
     ORPHAN_FOUND=1
