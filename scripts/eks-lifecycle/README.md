@@ -18,21 +18,21 @@ Temporary teardown / idempotent recreate of `eks-production` cluster + 周辺 AW
 teardown / recreate 開始前に以下を確認:
 
 ```bash
-# 1. operator identity (= 期待する IAM user / role か)
+# 1. AWS env をリセット (= eks-login 等で assumed-role creds が export されている状態を解除)
+unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+
+# 2. operator identity (= 期待する IAM user / role か)
 aws sts get-caller-identity
 # → user/panicboat (= 操作者本人の IAM principal) が出ること。
-# → assumed-role/eks-admin-production/... (= eks-login 等で事前 assume 済) の場合は
-#    AWS env を unset して操作者本来の credential chain に戻す:
-#       unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
-#    eks-admin は EC2 / VPC describe 権限を持たないため、 unset せずに進むと
-#    `40-orphan-verify.sh` の `aws ec2 describe-network-interfaces` 等が
-#    UnauthorizedOperation で fail する。
+# assumed-role/eks-admin-production/... のままだと、 eks-admin は EC2 / VPC
+# describe 権限を持たないため後段 (= 40-orphan-verify.sh の aws ec2 describe-*)
+# が UnauthorizedOperation で fail する。
 
-# 2. cluster 接続性 (= recreate 後の検証にも使う)
+# 3. cluster 接続性 (= recreate 後の検証にも使う)
 kubectl config current-context
 kubectl get nodes
 
-# 3. 70-reconcile-watch.sh が wait する HelmRelease の audit
+# 4. 70-reconcile-watch.sh が wait する HelmRelease の audit
 #    (= 出力が lib/70-reconcile-watch.sh の wait_helmreleases 引数と一致するか確認)
 kubectl get helmreleases -A -o json | \
   jq -r '.items[] | "\(.metadata.namespace)/\(.metadata.name)"' | sort
