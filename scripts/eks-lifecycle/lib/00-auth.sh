@@ -4,7 +4,7 @@
 # Sources common.sh for utilities. Sets:
 #   - AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN
 #     (= apply role credentials, used by terragrunt apply/destroy)
-#   - KUBECONFIG (= updated to talk to eks-${ENV} via admin role assume)
+#   - ~/.kube/config (= updated by `aws eks update-kubeconfig` to talk to eks-${ENV} via admin role assume; KUBECONFIG env not exported)
 #   - CLUSTER_EXISTS (= "true" or "false", consumed by 10-k8s-cleanup.sh)
 #
 # Idempotent: re-sourcing replaces credentials with a fresh assume.
@@ -50,8 +50,9 @@ if ! ADMIN_CREDS=$(aws sts assume-role \
   return 0 2>/dev/null || exit 0
 fi
 
-# Save admin creds to a temp file (separate from apply creds)
+# Save admin creds to a temp file (= AWS STS session credentials; protect with 0600 to avoid world-read leakage on shared /tmp)
 ADMIN_CREDS_FILE="/tmp/eks-lifecycle-admin-creds-$$"
+( umask 077 && : > "$ADMIN_CREDS_FILE" )
 echo "$ADMIN_CREDS" > "$ADMIN_CREDS_FILE"
 export ADMIN_CREDS_FILE
 
@@ -76,19 +77,28 @@ else
   export CLUSTER_EXISTS="false"
 fi
 
-# Helper for sub-scripts that need admin credentials (= kubectl ops in 60/70)
+# Helper for sub-scripts that need admin credentials (= kubectl ops in 60/70).
+# Split declare + assign so jq failure (= file corrupted) propagates under set -e.
 use_admin_creds() {
   if [ -f "$ADMIN_CREDS_FILE" ]; then
-    export AWS_ACCESS_KEY_ID=$(jq -r .AccessKeyId "$ADMIN_CREDS_FILE")
-    export AWS_SECRET_ACCESS_KEY=$(jq -r .SecretAccessKey "$ADMIN_CREDS_FILE")
-    export AWS_SESSION_TOKEN=$(jq -r .SessionToken "$ADMIN_CREDS_FILE")
+    local _id _secret _token
+    _id=$(jq -r .AccessKeyId "$ADMIN_CREDS_FILE")
+    _secret=$(jq -r .SecretAccessKey "$ADMIN_CREDS_FILE")
+    _token=$(jq -r .SessionToken "$ADMIN_CREDS_FILE")
+    export AWS_ACCESS_KEY_ID="$_id"
+    export AWS_SECRET_ACCESS_KEY="$_secret"
+    export AWS_SESSION_TOKEN="$_token"
   fi
 }
 
 use_apply_creds() {
-  export AWS_ACCESS_KEY_ID=$(jq -r .AccessKeyId <<< "$APPLY_CREDS")
-  export AWS_SECRET_ACCESS_KEY=$(jq -r .SecretAccessKey <<< "$APPLY_CREDS")
-  export AWS_SESSION_TOKEN=$(jq -r .SessionToken <<< "$APPLY_CREDS")
+  local _id _secret _token
+  _id=$(jq -r .AccessKeyId <<< "$APPLY_CREDS")
+  _secret=$(jq -r .SecretAccessKey <<< "$APPLY_CREDS")
+  _token=$(jq -r .SessionToken <<< "$APPLY_CREDS")
+  export AWS_ACCESS_KEY_ID="$_id"
+  export AWS_SECRET_ACCESS_KEY="$_secret"
+  export AWS_SESSION_TOKEN="$_token"
 }
 
 # Default to apply creds for terragrunt operations
