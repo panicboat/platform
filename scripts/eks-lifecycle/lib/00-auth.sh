@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
-# 00-auth.sh - Assume apply role + admin role, configure kubeconfig.
+# 00-auth.sh - Use operator's IAM principal for AWS calls + assume admin role for kubectl.
 #
-# Sources common.sh for utilities. Sets:
-#   - AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN
-#     (= apply role credentials, used by terragrunt apply/destroy)
-#   - ~/.kube/config (= updated by `aws eks update-kubeconfig` to talk to eks-${ENV} via admin role assume; KUBECONFIG env not exported)
+# Design spec §3 Decision 1 prerequisite: operator's IAM principal has
+# sufficient AWS permissions for terragrunt apply/destroy. panicboat IAM
+# user holds AdministratorAccess.
+#
+# The GitHub OIDC apply role (= github-oidc-auth-${ENV}-github-actions-apply-role)
+# trust policy allows only sts:AssumeRoleWithWebIdentity from GitHub Actions
+# tokens — it cannot be assumed from an IAM user, so we use the operator's
+# default credential chain directly for terragrunt operations.
+#
+# Sets:
+#   - ADMIN_CREDS_FILE (= /tmp file with eks-admin-${ENV} STS session creds)
 #   - CLUSTER_EXISTS (= "true" or "false", consumed by 10-k8s-cleanup.sh)
+#   - CREDS_EXPIRE_FILE (= UNIX epoch of admin creds expiration, for re-source)
+#   - ~/.kube/config (= updated by `aws eks update-kubeconfig` via admin role assume;
+#     KUBECONFIG env not exported)
 #
-# Idempotent: re-sourcing replaces credentials with a fresh assume.
+# Idempotent: re-sourcing refreshes admin credentials with a new assume.
 
 # Source common.sh from same directory
 LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,27 +27,20 @@ LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 require_env
 require_cmd aws jq kubectl
 
+# Capture operator's original AWS credentials env state so use_apply_creds
+# can restore it after use_admin_creds temporarily overrides the env.
+ORIG_AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}"
+ORIG_AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}"
+ORIG_AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN:-}"
+export ORIG_AWS_ACCESS_KEY_ID ORIG_AWS_SECRET_ACCESS_KEY ORIG_AWS_SESSION_TOKEN
+
 REGION="$(resolve_aws_region)"
+CALLER_ARN="$(aws sts get-caller-identity --query Arn --output text)"
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
 
-APPLY_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/github-oidc-auth-${ENV}-github-actions-apply-role"
 ADMIN_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/eks-admin-${ENV}"
 
-info "Assuming apply role: ${APPLY_ROLE_ARN}"
-APPLY_CREDS=$(aws sts assume-role \
-  --role-arn "$APPLY_ROLE_ARN" \
-  --role-session-name "eks-lifecycle-${USER:-debug}-$$" \
-  --query Credentials \
-  --output json)
-
-export AWS_ACCESS_KEY_ID=$(echo "$APPLY_CREDS" | jq -r .AccessKeyId)
-export AWS_SECRET_ACCESS_KEY=$(echo "$APPLY_CREDS" | jq -r .SecretAccessKey)
-export AWS_SESSION_TOKEN=$(echo "$APPLY_CREDS" | jq -r .SessionToken)
-EXPIRATION=$(echo "$APPLY_CREDS" | jq -r .Expiration)
-date -d "$EXPIRATION" +%s 2>/dev/null > "$CREDS_EXPIRE_FILE" || \
-  date -j -f "%Y-%m-%dT%H:%M:%S%z" "${EXPIRATION%+*}+0000" +%s > "$CREDS_EXPIRE_FILE"
-
-ok "Apply role credentials valid until: $EXPIRATION"
+info "Operator IAM principal: ${CALLER_ARN}"
 
 info "Assuming admin role for kubectl: ${ADMIN_ROLE_ARN}"
 if ! ADMIN_CREDS=$(aws sts assume-role \
@@ -55,6 +58,12 @@ ADMIN_CREDS_FILE="/tmp/eks-lifecycle-admin-creds-$$"
 ( umask 077 && : > "$ADMIN_CREDS_FILE" )
 echo "$ADMIN_CREDS" > "$ADMIN_CREDS_FILE"
 export ADMIN_CREDS_FILE
+
+ADMIN_EXPIRATION=$(echo "$ADMIN_CREDS" | jq -r .Expiration)
+date -d "$ADMIN_EXPIRATION" +%s 2>/dev/null > "$CREDS_EXPIRE_FILE" || \
+  date -j -f "%Y-%m-%dT%H:%M:%S%z" "${ADMIN_EXPIRATION%+*}+0000" +%s > "$CREDS_EXPIRE_FILE"
+
+ok "Admin role credentials valid until: $ADMIN_EXPIRATION"
 
 # Use admin creds in a sub-shell to update kubeconfig
 (
@@ -91,15 +100,25 @@ use_admin_creds() {
   fi
 }
 
+# Restore operator's default credential state for terragrunt operations.
+# When operator uses AWS_PROFILE / IAM Identity Center / instance profile,
+# unsetting AWS_*_KEY env returns the SDK to its default lookup chain.
+# When operator had AWS_*_KEY set directly, restore the captured values.
 use_apply_creds() {
-  local _id _secret _token
-  _id=$(jq -r .AccessKeyId <<< "$APPLY_CREDS")
-  _secret=$(jq -r .SecretAccessKey <<< "$APPLY_CREDS")
-  _token=$(jq -r .SessionToken <<< "$APPLY_CREDS")
-  export AWS_ACCESS_KEY_ID="$_id"
-  export AWS_SECRET_ACCESS_KEY="$_secret"
-  export AWS_SESSION_TOKEN="$_token"
+  if [ -n "${ORIG_AWS_ACCESS_KEY_ID}" ]; then
+    export AWS_ACCESS_KEY_ID="$ORIG_AWS_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$ORIG_AWS_SECRET_ACCESS_KEY"
+    if [ -n "${ORIG_AWS_SESSION_TOKEN}" ]; then
+      export AWS_SESSION_TOKEN="$ORIG_AWS_SESSION_TOKEN"
+    else
+      unset AWS_SESSION_TOKEN
+    fi
+  else
+    unset AWS_ACCESS_KEY_ID
+    unset AWS_SECRET_ACCESS_KEY
+    unset AWS_SESSION_TOKEN
+  fi
 }
 
-# Default to apply creds for terragrunt operations
+# Default to operator credentials for terragrunt operations
 use_apply_creds
