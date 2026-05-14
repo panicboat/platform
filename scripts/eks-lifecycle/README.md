@@ -20,6 +20,13 @@ teardown / recreate 開始前に以下を確認:
 ```bash
 # 1. operator identity (= 期待する IAM user / role か)
 aws sts get-caller-identity
+# → user/panicboat (= 操作者本人の IAM principal) が出ること。
+# → assumed-role/eks-admin-production/... (= eks-login 等で事前 assume 済) の場合は
+#    AWS env を unset して操作者本来の credential chain に戻す:
+#       unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+#    eks-admin は EC2 / VPC describe 権限を持たないため、 unset せずに進むと
+#    `40-orphan-verify.sh` の `aws ec2 describe-network-interfaces` 等が
+#    UnauthorizedOperation で fail する。
 
 # 2. cluster 接続性 (= recreate 後の検証にも使う)
 kubectl config current-context
@@ -126,6 +133,15 @@ marker convention の design rationale は `kubernetes/helmfile.yaml.gotmpl` 冒
 - ロールバックは前進復旧のみ (= teardown 中断は再 teardown、recreate 中断は再 recreate)
 - admin role 一時 credentials の expire (= 1h STS session) は `30-destroy-stacks.sh` / `50-apply-stacks.sh` の各 stack 開始時に `creds_expiring_soon` (< 5min) で検出して `00-auth.sh` を re-source、admin role を assume し直す
 - `40-orphan-verify.sh` は read-only verify で auto-delete しない (= false-positive 含み得る出力を operator が目視精査し、必要なら提示された AWS CLI コマンドで個別削除)。検出時の exit code は live run = 1 (= operator 注意喚起 + make chain 停止)、DRY_RUN=1 = 0 (= live cluster の現役 resource を warn として列挙、make chain は継続)
+- `terragrunt destroy / apply` で `Module version requirements have changed` (= 既存 `.terragrunt-cache/` の module version と現行 main.tf の constraint が乖離) のエラーが出たら、対象 stack を `terragrunt init -upgrade` で更新してから再開する。 8 stack 一括は以下:
+  ```bash
+  for stack in karpenter eks-secrets eks-logs eks-metrics eks-traces eks alb vpc; do
+    echo "=== init: $stack ==="
+    ( cd aws/$stack/envs/production && TG_TF_PATH=tofu terragrunt init -upgrade )
+  done
+  make eks-teardown-aws ENV=production   # 中断地点から再開、 fail fast 後の再 run は idempotent
+  ```
+  発生例: Renovate PR で `terraform-aws-modules/eks/aws` を `~> 21.20` に更新済みだが、 操作者の `.terragrunt-cache/` には v21.19.0 がキャッシュされているケース
 
 ## What is preserved through teardown
 
