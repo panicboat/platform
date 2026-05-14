@@ -82,9 +82,11 @@ export REPO_ROOT
 # AWS region from terragrunt env file (falls back to ap-northeast-1)
 # ----------------------------------------------------------------------------
 resolve_aws_region() {
+  # BSD sed (= macOS default) does not understand \s; use [[:space:]] for portability.
   local env_file="${REPO_ROOT}/aws/eks/envs/${ENV}/env.hcl"
   if [ -f "$env_file" ]; then
-    grep -E '^\s*aws_region\s*=' "$env_file" | head -1 | sed -E 's/^\s*aws_region\s*=\s*"([^"]+)".*/\1/'
+    grep -E '^[[:space:]]*aws_region[[:space:]]*=' "$env_file" | head -1 | \
+      sed -E 's/^[[:space:]]*aws_region[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/'
   else
     echo "ap-northeast-1"
   fi
