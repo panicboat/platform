@@ -2173,7 +2173,7 @@ spec:
               port: http
       nodeSelector:
         kubernetes.io/os: linux
-        node-role/karpenter-controller-host: "true"
+        node-role/system-critical: "true"
       # The template below patches the .Values.affinity to add a default label selector where not specificed
       affinity:
         nodeAffinity:
@@ -2200,8 +2200,9 @@ spec:
           whenUnsatisfiable: DoNotSchedule
       tolerations:
         - effect: NoSchedule
-          key: karpenter.sh/controller
-          operator: Exists
+          key: dedicated
+          operator: Equal
+          value: system-critical
 
 ---
 apiVersion: karpenter.k8s.aws/v1
