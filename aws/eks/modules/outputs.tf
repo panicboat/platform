@@ -73,7 +73,7 @@ output "external_dns_role_arn" {
 
 output "cilium_operator_role_arn" {
   description = "Pod Identity Association role ARN for Cilium operator (ENI mode IPAM、EC2 API での ENI / IP 操作)"
-  value       = module.cilium_operator.arn
+  value       = aws_iam_role.cilium_operator.arn
 }
 
 output "vpc_id" {

@@ -68,7 +68,7 @@ module "external_dns_irsa" {
   tags = var.common_tags
 }
 
-# Cilium operator IAM role (= Pod Identity Association).
+# Cilium operator IAM role (= EKS Pod Identity Association).
 #
 # Cilium native CNI mode = ENI IPAM では cilium-operator が EC2 API 経由で:
 # - ENI を node に attach / detach (CreateNetworkInterface / Attach... 等)
@@ -78,9 +78,7 @@ module "external_dns_irsa" {
 # https://docs.cilium.io/en/v1.19/network/concepts/ipam/eni/
 #
 # EKS Pod Identity Association (= eks-pod-identity-agent addon 経由) で
-# `kube-system:cilium-operator` SA を本 role に紐付ける。 chart 側
-# values.yaml.gotmpl の serviceAccounts.operator.annotations
-# (`eks.amazonaws.com/role-arn`) は併存可能だが Pod Identity が優先される。
+# `kube-system:cilium-operator` SA を本 role に紐付ける。
 #
 # Pod Identity 採用理由 (= 2026-05-16 cold-start bootstrap incident):
 # IRSA path (= SA token → sts:AssumeRoleWithWebIdentity → cache → EC2 call) は
@@ -90,60 +88,78 @@ module "external_dns_irsa" {
 # Pod Identity は local eks-pod-identity-agent (= hostNetwork DS、 CNI 不要で
 # bootstrap 後すぐ Ready) を介して credential 取得するため STS round-trip 不要、
 # 5 秒 timeout 内に余裕で完了する。 karpenter sub-module も同 path を採用済。
-module "cilium_operator" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "~> 6.6"
-
-  name            = "eks-${var.environment}-cilium-operator"
-  use_name_prefix = false
-
-  create_inline_policy = true
-  inline_policy_permissions = {
-    EC2Describe = {
-      actions = [
-        "ec2:DescribeInstances",
-        "ec2:DescribeInstanceTypes",
-        "ec2:DescribeSubnets",
-        "ec2:DescribeSecurityGroups",
-        "ec2:DescribeVpcs",
-        "ec2:DescribeNetworkInterfaces",
-        "ec2:DescribeTags",
-      ]
-      resources = ["*"]
-      effect    = "Allow"
-    }
-    EC2ENIManagement = {
-      actions = [
-        "ec2:CreateNetworkInterface",
-        "ec2:AssignPrivateIpAddresses",
-        "ec2:UnassignPrivateIpAddresses",
-        "ec2:AttachNetworkInterface",
-        "ec2:DetachNetworkInterface",
-        "ec2:DeleteNetworkInterface",
-        "ec2:ModifyNetworkInterfaceAttribute",
-      ]
-      resources = ["*"]
-      effect    = "Allow"
-    }
-    EC2TagManagement = {
-      actions = [
-        "ec2:CreateTags",
-        "ec2:DeleteTags",
-      ]
-      resources = ["*"]
-      effect    = "Allow"
+#
+# terraform-aws-modules/iam v6.6 の iam-role-for-service-accounts module は
+# Pod Identity 未対応 (= oidc_providers 専用) のため、 raw aws_iam_role +
+# aws_eks_pod_identity_association resource で構成。
+data "aws_iam_policy_document" "cilium_operator_assume" {
+  statement {
+    actions = ["sts:AssumeRole", "sts:TagSession"]
+    principals {
+      type        = "Service"
+      identifiers = ["pods.eks.amazonaws.com"]
     }
   }
+}
 
-  pod_identity_associations = {
-    main = {
-      cluster_name    = module.eks.cluster.name
-      namespace       = "kube-system"
-      service_account = "cilium-operator"
-    }
-  }
+resource "aws_iam_role" "cilium_operator" {
+  name               = "eks-${var.environment}-cilium-operator"
+  assume_role_policy = data.aws_iam_policy_document.cilium_operator_assume.json
+  tags               = var.common_tags
+}
 
-  tags = var.common_tags
+resource "aws_iam_role_policy" "cilium_operator" {
+  name = "cilium-operator"
+  role = aws_iam_role.cilium_operator.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EC2Describe"
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeInstances",
+          "ec2:DescribeInstanceTypes",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DescribeVpcs",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DescribeTags",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "EC2ENIManagement"
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateNetworkInterface",
+          "ec2:AssignPrivateIpAddresses",
+          "ec2:UnassignPrivateIpAddresses",
+          "ec2:AttachNetworkInterface",
+          "ec2:DetachNetworkInterface",
+          "ec2:DeleteNetworkInterface",
+          "ec2:ModifyNetworkInterfaceAttribute",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "EC2TagManagement"
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateTags",
+          "ec2:DeleteTags",
+        ]
+        Resource = "*"
+      },
+    ]
+  })
+}
+
+resource "aws_eks_pod_identity_association" "cilium_operator" {
+  cluster_name    = module.eks.cluster_name
+  namespace       = "kube-system"
+  service_account = "cilium-operator"
+  role_arn        = aws_iam_role.cilium_operator.arn
 }
 
 locals {
