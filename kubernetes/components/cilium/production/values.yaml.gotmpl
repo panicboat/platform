@@ -1,18 +1,27 @@
 # Cilium CNI Configuration for production (eks-production)
 
-# TODO: Remove once the 1.19.4 upgrade is fully rolled out across all nodes
-# and cluster stability is confirmed (= no pre-upgrade nodes remain、 in-flight
-# connection 保護不要 state)。
-# upgradeCompatibility instructs the new chart to preserve the 1.18 datapath
-# encoding during rolling replacement, preventing in-flight connection drops.
-upgradeCompatibility: "1.18"
+# =============================================================================
+# IPAM: ENI mode (= Cilium が AWS ENI を直接管理、Pod IP は VPC subnet
+# secondary IP として allocate される。 kube-proxy 不在 + VPC native routing
+# で Pod-to-Pod traffic は ENI 間で直接 forwarding される)
+# =============================================================================
+ipam:
+  mode: eni
 
 # =============================================================================
-# CNI Chaining Mode（VPC CNI が IPAM/datapath、Cilium は L7/policy/observability）
+# AWS ENI 設定 (= cilium-operator が EC2 API 経由で ENI 作成 / IP 割当を実行、
+# IRSA role 経由で IAM permission 取得)
 # =============================================================================
-cni:
-  chainingMode: aws-cni
-  exclusive: false
+eni:
+  enabled: true
+
+# =============================================================================
+# Service Accounts: cilium-operator に IRSA role 紐付け (= EC2 ENI 操作権限)
+# =============================================================================
+serviceAccounts:
+  operator:
+    annotations:
+      eks.amazonaws.com/role-arn: {{ .Values.cluster.ciliumOperatorRoleArn }}
 
 # =============================================================================
 # Routing & Masquerade
@@ -20,8 +29,10 @@ cni:
 routingMode: native
 endpointRoutes:
   enabled: true
-# VPC CNI with native routing handles L3 forwarding at the VPC level;
-# Cilium masquerade would double-NAT and break pod IP visibility.
+# Cilium native CNI ENI mode では Pod IP が VPC subnet secondary IP として
+# allocate され ENI 経由で VPC routable になる。 masquerade すると VPC routing
+# が機能しなくなる (= source IP が node primary IP に置き換わり ENI 直接 routing
+# 不能) ため、 cluster 内 traffic に対する masquerade は disable。
 enableIPv4Masquerade: false
 # EKS cluster is IPv4-only (no IPv6 CIDR allocated to the VPC or node groups).
 ipv6:
@@ -36,11 +47,35 @@ k8sServiceHost: {{ .Values.cluster.eksApiEndpoint }}
 k8sServicePort: 443
 
 # =============================================================================
-# Operator: HA
+# Tolerations: cilium-agent / envoy DaemonSet を全 node に schedule
 # =============================================================================
+# system_critical MNG の taint `dedicated=system-critical:NoSchedule` を含め、
+# 全 taint を tolerate する。 cilium-agent が node に存在しないと CNI plugin が
+# /opt/cni/bin に置かれず node NotReady のままになるため、 全 node 上で動作させる
+# 必要がある (= 公式 BYOCNI 要件)。
+tolerations:
+  - operator: Exists
+
+# =============================================================================
+# Operator: HA + system_critical MNG への pin
+# =============================================================================
+# operator は EC2 API を呼ぶ cluster の brain、 Karpenter-provisioned node が
+# Ready になるためにも先に動いている必要があるため system_critical MNG に固定。
+# nodeSelector + tolerations の双方が必須: toleration 単独だと taint を回避
+# できる "schedule 可" を満たすだけで application node にも流れうる。 label
+# `node-role/system-critical=true` で配置先を system_critical MNG に絞り、 同
+# MNG が縮退中の場合に Pending で stay させる (= Karpenter-provisioned spot に
+# drift して EC2 ENI 制御 loop を失う事故を防ぐ)。
 operator:
   replicas: 2
   rollOutPods: true
+  nodeSelector:
+    node-role/system-critical: "true"
+  tolerations:
+    - key: dedicated
+      operator: Equal
+      value: system-critical
+      effect: NoSchedule
   prometheus:
     enabled: true
     serviceMonitor:

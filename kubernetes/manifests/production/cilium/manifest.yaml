@@ -28,6 +28,8 @@ kind: ServiceAccount
 metadata:
   name: "cilium-operator"
   namespace: kube-system
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::559744160976:role/eks-production-cilium-operator
 ---
 # Source: cilium/templates/hubble-relay/serviceaccount.yaml
 apiVersion: v1
@@ -45,6 +47,7 @@ metadata:
   namespace: kube-system
 ---
 # Source: cilium/templates/cilium-configmap.yaml
+# Will also do this for ipv6 when ENI mode works with ipv6.---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -147,9 +150,6 @@ data:
   # Specifies the ratio (0.0-1.0] of total system memory to use for dynamic
   # sizing of the TCP CT, non-TCP CT, NAT and policy BPF maps.
   bpf-map-dynamic-size-ratio: "0.0025"
-  # In cni chaining mode, the other chained plugin is responsible for underlying connectivity,
-  # so cilium eBPF host routing shoud not work, and let it fall back to the legacy routing mode
-  enable-host-legacy-routing: "true"
   # bpf-policy-map-max specifies the maximum number of entries in endpoint
   # policy map (per endpoint)
   bpf-policy-map-max: "16384"
@@ -203,23 +203,13 @@ data:
   tunnel-source-port-range: "0-0"
   service-no-backend-response: "reject"
   policy-deny-response: "none"
+  auto-create-cilium-node-resource: "true"
+  ec2-api-endpoint: ""
+  eni-tags: "{}"
 
 
   # Enables L7 proxy for L7 policy enforcement and visibility
   enable-l7-proxy: "true"
-  # Enable chaining with another CNI plugin
-  #
-  # Supported modes:
-  #  - none
-  #  - aws-cni
-  #  - flannel
-  #  - generic-veth
-  #  - portmap (Enables HostPort support for Cilium)
-  cni-chaining-mode: aws-cni
-  # Disable the PodCIDR route to the cilium_host interface as it is not
-  # required. While chaining, it is the responsibility of the underlying plugin
-  # to enable routing.
-  enable-local-node-route: "false"
   enable-ipv4-masquerade: "false"
   enable-ipv4-big-tcp: "false"
   enable-ipv6-big-tcp: "false"
@@ -256,10 +246,9 @@ data:
   enable-endpoint-lockdown-on-policy-overflow: "false"
   # Tell the agent to generate and write a CNI configuration file
   write-cni-conf-when-ready: /host/etc/cni/net.d/05-cilium.conflist
-  cni-exclusive: "false"
+  cni-exclusive: "true"
   cni-log-file: "/var/run/cilium/cilium-cni.log"
-  # Disable health checking, when chaining mode is not set to portmap or none
-  enable-endpoint-health-checking: "false"
+  enable-endpoint-health-checking: "true"
   enable-health-checking: "true"
   health-check-icmp-failure-threshold: "3"
   enable-well-known-identities: "false"
@@ -292,10 +281,8 @@ data:
   hubble-tls-cert-file: /var/lib/cilium/tls/hubble/server.crt
   hubble-tls-key-file: /var/lib/cilium/tls/hubble/server.key
   hubble-tls-client-ca-files: /var/lib/cilium/tls/hubble/client-ca.crt
-  ipam: "cluster-pool"
+  ipam: "eni"
   ipam-cilium-node-update-rate: "15s"
-  cluster-pool-ipv4-cidr: "10.0.0.0/8"
-  cluster-pool-ipv4-mask-size: "24"
 
   default-lb-service-ipam: "lbipam"
   egress-gateway-reconciliation-trigger-interval: "1s"
@@ -316,6 +303,8 @@ data:
   set-cilium-node-taints: "true"
   set-cilium-is-up-condition: "true"
   unmanaged-pod-watcher-interval: "15s"
+  # default DNS proxy to transparent mode in non-chaining modes
+  dnsproxy-enable-transparent-mode: "true"
   dnsproxy-socket-linger-timeout: "10"
   tofqdns-dns-reject-response-code: "refused"
   tofqdns-enable-dns-compression: "true"
@@ -1396,6 +1385,32 @@ spec:
         - name: KUBE_CLIENT_BACKOFF_DURATION
           value: "120"
         lifecycle:
+          postStart:
+            exec:
+              command:
+              - "bash"
+              - "-c"
+              - |
+                    set -o errexit
+                    set -o pipefail
+                    set -o nounset
+                    
+                    # When running in AWS ENI mode, it's likely that 'aws-node' has
+                    # had a chance to install SNAT iptables rules. These can result
+                    # in dropped traffic, so we should attempt to remove them.
+                    # We do it using a 'postStart' hook since this may need to run
+                    # for nodes which might have already been init'ed but may still
+                    # have dangling rules. This is safe because there are no
+                    # dependencies on anything that is part of the startup script
+                    # itself, and can be safely run multiple times per node (e.g. in
+                    # case of a restart).
+                    if [[ "$(iptables-save | grep -E -c 'AWS-SNAT-CHAIN|AWS-CONNMARK-CHAIN')" != "0" ]];
+                    then
+                        echo 'Deleting iptables rules created by the AWS CNI VPC plugin'
+                        iptables-save | grep -E -v 'AWS-SNAT-CHAIN|AWS-CONNMARK-CHAIN' | iptables-restore
+                    fi
+                    echo 'Done!'
+                    
           preStop:
             exec:
               command:
@@ -2020,7 +2035,7 @@ spec:
     metadata:
       annotations:
         # ensure pods roll when configmap updates
-        cilium.io/cilium-configmap-checksum: "497c443ea02a8e4e50d7030e3c55a70c5099882701152929625b02c047fa005d"
+        cilium.io/cilium-configmap-checksum: "5510373a0769c12a4c23f8fd575c9d909b65f34d6c2f463425992c6efd7f8c6c"
       labels:
         io.cilium/app: operator
         name: cilium-operator
@@ -2032,10 +2047,10 @@ spec:
           type: RuntimeDefault
       containers:
       - name: cilium-operator
-        image: "quay.io/cilium/operator-generic:v1.19.4@sha256:1aa2b62735e7d8ab49ee840ae59c346932024c88901579121395c1271b435f71"
+        image: "quay.io/cilium/operator-aws:v1.19.4@sha256:9e41b3959d941a0b60ba187f5a2572305846248efb89ac59c18fd25a032f568d"
         imagePullPolicy: IfNotPresent
         command:
-        - cilium-operator-generic
+        - cilium-operator-aws
         args:
         - --config-dir=/tmp/cilium/config-map
         - --debug=$(CILIUM_DEBUG)
@@ -2055,6 +2070,24 @@ spec:
             configMapKeyRef:
               key: debug
               name: cilium-config
+              optional: true
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: cilium-aws
+              key: AWS_ACCESS_KEY_ID
+              optional: true
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: cilium-aws
+              key: AWS_SECRET_ACCESS_KEY
+              optional: true
+        - name: AWS_DEFAULT_REGION
+          valueFrom:
+            secretKeyRef:
+              name: cilium-aws
+              key: AWS_DEFAULT_REGION
               optional: true
         - name: KUBERNETES_SERVICE_HOST
           value: "BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com"
@@ -2114,15 +2147,12 @@ spec:
             topologyKey: kubernetes.io/hostname
       nodeSelector:
         kubernetes.io/os: linux
+        node-role/system-critical: "true"
       tolerations:
-        - key: node-role.kubernetes.io/control-plane
-          operator: Exists
-        - key: node-role.kubernetes.io/master
-          operator: Exists
-        - key: node.kubernetes.io/not-ready
-          operator: Exists
-        - key: node.cloudprovider.kubernetes.io/uninitialized
-          operator: Exists
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: system-critical
         - key: node.cilium.io/agent-not-ready
           operator: Exists
       

@@ -15,37 +15,37 @@ variable "common_tags" {
   type        = map(string)
 }
 
-# karpenter_controller_host MNG variables
-# Controller host MNG hosts only the Karpenter controller pod (replicas=2). All other
-# workloads (CoreDNS, Cilium operator, Flux, addons, etc.) run on Karpenter
-# NodePool-managed instances (system-components NodePool) after migration.
+# system_critical MNG variables.
+# Bootstrap-critical workloads (Karpenter controller, cilium-operator, CoreDNS)
+# run on this MNG. Application workloads (Flux, observability stack, app pods 等)
+# run on Karpenter-managed instances (system-components NodePool).
 
-variable "controller_host_instance_types" {
-  description = "Instance types for the karpenter_controller_host managed node group (only hosts Karpenter controller pods)"
+variable "system_critical_instance_types" {
+  description = "Instance types for the system_critical managed node group (hosts Karpenter controller / cilium-operator / CoreDNS)"
   type        = list(string)
   default     = ["t4g.small"]
 }
 
-variable "controller_host_desired_size" {
-  description = "Desired number of nodes in the karpenter_controller_host node group"
+variable "system_critical_desired_size" {
+  description = "Desired number of nodes in the system_critical node group"
   type        = number
   default     = 2
 }
 
-variable "controller_host_min_size" {
-  description = "Minimum number of nodes in the karpenter_controller_host node group"
+variable "system_critical_min_size" {
+  description = "Minimum number of nodes in the system_critical node group"
   type        = number
   default     = 2
 }
 
-variable "controller_host_max_size" {
-  description = "Maximum number of nodes in the karpenter_controller_host node group"
+variable "system_critical_max_size" {
+  description = "Maximum number of nodes in the system_critical node group"
   type        = number
   default     = 2
 }
 
-variable "controller_host_disk_size" {
-  description = "EBS volume size (GiB) for karpenter_controller_host node group"
+variable "system_critical_disk_size" {
+  description = "EBS volume size (GiB) for system_critical node group"
   type        = number
   default     = 20
 }

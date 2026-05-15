@@ -9,21 +9,23 @@
 # ServiceAccount は chart デフォルト (create: true、name: karpenter) で OK。
 
 # =============================================================================
-# Replicas / Pod placement (controller_host MNG への pin)
+# Replicas / Pod placement (system_critical MNG への pin)
 # =============================================================================
 # replicas: 2 (chart デフォルト) を採用。HA 化済み。
 replicas: 2
 
-# Karpenter pod を karpenter_controller_host MNG 上のみに schedule する。
-# Controller host MNG の taint `karpenter.sh/controller=true:NoSchedule` を
-# tolerate しつつ、label `node-role/karpenter-controller-host=true` で
-# 配置先を絞る。
+# Karpenter pod を system_critical MNG 上のみに schedule する。 同 MNG は
+# Karpenter controller / cilium-operator / CoreDNS を共通 host する bootstrap-
+# critical node group (= aws/karpenter/modules/main.tf module "system_critical"
+# 参照)。 taint `dedicated=system-critical:NoSchedule` を tolerate しつつ
+# label `node-role/system-critical=true` で配置先を絞る。
 nodeSelector:
-  node-role/karpenter-controller-host: "true"
+  node-role/system-critical: "true"
 
 tolerations:
-  - key: karpenter.sh/controller
-    operator: Exists
+  - key: dedicated
+    operator: Equal
+    value: system-critical
     effect: NoSchedule
 
 # =============================================================================
@@ -31,11 +33,12 @@ tolerations:
 # =============================================================================
 settings:
   clusterName: {{ .Values.cluster.name }}
-  # SQS interruption queue 名 (Plan 2 PR 1 で aws/karpenter/ stack が provision)
+  # SQS interruption queue 名 (aws/karpenter/ stack が provision)
   interruptionQueue: {{ .Values.karpenter.interruptionQueueName }}
 
 # =============================================================================
 # Controller resources
 # =============================================================================
-# chart デフォルト (1 cpu / 1Gi memory) を採用。controller_host MNG t4g.small は
-# 2 vCPU / 2 GiB なので replicas=2 で 2 cpu / 2 Gi 要求 → 余裕で fit。
+# chart デフォルト (1 cpu / 1Gi memory) を採用。 system_critical MNG t4g.small
+# は 2 vCPU / 2 GiB / node なので、 controller (replicas=2) + cilium-operator
+# (replicas=2) + CoreDNS (replicas=2) を 2 node で分散 host できる。
