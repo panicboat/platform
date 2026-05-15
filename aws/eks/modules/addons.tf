@@ -68,7 +68,7 @@ module "external_dns_irsa" {
   tags = var.common_tags
 }
 
-# Cilium operator IRSA role.
+# Cilium operator IAM role (= Pod Identity Association).
 #
 # Cilium native CNI mode = ENI IPAM では cilium-operator が EC2 API 経由で:
 # - ENI を node に attach / detach (CreateNetworkInterface / Attach... 等)
@@ -77,10 +77,20 @@ module "external_dns_irsa" {
 # を実行する。 必要 permission は Cilium 公式 ENI mode docs に準拠:
 # https://docs.cilium.io/en/v1.19/network/concepts/ipam/eni/
 #
-# IRSA で `kube-system:cilium-operator` SA を本 role に紐付ける。 chart 側
+# EKS Pod Identity Association (= eks-pod-identity-agent addon 経由) で
+# `kube-system:cilium-operator` SA を本 role に紐付ける。 chart 側
 # values.yaml.gotmpl の serviceAccounts.operator.annotations
-# (`eks.amazonaws.com/role-arn`) で完全な loop を成立させる。
-module "cilium_operator_irsa" {
+# (`eks.amazonaws.com/role-arn`) は併存可能だが Pod Identity が優先される。
+#
+# Pod Identity 採用理由 (= 2026-05-16 cold-start bootstrap incident):
+# IRSA path (= SA token → sts:AssumeRoleWithWebIdentity → cache → EC2 call) は
+# 初回 STS round-trip + AWS SDK 内 retry で cilium-operator の 5 秒 hardcoded
+# "initial EC2 API limits update" timeout を時に超過し crashloop となる
+# (= IPAM init failure → 全 Pod IP allocate 不能 → cluster bootstrap 詰む)。
+# Pod Identity は local eks-pod-identity-agent (= hostNetwork DS、 CNI 不要で
+# bootstrap 後すぐ Ready) を介して credential 取得するため STS round-trip 不要、
+# 5 秒 timeout 内に余裕で完了する。 karpenter sub-module も同 path を採用済。
+module "cilium_operator" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "~> 6.6"
 
@@ -125,10 +135,11 @@ module "cilium_operator_irsa" {
     }
   }
 
-  oidc_providers = {
+  pod_identity_associations = {
     main = {
-      provider_arn               = module.eks.oidc_provider_arn
-      namespace_service_accounts = ["kube-system:cilium-operator"]
+      cluster_name    = module.eks.cluster.name
+      namespace       = "kube-system"
+      service_account = "cilium-operator"
     }
   }
 

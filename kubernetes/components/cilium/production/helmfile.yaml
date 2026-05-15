@@ -16,8 +16,6 @@ environments:
       - cluster:
           # RECREATE: cd aws/eks/envs/production && TG_TF_PATH=tofu terragrunt output -raw cluster_endpoint_hostname
           eksApiEndpoint: BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com
-          # STABLE: aws/eks/modules/addons.tf で use_name_prefix = false に設定済
-          ciliumOperatorRoleArn: arn:aws:iam::559744160976:role/eks-production-cilium-operator
 ---
 repositories:
   - name: cilium

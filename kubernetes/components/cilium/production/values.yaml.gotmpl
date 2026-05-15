@@ -16,12 +16,14 @@ eni:
   enabled: true
 
 # =============================================================================
-# Service Accounts: cilium-operator に IRSA role 紐付け (= EC2 ENI 操作権限)
+# Service Accounts: cilium-operator は EKS Pod Identity Association で
+# `eks-production-cilium-operator` role に紐付け (= EC2 ENI 操作権限)。
+# aws/eks/modules/addons.tf の cilium_operator module の pod_identity_associations
+# が紐付けを provision し、 eks-pod-identity-agent (= EKS managed addon、
+# hostNetwork DS で CNI 不要) が pod の AWS_CONTAINER_CREDENTIALS_FULL_URI env
+# 経由で credential を提供する。 SA annotation `eks.amazonaws.com/role-arn`
+# (= IRSA marker) は本構成では不要、 chart default の cilium-operator SA を採用。
 # =============================================================================
-serviceAccounts:
-  operator:
-    annotations:
-      eks.amazonaws.com/role-arn: {{ .Values.cluster.ciliumOperatorRoleArn }}
 
 # =============================================================================
 # Routing & Masquerade
