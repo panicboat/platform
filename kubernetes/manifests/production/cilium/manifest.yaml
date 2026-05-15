@@ -28,8 +28,6 @@ kind: ServiceAccount
 metadata:
   name: "cilium-operator"
   namespace: kube-system
-  annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::559744160976:role/eks-production-cilium-operator
 ---
 # Source: cilium/templates/hubble-relay/serviceaccount.yaml
 apiVersion: v1
