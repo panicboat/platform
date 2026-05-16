@@ -65,20 +65,25 @@ date -d "$ADMIN_EXPIRATION" +%s 2>/dev/null > "$CREDS_EXPIRE_FILE" || \
 
 ok "Admin role credentials valid until: $ADMIN_EXPIRATION"
 
-# Use admin creds in a sub-shell to update kubeconfig
+# Update kubeconfig + verify cluster reachability with admin creds in a
+# sub-shell. kubectl exec plugin (= aws eks get-token) inherits caller's
+# AWS env at invocation time、 so the reachability check (= `kubectl get
+# nodes`) must also run inside the same subshell where admin creds are
+# active. 親 shell の operator IAM principal は EKS aws-auth に未登録の
+# ケースが多く、 subshell 外で kubectl test すると 401 で誤判定される。
 (
   AWS_ACCESS_KEY_ID=$(jq -r .AccessKeyId "$ADMIN_CREDS_FILE")
   AWS_SECRET_ACCESS_KEY=$(jq -r .SecretAccessKey "$ADMIN_CREDS_FILE")
   AWS_SESSION_TOKEN=$(jq -r .SessionToken "$ADMIN_CREDS_FILE")
   export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
-  if aws eks update-kubeconfig --region "$REGION" --name "eks-${ENV}" >/dev/null 2>&1; then
+  if aws eks update-kubeconfig --region "$REGION" --name "eks-${ENV}" >/dev/null 2>&1 && \
+     kubectl get nodes >/dev/null 2>&1; then
     exit 0
-  else
-    exit 1
   fi
+  exit 1
 ) && CLUSTER_REACHABLE="true" || CLUSTER_REACHABLE="false"
 
-if [ "$CLUSTER_REACHABLE" = "true" ] && kubectl get nodes >/dev/null 2>&1; then
+if [ "$CLUSTER_REACHABLE" = "true" ]; then
   ok "Cluster reachable via admin role"
   export CLUSTER_EXISTS="true"
 else
