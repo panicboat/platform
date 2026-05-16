@@ -15,7 +15,7 @@ environments:
     values:
       - cluster:
           # RECREATE: cd aws/eks/envs/production && TG_TF_PATH=tofu terragrunt output -raw cluster_endpoint_hostname
-          eksApiEndpoint: BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com
+          eksApiEndpoint: 3F6FED4FDA8456A3DBD2949E44DF028B.gr7.ap-northeast-1.eks.amazonaws.com
 ---
 repositories:
   - name: cilium

@@ -7,6 +7,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: cilium
   annotations:
+
 ---
 # Source: cilium/templates/cilium-agent/serviceaccount.yaml
 apiVersion: v1
@@ -14,6 +15,7 @@ kind: ServiceAccount
 metadata:
   name: "cilium"
   namespace: kube-system
+
 ---
 # Source: cilium/templates/cilium-envoy/serviceaccount.yaml
 apiVersion: v1
@@ -21,6 +23,7 @@ kind: ServiceAccount
 metadata:
   name: "cilium-envoy"
   namespace: kube-system
+
 ---
 # Source: cilium/templates/cilium-operator/serviceaccount.yaml
 apiVersion: v1
@@ -28,6 +31,7 @@ kind: ServiceAccount
 metadata:
   name: "cilium-operator"
   namespace: kube-system
+
 ---
 # Source: cilium/templates/hubble-relay/serviceaccount.yaml
 apiVersion: v1
@@ -36,6 +40,7 @@ metadata:
   name: "hubble-relay"
   namespace: kube-system
 automountServiceAccountToken: false
+
 ---
 # Source: cilium/templates/hubble-ui/serviceaccount.yaml
 apiVersion: v1
@@ -43,6 +48,7 @@ kind: ServiceAccount
 metadata:
   name: "hubble-ui"
   namespace: kube-system
+
 ---
 # Source: cilium/templates/cilium-configmap.yaml
 # Will also do this for ipv6 when ENI mode works with ipv6.---
@@ -76,13 +82,11 @@ data:
 
   # If you want to run cilium in debug mode change this value to true
   debug: "false"
-  debug-verbose: ""
   metrics-sampling-interval: "5m"
   # The agent can be put into the following three policy enforcement modes
   # default, always and never.
   # https://docs.cilium.io/en/latest/security/policy/intro/#policy-enforcement-modes
   enable-policy: "default"
-  policy-cidr-match-mode: ""
   # If you want metrics enabled in all of your Cilium agents, set the port for
   # which the Cilium agents will have their metrics exposed.
   # This option deprecates the "prometheus-serve-addr" in the
@@ -229,7 +233,6 @@ data:
   kube-proxy-replacement-healthz-bind-address: ""
   enable-no-service-endpoints-routable: "true"
   bpf-lb-sock: "true"
-  nodeport-addresses: ""
   enable-health-check-nodeport: "true"
   enable-health-check-loadbalancer-ip: "false"
   node-port-bind-protection: "true"
@@ -365,6 +368,7 @@ data:
   # Keep the key name as bootstrap-config.json to avoid breaking changes
   bootstrap-config.json: |
     {"admin":{"address":{"pipe":{"mode":432,"path":"/var/run/cilium/envoy/sockets/admin.sock"}}},"applicationLogConfig":{"logFormat":{"textFormat":"[%Y-%m-%d %T.%e][%t][%l][%n] [%g:%#] %v"}},"bootstrapExtensions":[{"name":"envoy.bootstrap.internal_listener","typedConfig":{"@type":"type.googleapis.com/envoy.extensions.bootstrap.internal_listener.v3.InternalListener"}}],"dynamicResources":{"cdsConfig":{"apiConfigSource":{"apiType":"GRPC","grpcServices":[{"envoyGrpc":{"clusterName":"xds-grpc-cilium"}}],"setNodeOnFirstMessageOnly":true,"transportApiVersion":"V3"},"initialFetchTimeout":"30s","resourceApiVersion":"V3"},"ldsConfig":{"apiConfigSource":{"apiType":"GRPC","grpcServices":[{"envoyGrpc":{"clusterName":"xds-grpc-cilium"}}],"setNodeOnFirstMessageOnly":true,"transportApiVersion":"V3"},"initialFetchTimeout":"30s","resourceApiVersion":"V3"}},"node":{"cluster":"ingress-cluster","id":"host~127.0.0.1~no-id~localdomain"},"overloadManager":{"resourceMonitors":[{"name":"envoy.resource_monitors.global_downstream_max_connections","typedConfig":{"@type":"type.googleapis.com/envoy.extensions.resource_monitors.downstream_connections.v3.DownstreamConnectionsConfig","max_active_downstream_connections":"50000"}}]},"staticResources":{"clusters":[{"circuitBreakers":{"thresholds":[{"maxConnections":1024,"maxRequests":1024,"maxRetries":128}]},"cleanupInterval":"2.500s","connectTimeout":"2s","lbPolicy":"CLUSTER_PROVIDED","name":"ingress-cluster","type":"ORIGINAL_DST","typedExtensionProtocolOptions":{"envoy.extensions.upstreams.http.v3.HttpProtocolOptions":{"@type":"type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions","commonHttpProtocolOptions":{"idleTimeout":"60s","maxConnectionDuration":"0s","maxRequestsPerConnection":0},"useDownstreamProtocolConfig":{}}}},{"circuitBreakers":{"thresholds":[{"maxConnections":1024,"maxRequests":1024,"maxRetries":128}]},"cleanupInterval":"2.500s","connectTimeout":"2s","lbPolicy":"CLUSTER_PROVIDED","name":"egress-cluster-tls","transportSocket":{"name":"cilium.tls_wrapper","typedConfig":{"@type":"type.googleapis.com/cilium.UpstreamTlsWrapperContext"}},"type":"ORIGINAL_DST","typedExtensionProtocolOptions":{"envoy.extensions.upstreams.http.v3.HttpProtocolOptions":{"@type":"type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions","commonHttpProtocolOptions":{"idleTimeout":"60s","maxConnectionDuration":"0s","maxRequestsPerConnection":0},"upstreamHttpProtocolOptions":{},"useDownstreamProtocolConfig":{}}}},{"circuitBreakers":{"thresholds":[{"maxConnections":1024,"maxRequests":1024,"maxRetries":128}]},"cleanupInterval":"2.500s","connectTimeout":"2s","lbPolicy":"CLUSTER_PROVIDED","name":"egress-cluster","type":"ORIGINAL_DST","typedExtensionProtocolOptions":{"envoy.extensions.upstreams.http.v3.HttpProtocolOptions":{"@type":"type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions","commonHttpProtocolOptions":{"idleTimeout":"60s","maxConnectionDuration":"0s","maxRequestsPerConnection":0},"useDownstreamProtocolConfig":{}}}},{"circuitBreakers":{"thresholds":[{"maxConnections":1024,"maxRequests":1024,"maxRetries":128}]},"cleanupInterval":"2.500s","connectTimeout":"2s","lbPolicy":"CLUSTER_PROVIDED","name":"ingress-cluster-tls","transportSocket":{"name":"cilium.tls_wrapper","typedConfig":{"@type":"type.googleapis.com/cilium.UpstreamTlsWrapperContext"}},"type":"ORIGINAL_DST","typedExtensionProtocolOptions":{"envoy.extensions.upstreams.http.v3.HttpProtocolOptions":{"@type":"type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions","commonHttpProtocolOptions":{"idleTimeout":"60s","maxConnectionDuration":"0s","maxRequestsPerConnection":0},"upstreamHttpProtocolOptions":{},"useDownstreamProtocolConfig":{}}}},{"connectTimeout":"2s","loadAssignment":{"clusterName":"xds-grpc-cilium","endpoints":[{"lbEndpoints":[{"endpoint":{"address":{"pipe":{"path":"/var/run/cilium/envoy/sockets/xds.sock"}}}}]}]},"name":"xds-grpc-cilium","type":"STATIC","typedExtensionProtocolOptions":{"envoy.extensions.upstreams.http.v3.HttpProtocolOptions":{"@type":"type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions","explicitHttpConfig":{"http2ProtocolOptions":{}}}}},{"connectTimeout":"2s","loadAssignment":{"clusterName":"/envoy-admin","endpoints":[{"lbEndpoints":[{"endpoint":{"address":{"pipe":{"path":"/var/run/cilium/envoy/sockets/admin.sock"}}}}]}]},"name":"/envoy-admin","type":"STATIC"}],"listeners":[{"address":{"socketAddress":{"address":"0.0.0.0","portValue":9964}},"filterChains":[{"filters":[{"name":"envoy.filters.network.http_connection_manager","typedConfig":{"@type":"type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager","httpFilters":[{"name":"envoy.filters.http.router","typedConfig":{"@type":"type.googleapis.com/envoy.extensions.filters.http.router.v3.Router"}}],"internalAddressConfig":{"cidrRanges":[{"addressPrefix":"10.0.0.0","prefixLen":8},{"addressPrefix":"172.16.0.0","prefixLen":12},{"addressPrefix":"192.168.0.0","prefixLen":16},{"addressPrefix":"127.0.0.1","prefixLen":32}]},"routeConfig":{"virtualHosts":[{"domains":["*"],"name":"prometheus_metrics_route","routes":[{"match":{"prefix":"/metrics"},"name":"prometheus_metrics_route","route":{"cluster":"/envoy-admin","prefixRewrite":"/stats/prometheus"}}]}]},"statPrefix":"envoy-prometheus-metrics-listener","streamIdleTimeout":"300s"}}]}],"name":"envoy-prometheus-metrics-listener"},{"address":{"socketAddress":{"address":"127.0.0.1","portValue":9878}},"filterChains":[{"filters":[{"name":"envoy.filters.network.http_connection_manager","typedConfig":{"@type":"type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager","httpFilters":[{"name":"envoy.filters.http.router","typedConfig":{"@type":"type.googleapis.com/envoy.extensions.filters.http.router.v3.Router"}}],"internalAddressConfig":{"cidrRanges":[{"addressPrefix":"10.0.0.0","prefixLen":8},{"addressPrefix":"172.16.0.0","prefixLen":12},{"addressPrefix":"192.168.0.0","prefixLen":16},{"addressPrefix":"127.0.0.1","prefixLen":32}]},"routeConfig":{"virtual_hosts":[{"domains":["*"],"name":"health","routes":[{"match":{"prefix":"/healthz"},"name":"health","route":{"cluster":"/envoy-admin","prefixRewrite":"/ready"}}]}]},"statPrefix":"envoy-health-listener","streamIdleTimeout":"300s"}}]}],"name":"envoy-health-listener"}]}}
+
 ---
 # Source: cilium/templates/hubble-relay/configmap.yaml
 apiVersion: v1
@@ -387,6 +391,7 @@ data:
     tls-hubble-server-ca-files: /var/lib/hubble-relay/tls/hubble-server-ca.crt
     
     disable-server-tls: true
+
 ---
 # Source: cilium/templates/hubble-ui/configmap.yaml
 apiVersion: v1
@@ -396,6 +401,7 @@ metadata:
   namespace: kube-system
 data:
   nginx.conf: "server {\n    listen       8081;\n    listen       [::]:8081;\n    server_name  localhost;\n    root /app;\n    index index.html;\n    client_max_body_size 1G;\n\n    location / {\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n\n        location /api {\n            proxy_http_version 1.1;\n            proxy_pass_request_headers on;\n            proxy_pass http://127.0.0.1:8090;\n        }\n        location / {\n            if ($http_user_agent ~* \"kube-probe\") { access_log off; }\n            # double `/index.html` is required here\n            try_files $uri $uri/ /index.html /index.html;\n        }\n\n        # Liveness probe\n        location /healthz {\n            access_log off;\n            add_header Content-Type text/plain;\n            return 200 'ok';\n        }\n    }\n}"
+
 ---
 # Source: cilium/templates/cilium-agent/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -508,6 +514,7 @@ rules:
   - ciliumbgpnodeconfigs/status
   verbs:
   - patch
+
 ---
 # Source: cilium/templates/cilium-operator/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -823,6 +830,7 @@ rules:
   - ciliumendpointslices
   verbs:
   - deletecollection
+
 ---
 # Source: cilium/templates/hubble-ui/clusterrole.yaml
 kind: ClusterRole
@@ -854,6 +862,7 @@ rules:
   - get
   - list
   - watch
+
 ---
 # Source: cilium/templates/cilium-agent/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -870,6 +879,7 @@ subjects:
 - kind: ServiceAccount
   name: "cilium"
   namespace: kube-system
+
 ---
 # Source: cilium/templates/cilium-operator/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -886,6 +896,7 @@ subjects:
 - kind: ServiceAccount
   name: "cilium-operator"
   namespace: kube-system
+
 ---
 # Source: cilium/templates/hubble-ui/clusterrolebinding.yaml
 kind: ClusterRoleBinding
@@ -903,6 +914,7 @@ subjects:
 - kind: ServiceAccount
   name: "hubble-ui"
   namespace: kube-system
+
 ---
 # Source: cilium/templates/cilium-agent/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -957,6 +969,7 @@ rules:
   - get
   - list
   - watch
+
 ---
 # Source: cilium/templates/cilium-operator/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1018,6 +1031,7 @@ rules:
   - get
   - list
   - watch
+
 ---
 # Source: cilium/templates/cilium-agent/rolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1069,6 +1083,7 @@ subjects:
 - kind: ServiceAccount
   name: "cilium"
   namespace: kube-system
+
 ---
 # Source: cilium/templates/cilium-operator/rolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1120,6 +1135,7 @@ subjects:
 - kind: ServiceAccount
   name: "cilium-operator"
   namespace: kube-system
+
 ---
 # Source: cilium/templates/cilium-agent/service.yaml
 apiVersion: v1
@@ -1141,6 +1157,7 @@ spec:
     port: 9962
     protocol: TCP
     targetPort: prometheus
+
 ---
 # Source: cilium/templates/cilium-envoy/service.yaml
 apiVersion: v1
@@ -1166,6 +1183,7 @@ spec:
     port: 9964
     protocol: TCP
     targetPort: 9964
+
 ---
 # Source: cilium/templates/cilium-operator/service.yaml
 kind: Service
@@ -1189,6 +1207,7 @@ spec:
   selector:
     io.cilium/app: operator
     name: cilium-operator
+
 ---
 # Source: cilium/templates/hubble-relay/service.yaml
 kind: Service
@@ -1210,6 +1229,7 @@ spec:
   - protocol: TCP
     port: 80
     targetPort: grpc
+
 ---
 # Source: cilium/templates/hubble-ui/service.yaml
 kind: Service
@@ -1230,6 +1250,7 @@ spec:
     - name: http
       port: 80
       targetPort: 8081
+
 ---
 # Source: cilium/templates/hubble/metrics-service.yaml
 apiVersion: v1
@@ -1253,6 +1274,7 @@ spec:
     targetPort: hubble-metrics
   selector:
     k8s-app: cilium
+
 ---
 # Source: cilium/templates/hubble/peer-service.yaml
 apiVersion: v1
@@ -1274,6 +1296,7 @@ spec:
     protocol: TCP
     targetPort: 4244
   internalTrafficPolicy: Local
+
 ---
 # Source: cilium/templates/cilium-agent/daemonset.yaml
 apiVersion: apps/v1
@@ -1375,7 +1398,7 @@ spec:
               resource: limits.memory
               divisor: '1'
         - name: KUBERNETES_SERVICE_HOST
-          value: "BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com"
+          value: "3F6FED4FDA8456A3DBD2949E44DF028B.gr7.ap-northeast-1.eks.amazonaws.com"
         - name: KUBERNETES_SERVICE_PORT
           value: "443"
         - name: KUBE_CLIENT_BACKOFF_BASE
@@ -1512,7 +1535,7 @@ spec:
               apiVersion: v1
               fieldPath: metadata.namespace
         - name: KUBERNETES_SERVICE_HOST
-          value: "BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com"
+          value: "3F6FED4FDA8456A3DBD2949E44DF028B.gr7.ap-northeast-1.eks.amazonaws.com"
         - name: KUBERNETES_SERVICE_PORT
           value: "443"
         volumeMounts:
@@ -1643,7 +1666,7 @@ spec:
               key: write-cni-conf-when-ready
               optional: true
         - name: KUBERNETES_SERVICE_HOST
-          value: "BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com"
+          value: "3F6FED4FDA8456A3DBD2949E44DF028B.gr7.ap-northeast-1.eks.amazonaws.com"
         - name: KUBERNETES_SERVICE_PORT
           value: "443"
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1823,6 +1846,8 @@ spec:
                 path: server.key
               - key: ca.crt
                 path: client-ca.crt
+      
+
 ---
 # Source: cilium/templates/cilium-envoy/daemonset.yaml
 apiVersion: apps/v1
@@ -1911,7 +1936,7 @@ spec:
               apiVersion: v1
               fieldPath: metadata.namespace
         - name: KUBERNETES_SERVICE_HOST
-          value: "BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com"
+          value: "3F6FED4FDA8456A3DBD2949E44DF028B.gr7.ap-northeast-1.eks.amazonaws.com"
         - name: KUBERNETES_SERVICE_PORT
           value: "443"
         
@@ -2000,6 +2025,8 @@ spec:
         hostPath:
           path: /sys/fs/bpf
           type: DirectoryOrCreate
+    
+
 ---
 # Source: cilium/templates/cilium-operator/deployment.yaml
 apiVersion: apps/v1
@@ -2033,7 +2060,7 @@ spec:
     metadata:
       annotations:
         # ensure pods roll when configmap updates
-        cilium.io/cilium-configmap-checksum: "5510373a0769c12a4c23f8fd575c9d909b65f34d6c2f463425992c6efd7f8c6c"
+        cilium.io/cilium-configmap-checksum: "568135bcba0e96d1c4b600b651c80eaab9e5be71b95e3765850937e2f8ef49ff"
       labels:
         io.cilium/app: operator
         name: cilium-operator
@@ -2088,7 +2115,7 @@ spec:
               key: AWS_DEFAULT_REGION
               optional: true
         - name: KUBERNETES_SERVICE_HOST
-          value: "BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com"
+          value: "3F6FED4FDA8456A3DBD2949E44DF028B.gr7.ap-northeast-1.eks.amazonaws.com"
         - name: KUBERNETES_SERVICE_PORT
           value: "443"
         ports:
@@ -2159,6 +2186,8 @@ spec:
       - name: cilium-config-path
         configMap:
           name: cilium-config
+      
+
 ---
 # Source: cilium/templates/hubble-relay/deployment.yaml
 apiVersion: apps/v1
@@ -2289,6 +2318,8 @@ spec:
                   path: client.key
                 - key: ca.crt
                   path: hubble-server-ca.crt
+      
+
 ---
 # Source: cilium/templates/hubble-ui/deployment.yaml
 kind: Deployment
@@ -2372,6 +2403,7 @@ spec:
         name: hubble-ui-nginx-conf
       - name: tmp-dir
         emptyDir: {}
+
 ---
 # Source: cilium/templates/hubble/tls-certmanager/relay-client-secret.yaml
 apiVersion: cert-manager.io/v1
@@ -2396,6 +2428,7 @@ spec:
     - signing
     - key encipherment
     - client auth
+
 ---
 # Source: cilium/templates/hubble/tls-certmanager/server-secret.yaml
 apiVersion: cert-manager.io/v1
@@ -2421,6 +2454,7 @@ spec:
     - key encipherment
     - server auth
     - client auth
+
 ---
 # Source: cilium/templates/cilium-agent/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -2454,6 +2488,7 @@ spec:
   # If it is not enabled, that means envoy runs inside cilium-agent and we'll monitor using same service
   targetLabels:
   - k8s-app
+
 ---
 # Source: cilium/templates/cilium-operator/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -2480,6 +2515,7 @@ spec:
     path: /metrics
   targetLabels:
   - io.cilium/app
+
 ---
 # Source: cilium/templates/hubble/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
