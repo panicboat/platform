@@ -1976,7 +1976,10 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       tolerations:
-        - operator: Exists
+        - effect: NoExecute
+          operator: Exists
+        - effect: PreferNoSchedule
+          operator: Exists
       volumes:
       - name: envoy-sockets
         hostPath:
