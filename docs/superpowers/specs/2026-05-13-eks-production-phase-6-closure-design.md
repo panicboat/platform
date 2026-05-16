@@ -297,13 +297,14 @@ Phase 5 closure Section 2 と同 13 checklist を application stack (= monolith 
 
 #### Category H: Application + production grade (= 5 件)
 
-**#25 OTel Operator chart upgrade (= Ruby auto-injection native support)**
+**#25 OTel Operator chart upgrade (= Ruby auto-injection native support)** — **blocked upstream**
 
-- 現在: OTel Operator chart 0.112.1 は `spec.ruby` schema 非対応、 workaround として monolith Pod に env vars 6 個 hardcode (= ENDPOINT / RESOURCE_ATTRIBUTES / TRACES_EXPORTER / METRICS_EXPORTER / LOGS_EXPORTER / PROPAGATORS)
-- 体験 / impact: 新 Ruby service 追加で 同じ env vars hardcode 6 個を deployment.yaml に手動 copy 必要 → toil。 改善後 chart 0.155+ upgrade で `inject-ruby: "true"` annotation 1 行に置換 → **新 Ruby service 追加コスト 大幅削減**、 architecture 整合 (= "OTel Operator が auto-inject" 設計に復帰)
-- **Repo**: platform (= `kubernetes/components/otel-operator/production/` chart version upgrade) + monorepo (= `services/monolith/kubernetes/base/deployment.yaml` の env vars hardcode 撤去 + annotation 復活)
-- Phase 7+ task: OTel Operator chart 0.155+ upgrade、 env vars hardcode 撤去 + annotation 復活
-- priority: medium (= #38 と関連)
+- 現在: OTel Operator chart 0.113.1 (= app version 0.151.0、 helm repo 最新) でも `spec.ruby` schema 非対応、 monolith Pod の env vars 6 個 hardcode (= ENDPOINT / RESOURCE_ATTRIBUTES / TRACES_EXPORTER / METRICS_EXPORTER / LOGS_EXPORTER / PROPAGATORS) は workaround として継続
+- 体験 / impact: 新 Ruby service 追加で 同じ env vars hardcode 6 個を deployment.yaml に手動 copy 必要 → toil
+- **Upstream status (= 2026-05-17 確認)**: OTel Operator CHANGELOG 全文に "ruby" 文字列 0 件。 GitHub issue [open-telemetry/opentelemetry-operator#3762](https://github.com/open-telemetry/opentelemetry-operator/issues/3762) "Autoinstrumentation for opentelemetry ruby" が 2025-03 から **OPEN のまま** (= comment 1 件、 implementation 進展なし)。 Ruby auto-instrumentation の operator side 実装は upstream で未着手で、 chart upgrade では解消不可
+- **Repo**: platform (= 該当なし、 chart upgrade で対応不可) + monorepo (= env vars hardcode 継続)
+- Phase 7+ task: actionable not。 upstream 動向 watch + 実装後 chart upgrade + monorepo env vars hardcode 撤去 (= upstream merge までは backlog hold)。 代替案 (= ConfigMap envFrom 等) は scope 増 vs benefit が見合わないため見送り
+- priority: low (= upstream blocking、 workaround は env-agnostic value で運用安定)
 
 **#33 panicboat staging / production env active 化 + release-please + dystopia.city** (= Phase 7 Theme A primary focus)
 
