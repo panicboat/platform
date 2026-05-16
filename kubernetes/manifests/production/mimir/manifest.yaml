@@ -151,6 +151,7 @@ spec:
       app.kubernetes.io/instance: mimir-distributed
       app.kubernetes.io/component: compactor
   maxUnavailable: 1
+
 ---
 # Source: mimir-distributed/templates/distributor/distributor-pdb.yaml
 apiVersion: policy/v1
@@ -172,6 +173,7 @@ spec:
       app.kubernetes.io/instance: mimir-distributed
       app.kubernetes.io/component: distributor
   maxUnavailable: 1
+
 ---
 # Source: mimir-distributed/templates/gateway/gateway-pdb.yaml
 apiVersion: policy/v1
@@ -214,6 +216,7 @@ spec:
       app.kubernetes.io/instance: mimir-distributed
       app.kubernetes.io/component: ingester
   maxUnavailable: 1
+
 ---
 # Source: mimir-distributed/templates/querier/querier-pdb.yaml
 apiVersion: policy/v1
@@ -235,6 +238,7 @@ spec:
       app.kubernetes.io/instance: mimir-distributed
       app.kubernetes.io/component: querier
   maxUnavailable: 1
+
 ---
 # Source: mimir-distributed/templates/query-frontend/query-frontend-pdb.yaml
 apiVersion: policy/v1
@@ -256,6 +260,7 @@ spec:
       app.kubernetes.io/instance: mimir-distributed
       app.kubernetes.io/component: query-frontend
   maxUnavailable: 1
+
 ---
 # Source: mimir-distributed/templates/query-scheduler/query-scheduler-pdb.yaml
 apiVersion: policy/v1
@@ -298,6 +303,7 @@ spec:
       app.kubernetes.io/instance: mimir-distributed
       app.kubernetes.io/component: store-gateway
   maxUnavailable: 1
+
 ---
 # Source: mimir-distributed/charts/rollout_operator/templates/serviceaccount.yaml
 apiVersion: v1
@@ -311,6 +317,7 @@ metadata:
     app.kubernetes.io/instance: mimir-distributed
     app.kubernetes.io/version: "v0.32.0"
     app.kubernetes.io/managed-by: Helm
+
 ---
 # Source: mimir-distributed/templates/serviceaccount.yaml
 apiVersion: v1
@@ -326,6 +333,7 @@ metadata:
   annotations:
     {}
   namespace: "monitoring"
+
 ---
 # Source: mimir-distributed/templates/gateway/nginx-configmap.yaml
 apiVersion: v1
@@ -472,6 +480,7 @@ data:
         }
       }
     }
+    
 ---
 # Source: mimir-distributed/templates/mimir-config.yaml
 apiVersion: v1
@@ -597,6 +606,7 @@ data:
         wait_stability_min_duration: 1m
     usage_stats:
       installation_mode: helm
+
 ---
 # Source: mimir-distributed/templates/runtime-configmap.yaml
 apiVersion: v1
@@ -614,6 +624,7 @@ data:
   runtime.yaml: |
     
     {}
+
 ---
 # Source: mimir-distributed/charts/rollout_operator/templates/webhook-clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -741,6 +752,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: mimir-distributed-rollout-operator
+
 ---
 # Source: mimir-distributed/charts/rollout_operator/templates/webhook-role-binding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -811,6 +823,7 @@ spec:
     app.kubernetes.io/name: mimir
     app.kubernetes.io/instance: mimir-distributed
     app.kubernetes.io/component: chunks-cache
+
 ---
 # Source: mimir-distributed/templates/compactor/compactor-svc.yaml
 apiVersion: v1
@@ -844,6 +857,7 @@ spec:
     app.kubernetes.io/name: mimir
     app.kubernetes.io/instance: mimir-distributed
     app.kubernetes.io/component: compactor
+
 ---
 # Source: mimir-distributed/templates/distributor/distributor-svc-headless.yaml
 apiVersion: v1
@@ -878,6 +892,7 @@ spec:
     app.kubernetes.io/name: mimir
     app.kubernetes.io/instance: mimir-distributed
     app.kubernetes.io/component: distributor
+
 ---
 # Source: mimir-distributed/templates/distributor/distributor-svc.yaml
 apiVersion: v1
@@ -911,6 +926,7 @@ spec:
     app.kubernetes.io/name: mimir
     app.kubernetes.io/instance: mimir-distributed
     app.kubernetes.io/component: distributor
+
 ---
 # Source: mimir-distributed/templates/gateway/gateway-svc.yaml
 apiVersion: v1
@@ -973,6 +989,7 @@ spec:
     app.kubernetes.io/name: mimir
     app.kubernetes.io/instance: mimir-distributed
     app.kubernetes.io/part-of: memberlist
+
 ---
 # Source: mimir-distributed/templates/ingester/ingester-svc-headless.yaml
 apiVersion: v1
@@ -1007,6 +1024,7 @@ spec:
     app.kubernetes.io/name: mimir
     app.kubernetes.io/instance: mimir-distributed
     app.kubernetes.io/component: ingester
+
 ---
 # Source: mimir-distributed/templates/ingester/ingester-svc.yaml
 apiVersion: v1
@@ -1073,6 +1091,7 @@ spec:
     app.kubernetes.io/name: mimir
     app.kubernetes.io/instance: mimir-distributed
     app.kubernetes.io/component: querier
+
 ---
 # Source: mimir-distributed/templates/query-frontend/query-frontend-svc.yaml
 apiVersion: v1
@@ -1105,6 +1124,7 @@ spec:
     app.kubernetes.io/name: mimir
     app.kubernetes.io/instance: mimir-distributed
     app.kubernetes.io/component: query-frontend
+
 ---
 # Source: mimir-distributed/templates/query-scheduler/query-scheduler-svc-headless.yaml
 apiVersion: v1
@@ -1139,6 +1159,7 @@ spec:
     app.kubernetes.io/name: mimir
     app.kubernetes.io/instance: mimir-distributed
     app.kubernetes.io/component: query-scheduler
+
 ---
 # Source: mimir-distributed/templates/query-scheduler/query-scheduler-svc.yaml
 apiVersion: v1
@@ -1171,6 +1192,7 @@ spec:
     app.kubernetes.io/name: mimir
     app.kubernetes.io/instance: mimir-distributed
     app.kubernetes.io/component: query-scheduler
+
 ---
 # Source: mimir-distributed/templates/store-gateway/store-gateway-svc-headless.yaml
 apiVersion: v1
@@ -1205,6 +1227,7 @@ spec:
     app.kubernetes.io/name: mimir
     app.kubernetes.io/instance: mimir-distributed
     app.kubernetes.io/component: store-gateway
+
 ---
 # Source: mimir-distributed/templates/store-gateway/store-gateway-svc.yaml
 apiVersion: v1
@@ -1312,6 +1335,7 @@ spec:
             requests:
               cpu: 100m
               memory: 100Mi
+
 ---
 # Source: mimir-distributed/templates/distributor/distributor-dep.yaml
 apiVersion: apps/v1
@@ -1445,6 +1469,7 @@ spec:
           emptyDir: {}
         - name: active-queries
           emptyDir: {}
+
 ---
 # Source: mimir-distributed/templates/gateway/gateway-dep.yaml
 apiVersion: apps/v1
@@ -1682,6 +1707,7 @@ spec:
           emptyDir: {}
         - name: active-queries
           emptyDir: {}
+
 ---
 # Source: mimir-distributed/templates/query-frontend/query-frontend-dep.yaml
 apiVersion: apps/v1
@@ -1805,6 +1831,7 @@ spec:
           emptyDir: {}
         - name: active-queries
           emptyDir: {}
+
 ---
 # Source: mimir-distributed/templates/query-scheduler/query-scheduler-dep.yaml
 apiVersion: apps/v1
@@ -1920,6 +1947,7 @@ spec:
           emptyDir: {}
         - name: active-queries
           emptyDir: {}
+
 ---
 # Source: mimir-distributed/templates/chunks-cache/chunks-cache-statefulset.yaml
 apiVersion: apps/v1
@@ -2020,6 +2048,7 @@ spec:
               drop:
               - ALL
             readOnlyRootFilesystem: true
+
 ---
 # Source: mimir-distributed/templates/compactor/compactor-statefulset.yaml
 apiVersion: apps/v1
@@ -2153,6 +2182,7 @@ spec:
             readOnlyRootFilesystem: true
           env:
             []
+
 ---
 # Source: mimir-distributed/templates/ingester/ingester-statefulset.yaml
 apiVersion: apps/v1

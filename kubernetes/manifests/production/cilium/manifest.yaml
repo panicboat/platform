@@ -1375,7 +1375,7 @@ spec:
               resource: limits.memory
               divisor: '1'
         - name: KUBERNETES_SERVICE_HOST
-          value: "BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com"
+          value: "3F6FED4FDA8456A3DBD2949E44DF028B.gr7.ap-northeast-1.eks.amazonaws.com"
         - name: KUBERNETES_SERVICE_PORT
           value: "443"
         - name: KUBE_CLIENT_BACKOFF_BASE
@@ -1512,7 +1512,7 @@ spec:
               apiVersion: v1
               fieldPath: metadata.namespace
         - name: KUBERNETES_SERVICE_HOST
-          value: "BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com"
+          value: "3F6FED4FDA8456A3DBD2949E44DF028B.gr7.ap-northeast-1.eks.amazonaws.com"
         - name: KUBERNETES_SERVICE_PORT
           value: "443"
         volumeMounts:
@@ -1643,7 +1643,7 @@ spec:
               key: write-cni-conf-when-ready
               optional: true
         - name: KUBERNETES_SERVICE_HOST
-          value: "BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com"
+          value: "3F6FED4FDA8456A3DBD2949E44DF028B.gr7.ap-northeast-1.eks.amazonaws.com"
         - name: KUBERNETES_SERVICE_PORT
           value: "443"
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1911,7 +1911,7 @@ spec:
               apiVersion: v1
               fieldPath: metadata.namespace
         - name: KUBERNETES_SERVICE_HOST
-          value: "BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com"
+          value: "3F6FED4FDA8456A3DBD2949E44DF028B.gr7.ap-northeast-1.eks.amazonaws.com"
         - name: KUBERNETES_SERVICE_PORT
           value: "443"
         
@@ -2088,7 +2088,7 @@ spec:
               key: AWS_DEFAULT_REGION
               optional: true
         - name: KUBERNETES_SERVICE_HOST
-          value: "BD10E7689A05E46191305DDC7BE6CA67.gr7.ap-northeast-1.eks.amazonaws.com"
+          value: "3F6FED4FDA8456A3DBD2949E44DF028B.gr7.ap-northeast-1.eks.amazonaws.com"
         - name: KUBERNETES_SERVICE_PORT
           value: "443"
         ports:
