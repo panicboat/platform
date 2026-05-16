@@ -1313,3 +1313,11 @@ Phase 6 closure doc の Section 4 を update する別 PR (= docs only PR):
 3. PR 3 merge (= #39 platform) → ALB provision active + 旧 cilium-gateway NLB auto-delete 確認
 4. PR 4 merge (= #39 monorepo) → reverse-proxy 削除 + 旧 reverse-proxy NLB auto-delete + curl HTTPS 200 確認
 5. (= 必要時) PR F1 merge (= fallback path)
+
+---
+
+## Closure (= 2026-05-16)
+
+Phase 7-0 strict completion 達成。 上記 task-by-task plan は **そのままの形では実行されず**、 別 phase の cluster teardown + recreate (= 2026-05-10 design 由来) の実施過程で Task 2 (Cilium upgrade) + Task 3 / 4 (#39 migration platform + monorepo) が inline 完了、 Task 1 (#37 fix) のみ 2026-05-16 で worktree `fix/eks-37-sg-tag-cleanup-apply` から terragrunt apply。
+
+実態の詳細 + Residuals (= Gateway PROGRAMMED=False の hostNetwork mode trade-off 等) は spec doc (`docs/superpowers/specs/2026-05-14-eks-phase-7-0-lb-hardening-design.md`) の `## 10. Retrospective` section を参照。
