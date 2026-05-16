@@ -392,3 +392,53 @@ Scope:
 - [ ] #40 bridge revival: AWS LB Controller default loadBalancerClass 設定 + 既 orphan classic ELB delete + cost ~$10-20/month 削減 verify
 - [ ] reverse-proxy 構成維持、 develop.panicboat.net 経由 internet 公開 functional
 - [ ] #39 を Phase 8+ 引き継ぎ事項として記録
+
+---
+
+## 10. Retrospective (= 2026-05-16 closure)
+
+### Outcome
+
+Phase 7-0 strict completion 達成。 Section 9 strict completion checklist の 5 項目中 4 項目 ✓ (= Hubble L7 ingress visibility のみ未確認、 observability scope で別 phase)。 `curl https://develop.panicboat.net/` で HTTP 200、 旧 NLB 2 個 (reverse-proxy NLB + cilium-gateway NLB) auto-delete 確認、 AWS LB Controller "expected exactly one securityGroup" panic loop 停止。
+
+### Design doc 当時 (2026-05-14) と実態の差異
+
+Phase 7-0 design は 3 components の sequential PR 構造 (= PR 1 → 2 → 3 → 4) を想定したが、 別 phase の cluster teardown + recreate (= 2026-05-10 design 由来、 別 plan) の実施過程で Component B + C が **inline で先行完了**。 結果として Phase 7-0 closure 時点で残作業は Component A の terragrunt apply のみ。
+
+| Component | Design 想定 | Actual |
+|---|---|---|
+| A (#37 fix) | PR 1 で terragrunt module modify + apply | code は cluster recreate 前の独立 PR で main merge 済 (`aws/eks/modules/main.tf:54-84` の `terraform_data.node_sg_cluster_tag_removal` + `data.aws_security_group.node_sg`)、 ただし state 上 resource 未作成 (= apply 未実施) で panic loop 残存。 2026-05-16 worktree `fix/eks-37-sg-tag-cleanup-apply` で apply、 panic loop 停止 |
+| B (Cilium upgrade) | PR 2 で chart version bump + chaining mode 維持の deprecated values migration | cluster recreate 過程で別 PR series (= PR #393 Cilium native CNI ENI mode + #401 cilium-operator Pod Identity Association) で **1.18.6 chaining mode → 1.19.4 native CNI ENI mode** に到達。 design 想定の chaining 維持 upgrade とは別 architecture path |
+| C (#39 migration) | platform PR 3 + monorepo PR 4 で hostNetwork mode + ALB IngressGroup + reverse-proxy 廃止 | cluster recreate 過程で `kubernetes/components/cilium/production/{values.yaml.gotmpl, kustomization/application-ingress.yaml, kustomization/application-gateway-service.yaml, kustomization/cilium-gateway.yaml}` 全 deploy 済、 monorepo 側 reverse-proxy 削除 + frontend HTTPRoute も完了 |
+| Fallback | #39 fail 時 #40 bridge revival | 不要 (= Component C success で 7-0 strict completion 到達) |
+
+### Actual architecture: design Component C との差分
+
+design Component C の routing path は `ALB → cilium-gateway-cilium-gateway Service:8080 (ClusterIP) → Envoy on host port 8080 → HTTPRoute → frontend Service:80`。 実装は Cilium 1.19 hostNetwork mode で `cilium-gateway-cilium-gateway` Service が dummy endpoint (= `192.192.192.192:9999`) を持つ inherent design (= LoadBalancer Service auto-create 防止の cilium operator intentional design) のため、 別途 `application-gateway` Service (`kube-system` ns、 `selector: { k8s-app: cilium-envoy }`) を introduce、 ALB backend を `application-gateway` 経由で cilium-envoy DaemonSet の node IP:8080 に target、 そこから HTTPRoute routing で frontend Service へ。 hop 数同等、 設計意図同等、 backend Service が `application-gateway` に変わったのみ。
+
+### Residuals
+
+- **Gateway `PROGRAMMED=False` (Reason: AddressNotAssigned, Message: "Gateway waiting for address")**: hostNetwork mode の inherent trade-off (= `gatewayAPI.hostNetwork.enabled: true` で LoadBalancer Service auto-create が公式 mutual exclusive disable、 Gateway resource の `addresses` field empty)。 listener `attachedRoutes=1` + HTTPRoute `Accepted/ResolvedRefs=True` で **実 routing は機能** (= 200 OK 取得確認)。 cosmetic な status reporting、 routing には影響なし。 monitoring / alerting で Gateway Programmed を条件に使う場合は除外設定推奨。
+- **Hubble L7 flow ingress visibility 未確認**: 別 observability verify scope。
+- **terragrunt plan の `terraform_data` noise**: `triggers_replace` は `data.aws_security_group.node_sg.tags["kubernetes.io/cluster/eks-X"]` value を trigger とし、 apply 後 (tag 不在) で trigger value = ""、 module 次回 apply で trigger 変化 (= "owned" → "") のため毎回 replace 発生 risk (= local-exec `aws ec2 delete-tags` は `|| true` で idempotent + no-op、 infra 影響なし、 plan diff が noisy になるのみ)。 root cause (= module 側 `aws_security_group_tag` 等の tag enforce) の整理は別 phase。
+
+### #37 fix 実装 detail (= main merge 済 module の解説)
+
+`aws/eks/modules/main.tf:54-84`:
+- `data.aws_security_group.node_sg` で `module.eks` apply 後 node SG state を re-read (depends_on = [module.eks])
+- `terraform_data.node_sg_cluster_tag_removal` の `triggers_replace = [try(data.aws_security_group.node_sg.tags["kubernetes.io/cluster/eks-${var.environment}"], "")]` で tag value 変化を detect
+- `provisioner "local-exec"` で `aws ec2 delete-tags --resources <node_sg_id> --tags Key=kubernetes.io/cluster/eks-${var.environment}` 実行、 `2>/dev/null || true` で idempotent
+
+理由: `terraform-aws-modules/eks/aws` module は node SG 定義で `kubernetes.io/cluster/<name>=owned` を hardcode (= `node_groups.tf` merge block)、 `node_security_group_tags` variable は `map(string)` で null-value key removal 不可。 AWS LB Controller の SG identification (= `pkg/networking/networking_manager.go:561` の tag key 存在 value-independent check) は EKS cluster SG (= `eks-cluster-sg-*`) + node SG の両方を match → "expected exactly one securityGroup" panic loop。 module fork 回避のため module apply 後 local-exec で tag を delete する pragmatic fix。
+
+### Resolution
+
+| Issue | Status |
+|---|---|
+| #37 AWS LB Controller SG 重複 reconcile error | **解消** (= 2026-05-16 terragrunt apply 完了) |
+| #39 Cilium Gateway hostNetwork mode + ALB IngressGroup migration | **解消** (= cluster recreate 過程で先行完了) |
+| #40 AWS LB Controller default loadBalancerClass 設定 | **不要** (= Component C success で副次的に not needed) |
+
+### Phase 7-0 closure
+
+(c) 完了条件 (= "PR 手戻り最小化 + best effort + partial fallback") は strict completion で達成。 Phase 7-0 を closure、 Phase 7-1 OTel Operator upgrade 等の other sub-projects に進む。
