@@ -6,9 +6,9 @@
 # / tempo / grafana / prometheus 等) は gp3 を要求するため、 ebs.csi.aws.com
 # provisioner で gp3 SC を明示的に provision する。
 #
-# default class を gp3 に切替: storageclass.kubernetes.io/is-default-class
-# annotation を true にし、 EKS default の gp2 は手元 / 別 PR で
-# `is-default-class: false` に上書きするか、 kubectl 操作で外す。
+# default class は gp3 のみ。 EKS auto-create の gp2 は本 file の patch で
+# `is-default-class: false` に上書き、 2 default 競合 (= kubectl warning +
+# 新規 PVC の SC 選択不確実) を回避。
 #
 # WaitForFirstConsumer: pod schedule 先 zone が決まってから volume を
 # allocate するため、 multi-AZ Karpenter NodePool での schedule 不整合を
@@ -27,3 +27,21 @@ parameters:
 volumeBindingMode: WaitForFirstConsumer
 reclaimPolicy: Delete
 allowVolumeExpansion: true
+---
+# EKS auto-create gp2 SC を non-default 化。 server-side apply で field
+# manager (= kustomize-controller) が is-default-class annotation の
+# 所有権を取得、 EKS が次に gp2 を再 register しても false を維持する。
+# parameters / provisioner / volumeBindingMode / reclaimPolicy は EKS
+# default と同値 (= 上書きで挙動変えない)。
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp2
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp2
+  fsType: ext4
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
