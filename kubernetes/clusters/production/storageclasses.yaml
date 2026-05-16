@@ -1,0 +1,29 @@
+# =============================================================================
+# StorageClasses for production cluster
+# =============================================================================
+# EKS が cluster create 時に作る default は gp2 (= kubernetes.io/aws-ebs
+# in-tree provisioner)。 platform で使う stateful component (= mimir / loki
+# / tempo / grafana / prometheus 等) は gp3 を要求するため、 ebs.csi.aws.com
+# provisioner で gp3 SC を明示的に provision する。
+#
+# default class を gp3 に切替: storageclass.kubernetes.io/is-default-class
+# annotation を true にし、 EKS default の gp2 は手元 / 別 PR で
+# `is-default-class: false` に上書きするか、 kubectl 操作で外す。
+#
+# WaitForFirstConsumer: pod schedule 先 zone が決まってから volume を
+# allocate するため、 multi-AZ Karpenter NodePool での schedule 不整合を
+# 回避する。
+# =============================================================================
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  encrypted: "true"
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
+allowVolumeExpansion: true
