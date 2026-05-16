@@ -1,10 +1,10 @@
 # =============================================================================
 # Flux GitRepository + Kustomization for panicboat/monorepo
 # =============================================================================
-# monorepo は clusters/develop/ 配下に各 service ごとの Flux Kustomization を
-# 内蔵 (= monolith / frontend / reverse-proxy)、cascading で deploy される
-# 設計のため、本 platform stack からは monorepo を 1 つの GitRepository として
-# pull し、root Kustomization のみ管理する。
+# monorepo は clusters/production/ 配下に各 service ごとの Flux Kustomization を
+# 内蔵 (= monolith / frontend)、cascading で deploy される設計のため、本 platform
+# stack からは monorepo を 1 つの GitRepository として pull し、root Kustomization
+# のみ管理する。
 # =============================================================================
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
@@ -24,7 +24,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 5m0s
-  path: "./clusters/develop"
+  path: "./clusters/production"
   prune: true
   sourceRef:
     kind: GitRepository
