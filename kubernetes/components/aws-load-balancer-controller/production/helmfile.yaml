@@ -14,7 +14,7 @@ environments:
     values:
       - cluster:
           # RECREATE: cd aws/vpc/envs/production && TG_TF_PATH=tofu terragrunt output -raw vpc_id
-          vpcId: vpc-071f004df049475b2
+          vpcId: vpc-0acc2422c699031e4
           # STABLE: aws/eks/modules/addons.tf で deterministic 化済
           albControllerRoleArn: arn:aws:iam::559744160976:role/eks-production-alb-controller
 ---

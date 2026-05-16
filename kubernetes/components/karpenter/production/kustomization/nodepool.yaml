@@ -13,8 +13,11 @@
 #   K8s NodeSelectorRequirement に Ge / Le 演算子は存在しないため Gt 5
 #   で表現。利用可能 instance type:
 #   https://karpenter.sh/docs/reference/instance-types/)
-# - instance-size: medium..4xlarge (medium 未満は burst、8xlarge+ は
-#   bin-packing 悪化、metal は不要)
+# - instance-size: large..4xlarge (medium 未満は burst、8xlarge+ は
+#   bin-packing 悪化、metal は不要。medium は Cilium ENI mode の AWS ENI
+#   hard limit (= 2 ENI x 4 IP - 2 primary = Pod 用 6 IP cap) に hit して
+#   cilium-operator の ENI 拡張が物理的に不可になり Pod が
+#   ContainerCreating で永続 stuck するため除外)
 # - disruption: WhenEmptyOrUnderutilized + 30 日 expireAfter (OS patching
 #   用 forced cycle)
 # - limits.cpu: 200 (cluster 暴走時の安全上限)
@@ -52,7 +55,7 @@ spec:
           values: ["5"]
         - key: karpenter.k8s.aws/instance-size
           operator: In
-          values: ["medium", "large", "xlarge", "2xlarge", "4xlarge"]
+          values: ["large", "xlarge", "2xlarge", "4xlarge"]
       expireAfter: 720h  # 30 days
   disruption:
     # Karpenter v1+ valid values: WhenEmpty | WhenEmptyOrUnderutilized
