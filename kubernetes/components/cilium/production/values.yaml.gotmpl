@@ -89,8 +89,20 @@ operator:
 # =============================================================================
 # L7 Proxy: 独立 DaemonSet
 # =============================================================================
+# tolerations override で system_critical taint (= NoSchedule) を意図的に
+# tolerate しない。 system_critical MNG node 上の envoy が frontend Pod IP への
+# TCP connect で 100% fail する現象 (= 同 node host から direct curl は 100% OK
+# だが envoy 経由のみ fail) の mitigation。 root cause (= envoy bootstrap の
+# upstream connect 動作 specific) は Phase 7+ 引き継ぎ。
+# NoExecute + PreferNoSchedule は tolerate して node lifecycle (= not-ready /
+# unreachable) で envoy が evict されないように維持。
 envoy:
   enabled: true
+  tolerations:
+    - operator: Exists
+      effect: NoExecute
+    - operator: Exists
+      effect: PreferNoSchedule
 
 # =============================================================================
 # Gateway API（北南: ALB Controller 経由で hostNetwork mode の Cilium Gateway を expose、
