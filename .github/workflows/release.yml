@@ -23,4 +23,3 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
           release-type: simple
-          release-as: "0.1.0" # 初回 release 後にこの行を削除する追従 PR を出す
