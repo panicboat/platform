@@ -11,3 +11,5 @@ packages:
   - name: kubernetes-sigs/kustomize@kustomize/v5.6.0
   - name: nektos/act@v0.2.87
   - name: rhysd/actionlint@v1.7.7
+  - name: opentofu/opentofu@v1.12.0
+  - name: gruntwork-io/terragrunt@v1.0.2
