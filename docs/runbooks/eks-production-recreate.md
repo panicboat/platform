@@ -261,13 +261,32 @@ merge 後 main から:
 git checkout main && git pull --ff-only
 ```
 
-#### 9.3 cluster manifests apply (= 初回 apply は webhook chicken-and-egg で部分 fail、 Flux reconcile で self-heal)
+#### 9.3 cluster manifests apply (= 2-step bootstrap、 webhook chicken-and-egg 回避)
+
+##### 9.3a bootstrap-webhooks apply (= webhook 提供 HelmRelease を先 install)
+
+```bash
+kubectl apply -k kubernetes/clusters/production/bootstrap-webhooks/ --server-side --force-conflicts
+```
+
+含まれる component (= validating / mutating webhook 提供):
+- `00-namespaces` / `cert-manager` / `external-secrets` / `prometheus-operator` / `opentelemetry` / `aws-load-balancer-controller` / `keda`
+
+各 webhook deployment の起動 wait:
+
+```bash
+for ns in cert-manager external-secrets opentelemetry-operator-system monitoring kube-system keda; do
+  kubectl wait --for=condition=Available deployment --all -n "$ns" --timeout=300s 2>/dev/null || true
+done
+```
+
+##### 9.3b cluster manifests full apply (= 全 component、 webhook 応答するため成功)
 
 ```bash
 kubectl apply -k kubernetes/clusters/production/ --server-side --force-conflicts
 ```
 
-> **WARNING**: 初回 apply は cert-manager / external-secrets / opentelemetry-operator の webhook が未起動状態で `ExternalSecret` / `Certificate` / `Instrumentation` 等が dry-run reject される。 これは想定挙動。 Flux Source が main を watch しているので、 webhook 提供 HelmRelease が起動完了 → Flux Kustomization の reconcile loop で残 resource を再 apply して self-heal する。
+> **NOTE**: 9.3a の `bootstrap-webhooks/` kustomize root は initial bootstrap のみで使用 (= PR #410 で追加)。 steady state の Flux reconcile は `clusters/production/` root が引き続き全 manifest を管理する (= 両者 overlap するが server-side apply の field manager 共存で OK)。 9.3a を skip して 9.3b 直接実行も可能 (= 旧 runbook の挙動、 初回 apply 部分 fail → Flux reconcile loop で self-heal)、 ただし operator が "WARNING: 部分 fail だが想定挙動" を見て焦らないために 9.3a 経路を推奨。
 
 #### 9.4 Flux reconcile force trigger (= 必要に応じて)
 
@@ -330,15 +349,15 @@ done
 | cilium-operator `Failed initial EC2 API limits update` | **PR #401 で Pod Identity 化済のため通常発生しない**。 発生する場合は IRSA fallback path に陥っている可能性 → SA annotation `eks.amazonaws.com/role-arn` の有無を確認、 Pod Identity Association が provision されているか `aws eks list-pod-identity-associations` で確認 | Pod Identity Association 不在なら `aws eks create-pod-identity-association ...` で manual provision |
 | terragrunt apply で `ACM Certificate ... is in use` | 過去 destroy で ALB が取り残された | `aws elbv2 delete-load-balancer` で手動削除後 retry (= teardown 側は PR #398 で fixed) |
 | stale terragrunt state lock (= `Error acquiring the state lock`) | 前 session の lock release 漏れ OR CI run が異常終了 | `aws dynamodb scan --table-name terragrunt-state-locks --query "Items[?Info != \`null\`]"` で active lock 確認 → `terragrunt force-unlock -force <ID>` |
-| `flux-system` Kustomization `False` で webhook validation error | webhook 提供 HelmRelease (= cert-manager / external-secrets / opentelemetry-operator) が未起動 | 数分待って Flux reconcile loop で self-heal 期待。 起動済なのに stuck なら `flux reconcile kustomization flux-system` で force trigger |
+| `flux-system` Kustomization `False` で webhook validation error | webhook 提供 HelmRelease (= cert-manager / external-secrets / opentelemetry-operator) が未起動 | **Phase 9.3a の bootstrap-webhooks apply (= PR #410) を実行済か確認**。 9.3a を skip した場合は数分待って Flux reconcile loop で self-heal 期待、 起動済なのに stuck なら `flux reconcile kustomization flux-system` で force trigger |
 | Pending pods が `pod has unbound immediate PersistentVolumeClaims` | gp3 StorageClass 未作成 | **PR #406 merge 後は不要**。 旧 cluster recreate で pre-PR #406 commit から始める場合のみ手動作成 |
 | post-merge CI が apply 中に operator local apply 試行で衝突 | CI が state lock 保持 | CI 完走待ち、 OR CI cancel + force-unlock。 将来は `skip-deploy` label scheme (= PR #404 design Phase B) で防止 |
 
 ## 6. Future improvements
 
-- **CI label-based guard** — `skip-deploy` / `plan-only` label で bootstrap PR の CI auto-apply を抑止 (= `docs/superpowers/specs/2026-05-16-eks-bootstrap-local-first-workflow-design.md` Phase B)
-- **Atomic apply chicken-and-egg fix** — Flux Kustomization を `bootstrap-webhooks` → `applications` 2-tier に分割 (= `dependsOn` 利用)。 9.3 の "初回 apply 部分 fail → reconcile loop で self-heal" workaround が不要化
-- **gp2 default class 撤去** — `kubernetes/clusters/production/storageclasses.yaml` に `gp2` patch (= `is-default-class: false`) 追加。 gp3 (= PR #406) を唯一の default に
+- **CI label-based guard** — `skip-deploy` / `plan-only` label で bootstrap PR の CI auto-apply を抑止 (= `docs/superpowers/specs/2026-05-16-eks-bootstrap-local-first-workflow-design.md` Phase B)。 panicboat 個人運用 + bootstrap 月 1 未満では nice-to-have、 共有運用化 / bootstrap 高頻度化で priority 上昇
+- **Atomic apply chicken-and-egg fix** — ~~Flux Kustomization を `bootstrap-webhooks` → `applications` 2-tier に分割~~ → **PR #410 + Phase 9.3 の 2-step 化で実質解消済**。 完全な Flux Kustomization 2-tier (= `dependsOn` + `healthChecks`) は将来の改善余地
+- ~~**gp2 default class 撤去**~~ → **PR #409 で完了済**
 - **runbook 自動化** — Phase 1-9 を 1 つの shell script に集約。 ただし Phase 4 の operator 手動 edit は plan A 設計 (= sed 自動置換は PR #326 incident 反省で却下) のため operator-prompted のまま
 
 ## 7. References
