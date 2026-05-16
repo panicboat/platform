@@ -124,6 +124,7 @@ resource "aws_iam_role_policy" "cilium_operator" {
           "ec2:DescribeSecurityGroups",
           "ec2:DescribeVpcs",
           "ec2:DescribeNetworkInterfaces",
+          "ec2:DescribeRouteTables",
           "ec2:DescribeTags",
         ]
         Resource = "*"
