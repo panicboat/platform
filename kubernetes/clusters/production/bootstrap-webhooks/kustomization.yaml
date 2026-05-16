@@ -1,0 +1,42 @@
+# =============================================================================
+# Bootstrap webhooks kustomize root
+# =============================================================================
+# cold-start recreate (= 全 stack destroy 後の cluster 再構築) で initial
+# `kubectl apply -k clusters/production/` を実行すると、 dependent CR
+# (= ExternalSecret / Certificate / Instrumentation 等) が webhook 提供
+# HelmRelease 未起動状態で dry-run reject され部分 fail になる。
+#
+# 本 kustomize root は webhook 提供 component のみを subset として束ね、
+# operator が cold-start で先に apply して webhook を起動完了させてから、
+# clusters/production/ の full apply を行う 2 step bootstrap を可能にする。
+#
+# 用途は initial bootstrap のみで、 steady state の Flux reconcile は
+# clusters/production/ root が引き続き全 manifest を管理する (= 本 root と
+# overlap するが、 server-side apply の field manager 共存で問題ない)。
+#
+# Failure handling: cold-start での "初回 apply 部分 fail → Flux reconcile
+# loop で self-heal" workaround の代替手段。 詳細は
+# docs/runbooks/eks-production-recreate.md Phase 9 参照。
+#
+# 含む component (= validating / mutating webhook を提供する HelmRelease):
+#   - 00-namespaces           : 各 component の namespace を先に作成
+#   - cert-manager            : Certificate / Issuer の admission webhook
+#   - external-secrets        : ExternalSecret / SecretStore の admission webhook
+#   - prometheus-operator     : Alertmanager / Prometheus / ServiceMonitor 等の
+#                               admission webhook (= kube-prometheus-stack)
+#   - opentelemetry           : Instrumentation / OpenTelemetryCollector 等の
+#                               admission webhook (= opentelemetry-operator)
+#   - aws-load-balancer-controller : Ingress / TargetGroupBinding の mutating webhook
+#   - keda                    : ScaledObject / TriggerAuthentication 等の admission webhook
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../manifests/production/00-namespaces
+  - ../../../manifests/production/cert-manager
+  - ../../../manifests/production/external-secrets
+  - ../../../manifests/production/prometheus-operator
+  - ../../../manifests/production/opentelemetry
+  - ../../../manifests/production/aws-load-balancer-controller
+  - ../../../manifests/production/keda
