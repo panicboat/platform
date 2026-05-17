@@ -197,6 +197,17 @@ locals {
       resolve_conflicts_on_create = "OVERWRITE"
       resolve_conflicts_on_update = "OVERWRITE"
       service_account_role_arn    = module.ebs_csi_irsa.arn
+
+      # Tag dynamically provisioned EBS volumes (= PVC-driven) with the
+      # controller's provenance label so they match the unified ManagedBy
+      # schema. Per spec section 4-2-c.
+      configuration_values = jsonencode({
+        controller = {
+          extraVolumeTags = {
+            ManagedBy = "aws-ebs-csi-driver"
+          }
+        }
+      })
     }
     eks-pod-identity-agent = {
       most_recent                 = true
