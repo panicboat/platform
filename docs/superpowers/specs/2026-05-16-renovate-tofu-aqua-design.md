@@ -5,7 +5,7 @@
 `panicboat/platform` で 9 件の Renovate PR（#362, #363, #365, #370–#375）が同時に `tofu init` で fail している。原因は cross-repo の version 不整合：
 
 - `gruntwork-io/terragrunt-action` を呼ぶ panicboat-actions の composite action が `tofu_version: '1.11.6'` を hard-code
-- platform の `terraform.tf` は `required_version = ">= 1.11.6"` を持ち、Renovate の `overridePackageName: opentofu/opentofu` で OpenTofu の release を tracking している
+- platform の `terraform.tf` は `required_version = "1.11.6"` を持ち、Renovate の `overridePackageName: opentofu/opentofu` で OpenTofu の release を tracking している
 - OpenTofu v1.12.0 release を受けて Renovate が `required_version` を `>= 1.12.0` に bump
 - ランタイム binary は 1.11.6 のまま → unsupported version error
 

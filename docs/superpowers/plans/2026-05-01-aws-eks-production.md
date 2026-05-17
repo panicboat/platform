@@ -6,7 +6,7 @@
 
 **Architecture:** `aws/{service}/modules + envs/{env}` 規約で `aws/eks/` を新設。VPC 出力は `aws/vpc/lookup` を `module "vpc"` として呼ぶ（terragrunt `dependency` ブロックは使わない）。go-getter `//` subdir 記法（`source = "../../..//eks/modules"`）で `aws/` 全体を terragrunt cache に同梱して相対 source `../../vpc/lookup` を解決。Kubernetes admin RBAC は新設の `eks-admin-production` IAM role のみに Access Entry で付与し、CI 上の `github-oidc-auth-production-github-actions-role` は AWS API のみ（Kubernetes RBAC なし）。GitOps 原則のため `enable_cluster_creator_admin_permissions = false`。`endoflife-date/amazon-eks` datasource を Renovate `customManagers` で `env.hcl` の `cluster_version` に紐付ける。
 
-**Tech Stack:** OpenTofu/Terraform `>= 1.11.6`, Terragrunt, AWS provider `6.42.0`, `terraform-aws-modules/eks/aws 21.19.0`, `terraform-aws-modules/iam/aws ~> 6.0`（`iam-role-for-service-accounts` submodule for IRSA。v5 では `iam-role-for-service-accounts-eks` という名称だったが v6 でリネーム）, `aws/vpc/lookup`（同リポジトリ内）, Renovate (`endoflife-date` datasource)
+**Tech Stack:** OpenTofu/Terraform `1.11.6`, Terragrunt, AWS provider `6.42.0`, `terraform-aws-modules/eks/aws 21.19.0`, `terraform-aws-modules/iam/aws ~> 6.0`（`iam-role-for-service-accounts` submodule for IRSA。v5 では `iam-role-for-service-accounts-eks` という名称だったが v6 でリネーム）, `aws/vpc/lookup`（同リポジトリ内）, Renovate (`endoflife-date` datasource)
 
 **Spec:** `docs/superpowers/specs/2026-04-30-aws-eks-production-design.md`
 
@@ -21,7 +21,7 @@
 | `aws/eks/envs/production/env.hcl` | create | environment 固有値（cluster_version + renovate marker、environment_tags） |
 | `aws/eks/envs/production/terragrunt.hcl` | create | env から module へ inputs を渡す。`source = "../../..//eks/modules"`（go-getter `//` 記法） |
 | `aws/eks/envs/production/.terraform.lock.hcl` | create | provider lock file（`terragrunt init` で生成、commit） |
-| `aws/eks/modules/terraform.tf` | create | `required_version >= 1.11.6`、AWS provider `6.42.0` exact pin、provider 設定 |
+| `aws/eks/modules/terraform.tf` | create | `required_version 1.11.6`、AWS provider `6.42.0` exact pin、provider 設定 |
 | `aws/eks/modules/variables.tf` | create | environment / aws_region / common_tags / cluster_version / node_* / log_retention_days |
 | `aws/eks/modules/lookups.tf` | create | `module "vpc" { source = "../../vpc/lookup" }` |
 | `aws/eks/modules/iam_admin.tf` | create | `eks-admin-production` IAM role + inline `eks:DescribeCluster` policy |
@@ -260,7 +260,7 @@ inputs = {
 # terraform.tf - OpenTofu and provider configuration
 
 terraform {
-  required_version = ">= 1.11.6"
+  required_version = "1.11.6"
 
   required_providers {
     aws = {
@@ -371,7 +371,7 @@ cd aws/eks/envs/production
 TG_TF_PATH=tofu terragrunt init
 ```
 
-Expected: 
+Expected:
 
 - backend S3 への接続成功
 - AWS provider `6.42.0` 取得
@@ -450,7 +450,7 @@ TG_TF_PATH=tofu terragrunt init
 TG_TF_PATH=tofu terragrunt validate
 ```
 
-Expected: 
+Expected:
 
 - `init` で `aws/vpc/lookup` が cache に取り込まれる（go-getter `//` 記法のおかげで `aws/` 全体がコピー済）
 - `Success! The configuration is valid.`
@@ -1470,7 +1470,7 @@ Expected: `Server Version: v1.33.x-eks-...` の行が表示される（`Client V
 kubectl get nodes -o wide
 ```
 
-Expected: 
+Expected:
 
 - 2 ノード `Ready` 状態
 - AZ 分散（`topology.kubernetes.io/zone` ラベルが `ap-northeast-1a/c/d` のうち 2 個に分かれる、3 個目は今後の scale up で利用）
@@ -1519,7 +1519,7 @@ git status
 git log --oneline origin/main..HEAD
 ```
 
-Expected: 
+Expected:
 
 - `git status`: working tree clean
 - `git log`: Task 1〜9 で作成した 9 commit が並ぶ（spec の commit はプロジェクト方針上、本ブランチに同梱しないなら別ブランチに分離。同梱でも可）

@@ -353,7 +353,7 @@ inputs = {
 # terraform.tf - OpenTofu and provider configuration
 
 terraform {
-  required_version = ">= 1.11.6"
+  required_version = "1.11.6"
 
   required_providers {
     aws = {
@@ -860,7 +860,7 @@ inputs = {
 # terraform.tf - OpenTofu and provider configuration
 
 terraform {
-  required_version = ">= 1.11.6"
+  required_version = "1.11.6"
 
   required_providers {
     aws = {
@@ -1347,7 +1347,7 @@ inputs = {
 # terraform.tf - OpenTofu and provider configuration
 
 terraform {
-  required_version = ">= 1.11.6"
+  required_version = "1.11.6"
 
   required_providers {
     aws = {

@@ -175,7 +175,7 @@ mkdir -p aws/eks-secrets/modules
 # terraform.tf - OpenTofu and provider configuration
 
 terraform {
-  required_version = ">= 1.11.6"
+  required_version = "1.11.6"
 
   required_providers {
     aws = {
@@ -1368,9 +1368,9 @@ ESO chart 2.4.1 の実 values + apiVersion は spec brainstorming 時 (= 2026-05
 post-flight check で IAM role direct verify (= `aws iam get-role --role-name eks-production-eso`) が **AccessDenied**:
 
 ```
-An error occurred (AccessDenied) when calling the GetRole operation: 
-User: arn:aws:sts::559744160976:assumed-role/eks-admin/... is not authorized 
-to perform: iam:GetRole on resource: ... because no identity-based policy 
+An error occurred (AccessDenied) when calling the GetRole operation:
+User: arn:aws:sts::559744160976:assumed-role/eks-admin/... is not authorized
+to perform: iam:GetRole on resource: ... because no identity-based policy
 allows the iam:GetRole action
 ```
 
