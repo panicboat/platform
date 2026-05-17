@@ -87,10 +87,8 @@ spec:
       labels:
         app: monolith
       annotations:
-        # OTel Operator が Ruby auto-injection native support 後に effective に。
-        # 現状 (= chart 0.113.0) では Operator が unknown annotation として silently
-        # ignore、 monolith Pod の trace 取得は停止。 upstream PR の merge + chart
-        # upgrade で auto 復活する。
+        # Ruby auto-injection annotation。 OTel Operator chart 0.113.0 では
+        # Ruby unsupported で silently ignore、 monolith Pod の trace 取得は不在。
         # 引き継ぎ #25 / spec: docs/superpowers/specs/2026-05-17-monolith-otel-preempt-design.md
         instrumentation.opentelemetry.io/inject-ruby: default/panicboat-application
     spec:
