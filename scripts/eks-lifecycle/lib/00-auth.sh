@@ -34,6 +34,42 @@ ORIG_AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}"
 ORIG_AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN:-}"
 export ORIG_AWS_ACCESS_KEY_ID ORIG_AWS_SECRET_ACCESS_KEY ORIG_AWS_SESSION_TOKEN
 
+# Helper for sub-scripts that need admin credentials (= kubectl ops in 10/60/70).
+# Split declare + assign so jq failure (= file corrupted) propagates under set -e.
+# Defined before the admin-role assume attempt so that CLUSTER_EXISTS=false 経路
+# (= 10-k8s-cleanup.sh の AWS-API fallback など) からも safe に呼び出せる。
+use_admin_creds() {
+  if [ -n "${ADMIN_CREDS_FILE:-}" ] && [ -f "$ADMIN_CREDS_FILE" ]; then
+    local _id _secret _token
+    _id=$(jq -r .AccessKeyId "$ADMIN_CREDS_FILE")
+    _secret=$(jq -r .SecretAccessKey "$ADMIN_CREDS_FILE")
+    _token=$(jq -r .SessionToken "$ADMIN_CREDS_FILE")
+    export AWS_ACCESS_KEY_ID="$_id"
+    export AWS_SECRET_ACCESS_KEY="$_secret"
+    export AWS_SESSION_TOKEN="$_token"
+  fi
+}
+
+# Restore operator's default credential state for terragrunt operations.
+# When operator uses AWS_PROFILE / IAM Identity Center / instance profile,
+# unsetting AWS_*_KEY env returns the SDK to its default lookup chain.
+# When operator had AWS_*_KEY set directly, restore the captured values.
+use_apply_creds() {
+  if [ -n "${ORIG_AWS_ACCESS_KEY_ID}" ]; then
+    export AWS_ACCESS_KEY_ID="$ORIG_AWS_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$ORIG_AWS_SECRET_ACCESS_KEY"
+    if [ -n "${ORIG_AWS_SESSION_TOKEN}" ]; then
+      export AWS_SESSION_TOKEN="$ORIG_AWS_SESSION_TOKEN"
+    else
+      unset AWS_SESSION_TOKEN
+    fi
+  else
+    unset AWS_ACCESS_KEY_ID
+    unset AWS_SECRET_ACCESS_KEY
+    unset AWS_SESSION_TOKEN
+  fi
+}
+
 REGION="$(resolve_aws_region)"
 CALLER_ARN="$(aws sts get-caller-identity --query Arn --output text)"
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
@@ -50,6 +86,7 @@ if ! ADMIN_CREDS=$(aws sts assume-role \
   --output json 2>/dev/null); then
   warn "Admin role not found (= cluster may already be destroyed). Setting CLUSTER_EXISTS=false."
   export CLUSTER_EXISTS="false"
+  use_apply_creds
   return 0 2>/dev/null || exit 0
 fi
 
@@ -90,40 +127,6 @@ else
   warn "Cluster not reachable (= already destroyed?). Setting CLUSTER_EXISTS=false."
   export CLUSTER_EXISTS="false"
 fi
-
-# Helper for sub-scripts that need admin credentials (= kubectl ops in 60/70).
-# Split declare + assign so jq failure (= file corrupted) propagates under set -e.
-use_admin_creds() {
-  if [ -f "$ADMIN_CREDS_FILE" ]; then
-    local _id _secret _token
-    _id=$(jq -r .AccessKeyId "$ADMIN_CREDS_FILE")
-    _secret=$(jq -r .SecretAccessKey "$ADMIN_CREDS_FILE")
-    _token=$(jq -r .SessionToken "$ADMIN_CREDS_FILE")
-    export AWS_ACCESS_KEY_ID="$_id"
-    export AWS_SECRET_ACCESS_KEY="$_secret"
-    export AWS_SESSION_TOKEN="$_token"
-  fi
-}
-
-# Restore operator's default credential state for terragrunt operations.
-# When operator uses AWS_PROFILE / IAM Identity Center / instance profile,
-# unsetting AWS_*_KEY env returns the SDK to its default lookup chain.
-# When operator had AWS_*_KEY set directly, restore the captured values.
-use_apply_creds() {
-  if [ -n "${ORIG_AWS_ACCESS_KEY_ID}" ]; then
-    export AWS_ACCESS_KEY_ID="$ORIG_AWS_ACCESS_KEY_ID"
-    export AWS_SECRET_ACCESS_KEY="$ORIG_AWS_SECRET_ACCESS_KEY"
-    if [ -n "${ORIG_AWS_SESSION_TOKEN}" ]; then
-      export AWS_SESSION_TOKEN="$ORIG_AWS_SESSION_TOKEN"
-    else
-      unset AWS_SESSION_TOKEN
-    fi
-  else
-    unset AWS_ACCESS_KEY_ID
-    unset AWS_SECRET_ACCESS_KEY
-    unset AWS_SESSION_TOKEN
-  fi
-}
 
 # Default to operator credentials for terragrunt operations
 use_apply_creds
