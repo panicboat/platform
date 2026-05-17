@@ -297,14 +297,17 @@ Phase 5 closure Section 2 と同 13 checklist を application stack (= monolith 
 
 #### Category H: Application + production grade (= 5 件)
 
-**#25 OTel Operator chart upgrade (= Ruby auto-injection native support)** — **blocked upstream**
+**#25 OTel Operator chart upgrade (= Ruby auto-injection native support)** — **preempted to Operator native (= 2026-05-17 monolith side 完了)**
 
-- 現在: OTel Operator chart 0.113.1 (= app version 0.151.0、 helm repo 最新) でも `spec.ruby` schema 非対応、 monolith Pod の env vars 6 個 hardcode (= ENDPOINT / RESOURCE_ATTRIBUTES / TRACES_EXPORTER / METRICS_EXPORTER / LOGS_EXPORTER / PROPAGATORS) は workaround として継続
-- 体験 / impact: 新 Ruby service 追加で 同じ env vars hardcode 6 個を deployment.yaml に手動 copy 必要 → toil
-- **Upstream status (= 2026-05-17 確認)**: OTel Operator CHANGELOG 全文に "ruby" 文字列 0 件。 GitHub issue [open-telemetry/opentelemetry-operator#3762](https://github.com/open-telemetry/opentelemetry-operator/issues/3762) "Autoinstrumentation for opentelemetry ruby" が 2025-03 から **OPEN のまま** (= comment 1 件、 implementation 進展なし)。 Ruby auto-instrumentation の operator side 実装は upstream で未着手で、 chart upgrade では解消不可
-- **Repo**: platform (= 該当なし、 chart upgrade で対応不可) + monorepo (= env vars hardcode 継続)
-- Phase 7+ task: actionable not。 upstream 動向 watch + 実装後 chart upgrade + monorepo env vars hardcode 撤去 (= upstream merge までは backlog hold)。 代替案 (= ConfigMap envFrom 等) は scope 増 vs benefit が見合わないため見送り
-- priority: low (= upstream blocking、 workaround は env-agnostic value で運用安定)
+- 現在: OTel Operator chart 0.113.0 (= app version 0.151.0) で `spec.ruby` 非対応のまま。 monolith deployment.yaml の OTel env vars 6 個 + `config/initializers/opentelemetry.rb` を **2026-05-17 削除**、 `instrumentation.opentelemetry.io/inject-ruby` annotation を monolith Pod に追加して Operator native auto-injection 復活を anticipate。 現状 monolith Pod は trace emit 不在 (= user 認可済 short-term gap)
+- **Upstream status (= 2026-05-17 再確認)**:
+  - [opentelemetry-operator#3756](https://github.com/open-telemetry/opentelemetry-operator/pull/3756) "[autoinstrumentation] add ruby autoinstrumentation": OPEN / CHANGES_REQUESTED、 last update 2026-01-23 (= 4 ヶ月 stuck、 dependency 待ち)
+  - [opentelemetry-ruby-contrib#1384](https://github.com/open-telemetry/opentelemetry-ruby-contrib/pull/1384) (= `opentelemetry-autoinstrumentation` gem): OPEN / **APPROVED**、 last update 2026-05-15 (= 直近 active、 merge 待ち)
+  - ruby-contrib#1384 merge → operator#3756 dependency 解消 → 数週〜数ヶ月で Operator native release 見込み
+- **Repo**: platform (= 当面 chart upgrade 待ち、 release 後 chart bump + Instrumentation CR `spec.ruby` 設定) + monorepo (= 2026-05-17 preempt 完了、 Operator merge 後 Gemfile に `opentelemetry-autoinstrumentation` gem 追加で完結)
+- Phase 7+ task: upstream Operator merge + chart release watch、 release 後 chart upgrade PR + monorepo Gemfile update PR で monolith trace auto 復活
+- priority: low (= preempt 完了、 transition は upstream release で自動)
+- spec: `docs/superpowers/specs/2026-05-17-monolith-otel-preempt-design.md`
 
 **#33 panicboat staging / production env active 化 + release-please + dystopia.city** (= Phase 7 Theme A primary focus)
 
