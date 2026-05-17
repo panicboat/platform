@@ -17,20 +17,20 @@ environments:
     # RECREATE marker convention
     # =====================================================================
     # `# RECREATE: <command>` directly above a value means: when the cluster
-    # / VPC / underlying AWS resources are destroyed and recreated (= via
-    # scripts/eks-lifecycle), run the given command and replace the next
-    # line's value with the command's stdout. Only `eksApiEndpoint` and
-    # `vpcId` are subject to recreate (= cluster ID and VPC ID change every
-    # creation).
+    # / VPC / underlying AWS resources are destroyed and recreated, run the
+    # given command and replace the next line's value with the command's
+    # stdout. Only `eksApiEndpoint` and `vpcId` are subject to recreate
+    # (= cluster ID and VPC ID change every creation).
     #
     # `# STABLE: <reason>` means the value is deterministic by design and
     # does NOT need updating on recreate (= IRSA / Karpenter naming was
     # made deterministic by design; bucket names are account-id keyed).
     #
-    # The lifecycle script `60-flux-bootstrap.sh` greps for these
-    # markers and prompts the operator to apply the listed updates manually
-    # (Plan A in the spec Errata). This avoids hydrate-time exec which is
-    # incompatible with the panicboat CI ordering (see spec §0 Errata).
+    # Operator が runbook `docs/runbooks/eks-production-recreate.md` Phase 4
+    # で `grep -n 'RECREATE:'` して各 marker 行の next-line 値を手動更新する
+    # (Plan A in the spec Errata)。 sed 自動置換ではなく目視 edit を選んだ
+    # 理由は PR #326 incident の audit pass 漏れ反省 (= 1 件ずつ目視確認の
+    # 方が confidence 高い)。
     # =====================================================================
     values:
       - cluster:
