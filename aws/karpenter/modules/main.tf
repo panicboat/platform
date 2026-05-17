@@ -135,6 +135,14 @@ module "system_critical" {
     max_unavailable_percentage = 33
   }
 
+  # LT version 変更 (= 例: common_tags 経由の tag_specifications 更新) で MNG が
+  # rolling update を trigger した際、 PDB が evict を阻止すると PodEvictionFailure
+  # で update が Failed 状態で停止する。 force_update_version=true で PDB タイムアウト
+  # 後に AWS が force kill して update を完遂させる。
+  # system_critical workload (Karpenter / cilium-operator / CoreDNS) は stateless
+  # で 1-2 分の forced restart を許容する設計。
+  force_update_version = true
+
   iam_role_additional_policies = {
     ssm = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
   }
