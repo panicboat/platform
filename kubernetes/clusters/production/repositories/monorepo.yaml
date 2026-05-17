@@ -60,12 +60,12 @@ spec:
     - secretKey: githubAppID
       remoteRef:
         key: panicboat/github-app/panicboat
-        property: appID
+        property: app_id
     - secretKey: githubAppInstallationID
       remoteRef:
         key: panicboat/github-app/panicboat
-        property: installationID
+        property: installation_id
     - secretKey: githubAppPrivateKey
       remoteRef:
         key: panicboat/github-app/panicboat
-        property: privateKey
+        property: private_key
