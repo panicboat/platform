@@ -32,6 +32,9 @@ inputs = {
   common_tags = merge(
     {
       Environment = include.env.locals.environment
+      ManagedBy   = "terraform"
+      Project     = "github-oidc-auth"
+      Repository  = "panicboat/platform"
     },
     include.env.locals.additional_tags
   )

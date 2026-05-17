@@ -28,7 +28,7 @@ locals {
 
   # Production-specific resource tags
   additional_tags = {
-    Purpose    = "github-actions"
+    Component  = "github-oidc-auth"
     Owner      = "panicboat"
   }
 }
