@@ -1,6 +1,6 @@
 # common.sh - shared utilities for eks-lifecycle scripts.
 #
-# All numbered scripts (00-auth.sh ... 70-reconcile-watch.sh) source this
+# All numbered scripts (00-auth.sh ... 40-orphan-verify.sh) source this
 # file at the top to obtain logging, fail-fast, env validation, dry-run
 # wrapper, and credential expiration tracking helpers.
 

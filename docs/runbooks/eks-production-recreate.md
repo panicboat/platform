@@ -8,7 +8,7 @@
 
 ## 1. Purpose
 
-Phase 3 lifecycle script (`make eks-recreate ENV=production`) は cilium native CNI ENI mode (= PR #393) との chicken-and-egg があり cold-start recreate を完走できない:
+EKS cluster cold-start は cilium native CNI ENI mode (= PR #393) との chicken-and-egg があり、 単一 sequence の自動化では完走できない:
 
 - `aws/eks` apply で cluster + addon (= coredns / aws-ebs-csi-driver) を install 試行
 - addon は `system_critical` MNG (= `aws/karpenter` stack が作る) に schedule 必要だが MNG 未作成で **DEGRADED**
