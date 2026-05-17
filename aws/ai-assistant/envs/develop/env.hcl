@@ -10,7 +10,7 @@ locals {
 
   environment_tags = {
     Environment = local.environment
-    Purpose     = "ai-assistant"
+    Component   = "ai-assistant"
     Owner       = "panicboat"
   }
 }

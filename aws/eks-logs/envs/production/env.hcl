@@ -6,7 +6,7 @@ locals {
 
   environment_tags = {
     Environment = local.environment
-    Purpose     = "eks-logs"
+    Component   = "eks-logs"
     Owner       = "panicboat"
   }
 }
