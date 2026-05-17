@@ -146,7 +146,7 @@ module "vpc" {
 
 ```hcl
 terraform {
-  required_version = ">= 1.11.6"
+  required_version = "1.11.6"
 
   required_providers {
     aws = {
@@ -326,7 +326,7 @@ aws/_test-consumer/                   # 検証専用、検証後に削除
 
 ```hcl
 terraform {
-  required_version = ">= 1.11.6"
+  required_version = "1.11.6"
 
   required_providers {
     aws = {
