@@ -96,7 +96,7 @@ spec:
     spec:
       containers:
         - name: monolith
-          image: ghcr.io/panicboat/monorepo/monolith:latest # {"$imagepolicy": "flux-system:monolith"}
+          image: ghcr.io/panicboat/monorepo/monolith:latest
           imagePullPolicy: IfNotPresent
           command: ["./bin/start"]
           ports:
