@@ -60,6 +60,12 @@ variable "repositories" {
       # When true, organization admins can bypass this ruleset.
       # Set false to enforce rules for everyone (legacy enforce_admins=true equivalent).
       admin_bypass = bool
+
+      # GitHub App (Integration) IDs that bypass this ruleset for direct pushes.
+      # Required for automation that must commit/push to the protected branch
+      # without going through a pull request (e.g., Flux ImageUpdateAutomation).
+      # Empty list = no GitHub App bypass.
+      bypass_app_ids = optional(list(number), [])
     }))
   }))
 }

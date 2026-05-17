@@ -55,6 +55,19 @@ resource "github_repository_ruleset" "branches" {
     }
   }
 
+  # GitHub App bypass: each App ID in bypass_app_ids generates a bypass_actor.
+  # Used for automation that must direct-push to the protected branch
+  # (e.g., Flux ImageUpdateAutomation bumping image tags).
+  dynamic "bypass_actors" {
+    for_each = each.value.bypass_app_ids
+    iterator = app_id
+    content {
+      actor_id    = app_id.value
+      actor_type  = "Integration"
+      bypass_mode = "always"
+    }
+  }
+
   rules {
     # Requiring a PR effectively blocks direct pushes to the branch,
     # replacing the legacy restrict_pushes setting.
