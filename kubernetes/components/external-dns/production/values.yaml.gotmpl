@@ -13,9 +13,12 @@ sources:
 # =============================================================================
 # Domain filtering
 # =============================================================================
-# panicboat.net 以下のみ管理。dystopia.city は monorepo 移行 spec で扱う。
+# Restrict ExternalDNS to manage records in panicboat.net + dystopia.city zones
+# only. panicboat.net: 非公開 monitoring UIs / 個人利用 hosts。 dystopia.city: 公開
+# application apex。
 domainFilters:
   - panicboat.net
+  - dystopia.city
 
 # =============================================================================
 # Sync policy

@@ -1,11 +1,11 @@
 # =============================================================================
-# Ingress: monitoring-uis IngressGroup
+# Ingress: monitoring-uis (application IngressGroup)
 # =============================================================================
-# 4 Ingresses (= grafana / hubble / alertmanager / prometheus) が同一 ALB を
-# IngressGroup `monitoring-uis` で共有。各 Ingress の backend は per-host の
-# oauth2-proxy release Service (= `oauth2-proxy-{grafana,hubble,alertmanager,
-# prometheus}`、各々 1 upstream へ reverse-proxy)。ALB が host header から
-# Service を選択 → oauth2-proxy が Google OAuth 認証 + 単一 backend へ転送。
+# 4 Ingresses (= grafana / hubble / alertmanager / prometheus) が IngressGroup
+# `application` で application Ingress と同一 ALB を共有。各 Ingress の backend は
+# per-host の oauth2-proxy release Service (= `oauth2-proxy-{grafana,hubble,
+# alertmanager,prometheus}`、各々 1 upstream へ reverse-proxy)。ALB が host header
+# から Service を選択 → oauth2-proxy が Google OAuth 認証 + 単一 backend へ転送。
 #
 # ACM cert auto-discovery: ALB Controller は wildcard cert *.panicboat.net を
 # 自動的に attach する (= Ingress.host が SAN にマッチ)。explicit
@@ -22,7 +22,7 @@ metadata:
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
-    alb.ingress.kubernetes.io/group.name: monitoring-uis
+    alb.ingress.kubernetes.io/group.name: application
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-path: /ping
     alb.ingress.kubernetes.io/healthcheck-port: traffic-port
@@ -51,7 +51,7 @@ metadata:
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
-    alb.ingress.kubernetes.io/group.name: monitoring-uis
+    alb.ingress.kubernetes.io/group.name: application
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-path: /ping
     alb.ingress.kubernetes.io/healthcheck-port: traffic-port
@@ -80,7 +80,7 @@ metadata:
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
-    alb.ingress.kubernetes.io/group.name: monitoring-uis
+    alb.ingress.kubernetes.io/group.name: application
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-path: /ping
     alb.ingress.kubernetes.io/healthcheck-port: traffic-port
@@ -109,7 +109,7 @@ metadata:
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
-    alb.ingress.kubernetes.io/group.name: monitoring-uis
+    alb.ingress.kubernetes.io/group.name: application
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-path: /ping
     alb.ingress.kubernetes.io/healthcheck-port: traffic-port
