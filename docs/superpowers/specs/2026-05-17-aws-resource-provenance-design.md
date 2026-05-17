@@ -40,7 +40,7 @@ deployable IaC stack は計 **11** (= `aws/ai-assistant/` / `aws/alb/` / `aws/co
 
 | Tag key | 設定箇所 | 現状の値 | 状態 |
 |---|---|---|---|
-| `Purpose` | `aws/<stack>/envs/<env>/env.hcl` の `environment_tags` | stack 名 (例: `vpc` / `eks` / `karpenter`) | 全 11 stack に存在、 ただし `aws/github-oidc-auth/envs/<env>/env.hcl` のみ `github-actions` で drift |
+| `Purpose` | `aws/<stack>/envs/<env>/env.hcl` の `environment_tags` (= 10 stack) または `additional_tags` (= github-oidc-auth のみ) | stack 名 (例: `vpc` / `eks` / `karpenter`) | 全 11 stack に存在、 ただし `aws/github-oidc-auth/envs/<env>/env.hcl` のみ `github-actions` で drift |
 | `Purpose` | module 内 個別 resource の `tags = merge(var.common_tags, { Purpose = "<resource-specific>" })` | resource-specific (例: `github-actions-oidc-plan` / `bedrock-claude-access`) | per-resource 識別子として正しい使い方 |
 | `ManagedBy` | `aws/<stack>/envs/<env>/terragrunt.hcl` の `inputs.common_tags` | `terragrunt` | 全 stack で同値、 stack 識別は別 tag (= 現状 `Purpose`) 併読が必要 |
 | `Component` | `aws/<stack>/root.hcl` の `locals.common_tags` | stack 名 | **dead code** (= child override で消える) |
@@ -51,6 +51,7 @@ deployable IaC stack は計 **11** (= `aws/ai-assistant/` / `aws/alb/` / `aws/co
 - 同じ概念 (= stack 識別) に対して `Purpose` (env.hcl) と `Component` (root.hcl) の 2 key が並存し、 後者は dead code。
 - `Purpose` が stack 名と per-resource 識別子の **2 つの意味で多重使用** されている (= 同じ key で 2 軸を区別不能)。
 - k8s controller 経由 AWS resource は schema に乗っていない。
+- `aws/github-oidc-auth/` の `envs/<env>/terragrunt.hcl` は他 10 stack と構造が異なる (= `environment_tags` ではなく `additional_tags` を使い、 `common_tags = merge({ Environment }, additional_tags)` という slim merge のため `Project` / `ManagedBy` / `Repository` 等が **deployed tags に含まれない**)。 結果として github-oidc-auth 由来 AWS resource は `Environment` / `Purpose` (= 役割により値変動) / `Owner` の 3 tag しか持たず、 schema 不揃い。
 
 ---
 
@@ -78,8 +79,8 @@ deployable IaC stack は計 **11** (= `aws/ai-assistant/` / `aws/alb/` / `aws/co
 
 | # | 変更 | ファイル | 内容 |
 |---|---|---|---|
-| 4-1-a | env.hcl で `Purpose` → `Component` rename | 全 `aws/<stack>/envs/<env>/env.hcl` | `environment_tags` 内の `Purpose = "<stack>"` を `Component = "<stack>"` に置き換える。 `aws/github-oidc-auth/envs/<env>/env.hcl` は値も `github-actions` → `github-oidc-auth` に normalize (= stack 名と一致させる) |
-| 4-1-b | terragrunt.hcl で `ManagedBy` 値を simplify | 全 `aws/<stack>/envs/<env>/terragrunt.hcl` | `inputs.common_tags` の `ManagedBy = "terragrunt"` を `ManagedBy = "terraform"` に変更 |
+| 4-1-a | env.hcl で `Purpose` → `Component` rename | 全 `aws/<stack>/envs/<env>/env.hcl` (= 12 files) | `environment_tags` (= 10 stack) または `additional_tags` (= github-oidc-auth 2 env) 内の `Purpose = "<stack>"` を `Component = "<stack>"` に置き換える。 `aws/github-oidc-auth/envs/<env>/env.hcl` は値も `github-actions` → `github-oidc-auth` に normalize (= stack 名と一致させる) |
+| 4-1-b | terragrunt.hcl で `ManagedBy` 値を simplify + github-oidc-auth は構造修正 | 全 `aws/<stack>/envs/<env>/terragrunt.hcl` (= 12 files) | 10 stack は `inputs.common_tags` の `ManagedBy = "terragrunt"` を `ManagedBy = "terraform"` に変更。 `aws/github-oidc-auth/envs/<env>/terragrunt.hcl` (2 env) は他 10 stack に揃える形に修正: merge 内の inline map に `ManagedBy = "terraform"` + `Project = "github-oidc-auth"` + `Repository = "panicboat/platform"` を追加 |
 | 4-1-c | root.hcl の dead code は **本 spec では touch しない** | 全 `aws/<stack>/root.hcl` | `locals.common_tags` の `Component` / `ManagedBy` / `Team` 等は child の `inputs.common_tags` override で消えるため dead code だが、 envs/terragrunt.hcl で `common_tags` を override しない stack が将来追加された時の安全網として残置する (= cleanup は別 spec、 本 spec の rename は envs 側のみで完結) |
 | 4-1-d | module 内 per-resource `Purpose` | 既存維持 | `aws/github-oidc-auth/modules/main.tf` と `aws/ai-assistant/modules/*.tf` の `Purpose=<resource-specific>` override は role 識別子として残す (= schema 上の正規な per-resource 用途) |
 
