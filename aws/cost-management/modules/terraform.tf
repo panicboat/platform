@@ -3,7 +3,7 @@
 # Region is pinned here so the service does not depend on env aws_region.
 
 terraform {
-  required_version = ">= 1.11.6"
+  required_version = ">= 1.12.0"
 
   required_providers {
     aws = {
