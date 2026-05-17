@@ -57,15 +57,15 @@ spec:
     name: panicboat-github-app
     creationPolicy: Owner
   data:
-    - secretKey: github-app-id
+    - secretKey: githubAppID
       remoteRef:
         key: panicboat/github-app/panicboat
         property: appID
-    - secretKey: github-installation-id
+    - secretKey: githubAppInstallationID
       remoteRef:
         key: panicboat/github-app/panicboat
         property: installationID
-    - secretKey: github-private-key
+    - secretKey: githubAppPrivateKey
       remoteRef:
         key: panicboat/github-app/panicboat
         property: privateKey
