@@ -227,7 +227,7 @@ kubectl rollout status deployment/monolith
 |---|---|
 | 既存 panicboat App に Contents: Write 権限がない | Manual Prerequisites 1 で事前確認 (release-please で commit 作成しているので付いている見込みだが verify) |
 | App private key を AWS Secrets Manager に put する際の format ミス (改行コード, escape) | JSON で `privateKey` の値は `\n` で改行を表現、または multi-line YAML で put。AWS console で put 後 ESO がパースできるか動作確認 |
-| ESO の IRSA role が `panicboat/flux/*` 配下の secret 読み取り権限を持たない | 既存 IAM policy が `panicboat/*` 配下を許可しているか事前確認、必要なら IAM policy 拡張 |
+| ESO の IRSA role が `panicboat/github-app/*` 配下の secret 読み取り権限を持たない | 既存 IAM policy が `panicboat/*` 配下を許可しているか事前確認、必要なら IAM policy 拡張 |
 | Flux source-controller の `provider: github` が v1.8.4 では未 support | source-controller v1.8.4 (= Flux 2.4+ 相当) は GitHub App provider を native support。要確認、もし未対応なら controller upgrade or SSH Deploy Key fallback |
 | App token expire (1h) で Flux が refresh を怠る | source-controller v1.8.4 で自動 refresh 仕様。controller log で `token refresh` 系の error が出ないか初回動作後にチェック |
 | ImageUpdateAutomation の git push が走るたびに App token を消費する | App token は短期 (1h) + 自動 refresh、長期 quota はないので問題なし。GitHub API rate limit (= App は 5000 req/h) も実用上問題なし |
