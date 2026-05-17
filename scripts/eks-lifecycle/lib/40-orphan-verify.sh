@@ -60,10 +60,19 @@ info "Step 40.5: Route53 stale external-dns records"
 HOSTED_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
   --dns-name panicboat.net --query 'HostedZones[0].Id' --output text 2>/dev/null | sed 's|/hostedzone/||')
 if [ -n "$HOSTED_ZONE_ID" ] && [ "$HOSTED_ZONE_ID" != "None" ]; then
-  STALE_RECORDS=$(aws route53 list-resource-record-sets \
-    --hosted-zone-id "$HOSTED_ZONE_ID" \
-    --query "ResourceRecordSets[?starts_with(Name, '_external-dns.') || (Type == 'A' && contains(Name, '.panicboat.net'))].[Name,Type]" \
-    --output text)
+  # external-dns は TXT registry record (= name format "<rtype>-<host>") に
+  # ownership marker (= heritage=external-dns,external-dns/owner=eks-<env>) を書く。
+  # この marker を起点に関連 A/AAAA/CNAME (= prefix 除去で導出した host name) を
+  # 集計する。 旧実装は "_external-dns." prefix と A record のみを参照しており、
+  # 実 deployment の prefix-less / "<rtype>-" registry format と AAAA / CNAME を取りこぼしていた。
+  STALE_RECORDS=$(aws route53 list-resource-record-sets --hosted-zone-id "$HOSTED_ZONE_ID" --output json | \
+    jq -r --arg owner "eks-${ENV}" '
+      .ResourceRecordSets as $all
+      | ($all | map(select(.Type == "TXT" and (.ResourceRecords | map(.Value) | join(" ") | contains("external-dns/owner=" + $owner))))) as $txt
+      | ($txt | map(.Name | sub("^[a-z]+-"; "")) | unique) as $hosts
+      | ($all | map(select((.Type == "A" or .Type == "AAAA" or .Type == "CNAME") and (.Name | IN($hosts[]))))) as $assoc
+      | ($txt + $assoc) | .[] | "\(.Name)\t\(.Type)"
+    ')
   if [ -n "$STALE_RECORDS" ]; then
     warn "Stale Route53 records (= external-dns owned, not auto-cleaned):"
     echo "$STALE_RECORDS" | sed 's/^/    /'
