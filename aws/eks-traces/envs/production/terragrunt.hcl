@@ -25,7 +25,7 @@ inputs = {
     include.env.locals.environment_tags,
     {
       Project    = "eks-traces"
-      ManagedBy  = "terragrunt"
+      ManagedBy  = "terraform"
       Repository = "panicboat/platform"
     }
   )

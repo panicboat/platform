@@ -34,6 +34,14 @@ module "vpc" {
   }
   database_subnet_tags = { Tier = "database" }
 
+  # Adopt the VPC default SG into Terraform state and lock it down (= ingress
+  # / egress fully cleared) so that no resource accidentally inherits AWS's
+  # default permissive rules. CIS Benchmark / AWS Well-Architected recommendation.
+  manage_default_security_group  = true
+  default_security_group_ingress = []
+  default_security_group_egress  = []
+  default_security_group_tags    = merge(var.common_tags, { Name = "default-vpc-${var.environment}-locked" })
+
   tags = var.common_tags
 }
 

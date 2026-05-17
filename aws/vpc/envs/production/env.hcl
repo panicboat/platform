@@ -10,7 +10,7 @@ locals {
   # Environment-specific tags
   environment_tags = {
     Environment = local.environment
-    Purpose     = "vpc"
+    Component   = "vpc"
     Owner       = "panicboat"
   }
 }

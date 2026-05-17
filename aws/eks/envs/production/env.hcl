@@ -14,7 +14,7 @@ locals {
   # Environment-specific tags
   environment_tags = {
     Environment = local.environment
-    Purpose     = "eks"
+    Component   = "eks"
     Owner       = "panicboat"
   }
 }

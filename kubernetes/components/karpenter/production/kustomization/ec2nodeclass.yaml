@@ -39,3 +39,8 @@ spec:
     httpProtocolIPv6: disabled
     httpPutResponseHopLimit: 2
     httpTokens: required
+  # Tag every aws resource Karpenter launches (= ec2 instance + ebs root volume
+  # + launch template + eni) with the controller's provenance label.
+  # Per spec section 4-2-b.
+  tags:
+    ManagedBy: karpenter
