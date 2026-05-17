@@ -43,7 +43,7 @@ spec:
 # AWS Secrets Manager 内の secret は user が console で 1 回手動で put した
 # 既存 panicboat App の credentials (Contents: Read & Write 権限あり)。
 # =============================================================================
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: panicboat-github-app
