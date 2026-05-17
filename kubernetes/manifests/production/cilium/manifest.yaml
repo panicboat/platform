@@ -2566,13 +2566,13 @@ metadata:
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     alb.ingress.kubernetes.io/success-codes: 200-499
     alb.ingress.kubernetes.io/target-type: ip
-    external-dns.alpha.kubernetes.io/hostname: develop.panicboat.net
+    external-dns.alpha.kubernetes.io/hostname: dystopia.city
   name: application
   namespace: kube-system
 spec:
   ingressClassName: alb
   rules:
-  - host: develop.panicboat.net
+  - host: dystopia.city
     http:
       paths:
       - backend:

@@ -5,7 +5,7 @@
 # で 全 node の host port 8080 に cilium-envoy が listen、 ALB がそれを backend
 # として target-type=ip で Pod IP (= node IP) に register。
 #
-# ACM cert auto-discovery: ALB Controller が wildcard cert *.panicboat.net を
+# ACM cert auto-discovery: ALB Controller が wildcard cert *.dystopia.city を
 # 自動 attach (= Ingress.host が SAN match)。explicit certificate-arn annotation
 # 不要。
 #
@@ -36,11 +36,11 @@ metadata:
     alb.ingress.kubernetes.io/healthcheck-port: traffic-port
     alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
     alb.ingress.kubernetes.io/ssl-redirect: "443"
-    external-dns.alpha.kubernetes.io/hostname: develop.panicboat.net
+    external-dns.alpha.kubernetes.io/hostname: dystopia.city
 spec:
   ingressClassName: alb
   rules:
-    - host: develop.panicboat.net
+    - host: dystopia.city
       http:
         paths:
           - path: /

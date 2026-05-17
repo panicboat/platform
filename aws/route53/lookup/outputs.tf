@@ -8,5 +8,10 @@ output "zones" {
       arn  = data.aws_route53_zone.panicboat_net.arn
       name = data.aws_route53_zone.panicboat_net.name
     }
+    dystopia_city = {
+      id   = data.aws_route53_zone.dystopia_city.zone_id
+      arn  = data.aws_route53_zone.dystopia_city.arn
+      name = data.aws_route53_zone.dystopia_city.name
+    }
   }
 }

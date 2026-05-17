@@ -20,7 +20,6 @@ spec:
       app.kubernetes.io/name: oauth2-proxy
       app.kubernetes.io/instance: oauth2-proxy-grafana
   minAvailable: 1
-
 ---
 # Source: oauth2-proxy/templates/serviceaccount.yaml
 apiVersion: v1
@@ -72,7 +71,6 @@ data:
     skip_provider_button = true
     reverse_proxy = true
     authenticated_emails_file = "/etc/oauth2-proxy/emails/allowed"
-
 ---
 # Source: oauth2-proxy/templates/service.yaml
 apiVersion: v1
@@ -105,7 +103,6 @@ spec:
   selector:    
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-grafana
-
 ---
 # Source: oauth2-proxy/templates/deployment.yaml
 apiVersion: apps/v1
@@ -233,7 +230,6 @@ spec:
       - configMap:
           name: oauth2-proxy-allowed-emails
         name: emails
-
 ---
 # Source: oauth2-proxy/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -289,7 +285,6 @@ spec:
       app.kubernetes.io/name: oauth2-proxy
       app.kubernetes.io/instance: oauth2-proxy-hubble
   minAvailable: 1
-
 ---
 # Source: oauth2-proxy/templates/serviceaccount.yaml
 apiVersion: v1
@@ -341,7 +336,6 @@ data:
     skip_provider_button = true
     reverse_proxy = true
     authenticated_emails_file = "/etc/oauth2-proxy/emails/allowed"
-
 ---
 # Source: oauth2-proxy/templates/service.yaml
 apiVersion: v1
@@ -374,7 +368,6 @@ spec:
   selector:    
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-hubble
-
 ---
 # Source: oauth2-proxy/templates/deployment.yaml
 apiVersion: apps/v1
@@ -502,7 +495,6 @@ spec:
       - configMap:
           name: oauth2-proxy-allowed-emails
         name: emails
-
 ---
 # Source: oauth2-proxy/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -558,7 +550,6 @@ spec:
       app.kubernetes.io/name: oauth2-proxy
       app.kubernetes.io/instance: oauth2-proxy-alertmanager
   minAvailable: 1
-
 ---
 # Source: oauth2-proxy/templates/serviceaccount.yaml
 apiVersion: v1
@@ -610,7 +601,6 @@ data:
     skip_provider_button = true
     reverse_proxy = true
     authenticated_emails_file = "/etc/oauth2-proxy/emails/allowed"
-
 ---
 # Source: oauth2-proxy/templates/service.yaml
 apiVersion: v1
@@ -643,7 +633,6 @@ spec:
   selector:    
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-alertmanager
-
 ---
 # Source: oauth2-proxy/templates/deployment.yaml
 apiVersion: apps/v1
@@ -771,7 +760,6 @@ spec:
       - configMap:
           name: oauth2-proxy-allowed-emails
         name: emails
-
 ---
 # Source: oauth2-proxy/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -827,7 +815,6 @@ spec:
       app.kubernetes.io/name: oauth2-proxy
       app.kubernetes.io/instance: oauth2-proxy-prometheus
   minAvailable: 1
-
 ---
 # Source: oauth2-proxy/templates/serviceaccount.yaml
 apiVersion: v1
@@ -879,7 +866,6 @@ data:
     skip_provider_button = true
     reverse_proxy = true
     authenticated_emails_file = "/etc/oauth2-proxy/emails/allowed"
-
 ---
 # Source: oauth2-proxy/templates/service.yaml
 apiVersion: v1
@@ -912,7 +898,6 @@ spec:
   selector:    
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-prometheus
-
 ---
 # Source: oauth2-proxy/templates/deployment.yaml
 apiVersion: apps/v1
@@ -1040,7 +1025,6 @@ spec:
       - configMap:
           name: oauth2-proxy-allowed-emails
         name: emails
-
 ---
 # Source: oauth2-proxy/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -1115,7 +1099,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    alb.ingress.kubernetes.io/group.name: monitoring-uis
+    alb.ingress.kubernetes.io/group.name: application
     alb.ingress.kubernetes.io/healthcheck-path: /ping
     alb.ingress.kubernetes.io/healthcheck-port: traffic-port
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
@@ -1144,7 +1128,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    alb.ingress.kubernetes.io/group.name: monitoring-uis
+    alb.ingress.kubernetes.io/group.name: application
     alb.ingress.kubernetes.io/healthcheck-path: /ping
     alb.ingress.kubernetes.io/healthcheck-port: traffic-port
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
@@ -1173,7 +1157,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    alb.ingress.kubernetes.io/group.name: monitoring-uis
+    alb.ingress.kubernetes.io/group.name: application
     alb.ingress.kubernetes.io/healthcheck-path: /ping
     alb.ingress.kubernetes.io/healthcheck-port: traffic-port
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
@@ -1202,7 +1186,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    alb.ingress.kubernetes.io/group.name: monitoring-uis
+    alb.ingress.kubernetes.io/group.name: application
     alb.ingress.kubernetes.io/healthcheck-path: /ping
     alb.ingress.kubernetes.io/healthcheck-port: traffic-port
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
