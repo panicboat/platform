@@ -50,7 +50,7 @@ Phase 2 monorepo の Flux 連携設計 (2026-05-17-release-driven-flux-deploy-de
 
 AWS console / CLI で secret を作成:
 
-- Secret name: `panicboat/flux/monorepo-github-app`
+- Secret name: `panicboat/github-app/panicboat`
 - Secret value (JSON):
   ```json
   {
@@ -68,20 +68,20 @@ AWS console / CLI で secret を作成:
 
 ```
 [1] AWS Secrets Manager
-    secret: panicboat/flux/monorepo-github-app
+    secret: panicboat/github-app/panicboat
     keys: appID / installationID / privateKey
     │
     │ ESO fetch (1h interval)
     ▼
 [2] Kubernetes Secret (flux-system namespace)
-    name: monorepo-github-app
+    name: panicboat-github-app
     keys: github-app-id / github-installation-id / github-private-key
     │
     │ Flux source-controller 参照
     ▼
 [3] GitRepository (flux-system / monorepo)
     spec.provider: github
-    spec.secretRef.name: monorepo-github-app
+    spec.secretRef.name: panicboat-github-app
     → source-controller が App token を生成 + 自動 refresh
     │
     │ token 使用
@@ -122,7 +122,7 @@ AWS console / CLI で secret を作成:
      branch: main
 +  provider: github
 +  secretRef:
-+    name: monorepo-github-app
++    name: panicboat-github-app
 ```
 
 - `provider: github` で Flux source-controller の GitHub App auth flow を有効化 (Flux v2.4+ で native support)
@@ -137,7 +137,7 @@ AWS console / CLI で secret を作成:
 # =============================================================================
 # ExternalSecret: Sync GitHub App credentials from AWS Secrets Manager
 # =============================================================================
-# AWS Secrets Manager の `panicboat/flux/monorepo-github-app` から App
+# AWS Secrets Manager の `panicboat/github-app/panicboat` から App
 # credentials (appID / installationID / privateKey) を flux-system の K8s
 # Secret として sync し、GitRepository monorepo の write 認証に使う。
 # AWS Secrets Manager 内の secret は user が console で 1 回手動で put した
@@ -146,7 +146,7 @@ AWS console / CLI で secret を作成:
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
-  name: monorepo-github-app
+  name: panicboat-github-app
   namespace: flux-system
 spec:
   refreshInterval: 1h
@@ -154,24 +154,24 @@ spec:
     kind: ClusterSecretStore
     name: aws-secrets-manager
   target:
-    name: monorepo-github-app
+    name: panicboat-github-app
     creationPolicy: Owner
   data:
     - secretKey: github-app-id
       remoteRef:
-        key: panicboat/flux/monorepo-github-app
+        key: panicboat/github-app/panicboat
         property: appID
     - secretKey: github-installation-id
       remoteRef:
-        key: panicboat/flux/monorepo-github-app
+        key: panicboat/github-app/panicboat
         property: installationID
     - secretKey: github-private-key
       remoteRef:
-        key: panicboat/flux/monorepo-github-app
+        key: panicboat/github-app/panicboat
         property: privateKey
 ```
 
-- target K8s Secret 名 (`monorepo-github-app`) と secretKey 名 (`github-app-id` / `github-installation-id` / `github-private-key`) は **Flux source-controller の仕様で固定**: source-controller は GitRepository `secretRef` が指す secret から `github-app-id` / `github-installation-id` / `github-private-key` の key を読む。これらの命名を変えると Flux が認識しない
+- target K8s Secret 名 (`panicboat-github-app`) と secretKey 名 (`github-app-id` / `github-installation-id` / `github-private-key`) は **Flux source-controller の仕様で固定**: source-controller は GitRepository `secretRef` が指す secret から `github-app-id` / `github-installation-id` / `github-private-key` の key を読む。これらの命名を変えると Flux が認識しない
 - AWS Secrets Manager 側の JSON property 名 (`appID` / `installationID` / `privateKey`) は user 自由 (= ExternalSecret の remoteRef.property で mapping するため、本 spec で命名統一)
 
 ### B. 既存 file の他箇所は変更なし
@@ -188,10 +188,10 @@ Flux Kustomization (= `flux-system` Kustomization が platform リポを apply) 
 eks-login production
 
 # 1. ExternalSecret が SecretSynced True (= AWS Secrets Manager から取得成功)
-kubectl get externalsecret -n flux-system monorepo-github-app
+kubectl get externalsecret -n flux-system panicboat-github-app
 
 # 2. K8s Secret が作成され 3 keys が存在
-kubectl get secret -n flux-system monorepo-github-app -o jsonpath='{.data}' | jq 'keys'
+kubectl get secret -n flux-system panicboat-github-app -o jsonpath='{.data}' | jq 'keys'
 # 期待: ["github-app-id", "github-installation-id", "github-private-key"]
 
 # 3. GitRepository が新 spec を反映 + READY True (= App token 生成成功)
@@ -248,5 +248,5 @@ kubectl rollout status deployment/monolith
 ## Notes
 
 - 本 spec はゼロから新規構築ではなく、既存 Flux 基盤の git auth 不備を補修する内容。失敗が観測されているのは monorepo GitRepository のみ (= platform リポ自身は GitRepository `flux-system` で同様に public read で動いており、もし将来 platform に対しても ImageUpdateAutomation を入れる場合は同パターンを適用する)
-- 命名 `monorepo-github-app` は「Flux 専用の credential」を強調するため。中身は既存 panicboat App credentials だが、secret resource としては Flux 用に独立配置 (= 将来 Flux 専用 App に切り替える際に value 更新だけで済む構造)
+- 命名 `panicboat-github-app` は panicboat org の GitHub App credentials を持つ汎用名。中身は既存 panicboat App (release-please / auto-approve / semantic-pull-request 等で共有されている App) と同一。将来 Flux 以外の用途で同 K8s Secret を参照する場合も流用可能。AWS Secrets Manager key は `panicboat/<service>/<name>` の既存命名規約に倣い `panicboat/github-app/panicboat` (service=`github-app`、name=`panicboat` org)
 - AWS Secrets Manager の secret value (= App private key) は Terraform 管理せず手動 put のため、`lifecycle.ignore_changes = [secret_string]` 等の Terraform リソースは作らない (= 完全に外部管理)
