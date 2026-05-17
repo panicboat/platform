@@ -28,10 +28,8 @@ resource "aws_iam_role" "actions_role" {
   })
 
   tags = merge(var.common_tags, {
-    Name        = "${var.project_name}-${var.environment}-github-actions-role"
-    GitHubOrg   = var.github_org
-    GitHubRepos = join("+", var.github_repos)
-    Purpose     = "ai-assistant-github-actions"
+    Name    = "${var.project_name}-${var.environment}-github-actions-role"
+    Purpose = "ai-assistant-github-actions"
   })
 }
 
