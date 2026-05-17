@@ -16,6 +16,9 @@ spec:
   url: https://github.com/panicboat/monorepo.git
   ref:
     branch: main
+  provider: github
+  secretRef:
+    name: panicboat-github-app
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -30,3 +33,39 @@ spec:
     kind: GitRepository
     name: monorepo
   suspend: false  # active; flip to `true` to halt monorepo Kustomization
+---
+# =============================================================================
+# ExternalSecret: Sync GitHub App credentials from AWS Secrets Manager
+# =============================================================================
+# AWS Secrets Manager の `panicboat/github-app/panicboat` から App
+# credentials (appID / installationID / privateKey) を flux-system の K8s
+# Secret として sync し、GitRepository monorepo の write 認証に使う。
+# AWS Secrets Manager 内の secret は user が console で 1 回手動で put した
+# 既存 panicboat App の credentials (Contents: Read & Write 権限あり)。
+# =============================================================================
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: panicboat-github-app
+  namespace: flux-system
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: aws-secrets-manager
+  target:
+    name: panicboat-github-app
+    creationPolicy: Owner
+  data:
+    - secretKey: github-app-id
+      remoteRef:
+        key: panicboat/github-app/panicboat
+        property: appID
+    - secretKey: github-installation-id
+      remoteRef:
+        key: panicboat/github-app/panicboat
+        property: installationID
+    - secretKey: github-private-key
+      remoteRef:
+        key: panicboat/github-app/panicboat
+        property: privateKey
