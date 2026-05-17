@@ -24,6 +24,7 @@ locals {
         allow_force_pushes              = rule.allow_force_pushes
         allow_deletions                 = rule.allow_deletions
         admin_bypass                    = rule.admin_bypass
+        bypass_app_ids                  = rule.bypass_app_ids
       }
     }
   ]...)
