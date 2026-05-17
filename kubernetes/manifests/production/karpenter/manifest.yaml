@@ -2232,6 +2232,8 @@ spec:
   subnetSelectorTerms:
   - tags:
       Tier: private
+  tags:
+    ManagedBy: karpenter
 ---
 apiVersion: karpenter.sh/v1
 kind: NodePool
