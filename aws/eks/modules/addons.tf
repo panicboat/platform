@@ -56,7 +56,10 @@ module "external_dns_irsa" {
   name                          = "eks-${var.environment}-external-dns"
   use_name_prefix               = false
   attach_external_dns_policy    = true
-  external_dns_hosted_zone_arns = [module.route53.zones.panicboat_net.arn]
+  external_dns_hosted_zone_arns = [
+    module.route53.zones.panicboat_net.arn,
+    module.route53.zones.dystopia_city.arn,
+  ]
 
   oidc_providers = {
     main = {
