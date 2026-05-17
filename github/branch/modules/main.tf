@@ -24,6 +24,7 @@ locals {
         allow_force_pushes              = rule.allow_force_pushes
         allow_deletions                 = rule.allow_deletions
         admin_bypass                    = rule.admin_bypass
+        bypass_app_ids                  = rule.bypass_app_ids
       }
     }
   ]...)
@@ -51,6 +52,19 @@ resource "github_repository_ruleset" "branches" {
     content {
       actor_id    = 5 # OrganizationAdmin
       actor_type  = "OrganizationAdmin"
+      bypass_mode = "always"
+    }
+  }
+
+  # GitHub App bypass: each App ID in bypass_app_ids generates a bypass_actor.
+  # Used for automation that must direct-push to the protected branch
+  # (e.g., Flux ImageUpdateAutomation bumping image tags).
+  dynamic "bypass_actors" {
+    for_each = each.value.bypass_app_ids
+    iterator = app_id
+    content {
+      actor_id    = app_id.value
+      actor_type  = "Integration"
       bypass_mode = "always"
     }
   }
