@@ -4,49 +4,51 @@
 
 ## 📖 Overview
 
+ラベル駆動の単一 CI パイプラインから 3 つのデプロイ面を管理する monorepo:
+
+- **AWS infrastructure** — Terragrunt + OpenTofu (`aws/`)
+- **GitHub configuration** — Repo / branch / ruleset 設定を Terragrunt で管理 (`github/`)
+- **Kubernetes platform** — Helmfile でレンダリングしたマニフェストを Flux CD で適用 (`kubernetes/`)
+
+`panicboat/deploy-actions` が PR に付与したラベルを `workflow-config.yaml` に基づき具体的なデプロイ対象に展開し、対応する reusable workflow が実行される。
+
 ## 📂 Structure
 
 ```
 .
-├── .github/workflows/         # GitHub Actions (Terragrunt executor, deploy trigger, etc.)
-├── aws/                       # Terragrunt stacks (module + envs/{environment})
-│   ├── ai-assistant/
-│   ├── github-oidc-auth/
-│   └── vpc/
+├── .github/workflows/   # reusable executor, deploy trigger, hydrator/builder など
+├── aws/                 # service ごとの Terragrunt stack (envs/{environment})。_modules/ は共有 OpenTofu module
+├── github/              # GitHub repo / branch 設定の Terragrunt stack
 ├── kubernetes/
-│   ├── clusters/production/   # Flux bootstrap (flux-system, repositories)
-│   ├── components/            # Cilium, Prometheus, Loki, Tempo, OTel, Beyla, etc.
-│   └── manifests/production/  # Rendered manifests (per-component subdirectories)
-├── github/repository/         # Terraform for GitHub repo settings
-├── docs/
-└── workflow-config.yaml       # Environments and deployment targets
+│   ├── clusters/        # cluster ごとの Flux bootstrap
+│   ├── components/      # environment ごとの Helmfile source
+│   └── manifests/       # Flux が適用するレンダリング済みマニフェスト
+├── docs/                # runbook と設計ノート
+├── scripts/             # EKS lifecycle / hydration / post-flight 用 helper
+├── Makefile             # EKS teardown entry point
+└── workflow-config.yaml # environment と stack convention の source of truth
 ```
 
 ## 🚢 Deployment
 
 ### Trigger
 
-- `.github/workflows/auto-label--deploy-trigger.yaml` が PR ラベル / `main` への push で起動する。
-- `panicboat/deploy-actions/label-resolver` が `workflow-config.yaml` を参照してデプロイ対象 (`aws/{service}/envs/{environment}`) を解決する。
+- `auto-label--deploy-trigger.yaml` が PR ラベル / `main` への push で起動する。
+- `panicboat/deploy-actions/label-resolver` が `workflow-config.yaml` を参照して各ラベルを 1 つ以上の `{service}/{environment}` ターゲットに展開する。
 
 ### Stacks
 
-| Stack | Path Convention | Tooling |
+| Stack | Path convention | Tooling |
 |-------|-----------------|---------|
-| AWS Infrastructure | `aws/{service}/envs/{environment}` | Terragrunt + OpenTofu (`gruntwork-io/terragrunt-action`) |
-| Kubernetes Platform | `kubernetes/components/{service}/{environment}` | Helmfile + Kustomize hydration (`reusable--kubernetes-builder.yaml`) / Flux CD |
-| GitHub Repo Settings | `github/repository` | Terraform |
+| AWS infrastructure | `aws/{service}/envs/{environment}` | Terragrunt + OpenTofu (`reusable--terragrunt-executor.yaml`) |
+| GitHub configuration | `github/{service}/envs/{environment}` | Terragrunt + OpenTofu (`reusable--terragrunt-executor.yaml`) |
+| Kubernetes platform | `kubernetes/components/{service}/{environment}` | Helmfile → Kustomize hydration (`reusable--kubernetes-hydrator.yaml` / `reusable--kubernetes-builder.yaml`) → Flux CD |
 
-### Environments
+### Environments and Authentication
 
-`workflow-config.yaml` で定義。`develop`、`production` が有効。
-
-| Environment | AWS Region | AWS Account | Status |
-|-------------|------------|-------------|--------|
-| develop | us-east-1 | 559744160976 | Active |
-| production | ap-northeast-1 | 559744160976 | Active |
-
-Terragrunt の remote state は S3 bucket `terragrunt-state-559744160976` + DynamoDB lock table `terragrunt-state-locks` に集約される。
+- Environment、AWS region、IAM role は `workflow-config.yaml` で定義する。環境の追加・削除は同ファイルの編集で行う。
+- 認証は GitHub OIDC。`aws/github-oidc-auth/` が environment ごとの plan / apply role を発行し、executor がそれを引き受ける。
+- Terragrunt の remote state は S3 + DynamoDB に保存される。bucket / lock table 名は各 `aws/{service}/root.hcl`（および `github/` 配下の同等ファイル）で定義される。
 
 ### Pipeline Flow
 
@@ -81,7 +83,7 @@ flowchart LR
 
   subgraph Runtime
     AWS[(AWS)]
-    FluxCD[Flux CD<br/>polls main branch<br/>kubernetes/manifests/]
+    FluxCD[Flux CD<br/>polls platform + monorepo]
     Cluster[(cluster)]
   end
 
@@ -99,29 +101,24 @@ flowchart LR
   Hydrator -->|index diff| IndexComment
   Commit --> Builder
   Builder --> CompComment
-  Mainpush -.->|polls every 1min| FluxCD
+  Mainpush -.-> FluxCD
   FluxCD --> Cluster
   Commit -.->|on diff: re-fires synchronize| Dispatcher
 ```
 
-AWS 認証は GitHub OIDC 経由。`aws/github-oidc-auth/envs/{environment}` が各環境の IAM Role (plan / apply) を発行し、他の stack はそのロールを引いてデプロイする。
-
 ### GitOps Sync (Flux CD)
 
-- `kubernetes/clusters/production/flux-system/gotk-sync.yaml` が Flux の bootstrap 構成。
-- 2 本の `GitRepository` を持つ（poll interval 1 分）:
-  - **platform repo**: `./kubernetes/clusters/production` を同期 → プラットフォーム共通コンポーネント（Cilium, CoreDNS, Prometheus-Operator, Grafana, Loki, Tempo, OpenTelemetry, Beyla など）を展開。
-  - **monorepo**: `./clusters/develop` を同期 → アプリケーションワークロードを展開（10 分間隔で reconcile）。
-- Platform と Monorepo は Flux を介して疎結合に接続される。
-- `kubernetes/components/` を変更する PR では CI が自動で `scripts/kubernetes-hydrate/hydrate-component.sh` と `hydrate-index.sh` を実行し、レンダリング済みマニフェストをコミットする。`main` との差分は PR コメントとして投稿されレビューに供される。
+- Flux bootstrap は `kubernetes/clusters/{cluster}/flux-system/` に置く。cluster の root Kustomization が `kubernetes/manifests/{cluster}/` 配下のレンダリング済みマニフェストと外部 `GitRepository`（現状はアプリケーション monorepo）を集約する。
+- Platform と application の repository は別々に pull され、疎結合に保たれる。同期間隔や source URL は `kubernetes/clusters/{cluster}/` 配下のマニフェストが source of truth。
+- `kubernetes/components/` を変更する PR では CI が `scripts/kubernetes-hydrate/` を実行し、レンダリング結果を `kubernetes/manifests/` にコミット、差分を PR コメントに投稿する。マージ後に Flux が適用する。
+
+### EKS Lifecycle
+
+EKS の teardown / recreate は deploy pipeline の外側、operator が手動で実行する。
+
+- `make eks-teardown ENV=<environment>` で Kubernetes cleanup → Terragrunt destroy → orphan verify (`scripts/eks-lifecycle/`) が走る。`DRY_RUN=1` を付けるとコマンドを実行せずエコーのみ。
+- Recreate 手順は `docs/runbooks/eks-production-recreate.md` を参照。
 
 ### Claude Code Integration
 
-- `.github/workflows/claude-code-action.yaml` が `@claude` コメントで起動し、`ai-assistant` IAM ロール経由で AWS Bedrock の Claude を呼び出す。
-- `aws/ai-assistant/` が Bedrock 呼び出し用 / 実行用 IAM を定義する。
-
-## 🔗 Related Repositories
-
-- [panicboat/monorepo](https://github.com/panicboat/monorepo) — アプリケーションソースと `clusters/{env}` マニフェスト（Flux 同期先）。
-- [panicboat/deploy-actions](https://github.com/panicboat/deploy-actions) — 再利用可能な GitHub Actions（`label-resolver`, `terragrunt`, `container-builder`, `auto-approve` など）。
-- [panicboat/ansible](https://github.com/panicboat/ansible) — 開発者ローカル環境のプロビジョニング（デプロイ系とは独立）。
+`@claude` コメントで `.github/workflows/claude-code-action.yaml` が起動し、`ai-assistant` IAM role を引き受けて AWS Bedrock の Claude を呼び出す。role 定義は `aws/ai-assistant/` 配下。

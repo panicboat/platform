@@ -4,49 +4,51 @@
 
 ## 📖 Overview
 
+A monorepo that manages three deployment surfaces from a single label-driven CI pipeline:
+
+- **AWS infrastructure** — Terragrunt + OpenTofu (`aws/`)
+- **GitHub configuration** — Terragrunt for repo / branch / ruleset settings (`github/`)
+- **Kubernetes platform** — Helmfile-rendered manifests applied by Flux CD (`kubernetes/`)
+
+A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.yaml` to expand into concrete deploy targets, and the matching reusable workflow runs.
+
 ## 📂 Structure
 
 ```
 .
-├── .github/workflows/         # GitHub Actions (Terragrunt executor, deploy trigger, etc.)
-├── aws/                       # Terragrunt stacks (module + envs/{environment})
-│   ├── ai-assistant/
-│   ├── github-oidc-auth/
-│   └── vpc/
+├── .github/workflows/   # Reusable executors, deploy trigger, hydrator/builder, etc.
+├── aws/                 # Terragrunt stacks per service (envs/{environment}); _modules/ holds shared OpenTofu modules
+├── github/              # Terragrunt stacks for GitHub repo / branch settings
 ├── kubernetes/
-│   ├── clusters/production/   # Flux bootstrap (flux-system, repositories)
-│   ├── components/            # Cilium, Prometheus, Loki, Tempo, OTel, Beyla, etc.
-│   └── manifests/production/  # Rendered manifests (per-component subdirectories)
-├── github/repository/         # Terraform for GitHub repo settings
-├── docs/
-└── workflow-config.yaml       # Environments and deployment targets
+│   ├── clusters/        # Flux bootstrap (per cluster)
+│   ├── components/      # Helmfile sources (per environment)
+│   └── manifests/       # Rendered output that Flux applies
+├── docs/                # Runbooks and design notes
+├── scripts/             # EKS lifecycle / hydration / post-flight helpers
+├── Makefile             # EKS teardown entry points
+└── workflow-config.yaml # Environments and stack conventions (source of truth)
 ```
 
 ## 🚢 Deployment
 
 ### Trigger
 
-- `.github/workflows/auto-label--deploy-trigger.yaml` runs on PR labels or push to `main`.
-- `panicboat/deploy-actions/label-resolver` reads `workflow-config.yaml` to resolve deployment targets (`aws/{service}/envs/{environment}`).
+- `auto-label--deploy-trigger.yaml` runs on PR labels and on push to `main`.
+- `panicboat/deploy-actions/label-resolver` reads `workflow-config.yaml` to expand each label into one or more `{service}/{environment}` targets.
 
 ### Stacks
 
-| Stack | Path Convention | Tooling |
+| Stack | Path convention | Tooling |
 |-------|-----------------|---------|
-| AWS Infrastructure | `aws/{service}/envs/{environment}` | Terragrunt + OpenTofu (`gruntwork-io/terragrunt-action`) |
-| Kubernetes Platform | `kubernetes/components/{service}/{environment}` | Helmfile + Kustomize hydration (`reusable--kubernetes-builder.yaml`) / Flux CD |
-| GitHub Repo Settings | `github/repository` | Terraform |
+| AWS infrastructure | `aws/{service}/envs/{environment}` | Terragrunt + OpenTofu (`reusable--terragrunt-executor.yaml`) |
+| GitHub configuration | `github/{service}/envs/{environment}` | Terragrunt + OpenTofu (`reusable--terragrunt-executor.yaml`) |
+| Kubernetes platform | `kubernetes/components/{service}/{environment}` | Helmfile → Kustomize hydration (`reusable--kubernetes-hydrator.yaml` / `reusable--kubernetes-builder.yaml`) → Flux CD |
 
-### Environments
+### Environments and authentication
 
-Defined in `workflow-config.yaml`. `develop` and `production` are active.
-
-| Environment | AWS Region | AWS Account | Status |
-|-------------|------------|-------------|--------|
-| develop | us-east-1 | 559744160976 | Active |
-| production | ap-northeast-1 | 559744160976 | Active |
-
-Terragrunt remote state is consolidated in S3 bucket `terragrunt-state-559744160976` with DynamoDB lock table `terragrunt-state-locks`.
+- Environments, AWS regions, and IAM roles are defined in `workflow-config.yaml`. Adding or removing an environment means editing that file.
+- Authentication uses GitHub OIDC. `aws/github-oidc-auth/` issues per-environment plan / apply roles that the executors assume.
+- Terragrunt remote state lives in S3 + DynamoDB; bucket and lock-table names are defined in each `aws/{service}/root.hcl` (and the equivalent under `github/`).
 
 ### Pipeline Flow
 
@@ -81,7 +83,7 @@ flowchart LR
 
   subgraph Runtime
     AWS[(AWS)]
-    FluxCD[Flux CD<br/>polls main branch<br/>kubernetes/manifests/]
+    FluxCD[Flux CD<br/>polls platform + monorepo]
     Cluster[(cluster)]
   end
 
@@ -99,29 +101,24 @@ flowchart LR
   Hydrator -->|index diff| IndexComment
   Commit --> Builder
   Builder --> CompComment
-  Mainpush -.->|polls every 1min| FluxCD
+  Mainpush -.-> FluxCD
   FluxCD --> Cluster
   Commit -.->|on diff: re-fires synchronize| Dispatcher
 ```
 
-AWS authentication uses GitHub OIDC. `aws/github-oidc-auth/envs/{environment}` issues per-environment IAM roles (plan / apply), which other stacks assume to deploy.
-
 ### GitOps Sync (Flux CD)
 
-- `kubernetes/clusters/production/flux-system/gotk-sync.yaml` defines the Flux bootstrap.
-- Two `GitRepository` sources (poll interval: 1 minute):
-  - **platform repo**: syncs `./kubernetes/clusters/production` — deploys shared platform components (Cilium, CoreDNS, Prometheus-Operator, Grafana, Loki, Tempo, OpenTelemetry, Beyla, etc.).
-  - **monorepo**: syncs `./clusters/develop` — deploys application workloads (reconciled every 10 minutes).
-- Platform and Monorepo are loosely coupled via Flux.
-- When `kubernetes/components/` changes in a PR, the CI pipeline automatically runs `scripts/kubernetes-hydrate/hydrate-component.sh` and `hydrate-index.sh` and commits the rendered manifests. The diff against `main` is posted as a PR comment for review.
+- Flux bootstrap lives in `kubernetes/clusters/{cluster}/flux-system/`. The cluster's root Kustomization aggregates the rendered manifests under `kubernetes/manifests/{cluster}/` and any external `GitRepository` (currently the application monorepo).
+- Platform and application repositories are pulled independently and stay loosely coupled. Sync intervals and source URLs are configured in `kubernetes/clusters/{cluster}/` — treat those manifests as the source of truth.
+- When `kubernetes/components/` changes, CI runs `scripts/kubernetes-hydrate/`, commits the rendered output to `kubernetes/manifests/`, and posts the diff as a PR comment. Flux applies the change once merged.
+
+### EKS Lifecycle
+
+EKS teardown / recreate is operator-driven and runs outside the deploy pipeline.
+
+- `make eks-teardown ENV=<environment>` runs Kubernetes cleanup → Terragrunt destroy → orphan verify (`scripts/eks-lifecycle/`). `DRY_RUN=1` echoes commands without executing them.
+- Recreate is a manual procedure — see `docs/runbooks/eks-production-recreate.md`.
 
 ### Claude Code Integration
 
-- `.github/workflows/claude-code-action.yaml` is triggered by `@claude` comments and invokes AWS Bedrock Claude via the `ai-assistant` IAM role.
-- `aws/ai-assistant/` defines the IAM roles for Bedrock invocation and execution.
-
-## 🔗 Related Repositories
-
-- [panicboat/monorepo](https://github.com/panicboat/monorepo) — application source and `clusters/{env}` manifests (Flux sync target).
-- [panicboat/deploy-actions](https://github.com/panicboat/deploy-actions) — reusable GitHub Actions (`label-resolver`, `terragrunt`, `container-builder`, `auto-approve`, etc.).
-- [panicboat/ansible](https://github.com/panicboat/ansible) — developer local environment provisioning (independent from the deploy pipeline).
+`@claude` comments trigger `.github/workflows/claude-code-action.yaml`, which assumes the `ai-assistant` IAM role to invoke Bedrock Claude. The role is defined under `aws/ai-assistant/`.
