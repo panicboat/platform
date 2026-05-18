@@ -14,11 +14,12 @@ environments:
         iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-production-github-actions-apply-role
 
 stack_conventions:
-  - root: "aws/{service}"
-    stacks:
-      - name: terragrunt
-        directory: "envs/{environment}"
-        required_attributes: [aws_region, iam_role_plan, iam_role_apply]
+  # TODO: Define conventions for Terragrunt stacks when we have active Terragrunt targets.
+  # - root: "aws/{service}"
+  #   stacks:
+  #     - name: terragrunt
+  #       directory: "envs/{environment}"
+  #       required_attributes: [aws_region, iam_role_plan, iam_role_apply]
 
   - root: "github/{service}"
     stacks:

@@ -95,7 +95,6 @@ jobs:
     if: |
       needs.deploy-trigger.outputs.has-targets == 'true' &&
       contains(needs.deploy-trigger.outputs.targets, '"stack":"terragrunt"')
-      && true == 'false' # TODO: Terragrunt deployment is currently disabled as we have no active Terragrunt targets; re-enable when needed by removing this line
     strategy:
       matrix:
         target: ${{ fromJson(needs.deploy-trigger.outputs.targets) }}
