@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.2.0](https://github.com/panicboat/platform/compare/v0.1.0...v0.2.0) (2026-05-18)
+
+
+### Features
+
+* **flux:** grant monorepo GitRepository write access via GitHub App ([#436](https://github.com/panicboat/platform/issues/436)) ([c919ee8](https://github.com/panicboat/platform/commit/c919ee8dc465f9b4b3881ec71c70514415755e7a))
+* **github/branch:** allow GitHub App bypass for monorepo main ruleset ([#445](https://github.com/panicboat/platform/issues/445)) ([4503a81](https://github.com/panicboat/platform/commit/4503a81102e5e64a9d4f4258e825342b856140fb))
+* migrate application to dystopia.city + unify ALB IngressGroup ([#433](https://github.com/panicboat/platform/issues/433)) ([43ebbd5](https://github.com/panicboat/platform/commit/43ebbd564cef63653910f4fe6f7d38d04d10352f))
+* **scripts:** post-flight Pod Identity injection probe + [#25](https://github.com/panicboat/platform/issues/25) upstream block note ([#419](https://github.com/panicboat/platform/issues/419)) ([faca8f7](https://github.com/panicboat/platform/commit/faca8f7f5071112b191727b89f6d731701b41785))
+* unify aws resource provenance tag schema across iac + k8s controllers ([#427](https://github.com/panicboat/platform/issues/427)) ([fc04183](https://github.com/panicboat/platform/commit/fc04183fd55d8470273d99b69fa62c70b4ba9fe8))
+
+
+### Bug Fixes
+
+* **aws/ai-assistant:** drop GitHubOrg + GitHubRepos tags from actions role ([#429](https://github.com/panicboat/platform/issues/429)) ([71d6f46](https://github.com/panicboat/platform/commit/71d6f46a4c078cf964025cac53a3a1ec0da43ed6))
+* **aws/eks:** grant eks:ListPodIdentityAssociations to eks-admin role ([#420](https://github.com/panicboat/platform/issues/420)) ([93f9fef](https://github.com/panicboat/platform/commit/93f9fef01781b839dc817b81c040653922e32a1e))
+* **aws/eks:** grant ExternalDNS IAM access to dystopia.city zone ([#435](https://github.com/panicboat/platform/issues/435)) ([70a2dd1](https://github.com/panicboat/platform/commit/70a2dd1bcd7af4ddbc5ae0bba51f3fa756cf4e72))
+* **aws/karpenter:** set force_update_version on system_critical MNG ([#432](https://github.com/panicboat/platform/issues/432)) ([3a519a8](https://github.com/panicboat/platform/commit/3a519a87607ab4e885ccbed70a8fb924a7a39fb4))
+* **cilium:** exclude cilium-envoy from system_critical MNG nodes ([#423](https://github.com/panicboat/platform/issues/423)) ([fd9cc60](https://github.com/panicboat/platform/commit/fd9cc60b81919da58d4c26a0ebe3cdb265814c77))
+* **flux:** AWS Secrets Manager property names to snake_case ([#444](https://github.com/panicboat/platform/issues/444)) ([70b8c33](https://github.com/panicboat/platform/commit/70b8c33fb5ef9ff67abce2f41f4f3b24de6d9761))
+* **flux:** ExternalSecret apiVersion v1beta1 -&gt; v1 ([#442](https://github.com/panicboat/platform/issues/442)) ([8fdeecf](https://github.com/panicboat/platform/commit/8fdeecf05bbf65975f9beca3d92bf6179a846295))
+* **flux:** K8s Secret keys to camelCase for source-controller compatibility ([#443](https://github.com/panicboat/platform/issues/443)) ([7461e9a](https://github.com/panicboat/platform/commit/7461e9abbebdc3f412f0b2fc04fb05fa51825ac8))
+* **scripts/eks-lifecycle:** sweep orphan EBS / Route53 in teardown chain ([#452](https://github.com/panicboat/platform/issues/452)) ([8432d24](https://github.com/panicboat/platform/commit/8432d24a0056c3ed4be4f252d1486b7929a613bc))
+* **terraform:** pin required_version to 1.11.6 across multiple modules ([#428](https://github.com/panicboat/platform/issues/428)) ([fd0626b](https://github.com/panicboat/platform/commit/fd0626bdb09384153d1a4a982515e181ba66d7a8))
+
+
+### Reverts
+
+* PR [#423](https://github.com/panicboat/platform/issues/423) cilium-envoy tolerations override ([#434](https://github.com/panicboat/platform/issues/434)) ([23d4eb1](https://github.com/panicboat/platform/commit/23d4eb186f5a68fedeb38eec3446182db619c9d7))
+
 ## 0.1.0 (2026-05-16)
 
 
