@@ -6,15 +6,13 @@ metadata:
   name: opentelemetry-collector
   namespace: monitoring
   labels:
-    helm.sh/chart: opentelemetry-collector-0.154.0
+    helm.sh/chart: opentelemetry-collector-0.156.1
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.151.0"
+    app.kubernetes.io/version: "0.152.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: agent-collector
-
-
 ---
 # Source: opentelemetry-collector/templates/configmap-agent.yaml
 apiVersion: v1
@@ -23,10 +21,10 @@ metadata:
   name: opentelemetry-collector-agent
   namespace: monitoring
   labels:
-    helm.sh/chart: opentelemetry-collector-0.154.0
+    helm.sh/chart: opentelemetry-collector-0.156.1
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.151.0"
+    app.kubernetes.io/version: "0.152.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: agent-collector
@@ -167,7 +165,6 @@ data:
           k8s.node.name: ${env:OTEL_K8S_NODE_NAME}
           k8s.pod.ip: ${env:OTEL_K8S_POD_IP}
           k8s.pod.name: ${env:OTEL_K8S_POD_NAME}
-
 ---
 # Source: opentelemetry-collector/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -175,10 +172,10 @@ kind: ClusterRole
 metadata:
   name: opentelemetry-collector
   labels:
-    helm.sh/chart: opentelemetry-collector-0.154.0
+    helm.sh/chart: opentelemetry-collector-0.156.1
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.151.0"
+    app.kubernetes.io/version: "0.152.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: agent-collector
@@ -192,7 +189,6 @@ rules:
   - apiGroups: ["extensions"]
     resources: ["replicasets"]
     verbs: ["get", "list", "watch"]
-
 ---
 # Source: opentelemetry-collector/templates/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -200,10 +196,10 @@ kind: ClusterRoleBinding
 metadata:
   name: opentelemetry-collector
   labels:
-    helm.sh/chart: opentelemetry-collector-0.154.0
+    helm.sh/chart: opentelemetry-collector-0.156.1
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.151.0"
+    app.kubernetes.io/version: "0.152.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: agent-collector
@@ -215,7 +211,6 @@ subjects:
 - kind: ServiceAccount
   name: opentelemetry-collector
   namespace: monitoring
-
 ---
 # Source: opentelemetry-collector/templates/service.yaml
 apiVersion: v1
@@ -224,10 +219,10 @@ metadata:
   name: opentelemetry-collector
   namespace: monitoring
   labels:
-    helm.sh/chart: opentelemetry-collector-0.154.0
+    helm.sh/chart: opentelemetry-collector-0.156.1
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.151.0"
+    app.kubernetes.io/version: "0.152.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: agent-collector
@@ -254,7 +249,6 @@ spec:
     app.kubernetes.io/instance: opentelemetry-collector
     component: agent-collector
   internalTrafficPolicy: Local
-
 ---
 # Source: opentelemetry-collector/templates/daemonset.yaml
 apiVersion: apps/v1
@@ -263,10 +257,10 @@ metadata:
   name: opentelemetry-collector-agent
   namespace: monitoring
   labels:
-    helm.sh/chart: opentelemetry-collector-0.154.0
+    helm.sh/chart: opentelemetry-collector-0.156.1
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.151.0"
+    app.kubernetes.io/version: "0.152.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: agent-collector
@@ -282,7 +276,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: ff62f416b1b96b66f6a72c4312c0786ee9d9e71fd67e5f88e10efa1441efa5f4
+        checksum/config: b62ccdb0f0c119b82b56891468425db1e1ec4e2a1730c2c1ad2f24a9e940543c
         
       labels:
         app.kubernetes.io/name: opentelemetry-collector
@@ -408,7 +402,6 @@ spec:
           operator: Exists
       hostNetwork: false
       hostPID: false
-
 ---
 # Source: opentelemetry-collector/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -417,10 +410,10 @@ metadata:
   name: opentelemetry-collector
   namespace: monitoring
   labels:
-    helm.sh/chart: opentelemetry-collector-0.154.0
+    helm.sh/chart: opentelemetry-collector-0.156.1
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.151.0"
+    app.kubernetes.io/version: "0.152.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: agent-collector
