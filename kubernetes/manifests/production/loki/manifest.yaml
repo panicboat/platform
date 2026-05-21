@@ -6,7 +6,7 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.1
+    helm.sh/chart: loki-13.7.2
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -20,7 +20,7 @@ metadata:
   name: loki-memcached
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.1
+    helm.sh/chart: loki-13.7.2
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -34,12 +34,11 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.1
+    helm.sh/chart: loki-13.7.2
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
 automountServiceAccountToken: true
-
 ---
 # Source: loki/templates/config.yaml
 apiVersion: v1
@@ -48,7 +47,7 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.1
+    helm.sh/chart: loki-13.7.2
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -167,7 +166,6 @@ data:
       use_thanos_objstore: false
     tracing:
       enabled: false
-
 ---
 # Source: loki/templates/gateway/configmap.yaml
 apiVersion: v1
@@ -176,7 +174,7 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.1
+    helm.sh/chart: loki-13.7.2
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -612,7 +610,6 @@ data:
                     replacement: "/"
                   - regexp: "^(.+)\\?.+"
                     replacement: "$1"
-
 ---
 # Source: loki/templates/runtime-configmap.yaml
 apiVersion: v1
@@ -621,21 +618,20 @@ metadata:
   name: loki-runtime
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.1
+    helm.sh/chart: loki-13.7.2
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
 data:
   runtime-config.yaml: |
     {}
-
 ---
 # Source: loki/templates/backend/clusterrole.yaml
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   labels:
-    helm.sh/chart: loki-13.7.1
+    helm.sh/chart: loki-13.7.2
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -644,7 +640,6 @@ rules:
 - apiGroups: [""] # "" indicates the core API group
   resources: ["configmaps", "secrets"]
   verbs: ["get", "watch", "list"]
-
 ---
 # Source: loki/templates/backend/clusterrolebinding.yaml
 kind: ClusterRoleBinding
@@ -652,7 +647,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: loki-clusterrolebinding
   labels:
-    helm.sh/chart: loki-13.7.1
+    helm.sh/chart: loki-13.7.2
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -672,7 +667,7 @@ metadata:
   name: loki-gateway-exporter
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.1
+    helm.sh/chart: loki-13.7.2
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -689,7 +684,6 @@ spec:
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/component: gateway
-
 ---
 # Source: loki/templates/gateway/service.yaml
 apiVersion: v1
@@ -698,7 +692,7 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.1
+    helm.sh/chart: loki-13.7.2
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -716,7 +710,6 @@ spec:
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/component: gateway
-
 ---
 # Source: loki/templates/monolithic/service.yaml
 apiVersion: v1
@@ -725,7 +718,7 @@ metadata:
   name: "loki"
   namespace: "monitoring"
   labels:
-    helm.sh/chart: loki-13.7.1
+    helm.sh/chart: loki-13.7.2
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -760,7 +753,7 @@ metadata:
   name: "loki-headless"
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.1
+    helm.sh/chart: loki-13.7.2
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -790,7 +783,6 @@ spec:
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/component: "single-binary"
-
 ---
 # Source: loki/templates/service-memberlist.yaml
 apiVersion: v1
@@ -799,7 +791,7 @@ metadata:
   name: loki-memberlist
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.1
+    helm.sh/chart: loki-13.7.2
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -816,7 +808,6 @@ spec:
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/part-of: memberlist
-
 ---
 # Source: loki/templates/gateway/deployment.yaml
 apiVersion: apps/v1
@@ -825,7 +816,7 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.1
+    helm.sh/chart: loki-13.7.2
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -962,7 +953,6 @@ spec:
           emptyDir: {}
         - name: docker-entrypoint-d-override
           emptyDir: {}
-
 ---
 # Source: loki/templates/monolithic/statefulset.yaml
 apiVersion: apps/v1
@@ -971,7 +961,7 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.1
+    helm.sh/chart: loki-13.7.2
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -1001,7 +991,7 @@ spec:
         storage/size: 10Gi
         kubectl.kubernetes.io/default-container: "loki"
       labels:
-        helm.sh/chart: loki-13.7.1
+        helm.sh/chart: loki-13.7.2
         app.kubernetes.io/name: loki
         app.kubernetes.io/instance: loki
         app.kubernetes.io/version: "3.7.2"
