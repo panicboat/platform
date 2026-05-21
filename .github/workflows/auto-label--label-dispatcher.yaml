@@ -33,7 +33,7 @@ jobs:
         continue-on-error: true
 
       - name: Dispatch Labels
-        uses: panicboat/deploy-actions/label-dispatcher@3399490d98d6e4d4ff1a06badfd63d9f9a0c8699 # v1.1.0
+        uses: panicboat/deploy-actions/label-dispatcher@48313d4c25a63d2020345e695f68da376d8b9cde # v1.2.0
         with:
           pr-number: ${{ steps.pr-info.outputs.number }}
           repository: ${{ github.repository }}
