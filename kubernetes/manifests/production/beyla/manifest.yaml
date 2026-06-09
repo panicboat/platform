@@ -6,15 +6,14 @@ metadata:
   name: beyla
   namespace: monitoring
   labels:
-    helm.sh/chart: beyla-1.16.7
+    helm.sh/chart: beyla-1.16.8
     app.kubernetes.io/name: beyla
     app.kubernetes.io/instance: beyla
-    app.kubernetes.io/version: "3.14.0"
+    app.kubernetes.io/version: "3.20.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: beyla
     app.kubernetes.io/component: rbac
 automountServiceAccountToken: true
-
 ---
 # Source: beyla/templates/configmap.yaml
 apiVersion: v1
@@ -23,10 +22,10 @@ metadata:
   name: beyla
   namespace: monitoring
   labels:
-    helm.sh/chart: beyla-1.16.7
+    helm.sh/chart: beyla-1.16.8
     app.kubernetes.io/name: beyla
     app.kubernetes.io/instance: beyla
-    app.kubernetes.io/version: "3.14.0"
+    app.kubernetes.io/version: "3.20.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: beyla
     app.kubernetes.io/component: config
@@ -65,7 +64,6 @@ data:
       port: 9090
     routes:
       unmatched: heuristic
-
 ---
 # Source: beyla/templates/cluster-role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -73,10 +71,10 @@ kind: ClusterRole
 metadata:
   name: beyla
   labels:
-    helm.sh/chart: beyla-1.16.7
+    helm.sh/chart: beyla-1.16.8
     app.kubernetes.io/name: beyla
     app.kubernetes.io/instance: beyla
-    app.kubernetes.io/version: "3.14.0"
+    app.kubernetes.io/version: "3.20.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: beyla
     app.kubernetes.io/component: rbac
@@ -87,7 +85,6 @@ rules:
   - apiGroups: [ "" ]
     resources: [ "pods", "services", "nodes" ]
     verbs: [ "list", "watch", "get" ]
-
 ---
 # Source: beyla/templates/cluster-role-binding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -95,10 +92,10 @@ kind: ClusterRoleBinding
 metadata:
   name: beyla
   labels:
-    helm.sh/chart: beyla-1.16.7
+    helm.sh/chart: beyla-1.16.8
     app.kubernetes.io/name: beyla
     app.kubernetes.io/instance: beyla
-    app.kubernetes.io/version: "3.14.0"
+    app.kubernetes.io/version: "3.20.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: beyla
     app.kubernetes.io/component: rbac
@@ -110,7 +107,6 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: beyla
-
 ---
 # Source: beyla/templates/service.yaml
 apiVersion: v1
@@ -119,10 +115,10 @@ metadata:
   name: beyla
   namespace: monitoring
   labels:
-    helm.sh/chart: beyla-1.16.7
+    helm.sh/chart: beyla-1.16.8
     app.kubernetes.io/name: beyla
     app.kubernetes.io/instance: beyla
-    app.kubernetes.io/version: "3.14.0"
+    app.kubernetes.io/version: "3.20.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: beyla
     app.kubernetes.io/component: networking
@@ -136,7 +132,6 @@ spec:
   selector:
     app.kubernetes.io/name: beyla
     app.kubernetes.io/instance: beyla
-
 ---
 # Source: beyla/templates/daemon-set.yaml
 apiVersion: apps/v1
@@ -145,10 +140,10 @@ metadata:
   name: beyla
   namespace: monitoring
   labels:
-    helm.sh/chart: beyla-1.16.7
+    helm.sh/chart: beyla-1.16.8
     app.kubernetes.io/name: beyla
     app.kubernetes.io/instance: beyla
-    app.kubernetes.io/version: "3.14.0"
+    app.kubernetes.io/version: "3.20.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: beyla
     app.kubernetes.io/component: workload
@@ -163,12 +158,12 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 1288bb46314b906053376de5bc069612e440d815a261c6b3cc8aa6bb39afa3fc
+        checksum/config: de13feafd46a6c4c3d5d295c297be26a9de8b0699ddaa60fdfbadc067573707a
       labels:
-        helm.sh/chart: beyla-1.16.7
+        helm.sh/chart: beyla-1.16.8
         app.kubernetes.io/name: beyla
         app.kubernetes.io/instance: beyla
-        app.kubernetes.io/version: "3.14.0"
+        app.kubernetes.io/version: "3.20.0"
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/part-of: beyla
         app.kubernetes.io/component: workload
@@ -180,7 +175,7 @@ spec:
       priorityClassName: system-cluster-critical
       containers:
         - name: beyla
-          image: docker.io/grafana/beyla:3.14.0
+          image: docker.io/grafana/beyla:3.20.0
           imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true
@@ -210,7 +205,6 @@ spec:
         - name: cgroup
           hostPath:
             path: /sys/fs/cgroup
-
 ---
 # Source: beyla/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -219,10 +213,10 @@ metadata:
   name: beyla
   namespace: monitoring
   labels:
-    helm.sh/chart: beyla-1.16.7
+    helm.sh/chart: beyla-1.16.8
     app.kubernetes.io/name: beyla
     app.kubernetes.io/instance: beyla
-    app.kubernetes.io/version: "3.14.0"
+    app.kubernetes.io/version: "3.20.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: beyla
     app.kubernetes.io/component: metrics
@@ -235,10 +229,10 @@ spec:
   jobLabel: beyla
   selector:
     matchLabels:
-      helm.sh/chart: beyla-1.16.7
+      helm.sh/chart: beyla-1.16.8
       app.kubernetes.io/name: beyla
       app.kubernetes.io/instance: beyla
-      app.kubernetes.io/version: "3.14.0"
+      app.kubernetes.io/version: "3.20.0"
       app.kubernetes.io/managed-by: Helm
       app.kubernetes.io/part-of: beyla
 

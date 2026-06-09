@@ -16,6 +16,6 @@ releases:
   - name: beyla
     namespace: monitoring
     chart: grafana/beyla
-    version: "1.16.7"
+    version: "1.16.8"
     values:
       - values.yaml.gotmpl
