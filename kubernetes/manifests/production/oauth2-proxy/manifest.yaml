@@ -5,13 +5,13 @@ kind: PodDisruptionBudget
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-grafana
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   name: oauth2-proxy-grafana
   namespace: oauth2-proxy
 spec:
@@ -27,13 +27,13 @@ kind: ServiceAccount
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-grafana
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   name: oauth2-proxy-grafana
   namespace: oauth2-proxy
 automountServiceAccountToken: true
@@ -44,13 +44,13 @@ kind: ConfigMap
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-grafana
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   name: oauth2-proxy-grafana
   namespace: oauth2-proxy
 data:
@@ -78,13 +78,13 @@ kind: Service
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-grafana
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   name: oauth2-proxy-grafana
   namespace: oauth2-proxy
 spec:
@@ -110,13 +110,13 @@ kind: Deployment
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-grafana
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   annotations:
     reloader.stakater.com/auto: "true"
   name: oauth2-proxy-grafana
@@ -137,13 +137,13 @@ spec:
         checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
       labels:
         app: oauth2-proxy        
-        helm.sh/chart: oauth2-proxy-10.4.3
+        helm.sh/chart: oauth2-proxy-10.7.0
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/component: authentication-proxy
         app.kubernetes.io/part-of: oauth2-proxy
         app.kubernetes.io/name: oauth2-proxy
         app.kubernetes.io/instance: oauth2-proxy-grafana
-        app.kubernetes.io/version: "7.15.2"
+        app.kubernetes.io/version: "7.15.3"
     spec:
       priorityClassName: "system-cluster-critical"
       serviceAccountName: oauth2-proxy-grafana
@@ -151,7 +151,7 @@ spec:
       automountServiceAccountToken: true
       containers:
       - name: oauth2-proxy
-        image: "quay.io/oauth2-proxy/oauth2-proxy:v7.15.2"
+        image: "quay.io/oauth2-proxy/oauth2-proxy:v7.15.3"
         imagePullPolicy: IfNotPresent
         args:
           - --http-address=0.0.0.0:4180
@@ -240,13 +240,13 @@ metadata:
   labels:
     prometheus: default
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-grafana
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
     release: kube-prometheus-stack
 spec:
   jobLabel: oauth2-proxy-grafana
@@ -270,13 +270,13 @@ kind: PodDisruptionBudget
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-hubble
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   name: oauth2-proxy-hubble
   namespace: oauth2-proxy
 spec:
@@ -292,13 +292,13 @@ kind: ServiceAccount
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-hubble
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   name: oauth2-proxy-hubble
   namespace: oauth2-proxy
 automountServiceAccountToken: true
@@ -309,13 +309,13 @@ kind: ConfigMap
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-hubble
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   name: oauth2-proxy-hubble
   namespace: oauth2-proxy
 data:
@@ -343,13 +343,13 @@ kind: Service
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-hubble
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   name: oauth2-proxy-hubble
   namespace: oauth2-proxy
 spec:
@@ -375,13 +375,13 @@ kind: Deployment
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-hubble
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   annotations:
     reloader.stakater.com/auto: "true"
   name: oauth2-proxy-hubble
@@ -402,13 +402,13 @@ spec:
         checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
       labels:
         app: oauth2-proxy        
-        helm.sh/chart: oauth2-proxy-10.4.3
+        helm.sh/chart: oauth2-proxy-10.7.0
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/component: authentication-proxy
         app.kubernetes.io/part-of: oauth2-proxy
         app.kubernetes.io/name: oauth2-proxy
         app.kubernetes.io/instance: oauth2-proxy-hubble
-        app.kubernetes.io/version: "7.15.2"
+        app.kubernetes.io/version: "7.15.3"
     spec:
       priorityClassName: "system-cluster-critical"
       serviceAccountName: oauth2-proxy-hubble
@@ -416,7 +416,7 @@ spec:
       automountServiceAccountToken: true
       containers:
       - name: oauth2-proxy
-        image: "quay.io/oauth2-proxy/oauth2-proxy:v7.15.2"
+        image: "quay.io/oauth2-proxy/oauth2-proxy:v7.15.3"
         imagePullPolicy: IfNotPresent
         args:
           - --http-address=0.0.0.0:4180
@@ -505,13 +505,13 @@ metadata:
   labels:
     prometheus: default
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-hubble
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
     release: kube-prometheus-stack
 spec:
   jobLabel: oauth2-proxy-hubble
@@ -535,13 +535,13 @@ kind: PodDisruptionBudget
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-alertmanager
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   name: oauth2-proxy-alertmanager
   namespace: oauth2-proxy
 spec:
@@ -557,13 +557,13 @@ kind: ServiceAccount
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-alertmanager
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   name: oauth2-proxy-alertmanager
   namespace: oauth2-proxy
 automountServiceAccountToken: true
@@ -574,13 +574,13 @@ kind: ConfigMap
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-alertmanager
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   name: oauth2-proxy-alertmanager
   namespace: oauth2-proxy
 data:
@@ -608,13 +608,13 @@ kind: Service
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-alertmanager
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   name: oauth2-proxy-alertmanager
   namespace: oauth2-proxy
 spec:
@@ -640,13 +640,13 @@ kind: Deployment
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-alertmanager
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   annotations:
     reloader.stakater.com/auto: "true"
   name: oauth2-proxy-alertmanager
@@ -667,13 +667,13 @@ spec:
         checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
       labels:
         app: oauth2-proxy        
-        helm.sh/chart: oauth2-proxy-10.4.3
+        helm.sh/chart: oauth2-proxy-10.7.0
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/component: authentication-proxy
         app.kubernetes.io/part-of: oauth2-proxy
         app.kubernetes.io/name: oauth2-proxy
         app.kubernetes.io/instance: oauth2-proxy-alertmanager
-        app.kubernetes.io/version: "7.15.2"
+        app.kubernetes.io/version: "7.15.3"
     spec:
       priorityClassName: "system-cluster-critical"
       serviceAccountName: oauth2-proxy-alertmanager
@@ -681,7 +681,7 @@ spec:
       automountServiceAccountToken: true
       containers:
       - name: oauth2-proxy
-        image: "quay.io/oauth2-proxy/oauth2-proxy:v7.15.2"
+        image: "quay.io/oauth2-proxy/oauth2-proxy:v7.15.3"
         imagePullPolicy: IfNotPresent
         args:
           - --http-address=0.0.0.0:4180
@@ -770,13 +770,13 @@ metadata:
   labels:
     prometheus: default
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-alertmanager
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
     release: kube-prometheus-stack
 spec:
   jobLabel: oauth2-proxy-alertmanager
@@ -800,13 +800,13 @@ kind: PodDisruptionBudget
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-prometheus
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   name: oauth2-proxy-prometheus
   namespace: oauth2-proxy
 spec:
@@ -822,13 +822,13 @@ kind: ServiceAccount
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-prometheus
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   name: oauth2-proxy-prometheus
   namespace: oauth2-proxy
 automountServiceAccountToken: true
@@ -839,13 +839,13 @@ kind: ConfigMap
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-prometheus
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   name: oauth2-proxy-prometheus
   namespace: oauth2-proxy
 data:
@@ -873,13 +873,13 @@ kind: Service
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-prometheus
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   name: oauth2-proxy-prometheus
   namespace: oauth2-proxy
 spec:
@@ -905,13 +905,13 @@ kind: Deployment
 metadata:
   labels:
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-prometheus
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
   annotations:
     reloader.stakater.com/auto: "true"
   name: oauth2-proxy-prometheus
@@ -932,13 +932,13 @@ spec:
         checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
       labels:
         app: oauth2-proxy        
-        helm.sh/chart: oauth2-proxy-10.4.3
+        helm.sh/chart: oauth2-proxy-10.7.0
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/component: authentication-proxy
         app.kubernetes.io/part-of: oauth2-proxy
         app.kubernetes.io/name: oauth2-proxy
         app.kubernetes.io/instance: oauth2-proxy-prometheus
-        app.kubernetes.io/version: "7.15.2"
+        app.kubernetes.io/version: "7.15.3"
     spec:
       priorityClassName: "system-cluster-critical"
       serviceAccountName: oauth2-proxy-prometheus
@@ -946,7 +946,7 @@ spec:
       automountServiceAccountToken: true
       containers:
       - name: oauth2-proxy
-        image: "quay.io/oauth2-proxy/oauth2-proxy:v7.15.2"
+        image: "quay.io/oauth2-proxy/oauth2-proxy:v7.15.3"
         imagePullPolicy: IfNotPresent
         args:
           - --http-address=0.0.0.0:4180
@@ -1035,13 +1035,13 @@ metadata:
   labels:
     prometheus: default
     app: oauth2-proxy    
-    helm.sh/chart: oauth2-proxy-10.4.3
+    helm.sh/chart: oauth2-proxy-10.7.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: authentication-proxy
     app.kubernetes.io/part-of: oauth2-proxy
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-prometheus
-    app.kubernetes.io/version: "7.15.2"
+    app.kubernetes.io/version: "7.15.3"
     release: kube-prometheus-stack
 spec:
   jobLabel: oauth2-proxy-prometheus
