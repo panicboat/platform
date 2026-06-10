@@ -24,24 +24,24 @@ releases:
   - name: oauth2-proxy-grafana
     namespace: oauth2-proxy
     chart: oauth2-proxy/oauth2-proxy
-    version: "10.4.3"
+    version: "10.7.0"
     values:
       - values.yaml.gotmpl
   - name: oauth2-proxy-hubble
     namespace: oauth2-proxy
     chart: oauth2-proxy/oauth2-proxy
-    version: "10.4.3"
+    version: "10.7.0"
     values:
       - values.yaml.gotmpl
   - name: oauth2-proxy-alertmanager
     namespace: oauth2-proxy
     chart: oauth2-proxy/oauth2-proxy
-    version: "10.4.3"
+    version: "10.7.0"
     values:
       - values.yaml.gotmpl
   - name: oauth2-proxy-prometheus
     namespace: oauth2-proxy
     chart: oauth2-proxy/oauth2-proxy
-    version: "10.4.3"
+    version: "10.7.0"
     values:
       - values.yaml.gotmpl
