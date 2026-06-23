@@ -1,7 +1,7 @@
 # terraform.tf - OpenTofu and provider configuration
 
 terraform {
-  required_version = "1.12.2"
+  required_version = "1.12.3"
 
   required_providers {
     aws = {
