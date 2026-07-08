@@ -6,10 +6,10 @@ metadata:
   name: opentelemetry-collector
   namespace: monitoring
   labels:
-    helm.sh/chart: opentelemetry-collector-0.162.0
+    helm.sh/chart: opentelemetry-collector-0.163.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.154.0"
+    app.kubernetes.io/version: "0.155.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: agent-collector
@@ -21,10 +21,10 @@ metadata:
   name: opentelemetry-collector-agent
   namespace: monitoring
   labels:
-    helm.sh/chart: opentelemetry-collector-0.162.0
+    helm.sh/chart: opentelemetry-collector-0.163.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.154.0"
+    app.kubernetes.io/version: "0.155.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: agent-collector
@@ -172,10 +172,10 @@ kind: ClusterRole
 metadata:
   name: opentelemetry-collector
   labels:
-    helm.sh/chart: opentelemetry-collector-0.162.0
+    helm.sh/chart: opentelemetry-collector-0.163.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.154.0"
+    app.kubernetes.io/version: "0.155.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: agent-collector
@@ -196,10 +196,10 @@ kind: ClusterRoleBinding
 metadata:
   name: opentelemetry-collector
   labels:
-    helm.sh/chart: opentelemetry-collector-0.162.0
+    helm.sh/chart: opentelemetry-collector-0.163.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.154.0"
+    app.kubernetes.io/version: "0.155.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: agent-collector
@@ -219,10 +219,10 @@ metadata:
   name: opentelemetry-collector
   namespace: monitoring
   labels:
-    helm.sh/chart: opentelemetry-collector-0.162.0
+    helm.sh/chart: opentelemetry-collector-0.163.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.154.0"
+    app.kubernetes.io/version: "0.155.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: agent-collector
@@ -257,10 +257,10 @@ metadata:
   name: opentelemetry-collector-agent
   namespace: monitoring
   labels:
-    helm.sh/chart: opentelemetry-collector-0.162.0
+    helm.sh/chart: opentelemetry-collector-0.163.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.154.0"
+    app.kubernetes.io/version: "0.155.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: agent-collector
@@ -276,7 +276,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: df18b4b081e579e0c31d755ef7f861c7d27c07088aaf8e2734ce8a765f9446b8
+        checksum/config: e4939c7785999553d8318062001c59829985d57143d649c2575a80b0648ca445
         
       labels:
         app.kubernetes.io/name: opentelemetry-collector
@@ -410,10 +410,10 @@ metadata:
   name: opentelemetry-collector
   namespace: monitoring
   labels:
-    helm.sh/chart: opentelemetry-collector-0.162.0
+    helm.sh/chart: opentelemetry-collector-0.163.0
     app.kubernetes.io/name: opentelemetry-collector
     app.kubernetes.io/instance: opentelemetry-collector
-    app.kubernetes.io/version: "0.154.0"
+    app.kubernetes.io/version: "0.155.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: opentelemetry-collector
     app.kubernetes.io/component: agent-collector
