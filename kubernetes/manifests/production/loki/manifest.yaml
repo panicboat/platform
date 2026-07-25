@@ -6,7 +6,7 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.2
+    helm.sh/chart: loki-16.0.1
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -20,7 +20,7 @@ metadata:
   name: loki-memcached
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.2
+    helm.sh/chart: loki-16.0.1
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -34,7 +34,7 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.2
+    helm.sh/chart: loki-16.0.1
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -47,7 +47,7 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.2
+    helm.sh/chart: loki-16.0.1
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -99,7 +99,6 @@ data:
       volume_enabled: true
     memberlist:
       abort_if_cluster_join_fails: true
-      advertise_addr: ${HASH_RING_INSTANCE_ADDR}
       advertise_port: 7946
       bind_port: 7946
       join_members:
@@ -174,7 +173,7 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.2
+    helm.sh/chart: loki-16.0.1
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -618,7 +617,7 @@ metadata:
   name: loki-runtime
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.2
+    helm.sh/chart: loki-16.0.1
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -631,7 +630,7 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   labels:
-    helm.sh/chart: loki-13.7.2
+    helm.sh/chart: loki-16.0.1
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -647,7 +646,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: loki-clusterrolebinding
   labels:
-    helm.sh/chart: loki-13.7.2
+    helm.sh/chart: loki-16.0.1
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -667,7 +666,7 @@ metadata:
   name: loki-gateway-exporter
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.2
+    helm.sh/chart: loki-16.0.1
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -692,7 +691,7 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.2
+    helm.sh/chart: loki-16.0.1
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -718,7 +717,7 @@ metadata:
   name: "loki"
   namespace: "monitoring"
   labels:
-    helm.sh/chart: loki-13.7.2
+    helm.sh/chart: loki-16.0.1
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -753,7 +752,7 @@ metadata:
   name: "loki-headless"
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.2
+    helm.sh/chart: loki-16.0.1
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -791,7 +790,7 @@ metadata:
   name: loki-memberlist
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.2
+    helm.sh/chart: loki-16.0.1
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -816,7 +815,7 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.2
+    helm.sh/chart: loki-16.0.1
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -854,7 +853,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: nginx
-          image: docker.io/nginxinc/nginx-unprivileged:1.30-alpine
+          image: docker.io/nginxinc/nginx-unprivileged:1.31-alpine
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -961,7 +960,7 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-13.7.2
+    helm.sh/chart: loki-16.0.1
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.2"
@@ -987,11 +986,11 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: afa7d08b2e7a51fee5acd0652bc2a489cbc5ecd5d1945dfaa267c069caa4185b
+        checksum/config: ad590172b38c09c971e5fad636e85dc8f5ed0f1147bb0bb774bc33b4f7b3eb89
         storage/size: 10Gi
         kubectl.kubernetes.io/default-container: "loki"
       labels:
-        helm.sh/chart: loki-13.7.2
+        helm.sh/chart: loki-16.0.1
         app.kubernetes.io/name: loki
         app.kubernetes.io/instance: loki
         app.kubernetes.io/version: "3.7.2"
@@ -1042,6 +1041,7 @@ spec:
           args:
             - -config.file=/etc/loki/config/config.yaml
             - -config.expand-env=true
+            - -memberlist.advertise-addr=$(POD_IP)
             - -target=all
           ports:
             - name: http-metrics
@@ -1058,7 +1058,7 @@ spec:
               value: 1740MiB
             - name: GOGC
               value: "80"
-            - name: HASH_RING_INSTANCE_ADDR
+            - name: POD_IP
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
