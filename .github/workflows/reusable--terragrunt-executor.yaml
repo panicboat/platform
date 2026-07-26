@@ -59,7 +59,7 @@ jobs:
         continue-on-error: true
 
       - name: Execute Terragrunt
-        uses: panicboat/panicboat-actions/terragrunt-run@937ba0987948cc56821eb6c5f97bf74876539e4c # main
+        uses: panicboat/panicboat-actions/terragrunt-run@fd41cb7fb30ee0b650acedb9f504cbff719844a6 # main
         with:
           token: ${{ steps.app-token.outputs.token }}
           service-name: ${{ inputs.service-name }}

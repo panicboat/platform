@@ -53,7 +53,7 @@ jobs:
           fetch-depth: 0
 
       - name: Kustomize Diff
-        uses: panicboat/panicboat-actions/kustomize-diff@937ba0987948cc56821eb6c5f97bf74876539e4c # main
+        uses: panicboat/panicboat-actions/kustomize-diff@fd41cb7fb30ee0b650acedb9f504cbff719844a6 # main
         with:
           token: ${{ steps.app-token.outputs.token }}
           service-name: ${{ inputs.service-name }}
