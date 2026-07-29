@@ -28,7 +28,7 @@ locals {
 # S3 bucket for Tempo trace data
 module "s3" {
   source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "5.14.1"
+  version = "5.15.1"
 
   bucket = local.bucket_name
 
