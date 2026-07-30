@@ -109,7 +109,8 @@
       ],
       "matchStrings": [
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\n\\s*cluster_version\\s*=\\s*\"(?<currentValue>[^\"]+)\""
-      ]
+      ],
+      "extractVersionTemplate": "^(?<version>\\d+\\.\\d+)"
     }
   ]
 }
