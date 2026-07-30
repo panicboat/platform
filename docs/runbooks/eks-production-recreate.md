@@ -352,6 +352,8 @@ done
 | `flux-system` Kustomization `False` で webhook validation error | webhook 提供 HelmRelease (= cert-manager / external-secrets / opentelemetry-operator) が未起動 | **Phase 9.3a の bootstrap-webhooks apply (= PR #410) を実行済か確認**。 9.3a を skip した場合は数分待って Flux reconcile loop で self-heal 期待、 起動済なのに stuck なら `flux reconcile kustomization flux-system` で force trigger |
 | Pending pods が `pod has unbound immediate PersistentVolumeClaims` | gp3 StorageClass 未作成 | **PR #406 merge 後は不要**。 旧 cluster recreate で pre-PR #406 commit から始める場合のみ手動作成 |
 | post-merge CI が apply 中に operator local apply 試行で衝突 | CI が state lock 保持 | CI 完走待ち、 OR CI cancel + force-unlock。 将来は `skip-deploy` label scheme (= PR #404 design Phase B) で防止 |
+| Karpenter が spot node を起動できず consolidation/scale-out が進まない (= karpenter controller log に `AuthFailure.ServiceLinkedRoleCreationNotPermitted`) | `AWSServiceRoleForEC2Spot` service-linked role が account に未作成。 Karpenter controller IAM policy は least-privilege 設計で `iam:CreateServiceLinkedRole` を含まないため AWS 側の自動作成が失敗する | `aws/karpenter/modules/main.tf` の `aws_iam_service_linked_role.spot` で Phase 5 apply 時に作成される (= 過去に一度も spot instance を使ったことがない account での初回 bootstrap のみ発生しうる)。 それでも発生する場合は `aws iam get-role --role-name AWSServiceRoleForEC2Spot` で存在確認 |
+| `aws/karpenter` の `terragrunt destroy` (= teardown) が `aws_iam_service_linked_role.spot` で hang/fail する | spot instance が残っていて `DeleteServiceLinkedRole` が AWS 側で非同期に遅延/拒否される | `eks-teardown-k8s` (= spot instance 含む node 全 drain) が `eks-teardown-aws` より先に完走しているか確認。 詰まった場合は `aws iam get-service-linked-role-deletion-status --deletion-task-id <id>` で状態確認してから再 destroy |
 
 ## 6. Future improvements
 
