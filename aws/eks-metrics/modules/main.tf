@@ -29,7 +29,7 @@ locals {
 # S3 bucket for Mimir long-term metrics storage
 module "s3" {
   source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "5.15.1"
+  version = "5.15.3"
 
   bucket = local.bucket_name
 
