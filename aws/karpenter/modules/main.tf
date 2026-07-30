@@ -23,23 +23,11 @@
 # に紐付けるため、Helm chart の serviceAccount.annotations に IRSA 情報を
 # 入れる必要がない。
 
-# EC2 Spot service-linked role. system-components NodePool の capacity-type
-# [spot, on-demand] が spot instance を起動する際、AWS は初回リクエスト時に
-# このロールを自動作成しようとするが、Karpenter controller IAM policy
-# (terraform-aws-modules 標準policy) は least-privilege 設計で
-# iam:CreateServiceLinkedRole を含まないため自動作成に失敗し、spot 経由の
-# node 起動/consolidation が AuthFailure.ServiceLinkedRoleCreationNotPermitted
-# で失敗する。operator の admin credentials で明示的に作成しておく。
-#
-# account に1つだけ存在する singleton resource。karpenter stack の
-# destroy/recreate cycle (docs/runbooks/eks-production-recreate.md) に
-# 巻き込まれる点に注意: destroy 時に spot instance が残っていると
-# DeleteServiceLinkedRole が AWS 側で非同期に遅延/失敗しうる。詰まった場合は
-# `aws iam get-service-linked-role-deletion-status --deletion-task-id <id>`
-# で状態確認してから再 destroy する。
-resource "aws_iam_service_linked_role" "spot" {
-  aws_service_name = "spot.amazonaws.com"
-}
+# EC2 Spot service-linked role (AWSServiceRoleForEC2Spot) は
+# aws/ec2-spot-service-role で管理する (= account 単位 singleton かつ
+# 複数 env 共有のため、per-env stack である karpenter からは分離)。
+# system-components NodePool の capacity-type [spot, on-demand] はこの role
+# の存在を前提にする。
 
 module "karpenter" {
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"
