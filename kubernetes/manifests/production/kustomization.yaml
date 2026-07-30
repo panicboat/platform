@@ -10,6 +10,7 @@ resources:
   - ./gateway-api
   - ./karpenter
   - ./keda
+  - ./keycloak
   - ./loki
   - ./metrics-server
   - ./mimir

@@ -66,6 +66,19 @@ metadata:
     app.kubernetes.io/name: keda
 ---
 # =============================================================================
+# keycloak Namespace
+# =============================================================================
+# toC 向けアプリの認証基盤 (= Identity Provider)。RDS PostgreSQL (aws/keycloak-database)
+# を backend に持ち、auth.dystopia.city で OIDC を公開する。
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keycloak
+  labels:
+    app.kubernetes.io/name: keycloak
+---
+# =============================================================================
 # oauth2-proxy Namespace
 # =============================================================================
 # oauth2-proxy (= Google OAuth gate + reverse-proxy) の専用 namespace。
