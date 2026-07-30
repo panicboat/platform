@@ -1,0 +1,69 @@
+# =============================================================================
+# ConfigMap: Keycloak realm import (keycloak-config-cli format)
+# =============================================================================
+# keycloak-config-cli の config file は Keycloak の realm export JSON 形式を
+# そのまま使う。$(env:VAR) は keycloak-config-cli の variable substitution
+# 構文 (= デフォルト prefix/suffix `$(` / `)`、realm-config-job.yaml で
+# IMPORT_VARSUBSTITUTION_ENABLED=true を設定して有効化)。
+#
+# - identityProviders.google: toC アプリ向け Google ソーシャルログイン。
+#   client_id/secret は Google Cloud Console で手動作成し AWS Secrets Manager
+#   panicboat/keycloak/google-idp に手動投入 (design spec の Manual Setup 参照)。
+# - clients.dystopia-app: toC アプリ (application monorepo、本 repo 外) が使う
+#   public client (= SPA/mobile 想定、standard flow のみ)。redirect URI は
+#   dystopia.city 配下を許可。
+# - registrationAllowed: false (= Phase 1 は Google ソーシャルログインのみ、
+#   realm native の email/password self-registration は対象外)。
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm-import
+  namespace: keycloak
+data:
+  dystopia-realm.json: |
+    {
+      "realm": "dystopia",
+      "enabled": true,
+      "displayName": "dystopia.city",
+      "sslRequired": "external",
+      "registrationAllowed": false,
+      "loginWithEmailAllowed": true,
+      "resetPasswordAllowed": true,
+      "identityProviders": [
+        {
+          "alias": "google",
+          "providerId": "google",
+          "enabled": true,
+          "trustEmail": true,
+          "storeToken": false,
+          "addReadTokenRoleOnCreate": false,
+          "firstBrokerLoginFlowAlias": "first broker login",
+          "config": {
+            "clientId": "$(env:GOOGLE_CLIENT_ID)",
+            "clientSecret": "$(env:GOOGLE_CLIENT_SECRET)",
+            "syncMode": "IMPORT",
+            "useJwksUrl": "true"
+          }
+        }
+      ],
+      "clients": [
+        {
+          "clientId": "dystopia-app",
+          "name": "dystopia.city application",
+          "enabled": true,
+          "publicClient": true,
+          "protocol": "openid-connect",
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "serviceAccountsEnabled": false,
+          "redirectUris": [
+            "https://dystopia.city/*"
+          ],
+          "webOrigins": [
+            "https://dystopia.city"
+          ]
+        }
+      ]
+    }

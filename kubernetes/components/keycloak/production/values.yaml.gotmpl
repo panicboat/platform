@@ -1,0 +1,119 @@
+# keycloak (codecentric/keycloakx) Configuration for production
+# toC 向けアプリの認証基盤。DB 接続情報 / admin bootstrap 情報は values に書かず
+# extraEnvFrom 経由で K8s Secret (ExternalSecret 由来) から直接注入する
+# (= RDS endpoint は Terraform apply 時まで不定のため、values.yaml.gotmpl に
+# static 値として書けない)。
+
+fullnameOverride: keycloak
+
+# =============================================================================
+# Replicas (HA = 2、jdbc-ping による cluster discovery は外部 Postgres 経由)
+# =============================================================================
+replicas: 2
+
+# =============================================================================
+# Priority Class
+# =============================================================================
+priorityClassName: system-cluster-critical
+
+# =============================================================================
+# Resources
+# =============================================================================
+resources:
+  requests:
+    cpu: 250m
+    memory: 768Mi
+  limits:
+    cpu: 1000m
+    memory: 1536Mi
+
+# =============================================================================
+# Startup command (= chart default の command/args は空、公式 image の default
+# CMD は dev mode になるため明示的に production start を指定)
+# =============================================================================
+command:
+  - /opt/keycloak/bin/kc.sh
+  - start
+  - --http-enabled=true
+  - --hostname-strict=false
+
+# =============================================================================
+# Proxy (= ALB が TLS 終端、X-Forwarded-* header で Keycloak に転送)
+# =============================================================================
+proxy:
+  enabled: true
+  mode: xforwarded # AWS ALB は RFC7239 Forwarded ではなく X-Forwarded-* を付与
+
+# =============================================================================
+# HTTP (= レガシー /auth prefix を使わず root で公開)
+# =============================================================================
+http:
+  relativePath: "/"
+
+# =============================================================================
+# Database (= vendor のみ static、hostname/port/database/username/password は
+# extraEnvFrom 経由の env var (KC_DB_URL_HOST 等) で注入。database.hostname 等
+# を空のままにすることで chart 側の該当 env 生成を skip させる)
+# =============================================================================
+database:
+  vendor: postgres
+
+# =============================================================================
+# extraEnv (= 静的な非機密設定のみ)
+# =============================================================================
+extraEnv: |
+  - name: KC_HOSTNAME
+    value: https://auth.dystopia.city
+
+# =============================================================================
+# extraEnvFrom (= DB 接続情報 + admin bootstrap 情報を Secret から一括注入)
+# =============================================================================
+extraEnvFrom: |
+  - secretRef:
+      name: keycloak-database
+  - secretRef:
+      name: keycloak-admin
+
+# =============================================================================
+# StatefulSet Annotations (= Reloader watch、Secret rotation 時に auto-rollout)
+# =============================================================================
+statefulsetAnnotations:
+  reloader.stakater.com/auto: "true"
+
+# =============================================================================
+# Service (= ClusterIP、ALB Ingress backend として利用)
+# =============================================================================
+service:
+  type: ClusterIP
+  httpPort: 80
+
+# =============================================================================
+# Ingress (= ALB IngressGroup `application` に相乗り、dystopia.city 系 1 ALB 共有)
+# =============================================================================
+# ACM cert auto-discovery: ALB Controller が wildcard cert *.dystopia.city を
+# 自動 attach (= Ingress.host が SAN match)。
+#
+# healthcheck: Keycloak root ("/") はログイン/リダイレクトを返すため 200 単独
+# では ALB healthcheck を通らない。cilium application-ingress と同じ workaround
+# (success-codes: 200-499) を採用。
+# =============================================================================
+ingress:
+  enabled: true
+  ingressClassName: alb
+  servicePort: http
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/group.name: application
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/success-codes: "200-499"
+    alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    external-dns.alpha.kubernetes.io/hostname: auth.dystopia.city
+  rules:
+    - host: auth.dystopia.city
+      paths:
+        - path: /
+          pathType: Prefix

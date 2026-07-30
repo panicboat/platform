@@ -1,0 +1,61 @@
+# =============================================================================
+# Job: keycloak-config-cli (= Realm/Client/IdP の宣言的 apply)
+# =============================================================================
+# adorsys/keycloak-config-cli が起動時に Keycloak Admin REST API へ接続し、
+# ConfigMap keycloak-realm-import の内容を realm に反映する (= Keycloak 自体の
+# --import-realm 起動時 import ではなく、稼働中の Keycloak に対して都度 apply
+# する運用)。
+#
+# KNOWN LIMITATION: Job は immutable なため、realm JSON (ConfigMap) を変更
+# しても本 Job は再実行されない (= Reloader は Job を watch 対象外)。反映するには
+# `kubectl delete job -n keycloak keycloak-realm-config` を手動実行し、Flux に
+# 再作成させる必要がある。設計 spec の Known Limitations 参照。
+# =============================================================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keycloak-realm-config
+  namespace: keycloak
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: keycloak-realm-config
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: keycloak-config-cli
+          image: adorsys/keycloak-config-cli:6.5.1-26
+          env:
+            - name: KEYCLOAK_URL
+              value: http://keycloak.keycloak.svc.cluster.local
+            - name: KEYCLOAK_USER
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin
+                  key: KEYCLOAK_ADMIN
+            - name: KEYCLOAK_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin
+                  key: KEYCLOAK_ADMIN_PASSWORD
+            - name: KEYCLOAK_AVAILABILITYCHECK_ENABLED
+              value: "true"
+            - name: KEYCLOAK_AVAILABILITYCHECK_TIMEOUT
+              value: 300s
+            - name: IMPORT_FILES_LOCATIONS
+              value: /config/*
+            - name: IMPORT_VARSUBSTITUTION_ENABLED
+              value: "true"
+          envFrom:
+            - secretRef:
+                name: keycloak-google-idp
+          volumeMounts:
+            - name: realm-import
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: realm-import
+          configMap:
+            name: keycloak-realm-import

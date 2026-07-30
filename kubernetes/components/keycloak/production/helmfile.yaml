@@ -1,0 +1,21 @@
+# =============================================================================
+# keycloak Helmfile for production
+# =============================================================================
+# codecentric/keycloakx chart (= 公式 quay.io/keycloak/keycloak image を直接使用、
+# Bitnami legacy 移行の影響を受けない) を使用。
+# =============================================================================
+environments:
+  production:
+
+---
+repositories:
+  - name: codecentric
+    url: https://codecentric.github.io/helm-charts
+
+releases:
+  - name: keycloak
+    namespace: keycloak
+    chart: codecentric/keycloakx
+    version: "7.2.2"
+    values:
+      - values.yaml.gotmpl

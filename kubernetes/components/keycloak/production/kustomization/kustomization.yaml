@@ -1,0 +1,15 @@
+# =============================================================================
+# keycloak production kustomization
+# =============================================================================
+# chart 範囲外 resource (= 3 ExternalSecrets + realm import ConfigMap/Job) を
+# helmfile output に上乗せする overlay。Ingress は chart native (ingress.enabled)
+# で values.yaml.gotmpl 側から生成。
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - external-secret-database.yaml
+  - external-secret-admin.yaml
+  - external-secret-google-idp.yaml
+  - realm-import-configmap.yaml
+  - realm-config-job.yaml
