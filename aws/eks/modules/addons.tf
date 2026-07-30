@@ -16,7 +16,7 @@
 
 module "ebs_csi_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "~> 6.6"
+  version = "~> 6.8"
 
   name                  = "eks-${var.environment}-ebs-csi"
   attach_ebs_csi_policy = true
@@ -33,7 +33,7 @@ module "ebs_csi_irsa" {
 
 module "alb_controller_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "~> 6.6"
+  version = "~> 6.8"
 
   name                                   = "eks-${var.environment}-alb-controller"
   use_name_prefix                        = false
@@ -51,7 +51,7 @@ module "alb_controller_irsa" {
 
 module "external_dns_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "~> 6.6"
+  version = "~> 6.8"
 
   name                          = "eks-${var.environment}-external-dns"
   use_name_prefix               = false
