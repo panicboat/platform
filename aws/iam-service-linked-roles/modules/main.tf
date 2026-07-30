@@ -1,7 +1,7 @@
 # main.tf - Account 単位の IAM service-linked role。
 #
 # 新しい service-linked role が必要になったら、この module 内に resource
-# block を追加する (stack を分けない。理由は terragrunt.hcl 参照)。
+# block を追加する (stack を分けない。理由は ../README.md 参照)。
 
 # EC2 Spot: Karpenter の system-components NodePool
 # (kubernetes/components/karpenter/production/kustomization/nodepool.yaml)
