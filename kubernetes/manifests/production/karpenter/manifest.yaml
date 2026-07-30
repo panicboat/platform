@@ -1797,6 +1797,7 @@ spec:
     matchLabels:
       app.kubernetes.io/name: karpenter
       app.kubernetes.io/instance: karpenter
+
 ---
 # Source: karpenter/templates/serviceaccount.yaml
 apiVersion: v1
@@ -1831,6 +1832,7 @@ rules:
   - apiGroups: ["karpenter.k8s.aws"]
     resources: ["ec2nodeclasses"]
     verbs: ["get", "list", "watch", "create", "delete", "patch"]
+
 ---
 # Source: karpenter/templates/clusterrole-core.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1991,6 +1993,7 @@ rules:
     resources: ["services"]
     resourceNames: ["kube-dns"]
     verbs: ["get"]
+
 ---
 # Source: karpenter/templates/rolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -2056,6 +2059,7 @@ spec:
   selector:
     app.kubernetes.io/name: karpenter
     app.kubernetes.io/instance: karpenter
+
 ---
 # Source: karpenter/templates/deployment.yaml
 apiVersion: apps/v1

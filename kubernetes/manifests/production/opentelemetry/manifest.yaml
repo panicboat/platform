@@ -14,6 +14,7 @@ metadata:
     app.kubernetes.io/part-of: opentelemetry-operator
     app.kubernetes.io/instance: opentelemetry-operator
     app.kubernetes.io/component: controller-manager
+
 ---
 # Source: opentelemetry-operator/templates/admission-webhooks/operator-webhook.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -18001,7 +18002,7 @@ rules:
   - apiGroups:
       - ""
     resources:
-      - nodes/proxy
+      - nodes/pods
     verbs:
       - get
   - apiGroups:
@@ -18223,6 +18224,10 @@ rules:
       - subjectaccessreviews
     verbs:
       - create
+
+
+
+
 ---
 # Source: opentelemetry-operator/templates/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -18245,6 +18250,8 @@ subjects:
   - kind: ServiceAccount
     name: opentelemetry-operator
     namespace: opentelemetry-operator-system
+
+
 ---
 # Source: opentelemetry-operator/templates/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -18444,6 +18451,7 @@ rules:
       - patch
       - update
       - watch
+
 ---
 # Source: opentelemetry-operator/templates/rolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -18467,6 +18475,7 @@ subjects:
   - kind: ServiceAccount
     name: opentelemetry-operator
     namespace: opentelemetry-operator-system
+
 ---
 # Source: opentelemetry-operator/templates/service.yaml
 apiVersion: v1
@@ -18514,6 +18523,7 @@ spec:
   selector:
       app.kubernetes.io/name: opentelemetry-operator
       app.kubernetes.io/component: controller-manager
+
 ---
 # Source: opentelemetry-operator/templates/deployment.yaml
 apiVersion: apps/v1
@@ -18623,32 +18633,7 @@ spec:
         runAsGroup: 65532
         runAsNonRoot: true
         runAsUser: 65532
----
-# Source: opentelemetry-operator/templates/certmanager.yaml
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  labels:
-    helm.sh/chart: opentelemetry-operator-0.118.0
-    app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.153.0"
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/part-of: opentelemetry-operator
-    app.kubernetes.io/instance: opentelemetry-operator
-    app.kubernetes.io/component: webhook
-  name: opentelemetry-operator-serving-cert
-  namespace: opentelemetry-operator-system
-spec:
-  dnsNames:
-    - opentelemetry-operator-webhook.opentelemetry-operator-system.svc
-    - opentelemetry-operator-webhook.opentelemetry-operator-system.svc.cluster.local
-  issuerRef:
-    kind: ClusterIssuer
-    name: selfsigned-cluster-issuer
-  secretName: opentelemetry-operator-controller-manager-service-cert
-  subject:
-    organizationalUnits:
-      - opentelemetry-operator
+
 ---
 # Source: opentelemetry-operator/templates/admission-webhooks/operator-webhook-with-cert-manager.yaml
 apiVersion: admissionregistration.k8s.io/v1
@@ -18734,32 +18719,6 @@ webhooks:
         scope: Namespaced
     sideEffects: None
     timeoutSeconds: 10
----
-# Source: opentelemetry-operator/templates/servicemonitor.yaml
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: opentelemetry-operator
-  namespace: opentelemetry-operator-system
-  labels:
-    helm.sh/chart: opentelemetry-operator-0.118.0
-    app.kubernetes.io/name: opentelemetry-operator
-    app.kubernetes.io/version: "0.153.0"
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/part-of: opentelemetry-operator
-    app.kubernetes.io/instance: opentelemetry-operator
-    app.kubernetes.io/component: controller-manager
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: opentelemetry-operator
-      app.kubernetes.io/component: controller-manager
-  endpoints:
-    - port: metrics
-      scheme: http
-  namespaceSelector:
-    matchNames:
-      - opentelemetry-operator-system
 ---
 # Source: opentelemetry-operator/templates/admission-webhooks/operator-webhook-with-cert-manager.yaml
 apiVersion: admissionregistration.k8s.io/v1
@@ -18867,6 +18826,60 @@ webhooks:
         scope: Namespaced
     sideEffects: None
     timeoutSeconds: 10
+
+---
+# Source: opentelemetry-operator/templates/certmanager.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    helm.sh/chart: opentelemetry-operator-0.118.0
+    app.kubernetes.io/name: opentelemetry-operator
+    app.kubernetes.io/version: "0.153.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: opentelemetry-operator
+    app.kubernetes.io/instance: opentelemetry-operator
+    app.kubernetes.io/component: webhook
+  name: opentelemetry-operator-serving-cert
+  namespace: opentelemetry-operator-system
+spec:
+  dnsNames:
+    - opentelemetry-operator-webhook.opentelemetry-operator-system.svc
+    - opentelemetry-operator-webhook.opentelemetry-operator-system.svc.cluster.local
+  issuerRef:
+    kind: ClusterIssuer
+    name: selfsigned-cluster-issuer
+  secretName: opentelemetry-operator-controller-manager-service-cert
+  subject:
+    organizationalUnits:
+      - opentelemetry-operator
+
+---
+# Source: opentelemetry-operator/templates/servicemonitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: opentelemetry-operator
+  namespace: opentelemetry-operator-system
+  labels:
+    helm.sh/chart: opentelemetry-operator-0.118.0
+    app.kubernetes.io/name: opentelemetry-operator
+    app.kubernetes.io/version: "0.153.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: opentelemetry-operator
+    app.kubernetes.io/instance: opentelemetry-operator
+    app.kubernetes.io/component: controller-manager
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: opentelemetry-operator
+      app.kubernetes.io/component: controller-manager
+  endpoints:
+    - port: metrics
+      scheme: http
+  namespaceSelector:
+    matchNames:
+      - opentelemetry-operator-system
 
 ---
 apiVersion: opentelemetry.io/v1alpha1

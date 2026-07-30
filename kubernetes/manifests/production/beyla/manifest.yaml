@@ -14,6 +14,7 @@ metadata:
     app.kubernetes.io/part-of: beyla
     app.kubernetes.io/component: rbac
 automountServiceAccountToken: true
+
 ---
 # Source: beyla/templates/configmap.yaml
 apiVersion: v1
@@ -64,6 +65,7 @@ data:
       port: 9090
     routes:
       unmatched: heuristic
+
 ---
 # Source: beyla/templates/cluster-role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -85,6 +87,7 @@ rules:
   - apiGroups: [ "" ]
     resources: [ "pods", "services", "nodes" ]
     verbs: [ "list", "watch", "get" ]
+
 ---
 # Source: beyla/templates/cluster-role-binding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -107,6 +110,7 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: beyla
+
 ---
 # Source: beyla/templates/service.yaml
 apiVersion: v1
@@ -132,6 +136,7 @@ spec:
   selector:
     app.kubernetes.io/name: beyla
     app.kubernetes.io/instance: beyla
+
 ---
 # Source: beyla/templates/daemon-set.yaml
 apiVersion: apps/v1
@@ -205,6 +210,7 @@ spec:
         - name: cgroup
           hostPath:
             path: /sys/fs/cgroup
+
 ---
 # Source: beyla/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1

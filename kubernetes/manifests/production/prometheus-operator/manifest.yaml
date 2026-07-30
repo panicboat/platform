@@ -75078,6 +75078,7 @@ metadata:
     app.kubernetes.io/version: "13.1.0"
   name: kube-prometheus-stack-grafana
   namespace: monitoring
+
 ---
 # Source: kube-prometheus-stack/charts/kube-state-metrics/templates/serviceaccount.yaml
 apiVersion: v1
@@ -75132,6 +75133,7 @@ metadata:
     release: "kube-prometheus-stack"
     heritage: "Helm"
 automountServiceAccountToken: true
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus-operator/serviceaccount.yaml
 apiVersion: v1
@@ -75152,6 +75154,7 @@ metadata:
     app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
     app.kubernetes.io/component: prometheus-operator
 automountServiceAccountToken: true
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus/serviceaccount.yaml
 apiVersion: v1
@@ -75172,6 +75175,7 @@ metadata:
     release: "kube-prometheus-stack"
     heritage: "Helm"
 automountServiceAccountToken: true
+
 ---
 # Source: kube-prometheus-stack/templates/alertmanager/secret.yaml
 apiVersion: v1
@@ -75191,6 +75195,7 @@ metadata:
     heritage: "Helm"
 data:
   alertmanager.yaml: "Z2xvYmFsOgogIHJlc29sdmVfdGltZW91dDogNW0KaW5oaWJpdF9ydWxlczoKLSBlcXVhbDoKICAtIG5hbWVzcGFjZQogIC0gYWxlcnRuYW1lCiAgc291cmNlX21hdGNoZXJzOgogIC0gc2V2ZXJpdHkgPSBjcml0aWNhbAogIHRhcmdldF9tYXRjaGVyczoKICAtIHNldmVyaXR5ID1+IHdhcm5pbmd8aW5mbwotIGVxdWFsOgogIC0gbmFtZXNwYWNlCiAgLSBhbGVydG5hbWUKICBzb3VyY2VfbWF0Y2hlcnM6CiAgLSBzZXZlcml0eSA9IHdhcm5pbmcKICB0YXJnZXRfbWF0Y2hlcnM6CiAgLSBzZXZlcml0eSA9IGluZm8KLSBlcXVhbDoKICAtIG5hbWVzcGFjZQogIHNvdXJjZV9tYXRjaGVyczoKICAtIGFsZXJ0bmFtZSA9IEluZm9JbmhpYml0b3IKICB0YXJnZXRfbWF0Y2hlcnM6CiAgLSBzZXZlcml0eSA9IGluZm8KLSB0YXJnZXRfbWF0Y2hlcnM6CiAgLSBhbGVydG5hbWUgPSBJbmZvSW5oaWJpdG9yCnJlY2VpdmVyczoKLSBuYW1lOiAibnVsbCIKcm91dGU6CiAgZ3JvdXBfYnk6CiAgLSBuYW1lc3BhY2UKICBncm91cF9pbnRlcnZhbDogNW0KICBncm91cF93YWl0OiAzMHMKICByZWNlaXZlcjogIm51bGwiCiAgcmVwZWF0X2ludGVydmFsOiAxMmgKICByb3V0ZXM6CiAgLSBtYXRjaGVyczoKICAgIC0gYWxlcnRuYW1lID0gIldhdGNoZG9nIgogICAgcmVjZWl2ZXI6ICJudWxsIgp0ZW1wbGF0ZXM6Ci0gL2V0Yy9hbGVydG1hbmFnZXIvY29uZmlnLyoudG1wbA=="
+
 ---
 # Source: kube-prometheus-stack/charts/grafana/templates/configmap-dashboard-provider.yaml
 apiVersion: v1
@@ -75220,6 +75225,7 @@ data:
         options:
           foldersFromFilesStructure: false
           path: /tmp/dashboards
+
 ---
 # Source: kube-prometheus-stack/charts/grafana/templates/configmap.yaml
 apiVersion: v1
@@ -75304,6 +75310,7 @@ data:
       type: tempo
       uid: tempo
       url: http://tempo.monitoring.svc.cluster.local:3200
+
 ---
 # Source: kube-prometheus-stack/templates/grafana/configmaps-datasources.yaml
 apiVersion: v1
@@ -75326,6 +75333,7 @@ data:
   datasource.yaml: |-
     apiVersion: 1
     datasources:
+
 ---
 # Source: kube-prometheus-stack/templates/grafana/dashboards-1.14/alertmanager-overview.yaml
 apiVersion: v1
@@ -75991,6 +75999,7 @@ spec:
     requests:
       storage: "5Gi"
   storageClassName: gp3
+
 ---
 # Source: kube-prometheus-stack/charts/grafana/templates/clusterrole.yaml
 kind: ClusterRole
@@ -76008,6 +76017,7 @@ rules:
   - apiGroups: [""] # "" indicates the core API group
     resources: ["configmaps", "secrets"]
     verbs: ["get", "watch", "list"]
+
 ---
 # Source: kube-prometheus-stack/charts/kube-state-metrics/templates/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -76164,6 +76174,8 @@ rules:
   resources:
     - volumeattachments
   verbs: ["list", "watch"]
+
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus-operator/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -76290,6 +76302,7 @@ rules:
   - watch
   - update
   - delete
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -76329,6 +76342,8 @@ rules:
   verbs: ["get", "list", "watch"]
 - nonResourceURLs: ["/metrics", "/metrics/cadvisor"]
   verbs: ["get"]
+
+
 ---
 # Source: kube-prometheus-stack/charts/grafana/templates/clusterrolebinding.yaml
 kind: ClusterRoleBinding
@@ -76350,6 +76365,7 @@ roleRef:
   kind: ClusterRole
   name: kube-prometheus-stack-grafana-clusterrole
   apiGroup: rbac.authorization.k8s.io
+
 ---
 # Source: kube-prometheus-stack/charts/kube-state-metrics/templates/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -76399,6 +76415,7 @@ subjects:
 - kind: ServiceAccount
   name: kube-prometheus-stack-operator
   namespace: monitoring
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -76423,6 +76440,8 @@ subjects:
   - kind: ServiceAccount
     name: kube-prometheus-stack-prometheus
     namespace: monitoring
+
+
 ---
 # Source: kube-prometheus-stack/charts/grafana/templates/service.yaml
 apiVersion: v1
@@ -76445,6 +76464,7 @@ spec:
   selector:
     app.kubernetes.io/name: grafana
     app.kubernetes.io/instance: kube-prometheus-stack
+
 ---
 # Source: kube-prometheus-stack/charts/kube-state-metrics/templates/service.yaml
 apiVersion: v1
@@ -76473,6 +76493,7 @@ spec:
   selector:    
     app.kubernetes.io/name: kube-state-metrics
     app.kubernetes.io/instance: kube-prometheus-stack
+
 ---
 # Source: kube-prometheus-stack/charts/prometheus-node-exporter/templates/service.yaml
 apiVersion: v1
@@ -76502,6 +76523,7 @@ spec:
   selector:
     app.kubernetes.io/name: prometheus-node-exporter
     app.kubernetes.io/instance: kube-prometheus-stack
+
 ---
 # Source: kube-prometheus-stack/templates/alertmanager/service.yaml
 apiVersion: v1
@@ -76562,6 +76584,7 @@ spec:
       targetPort: 9153
   selector:
     k8s-app: kube-dns
+
 ---
 # Source: kube-prometheus-stack/templates/exporters/kube-controller-manager/service.yaml
 apiVersion: v1
@@ -76590,6 +76613,7 @@ spec:
   selector:
     component: kube-controller-manager
   type: ClusterIP
+
 ---
 # Source: kube-prometheus-stack/templates/exporters/kube-etcd/service.yaml
 apiVersion: v1
@@ -76702,6 +76726,7 @@ spec:
     app: kube-prometheus-stack-operator
     release: "kube-prometheus-stack"
   type: "ClusterIP"
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus/service.yaml
 apiVersion: v1
@@ -76735,6 +76760,7 @@ spec:
     operator.prometheus.io/name: kube-prometheus-stack-prometheus
   sessionAffinity: None
   type: "ClusterIP"
+
 ---
 # Source: kube-prometheus-stack/charts/prometheus-node-exporter/templates/daemonset.yaml
 apiVersion: apps/v1
@@ -76876,6 +76902,7 @@ spec:
         - name: root
           hostPath:
             path: /
+
 ---
 # Source: kube-prometheus-stack/charts/grafana/templates/deployment.yaml
 apiVersion: apps/v1
@@ -77130,6 +77157,7 @@ spec:
             name: kube-prometheus-stack-grafana-config-dashboards
         - name: sc-datasources-volume
           emptyDir: {}
+
 ---
 # Source: kube-prometheus-stack/charts/kube-state-metrics/templates/deployment.yaml
 apiVersion: apps/v1
@@ -77226,6 +77254,7 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus-operator/deployment.yaml
 apiVersion: apps/v1
@@ -77346,6 +77375,111 @@ spec:
       serviceAccountName: kube-prometheus-stack-operator
       automountServiceAccountToken: true
       terminationGracePeriodSeconds: 30
+
+---
+# Source: kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/mutatingWebhookConfiguration.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name:  kube-prometheus-stack-admission
+  annotations:
+    
+  labels:
+    app: kube-prometheus-stack-admission
+    
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: kube-prometheus-stack
+    app.kubernetes.io/version: "87.3.0"
+    app.kubernetes.io/part-of: kube-prometheus-stack
+    chart: kube-prometheus-stack-87.3.0
+    release: "kube-prometheus-stack"
+    heritage: "Helm"
+    app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
+    app.kubernetes.io/component: prometheus-operator-webhook
+webhooks:
+  - name: prometheusrulemutate.monitoring.coreos.com
+    failurePolicy: Ignore
+    rules:
+      - apiGroups:
+          - monitoring.coreos.com
+        apiVersions:
+          - "*"
+        resources:
+          - prometheusrules
+        operations:
+          - CREATE
+          - UPDATE
+    clientConfig:
+      service:
+        namespace: monitoring
+        name: kube-prometheus-stack-operator
+        path: /admission-prometheusrules/mutate
+    timeoutSeconds: 10
+    admissionReviewVersions: ["v1", "v1beta1"]
+    sideEffects: None
+
+---
+# Source: kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/validatingWebhookConfiguration.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name:  kube-prometheus-stack-admission
+  annotations:
+    
+  labels:
+    app: kube-prometheus-stack-admission
+    
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: kube-prometheus-stack
+    app.kubernetes.io/version: "87.3.0"
+    app.kubernetes.io/part-of: kube-prometheus-stack
+    chart: kube-prometheus-stack-87.3.0
+    release: "kube-prometheus-stack"
+    heritage: "Helm"
+    app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
+    app.kubernetes.io/component: prometheus-operator-webhook
+webhooks:
+  - name: prometheusrulevalidate.monitoring.coreos.com
+    failurePolicy: Ignore
+    rules:
+      - apiGroups:
+          - monitoring.coreos.com
+        apiVersions:
+          - "*"
+        resources:
+          - prometheusrules
+        operations:
+          - CREATE
+          - UPDATE
+    clientConfig:
+      service:
+        namespace: monitoring
+        name: kube-prometheus-stack-operator
+        path: /admission-prometheusrules/validate
+    timeoutSeconds: 10
+    admissionReviewVersions: ["v1", "v1beta1"]
+    sideEffects: None
+  - name: alertmanagerconfigsvalidate.monitoring.coreos.com
+    failurePolicy: Ignore
+    rules:
+      - apiGroups:
+          - monitoring.coreos.com
+        apiVersions:
+          - v1alpha1
+        resources:
+          - alertmanagerconfigs
+        operations:
+          - CREATE
+          - UPDATE
+    clientConfig:
+      service:
+        namespace: monitoring
+        name: kube-prometheus-stack-operator
+        path: /admission-alertmanagerconfigs/validate
+    timeoutSeconds: 10
+    admissionReviewVersions: ["v1", "v1beta1"]
+    sideEffects: None
+
 ---
 # Source: kube-prometheus-stack/templates/alertmanager/alertmanager.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -77413,47 +77547,7 @@ spec:
               - {key: alertmanager, operator: In, values: [kube-prometheus-stack-alertmanager]}
   portName: http-web
   hostNetwork: false
----
-# Source: kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/mutatingWebhookConfiguration.yaml
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name:  kube-prometheus-stack-admission
-  annotations:
-    
-  labels:
-    app: kube-prometheus-stack-admission
-    
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/instance: kube-prometheus-stack
-    app.kubernetes.io/version: "87.3.0"
-    app.kubernetes.io/part-of: kube-prometheus-stack
-    chart: kube-prometheus-stack-87.3.0
-    release: "kube-prometheus-stack"
-    heritage: "Helm"
-    app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
-    app.kubernetes.io/component: prometheus-operator-webhook
-webhooks:
-  - name: prometheusrulemutate.monitoring.coreos.com
-    failurePolicy: Ignore
-    rules:
-      - apiGroups:
-          - monitoring.coreos.com
-        apiVersions:
-          - "*"
-        resources:
-          - prometheusrules
-        operations:
-          - CREATE
-          - UPDATE
-    clientConfig:
-      service:
-        namespace: monitoring
-        name: kube-prometheus-stack-operator
-        path: /admission-prometheusrules/mutate
-    timeoutSeconds: 10
-    admissionReviewVersions: ["v1", "v1beta1"]
-    sideEffects: None
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus/prometheus.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -77564,6 +77658,7 @@ spec:
   portName: http-web
   nameValidationScheme: Legacy
   hostNetwork: false
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus/rules-1.14/alertmanager.rules.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -81153,6 +81248,7 @@ spec:
   namespaceSelector:
     matchNames:
       - monitoring
+
 ---
 # Source: kube-prometheus-stack/charts/kube-state-metrics/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -81178,6 +81274,7 @@ spec:
   endpoints:
     - port: http
       honorLabels: true
+
 ---
 # Source: kube-prometheus-stack/charts/prometheus-node-exporter/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -81206,6 +81303,7 @@ spec:
   endpoints:
     - port: http-metrics
       scheme: http
+
 ---
 # Source: kube-prometheus-stack/templates/alertmanager/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -81239,6 +81337,7 @@ spec:
     path: "/metrics"
   - port: reloader-web
     path: "/metrics"
+
 ---
 # Source: kube-prometheus-stack/templates/exporters/core-dns/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -81269,6 +81368,7 @@ spec:
   endpoints:
   - port: http-metrics
     bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+
 ---
 # Source: kube-prometheus-stack/templates/exporters/kube-api-server/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -81310,6 +81410,7 @@ spec:
     matchLabels:
       component: apiserver
       provider: kubernetes
+
 ---
 # Source: kube-prometheus-stack/templates/exporters/kube-controller-manager/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -81344,6 +81445,7 @@ spec:
     tlsConfig:
       caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
       insecureSkipVerify: true
+
 ---
 # Source: kube-prometheus-stack/templates/exporters/kube-etcd/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -81374,6 +81476,7 @@ spec:
   endpoints:
   - port: http-metrics
     bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+
 ---
 # Source: kube-prometheus-stack/templates/exporters/kube-proxy/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -81404,6 +81507,7 @@ spec:
   endpoints:
   - port: http-metrics
     bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+
 ---
 # Source: kube-prometheus-stack/templates/exporters/kube-scheduler/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -81438,6 +81542,7 @@ spec:
     tlsConfig:
       caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
       insecureSkipVerify: true
+
 ---
 # Source: kube-prometheus-stack/templates/exporters/kubelet/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -81552,6 +81657,7 @@ spec:
       sourceLabels:
       - __metrics_path__
       targetLabel: metrics_path
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus-operator/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -81591,6 +81697,7 @@ spec:
   namespaceSelector:
     matchNames:
       - "monitoring"
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -81624,67 +81731,6 @@ spec:
   - port: reloader-web
     path: "/metrics"
 ---
-# Source: kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/validatingWebhookConfiguration.yaml
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name:  kube-prometheus-stack-admission
-  annotations:
-    
-  labels:
-    app: kube-prometheus-stack-admission
-    
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/instance: kube-prometheus-stack
-    app.kubernetes.io/version: "87.3.0"
-    app.kubernetes.io/part-of: kube-prometheus-stack
-    chart: kube-prometheus-stack-87.3.0
-    release: "kube-prometheus-stack"
-    heritage: "Helm"
-    app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
-    app.kubernetes.io/component: prometheus-operator-webhook
-webhooks:
-  - name: prometheusrulevalidate.monitoring.coreos.com
-    failurePolicy: Ignore
-    rules:
-      - apiGroups:
-          - monitoring.coreos.com
-        apiVersions:
-          - "*"
-        resources:
-          - prometheusrules
-        operations:
-          - CREATE
-          - UPDATE
-    clientConfig:
-      service:
-        namespace: monitoring
-        name: kube-prometheus-stack-operator
-        path: /admission-prometheusrules/validate
-    timeoutSeconds: 10
-    admissionReviewVersions: ["v1", "v1beta1"]
-    sideEffects: None
-  - name: alertmanagerconfigsvalidate.monitoring.coreos.com
-    failurePolicy: Ignore
-    rules:
-      - apiGroups:
-          - monitoring.coreos.com
-        apiVersions:
-          - v1alpha1
-        resources:
-          - alertmanagerconfigs
-        operations:
-          - CREATE
-          - UPDATE
-    clientConfig:
-      service:
-        namespace: monitoring
-        name: kube-prometheus-stack-operator
-        path: /admission-alertmanagerconfigs/validate
-    timeoutSeconds: 10
-    admissionReviewVersions: ["v1", "v1beta1"]
-    sideEffects: None
----
 # Source: kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/job-patch/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -81707,6 +81753,7 @@ metadata:
     app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
     app.kubernetes.io/component: prometheus-operator-webhook
 automountServiceAccountToken: true
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/job-patch/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -81738,6 +81785,7 @@ rules:
       - get
       - update
       - patch
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/job-patch/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -81767,6 +81815,7 @@ subjects:
   - kind: ServiceAccount
     name: kube-prometheus-stack-admission
     namespace: monitoring
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/job-patch/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -81797,6 +81846,7 @@ rules:
     verbs:
       - get
       - create
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/job-patch/rolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -81827,6 +81877,7 @@ subjects:
   - kind: ServiceAccount
     name: kube-prometheus-stack-admission
     namespace: monitoring
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/job-patch/job-createSecret.yaml
 apiVersion: batch/v1
@@ -81893,6 +81944,7 @@ spec:
         runAsUser: 2000
         seccompProfile:
           type: RuntimeDefault
+
 ---
 # Source: kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/job-patch/job-patchWebhook.yaml
 apiVersion: batch/v1
@@ -81960,6 +82012,7 @@ spec:
         runAsUser: 2000
         seccompProfile:
           type: RuntimeDefault
+
 
 ---
 apiVersion: external-secrets.io/v1
