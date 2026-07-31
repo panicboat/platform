@@ -204,10 +204,21 @@ locals {
       # Tag dynamically provisioned EBS volumes (= PVC-driven) with the
       # controller's provenance label so they match the unified ManagedBy
       # schema. Per spec section 4-2-c.
+      #
+      # sidecars.snapshotter.forceEnable: addon default is true、 VolumeSnapshot
+      # を使わない本 cluster では snapshot.storage.k8s.io CRD (= 別途
+      # external-snapshotter install が必要、未導入) が無いため csi-snapshotter
+      # container が "failed to list *v1.VolumeSnapshotClass" を出し続ける。
+      # VolumeSnapshot 機能を使う予定がないため sidecar 自体を無効化する。
       configuration_values = jsonencode({
         controller = {
           extraVolumeTags = {
             ManagedBy = "aws-ebs-csi-driver"
+          }
+        }
+        sidecars = {
+          snapshotter = {
+            forceEnable = false
           }
         }
       })
