@@ -147,7 +147,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "count(kube_pod_status_phase{namespace=~\"$namespace\", phase!=\"Running\", phase!=\"Succeeded\"})",
+              "expr": "count(kube_pod_status_phase{namespace=~\"$namespace\", phase!=\"Running\", phase!=\"Succeeded\"} == 1)",
               "refId": "A"
             }
           ],
@@ -1106,7 +1106,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "count(kube_pod_status_phase{namespace=~\"$namespace\", phase=\"Running\"})",
+              "expr": "count(kube_pod_status_phase{namespace=~\"$namespace\", phase=\"Running\"} == 1)",
               "refId": "A"
             }
           ],
@@ -1167,7 +1167,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "count(kube_pod_status_phase{namespace=~\"$namespace\", phase!=\"Running\", phase!=\"Succeeded\"})",
+              "expr": "count(kube_pod_status_phase{namespace=~\"$namespace\", phase!=\"Running\", phase!=\"Succeeded\"} == 1)",
               "refId": "A"
             }
           ],
@@ -2023,7 +2023,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "count(kube_pod_status_phase{namespace=~\"$namespace\", phase!=\"Running\", phase!=\"Succeeded\"})",
+              "expr": "count(kube_pod_status_phase{namespace=~\"$namespace\", phase!=\"Running\", phase!=\"Succeeded\"} == 1)",
               "refId": "A"
             }
           ],
