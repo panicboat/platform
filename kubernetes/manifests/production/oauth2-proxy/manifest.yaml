@@ -205,7 +205,7 @@ spec:
             cpu: 200m
             memory: 256Mi
           requests:
-            cpu: 50m
+            cpu: 15m
             memory: 64Mi
         volumeMounts:
         - mountPath: /etc/oauth2_proxy/oauth2_proxy.cfg
@@ -474,7 +474,7 @@ spec:
             cpu: 200m
             memory: 256Mi
           requests:
-            cpu: 50m
+            cpu: 15m
             memory: 64Mi
         volumeMounts:
         - mountPath: /etc/oauth2_proxy/oauth2_proxy.cfg
@@ -743,7 +743,7 @@ spec:
             cpu: 200m
             memory: 256Mi
           requests:
-            cpu: 50m
+            cpu: 15m
             memory: 64Mi
         volumeMounts:
         - mountPath: /etc/oauth2_proxy/oauth2_proxy.cfg
@@ -1012,7 +1012,7 @@ spec:
             cpu: 200m
             memory: 256Mi
           requests:
-            cpu: 50m
+            cpu: 15m
             memory: 64Mi
         volumeMounts:
         - mountPath: /etc/oauth2_proxy/oauth2_proxy.cfg

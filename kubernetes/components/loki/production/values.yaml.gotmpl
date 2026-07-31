@@ -130,9 +130,11 @@ singleBinary:
     size: 10Gi
 
   # Resources (small production)
+  # cpu: 実測平均 32m に対し 500m は過大。ingest burst 用に headroom は残しつつ
+  # right-size。
   resources:
     requests:
-      cpu: 500m
+      cpu: 100m
       memory: 1Gi
     limits:
       cpu: 1
@@ -150,9 +152,10 @@ singleBinary:
 gateway:
   enabled: true
   replicas: 1
+  # cpu: 実測平均 2m に対し 50m は過大。right-size。
   resources:
     requests:
-      cpu: 50m
+      cpu: 15m
       memory: 64Mi
     limits:
       cpu: 200m

@@ -11,9 +11,11 @@ tempo:
   # -------------------------------------------------------------------------
   # Resources (small production)
   # -------------------------------------------------------------------------
+  # cpu: 実測平均 2m に対し 200m は過大。trace ingest burst 用に headroom は
+  # 残しつつ right-size。
   resources:
     requests:
-      cpu: 200m
+      cpu: 50m
       memory: 512Mi
     limits:
       cpu: 1

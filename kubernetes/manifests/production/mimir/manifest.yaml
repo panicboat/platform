@@ -1337,7 +1337,7 @@ spec:
             limits:
               memory: 200Mi
             requests:
-              cpu: 100m
+              cpu: 25m
               memory: 100Mi
 
 ---
@@ -1438,7 +1438,7 @@ spec:
               cpu: 500m
               memory: 1Gi
             requests:
-              cpu: 100m
+              cpu: 50m
               memory: 256Mi
           securityContext:
             allowPrivilegeEscalation: false
@@ -1550,7 +1550,7 @@ spec:
               cpu: 200m
               memory: 256Mi
             requests:
-              cpu: 100m
+              cpu: 25m
               memory: 128Mi
           securityContext:
             allowPrivilegeEscalation: false
@@ -1676,7 +1676,7 @@ spec:
               cpu: 500m
               memory: 1Gi
             requests:
-              cpu: 100m
+              cpu: 25m
               memory: 256Mi
           securityContext:
             allowPrivilegeEscalation: false
@@ -1801,7 +1801,7 @@ spec:
               cpu: 500m
               memory: 512Mi
             requests:
-              cpu: 100m
+              cpu: 25m
               memory: 256Mi
           securityContext:
             allowPrivilegeEscalation: false
@@ -1917,7 +1917,7 @@ spec:
             initialDelaySeconds: 45
           resources:
             requests:
-              cpu: 100m
+              cpu: 25m
               memory: 128Mi
           securityContext:
             allowPrivilegeEscalation: false
@@ -2013,7 +2013,7 @@ spec:
               cpu: 200m
               memory: 1Gi
             requests:
-              cpu: 100m
+              cpu: 25m
               memory: 512Mi
           ports:
             - containerPort: 11211
@@ -2177,7 +2177,7 @@ spec:
               cpu: 500m
               memory: 2Gi
             requests:
-              cpu: 100m
+              cpu: 25m
               memory: 512Mi
           securityContext:
             allowPrivilegeEscalation: false
@@ -2314,7 +2314,7 @@ spec:
               cpu: 1
               memory: 2Gi
             requests:
-              cpu: 200m
+              cpu: 75m
               memory: 512Mi
           securityContext:
             allowPrivilegeEscalation: false
@@ -2449,7 +2449,7 @@ spec:
               cpu: 500m
               memory: 2Gi
             requests:
-              cpu: 100m
+              cpu: 25m
               memory: 512Mi
           securityContext:
             allowPrivilegeEscalation: false

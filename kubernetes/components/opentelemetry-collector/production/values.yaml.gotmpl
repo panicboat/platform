@@ -34,9 +34,11 @@ image:
 # fluent-bit (cpu 100m / mem 128Mi req) の代替 + Beyla traces forward 分の処理を
 # 賄う per-node サイズ。Limits は集約 hub だった旧 Deployment より小さくして per-node
 # 分散効果を反映。
+# cpu request: 実測平均 9-20m (DaemonSet で全 node 積み上げ) に対し 100m は
+# 過大。log/trace burst 用に headroom を残しつつ right-size。
 resources:
   requests:
-    cpu: 100m
+    cpu: 40m
     memory: 256Mi
   limits:
     cpu: 500m
