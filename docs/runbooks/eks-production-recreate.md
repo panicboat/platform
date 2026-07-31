@@ -316,6 +316,8 @@ kubectl get pvc -A | grep -v Bound
 >
 > ただし **git 側で値を消した (= key ごと削除した) field は自動解除されない**。 Phase 4 の `cilium install` は field manager `cilium` で `Update` するため、 Flux (= field manager `kustomize-controller`) の server-side apply では他 manager 所有 field を削除できず、 cluster 上に残り続ける。 §5 Failure handling の該当行を参照。
 
+> **NOTE on monorepo**: `monorepo-cluster` Kustomization は `suspend: true` (= `kubernetes/clusters/production/repositories/monorepo.yaml`) で **意図的に停止中**。 monorepo 側 workload (= monolith / frontend) は production で正常動作しないため、 bootstrap 時も起動させない。 `default` namespace に pod が居ない / `monorepo-cluster` が `Suspended` なのは正常。 再開する場合は monorepo 側の動作を確認してから `suspend: false` に戻す。
+
 ## 4. Verification
 
 ```bash
@@ -329,7 +331,7 @@ cilium status
 
 # Kustomizations
 kubectl get kustomizations -A
-# → flux-system Ready=True、 monorepo-cluster は monorepo 側 manifests 依存
+# → flux-system Ready=True、 monorepo-cluster は Suspended (= 意図的に停止中、 Phase 10 NOTE 参照)
 
 # CiliumNode IP allocate
 kubectl get ciliumnodes -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.spec.ipam.pool}{"\n"}{end}'
