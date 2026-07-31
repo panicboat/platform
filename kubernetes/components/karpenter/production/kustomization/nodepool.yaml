@@ -61,6 +61,10 @@ spec:
     # Karpenter v1+ valid values: WhenEmpty | WhenEmptyOrUnderutilized
     # (v0.x の WhenUnderutilized は廃止されているので使えない)。
     consolidationPolicy: WhenEmptyOrUnderutilized
-    consolidateAfter: 30s
+    # 30s は node 起動 (= EC2 boot + cilium CNI 準備で 1-2 分) より短く、
+    # provisioning 途中の一時的な低利用率を underutilized と誤判定して
+    # delete → 再 provision の往復を増幅させる。起動が落ち着いてから
+    # 判定させる。
+    consolidateAfter: 5m
   limits:
     cpu: "200"

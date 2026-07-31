@@ -2290,11 +2290,13 @@ spec:
       terminationGracePeriodSeconds: 1
       affinity:
         podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchLabels:
-                k8s-app: cilium
-            topologyKey: kubernetes.io/hostname
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  k8s-app: cilium
+              topologyKey: kubernetes.io/hostname
+            weight: 100
       nodeSelector:
         kubernetes.io/os: linux
       volumes:
