@@ -43,9 +43,10 @@ priorityClassName: system-cluster-critical
 # =============================================================================
 # Resources
 # =============================================================================
+# cpu request: 実測平均 0m (ほぼ idle) に対し 50m は過大。right-size。
 resources:
   requests:
-    cpu: 50m
+    cpu: 15m
     memory: 64Mi
   limits:
     cpu: 200m

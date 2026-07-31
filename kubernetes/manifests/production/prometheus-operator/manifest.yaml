@@ -76857,7 +76857,7 @@ spec:
               cpu: 200m
               memory: 128Mi
             requests:
-              cpu: 100m
+              cpu: 25m
               memory: 64Mi
           volumeMounts:
             - name: proc
@@ -77137,7 +77137,7 @@ spec:
               cpu: 500m
               memory: 1Gi
             requests:
-              cpu: 100m
+              cpu: 25m
               memory: 256Mi
       volumes:
         - name: config
@@ -77241,7 +77241,7 @@ spec:
             cpu: 500m
             memory: 512Mi
           requests:
-            cpu: 100m
+            cpu: 25m
             memory: 128Mi
         securityContext:
           allowPrivilegeEscalation: false
@@ -77322,7 +77322,7 @@ spec:
               cpu: 500m
               memory: 512Mi
             requests:
-              cpu: 100m
+              cpu: 25m
               memory: 128Mi
           securityContext:
             allowPrivilegeEscalation: false
@@ -77407,7 +77407,7 @@ spec:
       cpu: 500m
       memory: 512Mi
     requests:
-      cpu: 100m
+      cpu: 25m
       memory: 128Mi
   routePrefix: "/"
   securityContext:
@@ -77520,8 +77520,8 @@ spec:
       cpu: 1
       memory: 2Gi
     requests:
-      cpu: 200m
-      memory: 512Mi
+      cpu: 150m
+      memory: 1536Mi
   retention: "24h"
   tsdb:
     outOfOrderTimeWindow: 0s

@@ -44,9 +44,12 @@ grafana:
       auto_assign_org: true
       auto_assign_org_role: Admin
 
+  # request は実測平均 (avg over 6h、kubectl top / Prometheus) に対して余裕を
+  # 持たせた値。cpu 100m は実測 7m に対し過大で Karpenter の bin-packing を
+  # 圧迫していたため right-size。
   resources:
     requests:
-      cpu: 100m
+      cpu: 25m
       memory: 256Mi
     limits:
       cpu: 500m
@@ -191,10 +194,15 @@ prometheus:
     # -------------------------------------------------------------------------
     # Resource Limits
     # -------------------------------------------------------------------------
+    # cpu: 実測平均 77m に対し 200m は過大、25m 余裕を持たせて 150m 程度に
+    # right-size。
+    # memory: 実測平均 1084Mi が旧 request 512Mi を上回っていた (= 常時
+    # request 超過、node 圧迫時に真っ先に evict される risk)。実測に headroom
+    # を足して 1.5Gi に引き上げる。
     resources:
       requests:
-        cpu: 200m
-        memory: 512Mi
+        cpu: 150m
+        memory: 1536Mi
       limits:
         cpu: 1
         memory: 2Gi
@@ -217,9 +225,10 @@ prometheus:
 alertmanager:
   enabled: true
   alertmanagerSpec:
+    # cpu: 実測平均 0m (ほぼ idle) に対し 100m は過大。right-size。
     resources:
       requests:
-        cpu: 100m
+        cpu: 25m
         memory: 128Mi
       limits:
         cpu: 500m
@@ -243,9 +252,11 @@ prometheus-node-exporter:
   hostRootFsMount:
     enabled: true
     mountPropagation: HostToContainer
+  # cpu: 実測平均 1m に対し 100m は過大。DaemonSet で全 node に乗るため
+  # 積み上げ影響が大きく、right-size の効果も大きい。
   resources:
     requests:
-      cpu: 100m
+      cpu: 25m
       memory: 64Mi
     limits:
       cpu: 200m
@@ -259,9 +270,10 @@ kube-state-metrics:
     - pods=[*]
     - deployments=[*]
     - statefulsets=[*]
+  # cpu: 実測平均 2m に対し 100m は過大。right-size。
   resources:
     requests:
-      cpu: 100m
+      cpu: 25m
       memory: 128Mi
     limits:
       cpu: 500m
@@ -279,9 +291,10 @@ prometheusOperator:
       enabled: true
   tls:
     enabled: true
+  # cpu: 実測平均 2m に対し 100m は過大。right-size。
   resources:
     requests:
-      cpu: 100m
+      cpu: 25m
       memory: 128Mi
     limits:
       cpu: 500m

@@ -106,13 +106,17 @@ overrides_exporter:
 # Enabled components (本 sub-project で必要な 8 component) のリソース設定
 # =============================================================================
 
+# cpu request は実測平均 (avg over 6h) に対して余裕を持たせた right-size 値。
+# chart default の 100m は各 component の実使用 (概ね 0-25m) に対し過大で
+# Karpenter の bin-packing を圧迫していた。
+
 # gateway: chart の HTTP API entry point (nginx-based reverse proxy)
 gateway:
   enabled: true
   replicas: 1
   resources:
     requests:
-      cpu: 100m
+      cpu: 25m
       memory: 128Mi
     limits:
       cpu: 200m
@@ -122,7 +126,7 @@ distributor:
   replicas: 1
   resources:
     requests:
-      cpu: 100m
+      cpu: 50m
       memory: 256Mi
     limits:
       cpu: 500m
@@ -136,7 +140,7 @@ ingester:
     enabled: false
   resources:
     requests:
-      cpu: 200m
+      cpu: 75m
       memory: 512Mi
     limits:
       cpu: 1
@@ -150,7 +154,7 @@ querier:
   replicas: 1
   resources:
     requests:
-      cpu: 100m
+      cpu: 25m
       memory: 256Mi
     limits:
       cpu: 500m
@@ -160,7 +164,7 @@ query_frontend:
   replicas: 1
   resources:
     requests:
-      cpu: 100m
+      cpu: 25m
       memory: 256Mi
     limits:
       cpu: 500m
@@ -174,7 +178,7 @@ store_gateway:
     enabled: false
   resources:
     requests:
-      cpu: 100m
+      cpu: 25m
       memory: 512Mi
     limits:
       cpu: 500m
@@ -188,7 +192,7 @@ compactor:
   replicas: 1
   resources:
     requests:
-      cpu: 100m
+      cpu: 25m
       memory: 512Mi
     limits:
       cpu: 500m
@@ -205,8 +209,25 @@ chunks-cache:
   allocatedMemory: 512
   resources:
     requests:
-      cpu: 100m
+      cpu: 25m
       memory: 512Mi
     limits:
       cpu: 200m
       memory: 1Gi
+
+# query_scheduler / rollout_operator は chart default (cpu 100m) のままだと
+# 実測 (概ね 1-2m) に対し過大なため明示的に right-size。
+# rollout_operator は sub-chart 依存 (Chart.yaml: alias: rollout_operator、
+# name: rollout-operator) のため values namespace は alias 通り
+# underscore (chart 内部の directory 名 rollout-operator ではない)。
+query_scheduler:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 128Mi
+
+rollout_operator:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 100Mi
