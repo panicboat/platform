@@ -313,6 +313,8 @@ kubectl get pvc -A | grep -v Bound
 `flux-system` Kustomization が True、 全 pod Running なら bootstrap 完了。
 
 > **NOTE on cilium upgrade**: Phase 4 で渡した bootstrap override (= `hubble.tls.auto.method=helm` 等) は、 Phase 9 の Flux Kustomization apply で **cilium 通常 values (= cert-manager + ServiceMonitor 有効)** が apply されて自動的に解除される。 別途 `cilium upgrade` 不要。
+>
+> ただし **git 側で値を消した (= key ごと削除した) field は自動解除されない**。 Phase 4 の `cilium install` は field manager `cilium` で `Update` するため、 Flux (= field manager `kustomize-controller`) の server-side apply では他 manager 所有 field を削除できず、 cluster 上に残り続ける。 §5 Failure handling の該当行を参照。
 
 ## 4. Verification
 
@@ -354,6 +356,8 @@ done
 | Pending pods が `pod has unbound immediate PersistentVolumeClaims` | gp3 StorageClass 未作成 | **PR #406 merge 後は不要**。 旧 cluster recreate で pre-PR #406 commit から始める場合のみ手動作成 |
 | post-merge CI が apply 中に operator local apply 試行で衝突 | CI が state lock 保持 | CI 完走待ち、 OR CI cancel + force-unlock。 将来は `skip-deploy` label scheme (= PR #404 design Phase B) で防止 |
 | Karpenter が spot node を起動できず consolidation/scale-out が進まない (= karpenter controller log に `AuthFailure.ServiceLinkedRoleCreationNotPermitted`) | `AWSServiceRoleForEC2Spot` service-linked role が account に未作成。 Karpenter controller IAM policy は least-privilege 設計で `iam:CreateServiceLinkedRole` を含まないため AWS 側の自動作成が失敗する | `aws/iam-service-linked-roles` (account 単位 singleton、 `aws/karpenter` の destroy/recreate cycle 対象外) を apply する。 通常は §2.1 の pre-condition で済んでいるはずなので、 発生する場合は `aws iam get-role --role-name AWSServiceRoleForEC2Spot` で存在確認 |
+| cilium 系 resource で **git から削除したはずの field が cluster 上に残る** (= Flux は `Ready=True` なのに実体が git と食い違う) | Phase 4 の `cilium install` が field manager `cilium` で `Update` した field は、 Flux (= `kustomize-controller`) の server-side apply では削除できない (= 他 manager 所有 field は消せない) | `kubectl get <resource> -n <ns> --show-managed-fields -o json` で所有 manager を確認 → `kubectl patch <resource> -n <ns> --type=json -p='[{"op":"remove","path":"/<field-path>"}]'` で明示除去。 除去後は Flux reconcile しても復活しない |
+| Karpenter が node を作り続け pod が再 schedule され続ける (= karpenter controller log に `could not schedule pod` + `unsatisfiable topology constraint for pod affinity`) | hard pod affinity (`requiredDuringScheduling`) を持つ pod が、 cilium DaemonSet 未配置の新 node に置けず、 Karpenter が capacity 不足と誤認して provision を繰り返す | **PR #695 で `hubble.relay.affinity` を preferred 化 + `consolidateAfter` 5m 化して解消済**。 他 component で再発した場合も同様に hard affinity を preferred へ緩和する |
 
 ## 6. Future improvements
 
@@ -376,5 +380,7 @@ done
 - PR #405 — 00-auth.sh kubectl reachability check inside admin subshell
 - PR #406 — gp3 StorageClass for production cluster
 - PR #407 — Flux gotk-components + image-reflector/automation controllers
+- PR #694 — EC2 Spot service-linked role を account 単位 stack (`aws/iam-service-linked-roles`) に分離
+- PR #695 — hubble-relay hard pod affinity 起因の Karpenter node churn loop を解消 (preferred 化 + `consolidateAfter` 5m)
 - Cilium ENI IPAM docs: https://docs.cilium.io/en/v1.19/network/concepts/ipam/eni/
 - AWS EKS Pod Identity docs: https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html
