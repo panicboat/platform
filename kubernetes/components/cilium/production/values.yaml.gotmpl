@@ -135,6 +135,24 @@ hubble:
         group: cert-manager.io
   relay:
     enabled: true
+    # chart default は podAffinity を requiredDuringScheduling で指定するが、
+    # Karpenter が新 node を provision した直後はまだ cilium DaemonSet pod が
+    # 存在しないため hubble-relay を配置できず、Karpenter が「capacity 不足」と
+    # 誤認して node を作り続けるループに入る (= spot 入れ替え時に発生、
+    # 1h で 8 launch / 5 delete の churn を観測)。
+    # cilium は全 node に DaemonSet で入るため preferred で実害はない。
+    # NOTE: chart default の requiredDuringScheduling は Helm の map deep merge
+    # で残るため、null で明示的に打ち消す必要がある。
+    affinity:
+      podAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution: null
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  k8s-app: cilium
+              topologyKey: kubernetes.io/hostname
   ui:
     enabled: true
   metrics:
