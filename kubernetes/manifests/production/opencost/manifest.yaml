@@ -435,6 +435,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: opencost
+  namespace: "monitoring"
   labels:
     helm.sh/chart: opencost-2.5.28
     app.kubernetes.io/name: opencost
