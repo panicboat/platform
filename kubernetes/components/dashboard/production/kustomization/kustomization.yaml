@@ -22,6 +22,24 @@ configMapGenerator:
     options:
       labels:
         grafana_dashboard: "1"
+  - name: grafana-dashboard-opencost-overview
+    files:
+      - grafana/opencost-overview.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+  - name: grafana-dashboard-opencost-namespace
+    files:
+      - grafana/opencost-namespace.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+  - name: grafana-dashboard-opencost-workload
+    files:
+      - grafana/opencost-workload.json
+    options:
+      labels:
+        grafana_dashboard: "1"
 
 generatorOptions:
   disableNameSuffixHash: true
