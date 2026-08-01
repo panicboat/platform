@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# 30-destroy-stacks.sh - Destroy 8 EKS-related stacks in fixed order.
+# 30-destroy-stacks.sh - Destroy 9 EKS-related stacks in fixed order.
 #
 # Order:
-#   karpenter -> eks-secrets -> eks-logs -> eks-metrics -> eks-traces
+#   karpenter -> eks-secrets -> eks-logs -> eks-metrics -> eks-traces -> eks-cost
 #   -> eks -> alb -> vpc
 #
 # Each stack runs `terragrunt destroy -auto-approve`. On failure, fail
@@ -24,12 +24,13 @@ STACKS=(
   "eks-logs"
   "eks-metrics"
   "eks-traces"
+  "eks-cost"
   "eks"
   "alb"
   "vpc"
 )
 
-confirm "About to DESTROY 8 stacks for ENV=${ENV}. Continue?"
+confirm "About to DESTROY 9 stacks for ENV=${ENV}. Continue?"
 
 for stack in "${STACKS[@]}"; do
   info "Step 30.${stack}: terragrunt destroy aws/${stack}/envs/${ENV}"
@@ -57,4 +58,4 @@ After resolving, re-run: make eks-teardown-aws ENV=${ENV}"
   fi
 done
 
-ok "All 8 stacks destroyed"
+ok "All 9 stacks destroyed"

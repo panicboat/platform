@@ -196,7 +196,7 @@ done'
 ### Phase 7: 残り stack apply (= Terminal A)
 
 ```bash
-for stack in eks-secrets eks-logs eks-metrics eks-traces; do
+for stack in eks-secrets eks-logs eks-metrics eks-traces eks-cost; do
   echo "=== apply: $stack ==="
   ( cd aws/$stack/envs/production && TG_TF_PATH=tofu terragrunt init -upgrade && TG_TF_PATH=tofu terragrunt apply -auto-approve )
 done
