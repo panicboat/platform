@@ -43,8 +43,9 @@ node-exporter/cAdvisor -------┘              ▼
 新規 component。 既存 component (mimir 等) と同じ helmfile hydrate pattern に従う。
 
 - namespace: `monitoring` (mimir/loki/tempo/prometheus-operator/beyla/opentelemetry-collector と同居、 既存 convention)
-- 認証: EKS Pod Identity (IRSA ではなく、 mimir/cilium-operator/aws-load-balancer-controller/karpenter と同じ既存 pattern)
-- ServiceMonitor: `release: kube-prometheus-stack` label を付与し既存 Prometheus に scrape させる (cilium の ServiceMonitor と同じ pattern)。 `trustCRDsExist: true` で offline hydrate 時の CRD 未登録エラーを回避
+- 認証: EKS Pod Identity (IRSA ではなく、 mimir/cilium-operator/karpenter と同じ既存 pattern。 aws-load-balancer-controller は IRSA のままなので対象外)
+- ServiceMonitor: `release: kube-prometheus-stack` label を付与し既存 Prometheus (`kube-prometheus-stack-prometheus.monitoring.svc:9090`) に scrape させる (cilium の ServiceMonitor と同じ pattern)。 OpenCost chart の ServiceMonitor template は capability guard を持たないため offline hydrate でも無条件に描画される (cilium 固有の `trustCRDsExist` 相当の対応は不要)
+- OpenCost 自身は既存 Prometheus (`opencost.prometheus.internal` 経由) から kube-state-metrics/node-exporter/cAdvisor の使用量を読む
 
 ### `aws/eks-cost/` (新規 stack)
 
