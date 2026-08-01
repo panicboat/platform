@@ -692,7 +692,7 @@ Add three more `configMapGenerator` entries (after `grafana-dashboard-unified-mo
 
 Run:
 ```bash
-kustomize build kubernetes/components/dashboard/production/kustomization/ | grep -A2 "^kind: ConfigMap" | grep "name: grafana-dashboard-opencost"
+kustomize build kubernetes/components/dashboard/production/kustomization/ | grep -A4 "^kind: ConfigMap" | grep "name: grafana-dashboard-opencost"
 ```
 Expected: three `ConfigMap` names printed (`grafana-dashboard-opencost-overview`, `grafana-dashboard-opencost-namespace`, `grafana-dashboard-opencost-workload`).
 
