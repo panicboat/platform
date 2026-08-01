@@ -1,0 +1,51 @@
+# OpenCost values for production
+
+serviceAccount:
+  create: true
+  name: opencost
+
+opencost:
+  metrics:
+    serviceMonitor:
+      enabled: true
+      # kube-prometheus-stack の serviceMonitorSelector match (cilium の
+      # ServiceMonitor と同じ pattern)
+      additionalLabels:
+        release: kube-prometheus-stack
+
+  prometheus:
+    internal:
+      enabled: true
+      serviceName: kube-prometheus-stack-prometheus
+      namespaceName: monitoring
+      port: 9090
+
+  # awsSpotDataBucket/awsSpotDataRegion/projectID の3つを渡すためだけに
+  # customPricing を有効化する。 CPU/RAM/GPU 等の costModel フィールドは未指定
+  # のまま chart デフォルトにフォールバックさせる (= 動的取得 (Pricing API)
+  # が失敗した場合のみ使われる fallback 値であり、 常用の静的価格ではない。
+  # opencost.io/docs/configuration/aws のソース調査で確認済)。
+  customPricing:
+    enabled: true
+    provider: aws
+    costModel:
+      description: "AWS Spot Instance Data Feed location for spot price accuracy"
+      awsSpotDataBucket: {{ .Values.opencost.spotDataBucket }}
+      awsSpotDataRegion: {{ .Values.opencost.spotDataRegion }}
+      projectID: "{{ .Values.opencost.awsAccountId }}"
+
+  exporter:
+    resources:
+      requests:
+        cpu: 25m
+        memory: 55Mi
+      limits:
+        memory: 256Mi
+
+  ui:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 55Mi
+      limits:
+        memory: 256Mi

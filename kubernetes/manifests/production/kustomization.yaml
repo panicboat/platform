@@ -14,6 +14,7 @@ resources:
   - ./metrics-server
   - ./mimir
   - ./oauth2-proxy
+  - ./opencost
   - ./opentelemetry-collector
   - ./opentelemetry
   - ./prometheus-operator

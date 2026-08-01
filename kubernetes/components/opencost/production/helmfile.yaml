@@ -1,0 +1,30 @@
+# =============================================================================
+# OpenCost Helmfile for production
+# =============================================================================
+# Kubernetes cost allocation. On-demand pricing comes from a public,
+# unauthenticated AWS endpoint (no credentials involved). Spot pricing comes
+# from the AWS Spot Instance Data Feed (aws/cost-management) read via Pod
+# Identity (aws/eks-cost).
+# =============================================================================
+environments:
+  production:
+    values:
+      - opencost:
+          # Source: aws/cost-management/envs/develop terragrunt output spot_datafeed_bucket_name
+          spotDataBucket: opencost-spot-datafeed-559744160976
+          # Source: aws/cost-management/envs/develop terragrunt output spot_datafeed_region
+          spotDataRegion: ap-northeast-1
+          # STABLE: AWS account ID
+          awsAccountId: "559744160976"
+---
+repositories:
+  - name: opencost
+    url: https://opencost.github.io/opencost-helm-chart
+
+releases:
+  - name: opencost
+    namespace: monitoring
+    chart: opencost/opencost
+    version: "2.5.28"
+    values:
+      - values.yaml.gotmpl
