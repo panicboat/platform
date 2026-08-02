@@ -52,7 +52,7 @@ node-exporter/cAdvisor -------┘              ▼
 OpenCost 用 Pod Identity IAM role。 `aws/eks-metrics`/`eks-logs`/`eks-traces` と同じ「1 AWS 機能 = 1 stack」pattern に従う。 cluster と一蓮托生の resource のため `docs/runbooks/eks-production-recreate.md` の destroy/recreate cycle 対象に含める (= `scripts/eks-lifecycle/lib/30-destroy-stacks.sh` の STACKS 配列に追加)。
 
 - IAM role: Pod Identity Association で `monitoring:opencost` ServiceAccount にひも付け
-- 権限: AWS Pricing API (`pricing:GetProducts` 等) + EC2 read (instance/spot price history 参照用)。 具体的な最小権限 policy は実装時に実際の OpenCost 呼び出しログで検証しながら確定する
+- 権限: S3 read (Spot Data Feed bucket、 bucket-level + object-level) + `ec2:DescribeSpotPriceHistory` (`Resource: "*"`。 EC2 の `Describe*` 系 action は resource-level restriction 非対応のため)。 後者は spot node が S3 data feed にまだ反映されていない場合に OpenCost が呼ぶ fallback 用。 on-demand 価格は public unauthenticated HTTPS endpoint 経由のため AWS Pricing API 権限は不要
 
 ### `aws/cost-management/` (既存 stack、 拡張)
 

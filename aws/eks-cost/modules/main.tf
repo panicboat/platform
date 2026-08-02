@@ -60,6 +60,12 @@ resource "aws_iam_role_policy" "spot_datafeed_read" {
         Effect   = "Allow"
         Action   = ["s3:GetObject", "s3:HeadObject"]
         Resource = "${local.spot_datafeed_bucket_arn}/*"
+      },
+      {
+        Sid      = "SpotPriceHistoryFallbackRead"
+        Effect   = "Allow"
+        Action   = ["ec2:DescribeSpotPriceHistory"]
+        Resource = "*"
       }
     ]
   })
