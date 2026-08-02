@@ -13,7 +13,6 @@ metadata:
     app.kubernetes.io/part-of: opencost
     app.kubernetes.io/managed-by: Helm
 automountServiceAccountToken: true
-
 ---
 # Source: opencost/templates/configmap-custom-pricing.yaml
 apiVersion: v1
@@ -38,7 +37,6 @@ data:
       "zoneNetworkEgress": "0.01",
       "provider" : "aws"
     }
-
 ---
 # Source: opencost/templates/configmap-frontend.yaml
 apiVersion: v1
@@ -124,7 +122,6 @@ data:
             proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
         }
     }
-
 ---
 # Source: opencost/templates/clusterrole.yaml
 # Cluster role giving opencost to get, list, watch required resources
@@ -212,7 +209,6 @@ rules:
       - get
       - list
       - watch
-
 ---
 # Source: opencost/templates/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -428,7 +424,6 @@ spec:
             items:
               - key: nginx.conf
                 path: default.nginx.conf
-
 ---
 # Source: opencost/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
