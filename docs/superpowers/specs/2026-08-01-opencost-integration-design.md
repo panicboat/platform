@@ -22,18 +22,22 @@ Grafana から AWS cost を可視化できるようにする。 Cost Explorer �
 ```
 EC2 (spot) --hourly--> S3 (spot data feed, 新規 bucket)
                               │
-AWS Pricing API <-------------┼------ OpenCost pod (Pod Identity 認証)
-                              │              │
-kube-state-metrics/           │              │ /metrics
-node-exporter/cAdvisor -------┘              ▼
-  (既存 kube-prometheus-stack が scrape)  ServiceMonitor
-                                             │
-                                    kube-prometheus-stack Prometheus
-                                             │ remote-write (既存 pipeline)
-                                             ▼
-                                           Mimir
-                                             │
-                                           Grafana (公式 OpenCost dashboard)
+AWS 公開 pricing endpoint     │ (Pod Identity 認証: S3 read +
+  (認証不要、on-demand 価格)   │  ec2:DescribeSpotPriceHistory fallback)
+        │                    │
+        └──────────► OpenCost pod ◄──┘
+                              │ /metrics
+kube-state-metrics/           │
+node-exporter/cAdvisor -------┘  (既存 kube-prometheus-stack が scrape)
+                              │
+                        ServiceMonitor
+                              │
+                    kube-prometheus-stack Prometheus
+                              │ remote-write (既存 pipeline)
+                              ▼
+                            Mimir
+                              │
+                            Grafana (公式 OpenCost dashboard)
 ```
 
 ## Components
@@ -67,7 +71,7 @@ OpenCost 公式 Grafana dashboard JSON を追加。 既存の sidecar auto-disco
 ## Data Flow
 
 1. EC2 が spot instance 稼働時間分の価格情報を毎時 S3 (新規 bucket) に書き出す。 instance が稼働していない時間帯は data feed ファイルが生成されない
-2. OpenCost pod が Pod Identity で AWS 認証し、 S3 data feed (spot 価格) + AWS Pricing API (on-demand 価格) を読む
+2. OpenCost pod が S3 data feed (spot 価格) を Pod Identity 認証で読む (data feed に未反映の場合は `ec2:DescribeSpotPriceHistory` に fallback)。 on-demand 価格は AWS 公開 pricing endpoint から認証不要で読む
 3. 既存の kube-state-metrics / node-exporter / cAdvisor (既に kube-prometheus-stack が scrape 済み) の resource 使用量と突き合わせ、 pod/namespace/node/deployment 単位のコストを算出
 4. OpenCost 自身の `/metrics` を ServiceMonitor 経由で Prometheus が scrape → 既存の remote-write pipeline で Mimir へ
 5. Grafana (公式 dashboard、 datasource は Mimir) で可視化
@@ -80,7 +84,7 @@ OpenCost 公式 Grafana dashboard JSON を追加。 既存の sidecar auto-disco
 
 ## Testing / Verification
 
-- deploy 後、 OpenCost pod のログで AWS 認証成功 + Pricing API 呼び出し成功を確認する (VERIFIED として記録)
+- deploy 後、 OpenCost pod のログで Pod Identity 経由の AWS 認証成功 (S3 read) と on-demand pricing endpoint への到達成功を確認する (VERIFIED として記録)
 - `/metrics` (または Prometheus 経由の query) で cost metric に非ゼロ・妥当な値が出ることを確認する
 - 既知の node の spot 価格 (`aws ec2 describe-spot-price-history` で実測した値) と OpenCost の算出値を突き合わせて sanity check する
 - Grafana dashboard が "no data" にならず描画されることを確認する
