@@ -26,6 +26,6 @@ releases:
   - name: aws-load-balancer-controller
     namespace: kube-system
     chart: eks/aws-load-balancer-controller
-    version: "3.4.3"
+    version: "3.5.0"
     values:
       - values.yaml.gotmpl
