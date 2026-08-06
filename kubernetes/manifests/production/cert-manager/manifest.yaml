@@ -14,6 +14,7 @@ metadata:
     app.kubernetes.io/version: "v1.21.1"
     app.kubernetes.io/managed-by: Helm
     helm.sh/chart: cert-manager-v1.21.1
+
 ---
 # Source: cert-manager/templates/serviceaccount.yaml
 apiVersion: v1
@@ -30,6 +31,7 @@ metadata:
     app.kubernetes.io/version: "v1.21.1"
     app.kubernetes.io/managed-by: Helm
     helm.sh/chart: cert-manager-v1.21.1
+
 ---
 # Source: cert-manager/templates/webhook-serviceaccount.yaml
 apiVersion: v1
@@ -46,6 +48,7 @@ metadata:
     app.kubernetes.io/version: "v1.21.1"
     app.kubernetes.io/managed-by: Helm
     helm.sh/chart: cert-manager-v1.21.1
+
 ---
 # Source: cert-manager/templates/crd-acme.cert-manager.io_challenges.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -3379,6 +3382,7 @@ spec:
       storage: true
       subresources:
         status: {}
+
 ---
 # Source: cert-manager/templates/crd-acme.cert-manager.io_orders.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -3670,6 +3674,7 @@ spec:
       storage: true
       subresources:
         status: {}
+
 ---
 # Source: cert-manager/templates/crd-cert-manager.io_certificaterequests.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -3997,6 +4002,7 @@ spec:
       storage: true
       subresources:
         status: {}
+
 ---
 # Source: cert-manager/templates/crd-cert-manager.io_certificates.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -4912,6 +4918,7 @@ spec:
       storage: true
       subresources:
         status: {}
+
 ---
 # Source: cert-manager/templates/crd-cert-manager.io_clusterissuers.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -8866,6 +8873,7 @@ spec:
       storage: true
       subresources:
         status: {}
+
 ---
 # Source: cert-manager/templates/crd-cert-manager.io_issuers.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -12819,6 +12827,7 @@ spec:
       storage: true
       subresources:
         status: {}
+
 ---
 # Source: cert-manager/templates/cainjector-rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -13432,6 +13441,7 @@ subjects:
   - name: cert-manager
     namespace: cert-manager
     kind: ServiceAccount
+
 ---
 # Source: cert-manager/templates/webhook-rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -13454,6 +13464,7 @@ subjects:
 - kind: ServiceAccount
   name: cert-manager-webhook
   namespace: cert-manager
+
 ---
 # Source: cert-manager/templates/cainjector-rbac.yaml
 # leader election rules
@@ -13556,6 +13567,7 @@ subjects:
   - kind: ServiceAccount
     name: cert-manager-cainjector
     namespace: cert-manager
+
 ---
 # Source: cert-manager/templates/rbac.yaml
 # grant cert-manager permission to manage the leaderelection configmap in the
@@ -13629,6 +13641,7 @@ spec:
     app.kubernetes.io/name: cainjector
     app.kubernetes.io/instance: cert-manager
     app.kubernetes.io/component: "cainjector"
+
 ---
 # Source: cert-manager/templates/service.yaml
 apiVersion: v1
@@ -13654,6 +13667,7 @@ spec:
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/instance: cert-manager
     app.kubernetes.io/component: "controller"
+
 ---
 # Source: cert-manager/templates/webhook-service.yaml
 apiVersion: v1
@@ -13684,6 +13698,7 @@ spec:
     app.kubernetes.io/name: webhook
     app.kubernetes.io/instance: cert-manager
     app.kubernetes.io/component: "webhook"
+
 ---
 # Source: cert-manager/templates/cainjector-deployment.yaml
 apiVersion: apps/v1
@@ -13754,6 +13769,7 @@ spec:
               memory: 64Mi
       nodeSelector:
         kubernetes.io/os: "linux"
+
 ---
 # Source: cert-manager/templates/deployment.yaml
 apiVersion: apps/v1
@@ -13843,6 +13859,7 @@ spec:
             failureThreshold: 8
       nodeSelector:
         kubernetes.io/os: "linux"
+
 ---
 # Source: cert-manager/templates/webhook-deployment.yaml
 apiVersion: apps/v1
@@ -13944,6 +13961,7 @@ spec:
               memory: 32Mi
       nodeSelector:
         kubernetes.io/os: "linux"
+
 ---
 # Source: cert-manager/templates/webhook-mutating-webhook.yaml
 apiVersion: admissionregistration.k8s.io/v1
@@ -13985,49 +14003,6 @@ webhooks:
         name: cert-manager-webhook
         namespace: cert-manager
         path: /mutate
----
-# Source: cert-manager/templates/servicemonitor.yaml
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: cert-manager
-  namespace: cert-manager
-  labels:
-    app: cert-manager
-    app.kubernetes.io/name: cert-manager
-    app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/component: "controller"
-    app.kubernetes.io/version: "v1.21.1"
-    app.kubernetes.io/managed-by: Helm
-    helm.sh/chart: cert-manager-v1.21.1
-    prometheus: default
-    release: kube-prometheus-stack
-spec:
-  jobLabel: app.kubernetes.io/name
-  selector:
-    matchExpressions:
-      - key: app.kubernetes.io/name
-        operator: In
-        values:
-        - cainjector
-        - cert-manager
-        - webhook
-      - key: app.kubernetes.io/instance
-        operator: In
-        values:
-        - cert-manager
-      - key: app.kubernetes.io/component
-        operator: In
-        values:
-        - cainjector
-        - controller
-        - webhook
-  endpoints:
-  - targetPort: http-metrics
-    path: /metrics
-    interval: 60s
-    scrapeTimeout: 30s
-    honorLabels: false
 ---
 # Source: cert-manager/templates/webhook-validating-webhook.yaml
 apiVersion: admissionregistration.k8s.io/v1
@@ -14076,6 +14051,50 @@ webhooks:
         name: cert-manager-webhook
         namespace: cert-manager
         path: /validate
+
+---
+# Source: cert-manager/templates/servicemonitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cert-manager
+  namespace: cert-manager
+  labels:
+    app: cert-manager
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/instance: cert-manager
+    app.kubernetes.io/component: "controller"
+    app.kubernetes.io/version: "v1.21.1"
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: cert-manager-v1.21.1
+    prometheus: default
+    release: kube-prometheus-stack
+spec:
+  jobLabel: app.kubernetes.io/name
+  selector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values:
+        - cainjector
+        - cert-manager
+        - webhook
+      - key: app.kubernetes.io/instance
+        operator: In
+        values:
+        - cert-manager
+      - key: app.kubernetes.io/component
+        operator: In
+        values:
+        - cainjector
+        - controller
+        - webhook
+  endpoints:
+  - targetPort: http-metrics
+    path: /metrics
+    interval: 60s
+    scrapeTimeout: 30s
+    honorLabels: false
 ---
 # Source: cert-manager/templates/startupapicheck-serviceaccount.yaml
 apiVersion: v1
@@ -14096,6 +14115,7 @@ metadata:
     app.kubernetes.io/version: "v1.21.1"
     app.kubernetes.io/managed-by: Helm
     helm.sh/chart: cert-manager-v1.21.1
+
 ---
 # Source: cert-manager/templates/startupapicheck-rbac.yaml
 # create certificate role
@@ -14147,6 +14167,7 @@ subjects:
   - kind: ServiceAccount
     name: cert-manager-startupapicheck
     namespace: cert-manager
+
 ---
 # Source: cert-manager/templates/startupapicheck-job.yaml
 apiVersion: batch/v1
@@ -14209,6 +14230,7 @@ spec:
                 fieldPath: metadata.namespace
       nodeSelector:
         kubernetes.io/os: "linux"
+
 
 ---
 apiVersion: cert-manager.io/v1
