@@ -11718,6 +11718,7 @@ subjects:
 - kind: ServiceAccount
   name: keda-operator
   namespace: keda
+
 ---
 # Source: keda/templates/manager/minimal-rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -11740,6 +11741,7 @@ subjects:
 - kind: ServiceAccount
   name: keda-operator
   namespace: keda
+
 ---
 # Source: keda/templates/metrics-server/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -11806,6 +11808,7 @@ subjects:
 - kind: ServiceAccount
   name: keda-webhook
   namespace: keda
+
 ---
 # Source: keda/templates/manager/minimal-rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -11918,6 +11921,7 @@ spec:
     targetPort: 9666
   selector:
     app: keda-operator
+
 ---
 # Source: keda/templates/metrics-server/service.yaml
 apiVersion: v1
@@ -11948,6 +11952,7 @@ spec:
     protocol: TCP
   selector:
     app: keda-operator-metrics-apiserver
+
 ---
 # Source: keda/templates/webhooks/service.yaml
 apiVersion: v1
@@ -11972,6 +11977,7 @@ spec:
     appProtocol: https
   selector:
     app: keda-admission-webhooks
+
 ---
 # Source: keda/templates/manager/deployment.yaml
 apiVersion: apps/v1
@@ -12112,6 +12118,7 @@ spec:
         kubernetes.io/os: linux
       dnsPolicy: ClusterFirst
       hostNetwork: false
+
 ---
 # Source: keda/templates/metrics-server/deployment.yaml
 apiVersion: apps/v1
@@ -12244,6 +12251,7 @@ spec:
       hostNetwork: false
       nodeSelector:
         kubernetes.io/os: linux
+
 ---
 # Source: keda/templates/webhooks/deployment.yaml
 apiVersion: apps/v1
@@ -12358,6 +12366,7 @@ spec:
       hostNetwork: false
       nodeSelector:
         kubernetes.io/os: linux
+
 ---
 # Source: keda/templates/metrics-server/apiservice.yaml
 apiVersion: apiregistration.k8s.io/v1
@@ -12381,6 +12390,7 @@ spec:
   version: v1beta1
   groupPriorityMinimum: 100
   versionPriority: 100
+
 ---
 # Source: keda/templates/webhooks/validatingconfiguration.yaml
 apiVersion: admissionregistration.k8s.io/v1
