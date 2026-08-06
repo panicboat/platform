@@ -1,6 +1,6 @@
 # EKS Production Recreate — Manual Bootstrap Runbook
 
-> **Status**: 運用 runbook (= 2026-05-16 live run validated、 PR #401-#407 merge 後の構成に対応)。
+> **Status**: 運用 runbook (= 2026-05-16 live run validated、 2026-08-06 に AI agent 主導で再 live run し Phase 9 順序 (9.1/9.2) を修正、 PR #401-#407, #727 merge 後の構成に対応)。
 >
 > **Scope**: `eks-production` cluster を **clean slate (= 全 stack destroy + orphan zero)** から **operator が手作業で 2 terminal 並行で sequentially bootstrap** する手順。
 >
@@ -81,6 +81,8 @@ git status --short
 4. `coredns` + `aws-ebs-csi-driver` は schedule 不能で **DEGRADED で 20分 wait**
 
 Phase 3 / 4 / 5 を **別 terminal で並行実行** すれば、 wait の間に nodes が Ready 化して addon が ACTIVE に遷移し、 Phase 2 が抜ける。
+
+> **NOTE**: Phase 4 (cilium install) + Phase 5 (karpenter apply) が 20分 window 内に完了しないと、 `terragrunt apply` は addon timeout で `exit 1` になる (= `waiting for EKS Add-On ... timeout while waiting for state to become 'ACTIVE'`)。 これは cluster / addon resource 自体は正常に存在したまま client 側の wait が諦めただけなので、 破壊的な状態ではない。 Phase 4 / 5 を完了させて node を Ready 化させたあと、 同じ `terragrunt apply` を再実行すれば (idempotent) addon が ACTIVE に遷移して完走する。 §5 Failure handling 参照。
 
 ### Phase 3: kubectl auth (= Terminal B)
 
@@ -221,17 +223,11 @@ Karpenter が NodePool 観測 → Pending pod (= ebs-csi-controller / hubble-rel
 
 ### Phase 9: Flux bootstrap
 
-#### 9.1 Flux core install
+> **NOTE — 9.1 と 9.2 の順序は厳守**: `flux-system` GitRepository は `main` branch を 1分間隔で fetch し、 Kustomization は 10分間隔 (+ 初回即時) で `./kubernetes/clusters/production` を reconcile する。 9.2 (Flux core install) を 9.1 (hydrate + merge) より **先に** 実行すると、 Flux が `main` に残る **旧 (destroy 済 cluster の) RECREATE marker 値** で即 reconcile し、 Phase 4 で bootstrap 済の cilium DaemonSet/Deployment を `kustomize-controller` field manager で上書きして壊す (= 存在しない旧 cluster endpoint に向けて cilium agent が crash loop する)。 該当 node の CNI が壊れると、 その node に新規 schedule された他 pod (= opentelemetry-operator 等の webhook 提供 pod) も起動できず、 Flux 自身の次回 reconcile が webhook dry-run 失敗で止まる **循環依存** に陥ることがある。 9.1 (hydrate + merge を **main 反映まで完了**) → 9.2 (Flux core install) の順序を守ればこの race は発生しない。
+>
+> 発生させてしまった場合の復旧: `flux suspend kustomization flux-system` で被害拡大を止める → 9.1 の PR を merge する → `flux resume kustomization flux-system && flux reconcile source git flux-system && flux reconcile kustomization flux-system`。 循環依存で進まない場合は壊れた Deployment/DaemonSet の該当 env var を `kubectl set env` で直接正しい値に patch して CNI を先に復旧させる (= `kubectl apply --server-side` と異なり strategic merge patch は他 field manager の所有権と衝突しないため安全に割り込める)。 CNI 復旧後に webhook 提供 pod が起動し、 Flux の次回 reconcile で `kustomize-controller` が正しい値の所有権を取り戻して収束する。 §5 Failure handling 参照。
 
-PR #407 で `gotk-components.yaml` (= Flux core + image-reflector / image-automation controllers) が source 化されているため、 1 コマンドで install:
-
-```bash
-kubectl apply -k kubernetes/clusters/production/flux-system/ --server-side --force-conflicts
-```
-
-`--server-side` は CRD の annotation size limit (= 262KB) 回避に必須。
-
-#### 9.2 hydrate + commit + push
+#### 9.1 hydrate + commit + push
 
 ```bash
 # RECREATE marker は Phase 4 で edit 済 (= 再 edit 不要)
@@ -256,11 +252,23 @@ gh pr create --title "chore(kubernetes): refresh helmfile + manifests after clus
 # review + merge
 ```
 
-merge 後 main から:
+**merge 完了を確認してから次に進む。** merge 後 main から:
 
 ```bash
 git checkout main && git pull --ff-only
 ```
+
+#### 9.2 Flux core install
+
+PR #407 で `gotk-components.yaml` (= Flux core + image-reflector / image-automation controllers) が source 化されているため、 1 コマンドで install:
+
+```bash
+kubectl apply -k kubernetes/clusters/production/flux-system/ --server-side --force-conflicts
+```
+
+`--server-side` は CRD の annotation size limit (= 262KB) 回避に必須。
+
+> **NOTE**: 上記 1 コマンドで CRD と CR (`GitRepository` / `Kustomization`) を同時 apply するため、 CRD 登録が CR apply に間に合わず `no matches for kind "Kustomization"` / `no matches for kind "GitRepository"` で一部 fail することがある。 数秒待って同じコマンドをもう一度実行すれば全 resource が apply される (= CRD 登録待ちの retry-once で解消、 破壊的操作ではない)。
 
 #### 9.3 cluster manifests apply (= 2-step bootstrap、 webhook chicken-and-egg 回避)
 
@@ -355,6 +363,8 @@ done
 | terragrunt apply で `ACM Certificate ... is in use` | 過去 destroy で ALB が取り残された | `aws elbv2 delete-load-balancer` で手動削除後 retry (= teardown 側は PR #398 で fixed) |
 | stale terragrunt state lock (= `Error acquiring the state lock`) | 前 session の lock release 漏れ OR CI run が異常終了 | `aws dynamodb scan --table-name terragrunt-state-locks --query "Items[?Info != \`null\`]"` で active lock 確認 → `terragrunt force-unlock -force <ID>` |
 | `flux-system` Kustomization `False` で webhook validation error | webhook 提供 HelmRelease (= cert-manager / external-secrets / opentelemetry-operator) が未起動 | **Phase 9.3a の bootstrap-webhooks apply (= PR #410) を実行済か確認**。 9.3a を skip した場合は数分待って Flux reconcile loop で self-heal 期待、 起動済なのに stuck なら `flux reconcile kustomization flux-system` で force trigger |
+| Phase 2 の `terragrunt apply` が `waiting for EKS Add-On ... timeout while waiting for state to become 'ACTIVE'` で `exit 1` | Phase 4 (cilium) + Phase 5 (karpenter) が addon の 20分 DEGRADED wait 内に完了していない | cluster / addon 自体は正常。 Phase 4 / 5 を完了させ node を Ready 化させたあと、 同じ `terragrunt apply` を再実行 (idempotent) すれば addon が ACTIVE に遷移して完走する |
+| Phase 9.2 (Flux core install) を Phase 9.1 (hydrate + merge) より先に実行してしまい、 cilium agent が **旧 (destroy 済) cluster endpoint** への DNS 解決失敗で crash loop、 かつ他 pod も CNI 未提供で ContainerCreating のまま止まる | Phase 9.1 の PR merge 前に Flux が `main` の stale RECREATE marker 値で reconcile し、 `kustomize-controller` field manager が cilium DaemonSet/Deployment を旧値で上書きした (= Phase 9 冒頭 §NOTE 参照)。 webhook 提供 pod が壊れた node で止まると Flux 自身の reconcile も webhook dry-run 失敗で止まり循環依存になる | `flux suspend kustomization flux-system` → Phase 9.1 の PR を merge → `flux resume kustomization flux-system && flux reconcile source git flux-system && flux reconcile kustomization flux-system`。 循環依存で進まない場合は壊れた Deployment/DaemonSet の該当 env var を `kubectl set env` で直接正しい値に patch して CNI を先に復旧させ、 webhook 提供 pod 起動後に Flux reconcile で収束させる |
 | Pending pods が `pod has unbound immediate PersistentVolumeClaims` | gp3 StorageClass 未作成 | **PR #406 merge 後は不要**。 旧 cluster recreate で pre-PR #406 commit から始める場合のみ手動作成 |
 | post-merge CI が apply 中に operator local apply 試行で衝突 | CI が state lock 保持 | CI 完走待ち、 OR CI cancel + force-unlock。 将来は `skip-deploy` label scheme (= PR #404 design Phase B) で防止 |
 | Karpenter が spot node を起動できず consolidation/scale-out が進まない (= karpenter controller log に `AuthFailure.ServiceLinkedRoleCreationNotPermitted`) | `AWSServiceRoleForEC2Spot` service-linked role が account に未作成。 Karpenter controller IAM policy は least-privilege 設計で `iam:CreateServiceLinkedRole` を含まないため AWS 側の自動作成が失敗する | `aws/iam-service-linked-roles` (account 単位 singleton、 `aws/karpenter` の destroy/recreate cycle 対象外) を apply する。 通常は §2.1 の pre-condition で済んでいるはずなので、 発生する場合は `aws iam get-role --role-name AWSServiceRoleForEC2Spot` で存在確認 |
@@ -384,5 +394,6 @@ done
 - PR #407 — Flux gotk-components + image-reflector/automation controllers
 - PR #694 — EC2 Spot service-linked role を account 単位 stack (`aws/iam-service-linked-roles`) に分離
 - PR #695 — hubble-relay hard pod affinity 起因の Karpenter node churn loop を解消 (preferred 化 + `consolidateAfter` 5m)
+- PR #727 — 2026-08-06 live run の RECREATE marker 反映 + 全 component re-hydrate
 - Cilium ENI IPAM docs: https://docs.cilium.io/en/v1.19/network/concepts/ipam/eni/
 - AWS EKS Pod Identity docs: https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html
