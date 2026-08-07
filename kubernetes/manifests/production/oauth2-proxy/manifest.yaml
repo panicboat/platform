@@ -20,7 +20,6 @@ spec:
       app.kubernetes.io/name: oauth2-proxy
       app.kubernetes.io/instance: oauth2-proxy-grafana
   minAvailable: 1
-
 ---
 # Source: oauth2-proxy/templates/serviceaccount.yaml
 apiVersion: v1
@@ -71,7 +70,6 @@ data:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
-
 ---
 # Source: oauth2-proxy/templates/service.yaml
 apiVersion: v1
@@ -104,7 +102,6 @@ spec:
   selector:    
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-grafana
-
 ---
 # Source: oauth2-proxy/templates/deployment.yaml
 apiVersion: apps/v1
@@ -226,7 +223,6 @@ spec:
           defaultMode: 420
           name: oauth2-proxy-grafana
         name: configmain
-
 ---
 # Source: oauth2-proxy/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -282,7 +278,6 @@ spec:
       app.kubernetes.io/name: oauth2-proxy
       app.kubernetes.io/instance: oauth2-proxy-hubble
   minAvailable: 1
-
 ---
 # Source: oauth2-proxy/templates/serviceaccount.yaml
 apiVersion: v1
@@ -333,7 +328,6 @@ data:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
-
 ---
 # Source: oauth2-proxy/templates/service.yaml
 apiVersion: v1
@@ -366,7 +360,6 @@ spec:
   selector:    
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-hubble
-
 ---
 # Source: oauth2-proxy/templates/deployment.yaml
 apiVersion: apps/v1
@@ -488,7 +481,6 @@ spec:
           defaultMode: 420
           name: oauth2-proxy-hubble
         name: configmain
-
 ---
 # Source: oauth2-proxy/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -544,7 +536,6 @@ spec:
       app.kubernetes.io/name: oauth2-proxy
       app.kubernetes.io/instance: oauth2-proxy-alertmanager
   minAvailable: 1
-
 ---
 # Source: oauth2-proxy/templates/serviceaccount.yaml
 apiVersion: v1
@@ -595,7 +586,6 @@ data:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
-
 ---
 # Source: oauth2-proxy/templates/service.yaml
 apiVersion: v1
@@ -628,7 +618,6 @@ spec:
   selector:    
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-alertmanager
-
 ---
 # Source: oauth2-proxy/templates/deployment.yaml
 apiVersion: apps/v1
@@ -750,7 +739,6 @@ spec:
           defaultMode: 420
           name: oauth2-proxy-alertmanager
         name: configmain
-
 ---
 # Source: oauth2-proxy/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -806,7 +794,6 @@ spec:
       app.kubernetes.io/name: oauth2-proxy
       app.kubernetes.io/instance: oauth2-proxy-prometheus
   minAvailable: 1
-
 ---
 # Source: oauth2-proxy/templates/serviceaccount.yaml
 apiVersion: v1
@@ -857,7 +844,6 @@ data:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
-
 ---
 # Source: oauth2-proxy/templates/service.yaml
 apiVersion: v1
@@ -890,7 +876,6 @@ spec:
   selector:    
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-prometheus
-
 ---
 # Source: oauth2-proxy/templates/deployment.yaml
 apiVersion: apps/v1
@@ -1012,7 +997,6 @@ spec:
           defaultMode: 420
           name: oauth2-proxy-prometheus
         name: configmain
-
 ---
 # Source: oauth2-proxy/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
