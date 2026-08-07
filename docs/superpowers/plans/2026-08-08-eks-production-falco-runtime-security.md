@@ -110,7 +110,10 @@ zsh -ic 'eks-login production >/dev/null 2>&1
 echo "--- node count ---"
 kubectl get nodes --no-headers | wc -l
 echo "--- OTel Collector (log funnel の担い手) ---"
-kubectl get ds -n monitoring opentelemetry-collector
+# NOTE: DaemonSet 名は opentelemetry-collector-agent (= chart が -agent suffix を
+# 付ける)。values の fullnameOverride: opentelemetry-collector が効くのは Service
+# 名で、DaemonSet 名ではない。
+kubectl get ds -n monitoring opentelemetry-collector-agent
 echo "--- Loki ---"
 kubectl get pods -n monitoring -l app.kubernetes.io/name=loki
 echo "--- falco namespace (未作成であること) ---"
