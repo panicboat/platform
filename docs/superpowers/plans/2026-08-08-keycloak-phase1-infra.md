@@ -259,8 +259,8 @@ Run:
 ```bash
 export AQUA_CONFIG="$(pwd)/.github/aqua.yaml"
 kustomize build kubernetes/components/keycloak/production/kustomization > /tmp/keycloak-kustomize.yaml
-grep -A1 "^kind: Cluster$" /tmp/keycloak-kustomize.yaml | grep "name: keycloak-db"
-grep -A1 "^kind: ExternalSecret$" /tmp/keycloak-kustomize.yaml | grep "name: keycloak-admin"
+grep -A2 "^kind: Cluster$" /tmp/keycloak-kustomize.yaml | grep "name: keycloak-db"
+grep -A2 "^kind: ExternalSecret$" /tmp/keycloak-kustomize.yaml | grep "name: keycloak-admin"
 ```
 Expected: both commands succeed and print the matching `name:` line — confirms the `Cluster` named `keycloak-db` and the `ExternalSecret` named `keycloak-admin` render correctly.
 
@@ -388,8 +388,8 @@ Run:
 ```bash
 export AQUA_CONFIG="$(pwd)/.github/aqua.yaml"
 helmfile -f kubernetes/components/keycloak/production/helmfile.yaml -e production template --skip-tests > /tmp/keycloak-render.yaml
-grep -A1 "^kind: StatefulSet$" /tmp/keycloak-render.yaml | grep "name: keycloak$"
-grep -A1 "^kind: Service$" /tmp/keycloak-render.yaml | grep "name: keycloak-http$"
+grep -A2 "^kind: StatefulSet$" /tmp/keycloak-render.yaml | grep "name: keycloak$"
+grep -A2 "^kind: Service$" /tmp/keycloak-render.yaml | grep "name: keycloak-http$"
 grep "KC_HOSTNAME" -A1 /tmp/keycloak-render.yaml
 grep "keycloak-db-rw.keycloak.svc.cluster.local" /tmp/keycloak-render.yaml
 grep '\- start$' /tmp/keycloak-render.yaml
@@ -495,7 +495,7 @@ Run:
 ```bash
 export AQUA_CONFIG="$(pwd)/.github/aqua.yaml"
 kustomize build kubernetes/components/keycloak/production/kustomization > /tmp/keycloak-kustomize.yaml
-grep -A1 "^kind: Ingress$" /tmp/keycloak-kustomize.yaml | grep "name: keycloak$"
+grep -A2 "^kind: Ingress$" /tmp/keycloak-kustomize.yaml | grep "name: keycloak$"
 grep "auth.dystopia.city" /tmp/keycloak-kustomize.yaml
 grep "name: keycloak-http" /tmp/keycloak-kustomize.yaml
 ```
