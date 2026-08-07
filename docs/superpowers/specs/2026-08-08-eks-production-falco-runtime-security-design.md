@@ -242,17 +242,40 @@ chart default (requests 100m / 512Mi、limits 1000m / 1024Mi) で開始し、実
 
 Falco は chatty なルールを `incubating` / `sandbox` ruleset に切り出しており、default では読み込まれない。「まず全部出して実測する」判断が成立するのはこの規模だからである。
 
-### 発火が予測される noise: `Contact K8S API Server From Container`
+### `Contact K8S API Server From Container` は機能しない可能性が高い
 
-このルール (NOTICE) は `k8s_containers` マクロで既知の K8s コンポーネントを除外するが、その中身は **`kube-system` namespace 全体 + 特定 image のハードコード列挙**である (VERIFIED: `falco_rules.yaml` の macro 定義)。
+このルール (NOTICE) は当初「確実に発火する noise 源」と見積もっていたが、**逆に一度も発火しない可能性の方が高い**。
 
-| 除外される | 除外されず発火する |
-|---|---|
-| ALB Controller / metrics-server / CoreDNS / cilium-operator (kube-system)、prometheus-operator、cert-manager-**cainjector**、Grafana の k8s-sidecar | Flux 各 controller、Karpenter、external-secrets、external-dns、KEDA、cert-manager controller 本体、OTel Collector (k8sattributes が API を叩く) |
+ルールの除外機構は `k8s_containers` マクロで、その中身は `kube-system` namespace 全体 + 特定 image のハードコード列挙である (VERIFIED: `falco_rules.yaml` の macro 定義)。この cluster では Flux 各 controller / Karpenter / external-secrets / external-dns / KEDA / cert-manager controller 本体 / OTel Collector が除外対象に含まれないため、**除外ロジックだけを見れば発火する**。
 
-対処機構はルール側に用意されている。`user_known_contact_k8s_api_server_activities` という空マクロ (`(never_true)`) があり、`customRules` で override append できる。
+しかし発火の前提となる `k8s_api_server` マクロは `fd.sip.name = "kubernetes.default.svc.cluster.local"`、すなわち **接続先 IP が該当 DNS 名として解決できること**を要求する。この cluster ではこれを崩す機構が独立に 2 つある。
 
-**初回リリースには exception を入れない。** 推測で先に穴を開けると、本当に見たいものまで塞ぐ。実測して出た送信元だけを、根拠付きで allowlist に追加する PR を別に立てる。
+1. **Cilium socket-LB による connect 時 DNAT** — `kubeProxyReplacement: true` + `socketLB.enabled: true` (VERIFIED: `cilium/production/values.yaml.gotmpl:47,115-116`)。socket-LB は `cgroup/connect4` hook で connect(2) の時点で宛先を実 backend にDNAT する。Falco が socket tuple から読む `fd.sip` が DNAT 後のアドレスであれば、ClusterIP に紐づく DNS 名とは一致しない
+2. **in-cluster client が DNS を引かない** — client-go の in-cluster config は `KUBERNETES_SERVICE_HOST` 環境変数 (= ClusterIP) を直接使い、`kubernetes.default.svc.cluster.local` の名前解決を行わない。Falco が IP→名前の対応を DNS 応答の観測から得ているなら、その対応自体が学習されない
+
+2 は Cilium と無関係に成立するため、**このルールは本 cluster に限らず広範に空振りしている可能性がある**。
+
+検証レベルは **REASONED**。`fd.sip.name` の実装 (DNAT 前後どちらの tuple を読むか、名前解決の供給源) を一次情報で確認していない。
+
+**含意は「noise が減って良かった」ではなく「検知の死角がある」である。** 攻撃者の Pod が API server を叩いても同じ理由で記録されない。K8s API へのアクセス追跡が本当に必要なら、syscall ではなく control plane audit log (= 本 spec の Non-goals に置いた k8saudit-eks) が正しい情報源になる。
+
+### noise の allowlist は初回リリースに入れない
+
+`user_known_contact_k8s_api_server_activities` という空マクロ (`(never_true)`) があり `customRules` で override append できるが、**初回では使わない**。上記のとおり発火するかどうかすら確定していない状態で先に穴を開けると、本当に見たいものまで塞ぐ。実測して出た送信元だけを、根拠付きで allowlist に追加する PR を別に立てる。
+
+---
+
+## Cilium coexistence
+
+`eks-production` は Cilium が native CNI (ENI mode) + `kubeProxyReplacement: true` で稼働する。Falco との共存で検討した 3 点。
+
+| 論点 | 結論 | 根拠 |
+|---|---|---|
+| eBPF program の競合 | **問題なし** | Cilium は tc / XDP / cgroup hook、Falco は syscall tracepoint で attach point が異なる |
+| falcoctl init container の ghcr.io egress | **問題なし** | cluster-wide の default-deny NetworkPolicy が存在しない (VERIFIED: repo 内の NetworkPolicy は Flux 同梱の 3 件のみで、すべて `flux-system` namespace scope)。将来 default-deny を導入する際は Falco の ghcr.io egress 許可が必要になる |
+| BPF map / ring buffer のメモリ | **軽微** | Cilium の BPF map と Falco の per-CPU ring buffer (`bufSizePreset: 4`, `cpusForEachBuffer: 2`) はいずれも kernel 側の確保で container の memory limit に計上されない。node の実メモリは消費するため、実測時に available memory を確認する |
+
+socket-LB が検知内容に与える影響は前節 (`Contact K8S API Server From Container`) を参照。
 
 ---
 
@@ -300,6 +323,21 @@ Step 6 の前に、Grafana Explore (https://grafana.panicboat.net) で以下の 
 
 label 名 `k8s_namespace_name` は既存 dashboard の LogQL と同一 (Loki の OTLP resource attribute マッピング由来)。
 
+### Cilium socket-LB 下での `Contact K8S API Server From Container` 実測
+
+前節の REASONED な推論を実測で確定させる。deploy 後 30 分ほど放置してから確認する (Flux / Karpenter / external-secrets 等が定常的に API server を叩く時間)。
+
+```logql
+{k8s_namespace_name="falco"} | json | rule="Contact K8S API Server From Container"
+```
+
+| 結果 | 解釈 | 対応 |
+|---|---|---|
+| ヒットなし | socket-LB の DNAT または DNS 未使用により条件が成立していない = **検知の死角**が確定 | spec の該当節を VERIFIED に更新し、K8s API 追跡が必要かを別 spec で判断する |
+| ヒットあり | ルールは機能している = 想定どおりの noise | 実際に出た送信元を根拠に allowlist を別 PR で追加する |
+
+**どちらでも本 spec の成功基準は満たされる。** この項目は Falco 導入の可否ではなく、Falco で何が見えて何が見えないかを確定させるための観測である。
+
 検証用 Pod は Flux 管理外の一時リソースであり、`kubectl` 直接操作でも GitOps の drift を生まない。
 
 ---
@@ -315,7 +353,8 @@ label 名 `k8s_namespace_name` は既存 dashboard の LogQL と同一 (Loki の
 | 項目 | 検証レベル | 内容と対処 |
 |---|---|---|
 | `leastPrivileged: true` が AL2023 / ARM64 で動くか | ASSUMED | Falco 公式の modern_ebpf 向けサポート経路だが、この OS / arch 組み合わせでの実績は未確認。失敗すれば BPF load エラーで CrashLoop するため即座に判明する。切り戻しは values 1 行で `false` に戻す |
-| Loki のログ増加量 | ASSUMED | 25 ルール・Flux / Karpenter 由来の NOTICE が主。実測して過大なら `user_known_contact_k8s_api_server_activities` の allowlist で絞る |
+| `Contact K8S API Server From Container` が Cilium socket-LB 下で発火するか | REASONED | `fd.sip.name` が DNAT 前後どちらの tuple を読むか、および名前解決の供給源を一次情報で未確認。発火しない場合は noise 減ではなく**検知の死角**を意味する。Verification に実測項目を設けた |
+| Loki のログ増加量 | ASSUMED | stable ruleset は 25 件と小さく、主な発生源と見込んでいた API server ルールも空振りの可能性がある。当初見積もりより少ない方向にぶれる公算が大きい |
 | 新規 component 追加で deploy label が自動付与されるか | REASONED | `workflow-config.yaml` の `stack_conventions` が pattern 定義であることから推論。PR 作成時に実際の label 付与を確認する |
 | ルール更新の追従 | 既知の制約 | Renovate は OCI artifact を追えない。`falco-rules` の新版は手動で確認・更新する。頻度が問題になれば custom manager を追加する |
 
