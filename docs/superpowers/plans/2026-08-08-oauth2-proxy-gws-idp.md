@@ -242,11 +242,24 @@ resources:
 
 - [ ] **Step 7: hydrate を実行する**
 
+**`AQUA_CONFIG` を必ず設定すること。**
+
 ```bash
+export AQUA_CONFIG="$(git rev-parse --show-toplevel)/.github/aqua.yaml"
 bash scripts/kubernetes-hydrate/hydrate-component.sh oauth2-proxy production
 ```
 
 期待: エラーなく終了する。スクリプトは worktree の root で動作する (= 内部で `git rev-parse --show-toplevel` を実行)。
+
+**なぜ `AQUA_CONFIG` が要るか:** version pin は `.github/aqua.yaml` にあり、root に `aqua.yaml` が無いため aqua は自動適用しない。素の PATH で実行すると global に入れた別バージョン (= helm v4 系など) が使われ、CI が使う pin (= helmfile v0.169.2 / helm v3.17.3 / kustomize v5.6.0) と出力がずれる。helm の major version 差は `---` 区切りの直前の空行の有無として現れ、CI hydrator が差分を検出して余分な commit を積む。CI 側は `reusable--kubernetes-hydrator.yaml` で `AQUA_CONFIG: .github/aqua.yaml` を明示している。
+
+設定できているかは version で確認する。
+
+```bash
+helm version --template '{{.Version}}'   # v3.17.3
+helmfile --version | head -1             # helmfile version 0.169.2
+kustomize version                        # v5.6.0
+```
 
 - [ ] **Step 8: hydrate 結果を検証する**
 
@@ -366,7 +379,7 @@ gh pr view --json labels --jq '.labels[].name'
 確認する内容:
 
 1. ラベルに `deploy:oauth2-proxy` が自動付与されている
-2. hydrator が追加 commit を作っていない (= Task 2 でローカル hydrate 済みのため差分ゼロが正常)。もし追加 commit がある場合は `git pull` して内容を確認し、ローカル hydrate と CI hydrate の結果がずれた原因を特定してから進む
+2. hydrator が追加 commit を作っていない (= Task 2 Step 7 を `AQUA_CONFIG` 付きで実行していれば差分ゼロが正常)。追加 commit がある場合は `git pull` して内容を確認する。空行だけの差分なら Task 2 Step 7 の toolchain がずれていたので、`AQUA_CONFIG` を設定して再 hydrate し、CI 出力と一致することを確認してから進む。空行以外の差分なら原因を特定するまで進まない
 3. kustomize-diff の PR コメントに以下が現れている
    - ConfigMap `oauth2-proxy-allowed-emails` の削除
    - 4 Deployment の `email_domains` 変更と volume / volumeMount 削除
