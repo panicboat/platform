@@ -1,0 +1,39 @@
+# =============================================================================
+# Ingress: Keycloak (application IngressGroup)
+# =============================================================================
+# monolith / frontend / monitoring-uis と同じ共有 ALB (IngressGroup
+# `application`) に相乗りする。*.dystopia.city の wildcard ACM cert を ALB
+# Controller が自動 attach、external-dns が Route53 record を自動作成する。
+#
+# healthcheck-port を明示的に 9000 に向けている理由: codecentric/keycloakx
+# chart は health/metrics を container port 9000 (Service 上も 9000) の
+# 管理用インターフェースに分離しており、traffic-port (= 80) には無い。
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak
+  namespace: keycloak
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/group.name: application
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health/ready
+    alb.ingress.kubernetes.io/healthcheck-port: "9000"
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    external-dns.alpha.kubernetes.io/hostname: auth.dystopia.city
+spec:
+  ingressClassName: alb
+  rules:
+    - host: auth.dystopia.city
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak-http
+                port:
+                  number: 80
