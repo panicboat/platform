@@ -68,8 +68,7 @@ kubernetes/components/sandbox/production/
 ├── kustomization/
 │   ├── kustomization.yaml
 │   ├── deployment.yaml
-│   ├── service.yaml
-│   └── index.html              # configMapGenerator 経由で配信する cluster 版の内容
+│   └── service.yaml
 ├── okteto.yml
 └── app/
     └── index.html              # sync 対象のローカル版の内容
@@ -80,10 +79,14 @@ kubernetes/components/sandbox/production/
 同居させる理由は、撤退がディレクトリの削除一回で完結することにある。
 
 Deployment は Python 公式イメージの slim variant で `python -m http.server` を動かすだけの構成にする。
-配信ディレクトリには ConfigMap 由来の `index.html` をマウントする。
+配信する `index.html` は起動コマンド自身が生成し、Pod に volume を一つも持たせない。
+
+ConfigMap を配信ディレクトリにマウントする形は採らない。
+okteto は sync 先ディレクトリに自前の volume をマウントするため、同じパスに ConfigMap の volume があると mount が衝突しうる。
+起動コマンドで生成すれば、この衝突は原理的に起きない。
 
 この構成にすると、HTTP レスポンス一つで二つのことが同時に確認できる。
-差し替え前は ConfigMap 版の内容が返り、`okteto up` のあとはローカルの `app/index.html` の内容が返って、編集するたびに変わる。
+差し替え前は起動コマンドが書いた内容が返り、`okteto up` のあとはローカルの `app/index.html` の内容が返って、編集するたびに変わる。
 hot reload の仕組みもデータベースも必要なく、`kubectl port-forward` と `curl` だけで検証が閉じる。
 
 Service は ClusterIP のみで、外部公開しない。
@@ -141,10 +144,20 @@ annotation を付けない選択は、`okteto up` が 0 replica にした直後�
 `ansible` と `dotfiles` の変更は、それぞれパッケージ配列と `.zshrc` から該当行を削除するだけで戻る。
 どちらもクラスタに影響しないため、`platform` の撤退と順序を揃える必要はない。
 
-## Open items
+## Manifest and CLI details
 
-実装時に実行して確認する。
+okteto のソースで確認した仕様を記録する。
 
-- `okteto completion zsh` サブコマンドの有無。存在しない場合は `dotfiles` の変更を取り下げる
-- `okteto.yml` の `dev` セクションの schema。`sync` の記法と `command` が配列か文字列かを確認する
-- `okteto down` が sync 用 PVC を残すかどうか。残る場合は EBS の課金が継続するため、`okteto down -v` を撤退手順に含める
+`dev` セクションの `sync` は `<local>:<remote>` 形式の文字列配列を取る。
+`command` は文字列と文字列配列のどちらでもよい。
+`image` を省略すると対象 Deployment のイメージを継承する。
+`autocreate` の既定値は false であり、本設計では既存 Deployment の差し替えを評価するため指定しない。
+
+`okteto down` は既定で sync 用 PVC を残す。
+`-v` を付けると削除する。
+PVC の既定サイズは 5Gi で、storageClass は cluster の default に従う。
+撤退手順では `-v` を付けて EBS の課金を止める。
+
+`okteto completion zsh` の有無はインストール後に確認する。
+cobra v1.10.2 を使っており `main.go` で `CompletionOptions.DisableDefaultCmd` を設定していないため、cobra 既定の completion コマンドが生えると見込んでいる。
+存在しなければ `dotfiles` の変更を取り下げる。
