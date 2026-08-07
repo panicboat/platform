@@ -12,7 +12,7 @@
 
 - Chart `codecentric/keycloakx` version `7.2.2` (app Keycloak `26.6.4`), repo `https://codecentric.github.io/helm-charts`
 - Chart `cnpg/cloudnative-pg` version `0.29.0` (app CloudNativePG `1.30.0`), repo `https://cloudnative-pg.github.io/charts`
-- All `helm`/`helmfile`/`kustomize` invocations MUST go through the aqua-pinned toolchain: prefix commands with `AQUA_CONFIG=.github/aqua.yaml aqua exec -- <tool> ...` (pins helm `v3.17.3`, helmfile `v0.169.2`, kustomize `v5.6.0`). Never use an ambient/global install — a prior incident showed version drift causes chart `semverCompare` branches to render different (noisy) output.
+- All `helm`/`helmfile`/`kustomize` invocations MUST use the aqua-pinned toolchain (pins helm `v3.17.3`, helmfile `v0.169.2`, kustomize `v5.6.0`), never an ambient/global install — a prior incident showed version drift causes chart `semverCompare` branches to render different (noisy) output. Run `export AQUA_CONFIG="$(pwd)/.github/aqua.yaml"` (must be an **absolute path**, repo root as cwd) once per shell, then call `helm`/`helmfile`/`kustomize` normally — the aqua shims already on `PATH` read `AQUA_CONFIG` at each invocation. A **relative** `AQUA_CONFIG` breaks under `helmfile template`, which `chdir`s into the component directory before invoking its `helm` sub-process, so the shim resolves the relative path against the wrong directory and fails (verified during Task 1: `open kubernetes/components/cloudnative-pg/production/.github/aqua.yaml: no such file or directory`).
 - Namespace name matches the component directory name exactly (`cloudnative-pg`, `keycloak`) — existing repo convention (`cert-manager`, `external-secrets`, `oauth2-proxy` all follow this).
 - Public hostname: `auth.dystopia.city` (existing `*.dystopia.city` wildcard ACM cert + `external-dns` auto-attach; no new cert work).
 - Explicit out of scope (per `docs/superpowers/specs/2026-08-07-keycloak-phase1-infra-design.md` §2): AWS RDS, monorepo changes, dystopia realm/client creation, Postgres HA/backup.
@@ -113,12 +113,13 @@ resources:
 
 Run:
 ```bash
-AQUA_CONFIG=.github/aqua.yaml aqua exec -- helmfile -f kubernetes/components/cloudnative-pg/production/helmfile.yaml -e production template --include-crds --skip-tests > /tmp/cnpg-render.yaml
-grep -c "^kind: Cluster$" /tmp/cnpg-render.yaml
+export AQUA_CONFIG="$(pwd)/.github/aqua.yaml"
+helmfile -f kubernetes/components/cloudnative-pg/production/helmfile.yaml -e production template --include-crds --skip-tests > /tmp/cnpg-render.yaml
+grep -c "name: clusters.postgresql.cnpg.io" /tmp/cnpg-render.yaml
 grep -c "^kind: Deployment$" /tmp/cnpg-render.yaml
 grep "name: cloudnative-pg" /tmp/cnpg-render.yaml | head -3
 ```
-Expected: all three commands succeed (exit 0); the `Cluster` CRD count is `1` (from `--include-crds`); the `Deployment` count is `1` (the operator itself); at least one line contains `name: cloudnative-pg`.
+Expected: all commands succeed (exit 0); the CNPG `Cluster` CRD (`name: clusters.postgresql.cnpg.io`, from `--include-crds`) count is `1` — note its own `kind` is `CustomResourceDefinition`, "Cluster" only appears as the nested `spec.names.kind`, so do not grep for a top-level `kind: Cluster` here; the `Deployment` count is `1` (the operator itself); at least one line contains `name: cloudnative-pg`.
 
 - [ ] **Step 6: Commit**
 
@@ -256,7 +257,8 @@ resources:
 
 Run:
 ```bash
-AQUA_CONFIG=.github/aqua.yaml aqua exec -- kustomize build kubernetes/components/keycloak/production/kustomization > /tmp/keycloak-kustomize.yaml
+export AQUA_CONFIG="$(pwd)/.github/aqua.yaml"
+kustomize build kubernetes/components/keycloak/production/kustomization > /tmp/keycloak-kustomize.yaml
 grep -A1 "^kind: Cluster$" /tmp/keycloak-kustomize.yaml | grep "name: keycloak-db"
 grep -A1 "^kind: ExternalSecret$" /tmp/keycloak-kustomize.yaml | grep "name: keycloak-admin"
 ```
@@ -384,7 +386,8 @@ resources:
 
 Run:
 ```bash
-AQUA_CONFIG=.github/aqua.yaml aqua exec -- helmfile -f kubernetes/components/keycloak/production/helmfile.yaml -e production template --skip-tests > /tmp/keycloak-render.yaml
+export AQUA_CONFIG="$(pwd)/.github/aqua.yaml"
+helmfile -f kubernetes/components/keycloak/production/helmfile.yaml -e production template --skip-tests > /tmp/keycloak-render.yaml
 grep -A1 "^kind: StatefulSet$" /tmp/keycloak-render.yaml | grep "name: keycloak$"
 grep -A1 "^kind: Service$" /tmp/keycloak-render.yaml | grep "name: keycloak-http$"
 grep "KC_HOSTNAME" -A1 /tmp/keycloak-render.yaml
@@ -416,7 +419,8 @@ git commit -s -m "feat(kubernetes/components/keycloak): add Keycloak Helm releas
 
 Run:
 ```bash
-AQUA_CONFIG=.github/aqua.yaml aqua exec -- kustomize build kubernetes/components/keycloak/production/kustomization | grep "kind: Ingress"
+export AQUA_CONFIG="$(pwd)/.github/aqua.yaml"
+kustomize build kubernetes/components/keycloak/production/kustomization | grep "kind: Ingress"
 ```
 Expected: no output (Ingress not defined yet).
 
@@ -489,7 +493,8 @@ resources:
 
 Run:
 ```bash
-AQUA_CONFIG=.github/aqua.yaml aqua exec -- kustomize build kubernetes/components/keycloak/production/kustomization > /tmp/keycloak-kustomize.yaml
+export AQUA_CONFIG="$(pwd)/.github/aqua.yaml"
+kustomize build kubernetes/components/keycloak/production/kustomization > /tmp/keycloak-kustomize.yaml
 grep -A1 "^kind: Ingress$" /tmp/keycloak-kustomize.yaml | grep "name: keycloak$"
 grep "auth.dystopia.city" /tmp/keycloak-kustomize.yaml
 grep "name: keycloak-http" /tmp/keycloak-kustomize.yaml
@@ -500,6 +505,7 @@ Expected: all three commands print a match.
 
 Run:
 ```bash
+export AQUA_CONFIG="$(pwd)/.github/aqua.yaml"
 bash scripts/kubernetes-hydrate/hydrate-component.sh cloudnative-pg production
 bash scripts/kubernetes-hydrate/hydrate-component.sh keycloak production
 bash scripts/kubernetes-hydrate/hydrate-index.sh production
