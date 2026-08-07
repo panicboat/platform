@@ -49,13 +49,12 @@ Helm chart を持たない sandbox もこの形に収まる。
 
 ## Changes across repositories
 
-変更は三つの repo にまたがる。
-それぞれ独立して適用でき、クラスタに影響するのは `platform` の変更だけである。
+変更は二つの repo にまたがる。
+どちらも独立して適用でき、クラスタに影響するのは `platform` の変更だけである。
 
 | repo | 変更 | 目的 |
 |---|---|---|
 | `ansible` | `roles/homebrew/tasks/main.yaml` のパッケージ配列に `okteto` を追加 | CLI をマシンセットアップに載せる |
-| `dotfiles` | `.zshrc` に okteto の zsh completion を追加 | 補完。`kubectl` と同じ cache パターンに従う |
 | `platform` | `kubernetes/components/sandbox/production/` を新規追加 | 差し替え対象の workload と、okteto manifest および同期対象ソース |
 
 `okteto` は homebrew-core に formula があるため、tap の追加を必要としない。
@@ -127,7 +126,7 @@ annotation を付けない選択は、`okteto up` が 0 replica にした直後�
 |---|---|---|
 | 1 | ansible 適用後に `okteto version` | バージョンが出力される |
 | 2 | PR マージ後に Flux が同期 | `kubectl -n sandbox get deploy sandbox` が Ready |
-| 3 | `port-forward` して `curl` | ConfigMap 版の内容が返る |
+| 3 | `port-forward` して `curl` | 起動コマンドが生成した内容が返る |
 | 4 | `okteto up` | 元の Deployment が 0 replica、複製が Ready。`curl` がローカル版を返す |
 | 5 | ローカルの `app/index.html` を編集 | 再度の `curl` で即座に反映される |
 | 6 | `flux reconcile kustomization flux-system` を二回実行 | 複製が生き残り、元の Deployment が 0 replica のまま |
@@ -141,8 +140,8 @@ annotation を付けない選択は、`okteto up` が 0 replica にした直後�
 
 `platform` の変更は検証手順 8 と同じ操作で撤回する。
 
-`ansible` と `dotfiles` の変更は、それぞれパッケージ配列と `.zshrc` から該当行を削除するだけで戻る。
-どちらもクラスタに影響しないため、`platform` の撤退と順序を揃える必要はない。
+`ansible` の変更はパッケージ配列から該当行を削除するだけで戻る。
+クラスタに影響しないため、`platform` の撤退と順序を揃える必要はない。
 
 ## Manifest and CLI details
 
@@ -158,6 +157,7 @@ okteto のソースで確認した仕様を記録する。
 PVC の既定サイズは 5Gi で、storageClass は cluster の default に従う。
 撤退手順では `-v` を付けて EBS の課金を止める。
 
-`okteto completion zsh` の有無はインストール後に確認する。
-cobra v1.10.2 を使っており `main.go` で `CompletionOptions.DisableDefaultCmd` を設定していないため、cobra 既定の completion コマンドが生えると見込んでいる。
-存在しなければ `dotfiles` の変更を取り下げる。
+zsh 補完のために `dotfiles` を変更する必要は無い。
+homebrew-core の formula が `_okteto` を `/opt/homebrew/share/zsh/site-functions/` に配置し、`.zshrc` は既にそのディレクトリを FPATH に入れている。
+`.zshrc` を無変更のまま対話 zsh で `$_comps[okteto]` が解決することを確認した。
+`okteto completion zsh` サブコマンド自体は存在するが、それを呼ぶ設定を自前で持つと formula が同梱する補完と重複する。

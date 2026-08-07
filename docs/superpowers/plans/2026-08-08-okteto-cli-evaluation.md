@@ -4,9 +4,9 @@
 
 **Goal:** Okteto OSS CLI をローカルに導入し、EKS production cluster の `sandbox` namespace で `okteto up` による Deployment 差し替えが Flux の drift correction と共存できるかを判定する。
 
-**Architecture:** `ansible` に CLI を追加してインストールし、`dotfiles` に zsh 補完を足す。`platform` には `kubernetes/components/sandbox/production/` を新規 component として追加し、差し替え対象の Deployment と okteto manifest と同期対象ソースを同居させる。Deployment に `kustomize.toolkit.fluxcd.io/ssa: IfNotPresent` を付けて Flux の drift correction を止め、`okteto up` 中に Flux を二回 reconcile させて開発コンテナが生き残るかを確認する。
+**Architecture:** `ansible` に CLI を追加してインストールする。`platform` には `kubernetes/components/sandbox/production/` を新規 component として追加し、差し替え対象の Deployment と okteto manifest と同期対象ソースを同居させる。Deployment に `kustomize.toolkit.fluxcd.io/ssa: IfNotPresent` を付けて Flux の drift correction を止め、`okteto up` 中に Flux を二回 reconcile させて開発コンテナが生き残るかを確認する。
 
-**Tech Stack:** Okteto CLI (homebrew-core) / Kubernetes Deployment + Service / Kustomize v5.6.0 / Flux GitOps (kustomize-controller SSA policy) / Python 公式イメージ slim variant / Ansible + Homebrew / zsh
+**Tech Stack:** Okteto CLI (homebrew-core) / Kubernetes Deployment + Service / Kustomize v5.6.0 / Flux GitOps (kustomize-controller SSA policy) / Python 公式イメージ slim variant / Ansible + Homebrew
 
 **Spec:** `docs/superpowers/specs/2026-08-08-okteto-cli-evaluation-design.md`
 
@@ -17,7 +17,7 @@
 - コミットは必ず `-s`（`--signoff`）を付ける。`Co-Authored-By` を付与しない
 - 新規ブランチの初回 push は `git push -u origin HEAD` でトラッキングを設定する
 - PR は `gh pr create --draft` で作成する。Draft 以外で作らない。タイトルは英語で書く
-- 3 repo とも worktree で作業する。ディレクトリは `.claude/worktrees/<branch の / を - に置換した名前>`
+- `ansible` と `platform` の 2 repo とも worktree で作業する。ディレクトリは `.claude/worktrees/<branch の / を - に置換した名前>`
 - `platform` でローカル hydrate を実行する前に `AQUA_CONFIG` を export する。設定しないと CI が空行だけの hydrate commit を積む
 - コード内の要素（変数名、コマンド、コメント）は英語。ドキュメント本文は日本語
 - 検証結果を報告するときは VERIFIED（実行して確認、コマンドと出力を添える）と REASONED（コード読解による推論）を区別する
@@ -30,7 +30,7 @@
 - Modify: `~/GitHub/panicboat/ansible/roles/homebrew/tasks/main.yaml:57-58`（`nodenv` と `opentofu` の間）
 
 **Interfaces:**
-- Produces: PATH 上の `okteto` コマンド。Task 2 と Task 5 が使う
+- Produces: PATH 上の `okteto` コマンド。Task 5 が使う
 
 `okteto` は homebrew-core にある。tap の追加は不要。
 
@@ -115,89 +115,13 @@ BODY
 
 ---
 
-### Task 2: Add zsh completion for okteto
+### Task 2: Add zsh completion for okteto (REMOVED)
 
-**Files:**
-- Modify: `~/GitHub/panicboat/dotfiles/.zshrc:66`（`unset _kube_cache_dir` の直後）
+このタスクは実行しない。Task 1 の実測で不要と判明したため、人間の裁定により削除した。
 
-**Interfaces:**
-- Consumes: Task 1 でインストールした `okteto` コマンド
+`brew install okteto` は `_okteto` を `/opt/homebrew/share/zsh/site-functions/` に配置し、`.zshrc:56` は既にそのディレクトリを FPATH に入れている。`.zshrc` を無変更のまま `zsh -i -c` で `$_comps[okteto]` が解決することを確認済みである。当初の条件は「`okteto completion zsh` が存在しなければ取り下げる」だったが、実際は「存在するが不要」だった。
 
-このタスクは `okteto completion zsh` が存在する場合のみ実施する。存在しない場合は Step 2 で中止し、Task 3 へ進む。
-
-- [ ] **Step 1: dotfiles の worktree を作る**
-
-```bash
-cd ~/GitHub/panicboat/dotfiles
-git fetch origin main
-git worktree add -b feat/okteto-completion .claude/worktrees/feat-okteto-completion origin/main
-cd .claude/worktrees/feat-okteto-completion
-```
-
-- [ ] **Step 2: completion サブコマンドの有無を確認する**
-
-Run:
-```bash
-okteto completion zsh | head -3
-```
-Expected: `#compdef okteto` で始まる zsh 補完スクリプトが出力される。
-
-`unknown command "completion"` などのエラーが出た場合は、このタスクを中止する。worktree を `git worktree remove .claude/worktrees/feat-okteto-completion` で片付け、branch を `git branch -D feat/okteto-completion` で消し、spec の該当記述を「completion コマンドは存在しない」に更新してから Task 3 へ進む。
-
-- [ ] **Step 3: 挿入位置を確認する**
-
-Run:
-```bash
-grep -n 'unset _kube_cache_dir' .zshrc
-```
-Expected: 1 行だけヒットする。この行の直後が挿入位置になる。
-
-- [ ] **Step 4: completion ブロックを追加する**
-
-`unset _kube_cache_dir` の直後に空行 1 つを挟んで次を挿入する。kubectl のブロックと同じ cache パターンにする。
-
-```zsh
-_okteto_cache_dir=${ZDOTDIR:-$HOME}/.zsh/completions
-if (( $+commands[okteto] )); then
-  if [[ ! -f $_okteto_cache_dir/_okteto || $commands[okteto] -nt $_okteto_cache_dir/_okteto ]]; then
-    mkdir -p $_okteto_cache_dir
-    okteto completion zsh > $_okteto_cache_dir/_okteto
-  fi
-  FPATH=$_okteto_cache_dir:$FPATH
-fi
-unset _okteto_cache_dir
-```
-
-挿入後、このブロックが `autoload -Uz compinit` より前にあることを確認する。compinit より後ろでは FPATH の追加が効かない。
-
-- [ ] **Step 5: 構文エラーが無いことを確認する**
-
-Run:
-```bash
-zsh -n .zshrc && echo "SYNTAX OK"
-```
-Expected: `SYNTAX OK` が出力される。
-
-- [ ] **Step 6: 補完が読み込まれることを確認する**
-
-Run:
-```bash
-zsh -i -c 'rm -f ${ZDOTDIR:-$HOME}/.zsh/completions/_okteto; source '"$PWD"'/.zshrc; test -f ${ZDOTDIR:-$HOME}/.zsh/completions/_okteto && echo GENERATED'
-```
-Expected: `GENERATED` が出力される。補完ファイルが cache ディレクトリに生成されている。
-
-- [ ] **Step 7: コミットして Draft PR を作る**
-
-```bash
-git add .zshrc
-git commit -s -m "feat(zsh): add okteto completion"
-git push -u origin HEAD
-gh pr create --draft --title "feat(zsh): add okteto completion" --body "$(cat <<'BODY'
-okteto CLI の zsh 補完を追加する。kubectl と同じく、バイナリが補完ファイルより
-新しいときだけ再生成する cache 方式にした。毎回生成すると shell 起動が遅くなる。
-BODY
-)"
-```
+番号は ledger との対応を保つため振り直さない。
 
 ---
 
@@ -716,11 +640,12 @@ Expected: `Error from server (NotFound): namespaces "sandbox" not found`。names
 
 Task 6 で不採用と判断した場合のみ実行する。採用して sandbox だけを畳んだ場合は飛ばす。
 
-`ansible` の `roles/homebrew/tasks/main.yaml` から `- okteto` の行を削除し、`dotfiles` の `.zshrc` から Task 2 Step 4 で挿入した `_okteto_cache_dir` ブロックを削除する。それぞれの worktree でコミットして push する。
+`ansible` の `roles/homebrew/tasks/main.yaml` から `- okteto` の行を削除し、worktree でコミットして push する。
 
 ```bash
 brew uninstall okteto
-rm -f "${ZDOTDIR:-$HOME}/.zsh/completions/_okteto"
 ```
 
-Task 1 と Task 2 の PR がまだ Draft のまま残っている場合は `gh pr close` で閉じる。
+`_okteto` 補完は formula が同梱しているため、`brew uninstall` で一緒に消える。手で消すファイルは無い。
+
+Task 1 の PR がまだ Draft のまま残っている場合は `gh pr close` で閉じる。
