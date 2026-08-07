@@ -53,7 +53,7 @@ resources:
     memory: 256Mi
 
 # =============================================================================
-# Provider: Google OAuth
+# Provider: Google OAuth (= Google Workspace panicboat.net)
 # =============================================================================
 # config.existingSecret で ESO 由来 K8s Secret `oauth2-proxy-google` を直接参照、
 # chart が OAUTH2_PROXY_CLIENT_ID / CLIENT_SECRET / COOKIE_SECRET を deployment 環境変数に
@@ -61,11 +61,16 @@ resources:
 # 4 releases が同じ Secret を参照することで cookie_secret 共有 → cookie domain
 # `.panicboat.net` 経由で 4 hosts SSO 実現 (= 同じ cookie name `_oauth2_proxy` を
 # 4 instances が共通の cookie_secret で encrypt/decrypt)。
+#
+# email_domains は Google 側の Internal OAuth client 制限と重複しない。Internal が
+# 守るのは GWS テナント境界 (= テナントが複数ドメインを持てばその全部を通す)、
+# email_domains が守るのは monitoring UIs の利用者境界 (= panicboat.net のみ)。
+# テナントに追加ドメインが生えても本 UI の利用者が広がらないようにするのが後者。
 config:
   existingSecret: oauth2-proxy-google
   configFile: |-
     provider = "google"
-    email_domains = [ "*" ]
+    email_domains = [ "panicboat.net" ]
     upstreams = [ "{{ $upstreamUrl }}" ]
     cookie_domains = [ ".panicboat.net" ]
     whitelist_domains = [ ".panicboat.net" ]
@@ -78,29 +83,12 @@ config:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
-    authenticated_emails_file = "/etc/oauth2-proxy/emails/allowed"
-
-# =============================================================================
-# Extra Volumes & Volume Mounts (= ConfigMap allowlist)
-# =============================================================================
-# ConfigMap `oauth2-proxy-allowed-emails` (= kustomization で deploy) を 4 releases が
-# 共有 mount、config.configFile の `authenticated_emails_file` で参照。
-# ConfigMap 変更時は Reloader が 4 Deployments 全部を auto-rollout
-# (= deploymentAnnotations 参照、annotation が同じ namespace 内の全 ConfigMap watch を trigger)。
-extraVolumes:
-  - name: emails
-    configMap:
-      name: oauth2-proxy-allowed-emails
-extraVolumeMounts:
-  - name: emails
-    mountPath: /etc/oauth2-proxy/emails
-    readOnly: true
 
 # =============================================================================
 # Deployment Annotations (= Reloader watch)
 # =============================================================================
-# ESO 由来 Secret `oauth2-proxy-google` 変更時 + ConfigMap `oauth2-proxy-allowed-emails`
-# 変更時に Reloader が自動 rollout する。
+# ESO 由来 Secret `oauth2-proxy-google` の変更 (= OAuth client 差し替え / rotation) を
+# Reloader が検知して自動 rollout する。
 deploymentAnnotations:
   reloader.stakater.com/auto: "true"
 

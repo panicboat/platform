@@ -6,8 +6,8 @@
 # で実施、各 Ingress backend が release ごとの Service を参照)。
 # cookie domain `.panicboat.net` + cookie_secret 共有 (= 4 release が同じ
 # ExternalSecret 由来 Secret を参照) で 4 hosts SSO 実現。
-# Google OAuth gate + email allowlist (= ConfigMap allowed-emails) で
-# panicboat@gmail.com のみ通過。
+# Google Workspace panicboat.net の Internal OAuth client + email_domains で
+# 同ドメインの user のみ通過。
 #
 # NOTE: oauth2-proxy v7+ の `upstreams` config は path-based routing のみ対応
 # (= 単一 instance での host-based routing 不可、v7.15.2 で startup error
