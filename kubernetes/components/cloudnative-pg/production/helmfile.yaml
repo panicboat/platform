@@ -1,0 +1,22 @@
+# =============================================================================
+# CloudNativePG Helmfile for production
+# =============================================================================
+# PostgreSQL operator 本体のみ。Keycloak が使う Cluster CR は
+# kubernetes/components/keycloak/production/kustomization/ 側で定義する
+# (= operator 本体と、それを使う側の CR を分離する既存の慣習に合わせる)。
+# =============================================================================
+environments:
+  production:
+
+---
+repositories:
+  - name: cnpg
+    url: https://cloudnative-pg.github.io/charts
+
+releases:
+  - name: cloudnative-pg
+    namespace: cloudnative-pg
+    chart: cnpg/cloudnative-pg
+    version: "0.29.0"
+    values:
+      - values.yaml.gotmpl
