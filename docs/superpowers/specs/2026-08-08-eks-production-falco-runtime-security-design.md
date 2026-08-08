@@ -349,20 +349,13 @@ Step 6 の前に、Grafana Explore (https://grafana.panicboat.net) で以下の 
 
 label 名 `k8s_namespace_name` は既存 dashboard の LogQL と同一 (Loki の OTLP resource attribute マッピング由来)。
 
-### Cilium socket-LB 下での `Contact K8S API Server From Container` 実測
+### Cilium socket-LB Measurement Result for `Contact K8S API Server From Container`
 
-前節の REASONED な推論を実測で確定させる。deploy 後 30 分ほど放置してから確認する (Flux / Karpenter / external-secrets 等が定常的に API server を叩く時間)。
+実測済み。以下の LogQL の結果は 0 件だった。結論と検知範囲への影響は上記の「`Contact K8S API Server From Container` は機能しない (実測確定)」を参照。
 
 ```logql
 {k8s_namespace_name="falco"} | json | rule="Contact K8S API Server From Container"
 ```
-
-| 結果 | 解釈 | 対応 |
-|---|---|---|
-| ヒットなし | socket-LB の DNAT または DNS 未使用により条件が成立していない = **検知の死角**が確定 | spec の該当節を VERIFIED に更新し、K8s API 追跡が必要かを別 spec で判断する |
-| ヒットあり | ルールは機能している = 想定どおりの noise | 実際に出た送信元を根拠に allowlist を別 PR で追加する |
-
-**どちらでも本 spec の成功基準は満たされる。** この項目は Falco 導入の可否ではなく、Falco で何が見えて何が見えないかを確定させるための観測である。
 
 検証用 Pod は Flux 管理外の一時リソースであり、`kubectl` 直接操作でも GitOps の drift を生まない。
 
