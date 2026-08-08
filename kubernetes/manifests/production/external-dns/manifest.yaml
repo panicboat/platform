@@ -113,7 +113,6 @@ metadata:
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::559744160976:role/eks-production-external-dns
 automountServiceAccountToken: true
-
 ---
 # Source: external-dns/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -142,7 +141,6 @@ rules:
   - apiGroups: ["extensions","networking.k8s.io"]
     resources: ["ingresses"]
     verbs: ["get","watch","list"]
-
 ---
 # Source: external-dns/templates/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -163,7 +161,6 @@ subjects:
   - kind: ServiceAccount
     name: external-dns
     namespace: external-dns
-
 ---
 # Source: external-dns/templates/service.yaml
 apiVersion: v1
@@ -187,7 +184,6 @@ spec:
       port: 7979
       targetPort: http
       protocol: TCP
-
 ---
 # Source: external-dns/templates/deployment.yaml
 apiVersion: apps/v1

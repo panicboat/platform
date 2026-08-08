@@ -18,7 +18,6 @@ metadata:
     app.kubernetes.io/version: "v1.4.19"
   name: reloader-reloader
   namespace: reloader
-
 ---
 # Source: reloader/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -83,7 +82,6 @@ rules:
     verbs:
       - create
       - patch
-
 ---
 # Source: reloader/templates/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -112,7 +110,6 @@ subjects:
   - kind: ServiceAccount
     name: reloader-reloader
     namespace: reloader
-
 ---
 # Source: reloader/templates/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -202,7 +199,6 @@ spec:
     name: http
     protocol: TCP
     targetPort: http
-
 ---
 # Source: reloader/templates/deployment.yaml
 apiVersion: apps/v1
@@ -311,7 +307,6 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: reloader-reloader
-
 ---
 # Source: reloader/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1

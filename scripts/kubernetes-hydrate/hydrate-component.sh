@@ -20,11 +20,30 @@ cd "$(git rev-parse --show-toplevel)"
 component_dir="kubernetes/components/${component}/${env}"
 out_dir="kubernetes/manifests/${env}/${component}"
 
+# Charts branch on .Capabilities.KubeVersion (opentelemetry-operator selects the
+# nodes/pods vs nodes/proxy RBAC rule at >=1.33, for one). Without --kube-version helm
+# substitutes a built-in default that tracks the helm release rather than the cluster:
+# helm 3.17.3 reports v1.32.0 and helm 4.2.3 reports v1.36.0. Leaving it implicit makes
+# the rendered output depend on which helm binary ran, and renders capability-gated
+# templates against the wrong Kubernetes version. Take the version from the Terraform
+# stack that owns the cluster so there is one source for it.
+env_hcl="aws/eks/envs/${env}/env.hcl"
+if [ ! -f "${env_hcl}" ]; then
+    echo "hydrate-component.sh: ${env_hcl} not found; cannot determine cluster version" >&2
+    exit 1
+fi
+kube_version=$(sed -n 's/^[[:space:]]*cluster_version[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "${env_hcl}")
+if [ -z "${kube_version}" ]; then
+    echo "hydrate-component.sh: cluster_version not set in ${env_hcl}" >&2
+    exit 1
+fi
+
 mkdir -p "${out_dir}"
 : > "${out_dir}/manifest.yaml"
 
 if [ -f "${component_dir}/helmfile.yaml" ]; then
-    helmfile -f "${component_dir}/helmfile.yaml" -e "${env}" template --include-crds --skip-tests >> "${out_dir}/manifest.yaml"
+    helmfile -f "${component_dir}/helmfile.yaml" -e "${env}" template \
+        --include-crds --skip-tests --kube-version "${kube_version}" >> "${out_dir}/manifest.yaml"
 fi
 
 if [ -d "${component_dir}/kustomization" ]; then

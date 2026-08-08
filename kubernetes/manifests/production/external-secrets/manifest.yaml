@@ -236,7 +236,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/beyondtrustworkloadcredentialsdynamicsecret.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -451,7 +450,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/cloudsmithaccesstoken.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -546,7 +544,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/clusterexternalsecret.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -2188,7 +2185,6 @@ spec:
       storage: false
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/clustergenerator.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -4727,7 +4723,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/clusterpushsecret.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -5419,7 +5414,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/clustersecretstore.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -16562,7 +16556,6 @@ spec:
       storage: false
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/ecrauthorizationtoken.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -16759,7 +16752,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/externalsecret.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -18170,7 +18162,6 @@ spec:
       storage: false
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/fake.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -18238,7 +18229,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/gcraccesstoken.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -18501,7 +18491,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/generatorstate.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -18611,7 +18600,6 @@ spec:
       served: true
       storage: true
       subresources: {}
-
 ---
 # Source: external-secrets/templates/crds/githubaccesstoken.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -18728,7 +18716,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/gitlabdeploytoken.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -18879,7 +18866,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/grafana.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -19021,7 +19007,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/mfa.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -19116,7 +19101,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/password.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -19231,7 +19215,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/pushsecret.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -19883,7 +19866,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/quayaccesstoken.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -19974,7 +19956,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/secretstore.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -31117,7 +31098,6 @@ spec:
       storage: false
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/sshkey.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -31191,7 +31171,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/stssessiontoken.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -31399,7 +31378,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/uuid.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -31452,7 +31430,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/vaultdynamicsecret.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -32471,7 +32448,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/crds/webhook.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -32695,7 +32671,6 @@ spec:
       storage: true
       subresources:
         status: {}
-
 ---
 # Source: external-secrets/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -32982,7 +32957,6 @@ rules:
     - "get"
     - "list"
     - "watch"
-
 ---
 # Source: external-secrets/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -33086,7 +33060,6 @@ spec:
   selector:
     app.kubernetes.io/name: external-secrets
     app.kubernetes.io/instance: external-secrets
-
 ---
 # Source: external-secrets/templates/webhook-service.yaml
 apiVersion: v1
@@ -33118,7 +33091,6 @@ spec:
   selector:
     app.kubernetes.io/name: external-secrets-webhook
     app.kubernetes.io/instance: external-secrets
-
 ---
 # Source: external-secrets/templates/deployment.yaml
 apiVersion: apps/v1
@@ -33182,7 +33154,6 @@ spec:
               memory: 32Mi
       dnsPolicy: ClusterFirst
       priorityClassName: system-cluster-critical
-
 ---
 # Source: external-secrets/templates/webhook-deployment.yaml
 apiVersion: apps/v1
@@ -33277,93 +33248,6 @@ spec:
           secret:
             secretName: external-secrets-webhook
       priorityClassName: system-cluster-critical
-
----
-# Source: external-secrets/templates/validatingwebhook.yaml
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name: secretstore-validate
-  labels:
-    
-    helm.sh/chart: external-secrets-2.8.0
-    app.kubernetes.io/name: external-secrets-webhook
-    app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.8.0"
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/metrics: "webhook"
-    external-secrets.io/component: webhook
-  annotations:
-    cert-manager.io/inject-ca-from: external-secrets/external-secrets-webhook
-webhooks:
-- name: "validate.secretstore.external-secrets.io"
-  rules:
-  - apiGroups:   ["external-secrets.io"]
-    apiVersions: ["v1"]
-    operations:  ["CREATE", "UPDATE", "DELETE"]
-    resources:   ["secretstores"]
-    scope:       "Namespaced"
-  clientConfig:
-    service:
-      namespace: external-secrets
-      name: external-secrets-webhook
-      path: /validate-external-secrets-io-v1-secretstore
-  admissionReviewVersions: ["v1", "v1beta1"]
-  sideEffects: None
-  timeoutSeconds: 5
-  failurePolicy: Fail
-
-- name: "validate.clustersecretstore.external-secrets.io"
-  rules:
-  - apiGroups:   ["external-secrets.io"]
-    apiVersions: ["v1"]
-    operations:  ["CREATE", "UPDATE", "DELETE"]
-    resources:   ["clustersecretstores"]
-    scope:       "Cluster"
-  clientConfig:
-    service:
-      namespace: external-secrets
-      name: external-secrets-webhook
-      path: /validate-external-secrets-io-v1-clustersecretstore
-  admissionReviewVersions: ["v1", "v1beta1"]
-  sideEffects: None
-  timeoutSeconds: 5
-  failurePolicy: Fail
----
-# Source: external-secrets/templates/validatingwebhook.yaml
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name: externalsecret-validate
-  labels:
-    
-    helm.sh/chart: external-secrets-2.8.0
-    app.kubernetes.io/name: external-secrets-webhook
-    app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.8.0"
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/metrics: "webhook"
-    external-secrets.io/component: webhook
-  annotations:
-    cert-manager.io/inject-ca-from: external-secrets/external-secrets-webhook
-webhooks:
-- name: "validate.externalsecret.external-secrets.io"
-  rules:
-  - apiGroups:   ["external-secrets.io"]
-    apiVersions: ["v1"]
-    operations:  ["CREATE", "UPDATE", "DELETE"]
-    resources:   ["externalsecrets"]
-    scope:       "Namespaced"
-  clientConfig:
-    service:
-      namespace: external-secrets
-      name: external-secrets-webhook
-      path: /validate-external-secrets-io-v1-externalsecret
-  admissionReviewVersions: ["v1", "v1beta1"]
-  sideEffects: None
-  timeoutSeconds: 5
-  failurePolicy: Fail
-
 ---
 # Source: external-secrets/templates/webhook-certificate.yaml
 apiVersion: cert-manager.io/v1
@@ -33392,7 +33276,6 @@ spec:
     name: selfsigned-cluster-issuer
   duration: "8760h0m0s"
   secretName: external-secrets-webhook
-
 ---
 # Source: external-secrets/templates/servicemonitor.yaml
 apiVersion: "monitoring.coreos.com/v1"
@@ -33480,6 +33363,91 @@ spec:
     interval: 30s
     scrapeTimeout: 25s
     honorLabels: false
+---
+# Source: external-secrets/templates/validatingwebhook.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: secretstore-validate
+  labels:
+    
+    helm.sh/chart: external-secrets-2.8.0
+    app.kubernetes.io/name: external-secrets-webhook
+    app.kubernetes.io/instance: external-secrets
+    app.kubernetes.io/version: "v2.8.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/metrics: "webhook"
+    external-secrets.io/component: webhook
+  annotations:
+    cert-manager.io/inject-ca-from: external-secrets/external-secrets-webhook
+webhooks:
+- name: "validate.secretstore.external-secrets.io"
+  rules:
+  - apiGroups:   ["external-secrets.io"]
+    apiVersions: ["v1"]
+    operations:  ["CREATE", "UPDATE", "DELETE"]
+    resources:   ["secretstores"]
+    scope:       "Namespaced"
+  clientConfig:
+    service:
+      namespace: external-secrets
+      name: external-secrets-webhook
+      path: /validate-external-secrets-io-v1-secretstore
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  timeoutSeconds: 5
+  failurePolicy: Fail
+
+- name: "validate.clustersecretstore.external-secrets.io"
+  rules:
+  - apiGroups:   ["external-secrets.io"]
+    apiVersions: ["v1"]
+    operations:  ["CREATE", "UPDATE", "DELETE"]
+    resources:   ["clustersecretstores"]
+    scope:       "Cluster"
+  clientConfig:
+    service:
+      namespace: external-secrets
+      name: external-secrets-webhook
+      path: /validate-external-secrets-io-v1-clustersecretstore
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  timeoutSeconds: 5
+  failurePolicy: Fail
+---
+# Source: external-secrets/templates/validatingwebhook.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: externalsecret-validate
+  labels:
+    
+    helm.sh/chart: external-secrets-2.8.0
+    app.kubernetes.io/name: external-secrets-webhook
+    app.kubernetes.io/instance: external-secrets
+    app.kubernetes.io/version: "v2.8.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/metrics: "webhook"
+    external-secrets.io/component: webhook
+  annotations:
+    cert-manager.io/inject-ca-from: external-secrets/external-secrets-webhook
+webhooks:
+- name: "validate.externalsecret.external-secrets.io"
+  rules:
+  - apiGroups:   ["external-secrets.io"]
+    apiVersions: ["v1"]
+    operations:  ["CREATE", "UPDATE", "DELETE"]
+    resources:   ["externalsecrets"]
+    scope:       "Namespaced"
+  clientConfig:
+    service:
+      namespace: external-secrets
+      name: external-secrets-webhook
+      path: /validate-external-secrets-io-v1-externalsecret
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  timeoutSeconds: 5
+  failurePolicy: Fail
 
 ---
 apiVersion: external-secrets.io/v1

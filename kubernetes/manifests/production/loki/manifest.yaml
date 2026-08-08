@@ -39,7 +39,6 @@ metadata:
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.4"
 automountServiceAccountToken: true
-
 ---
 # Source: loki/templates/config.yaml
 apiVersion: v1
@@ -166,7 +165,6 @@ data:
       use_thanos_objstore: false
     tracing:
       enabled: false
-
 ---
 # Source: loki/templates/gateway/configmap.yaml
 apiVersion: v1
@@ -611,7 +609,6 @@ data:
                     replacement: "/"
                   - regexp: "^(.+)\\?.+"
                     replacement: "$1"
-
 ---
 # Source: loki/templates/runtime-configmap.yaml
 apiVersion: v1
@@ -627,7 +624,6 @@ metadata:
 data:
   runtime-config.yaml: |
     {}
-
 ---
 # Source: loki/templates/backend/clusterrole.yaml
 kind: ClusterRole
@@ -643,7 +639,6 @@ rules:
 - apiGroups: [""] # "" indicates the core API group
   resources: ["configmaps", "secrets"]
   verbs: ["get", "watch", "list"]
-
 ---
 # Source: loki/templates/backend/clusterrolebinding.yaml
 kind: ClusterRoleBinding
@@ -688,7 +683,6 @@ spec:
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/component: gateway
-
 ---
 # Source: loki/templates/gateway/service.yaml
 apiVersion: v1
@@ -715,7 +709,6 @@ spec:
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/component: gateway
-
 ---
 # Source: loki/templates/monolithic/service.yaml
 apiVersion: v1
@@ -789,7 +782,6 @@ spec:
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/component: "single-binary"
-
 ---
 # Source: loki/templates/service-memberlist.yaml
 apiVersion: v1
@@ -815,7 +807,6 @@ spec:
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/part-of: memberlist
-
 ---
 # Source: loki/templates/gateway/deployment.yaml
 apiVersion: apps/v1
@@ -961,7 +952,6 @@ spec:
           emptyDir: {}
         - name: docker-entrypoint-d-override
           emptyDir: {}
-
 ---
 # Source: loki/templates/monolithic/workload.yaml
 apiVersion: apps/v1
@@ -1177,7 +1167,6 @@ spec:
         resources:
           requests:
             storage: "10Gi"
-
 ---
 # Source: loki/templates/monitoring/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
