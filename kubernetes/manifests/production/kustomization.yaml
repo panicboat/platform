@@ -19,5 +19,4 @@ resources:
   - ./opentelemetry
   - ./prometheus-operator
   - ./reloader
-  - ./sandbox
   - ./tempo
