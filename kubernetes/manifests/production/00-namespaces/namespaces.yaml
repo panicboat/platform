@@ -122,3 +122,16 @@ metadata:
   name: reloader
   labels:
     app.kubernetes.io/name: reloader
+---
+# =============================================================================
+# sandbox Namespace
+# =============================================================================
+# okteto CLI の評価用 namespace。okteto up が development container に差し替える
+# 対象の workload を 1 つだけ持つ。評価が終わったら component ごと削除する。
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sandbox
+  labels:
+    app.kubernetes.io/name: sandbox
