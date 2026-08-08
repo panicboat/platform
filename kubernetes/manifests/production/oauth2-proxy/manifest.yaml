@@ -20,7 +20,6 @@ spec:
       app.kubernetes.io/name: oauth2-proxy
       app.kubernetes.io/instance: oauth2-proxy-grafana
   minAvailable: 1
-
 ---
 # Source: oauth2-proxy/templates/serviceaccount.yaml
 apiVersion: v1
@@ -58,7 +57,7 @@ data:
   oauth2_proxy.cfg: |
 
     provider = "google"
-    email_domains = [ "*" ]
+    email_domains = [ "panicboat.net" ]
     upstreams = [ "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80" ]
     cookie_domains = [ ".panicboat.net" ]
     whitelist_domains = [ ".panicboat.net" ]
@@ -71,8 +70,6 @@ data:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
-    authenticated_emails_file = "/etc/oauth2-proxy/emails/allowed"
-
 ---
 # Source: oauth2-proxy/templates/service.yaml
 apiVersion: v1
@@ -105,7 +102,6 @@ spec:
   selector:    
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-grafana
-
 ---
 # Source: oauth2-proxy/templates/deployment.yaml
 apiVersion: apps/v1
@@ -134,7 +130,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 277914ab7cc94844e0e1245725321be02fac77a2d96267406ab521fe09ced120
+        checksum/config: 7d327cf9e94d98cb39ab0fa0a88d236dc7f1e36b45d987471d1e347b2de2d696
         checksum/secret: 9eb46bbdefd5cf844a2c4965b1241a7177addaa7c07789e7873ccda6b0104111
         checksum/google-secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
         checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
@@ -211,9 +207,6 @@ spec:
         - mountPath: /etc/oauth2_proxy/oauth2_proxy.cfg
           name: configmain
           subPath: oauth2_proxy.cfg
-        - mountPath: /etc/oauth2-proxy/emails
-          name: emails
-          readOnly: true
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -230,10 +223,6 @@ spec:
           defaultMode: 420
           name: oauth2-proxy-grafana
         name: configmain
-      - configMap:
-          name: oauth2-proxy-allowed-emails
-        name: emails
-
 ---
 # Source: oauth2-proxy/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -289,7 +278,6 @@ spec:
       app.kubernetes.io/name: oauth2-proxy
       app.kubernetes.io/instance: oauth2-proxy-hubble
   minAvailable: 1
-
 ---
 # Source: oauth2-proxy/templates/serviceaccount.yaml
 apiVersion: v1
@@ -327,7 +315,7 @@ data:
   oauth2_proxy.cfg: |
 
     provider = "google"
-    email_domains = [ "*" ]
+    email_domains = [ "panicboat.net" ]
     upstreams = [ "http://hubble-ui.kube-system.svc.cluster.local:80" ]
     cookie_domains = [ ".panicboat.net" ]
     whitelist_domains = [ ".panicboat.net" ]
@@ -340,8 +328,6 @@ data:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
-    authenticated_emails_file = "/etc/oauth2-proxy/emails/allowed"
-
 ---
 # Source: oauth2-proxy/templates/service.yaml
 apiVersion: v1
@@ -374,7 +360,6 @@ spec:
   selector:    
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-hubble
-
 ---
 # Source: oauth2-proxy/templates/deployment.yaml
 apiVersion: apps/v1
@@ -403,7 +388,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 1bdaf708462979504f16a9fd426c622a99d40aca0b8cd89f978cb86d1301fd6f
+        checksum/config: de503bb819e863770e3fa1f911bb0055cf1437b85e38c0590f417eb46eec765c
         checksum/secret: 9eb46bbdefd5cf844a2c4965b1241a7177addaa7c07789e7873ccda6b0104111
         checksum/google-secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
         checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
@@ -480,9 +465,6 @@ spec:
         - mountPath: /etc/oauth2_proxy/oauth2_proxy.cfg
           name: configmain
           subPath: oauth2_proxy.cfg
-        - mountPath: /etc/oauth2-proxy/emails
-          name: emails
-          readOnly: true
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -499,10 +481,6 @@ spec:
           defaultMode: 420
           name: oauth2-proxy-hubble
         name: configmain
-      - configMap:
-          name: oauth2-proxy-allowed-emails
-        name: emails
-
 ---
 # Source: oauth2-proxy/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -558,7 +536,6 @@ spec:
       app.kubernetes.io/name: oauth2-proxy
       app.kubernetes.io/instance: oauth2-proxy-alertmanager
   minAvailable: 1
-
 ---
 # Source: oauth2-proxy/templates/serviceaccount.yaml
 apiVersion: v1
@@ -596,7 +573,7 @@ data:
   oauth2_proxy.cfg: |
 
     provider = "google"
-    email_domains = [ "*" ]
+    email_domains = [ "panicboat.net" ]
     upstreams = [ "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093" ]
     cookie_domains = [ ".panicboat.net" ]
     whitelist_domains = [ ".panicboat.net" ]
@@ -609,8 +586,6 @@ data:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
-    authenticated_emails_file = "/etc/oauth2-proxy/emails/allowed"
-
 ---
 # Source: oauth2-proxy/templates/service.yaml
 apiVersion: v1
@@ -643,7 +618,6 @@ spec:
   selector:    
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-alertmanager
-
 ---
 # Source: oauth2-proxy/templates/deployment.yaml
 apiVersion: apps/v1
@@ -672,7 +646,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 91f5f5b6eb2688bb5c30690b987e1d025de6be729e4e3fdaea9483a91b5cdd5c
+        checksum/config: e2074abdd7b150b9b1ef0daf4220696c7d006db1e8913ad44353b789b2519078
         checksum/secret: 9eb46bbdefd5cf844a2c4965b1241a7177addaa7c07789e7873ccda6b0104111
         checksum/google-secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
         checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
@@ -749,9 +723,6 @@ spec:
         - mountPath: /etc/oauth2_proxy/oauth2_proxy.cfg
           name: configmain
           subPath: oauth2_proxy.cfg
-        - mountPath: /etc/oauth2-proxy/emails
-          name: emails
-          readOnly: true
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -768,10 +739,6 @@ spec:
           defaultMode: 420
           name: oauth2-proxy-alertmanager
         name: configmain
-      - configMap:
-          name: oauth2-proxy-allowed-emails
-        name: emails
-
 ---
 # Source: oauth2-proxy/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -827,7 +794,6 @@ spec:
       app.kubernetes.io/name: oauth2-proxy
       app.kubernetes.io/instance: oauth2-proxy-prometheus
   minAvailable: 1
-
 ---
 # Source: oauth2-proxy/templates/serviceaccount.yaml
 apiVersion: v1
@@ -865,7 +831,7 @@ data:
   oauth2_proxy.cfg: |
 
     provider = "google"
-    email_domains = [ "*" ]
+    email_domains = [ "panicboat.net" ]
     upstreams = [ "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090" ]
     cookie_domains = [ ".panicboat.net" ]
     whitelist_domains = [ ".panicboat.net" ]
@@ -878,8 +844,6 @@ data:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
-    authenticated_emails_file = "/etc/oauth2-proxy/emails/allowed"
-
 ---
 # Source: oauth2-proxy/templates/service.yaml
 apiVersion: v1
@@ -912,7 +876,6 @@ spec:
   selector:    
     app.kubernetes.io/name: oauth2-proxy
     app.kubernetes.io/instance: oauth2-proxy-prometheus
-
 ---
 # Source: oauth2-proxy/templates/deployment.yaml
 apiVersion: apps/v1
@@ -941,7 +904,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: cce4c6c237bacd16379ce7fbd6812f51d9c533cb3cbe8611b1c08b95ffcda96c
+        checksum/config: 3cc97e5ec01fe5f79d6734ce131d8387859e66e3a2cc8d08d445dc258380c96c
         checksum/secret: 9eb46bbdefd5cf844a2c4965b1241a7177addaa7c07789e7873ccda6b0104111
         checksum/google-secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
         checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
@@ -1018,9 +981,6 @@ spec:
         - mountPath: /etc/oauth2_proxy/oauth2_proxy.cfg
           name: configmain
           subPath: oauth2_proxy.cfg
-        - mountPath: /etc/oauth2-proxy/emails
-          name: emails
-          readOnly: true
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1037,10 +997,6 @@ spec:
           defaultMode: 420
           name: oauth2-proxy-prometheus
         name: configmain
-      - configMap:
-          name: oauth2-proxy-allowed-emails
-        name: emails
-
 ---
 # Source: oauth2-proxy/templates/servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
@@ -1074,15 +1030,6 @@ spec:
     interval: 60s
     scrapeTimeout: 30s
 
----
-apiVersion: v1
-data:
-  allowed: |
-    panicboat@gmail.com
-kind: ConfigMap
-metadata:
-  name: oauth2-proxy-allowed-emails
-  namespace: oauth2-proxy
 ---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
