@@ -1,0 +1,95 @@
+# Falco Runtime Security Configuration for production
+# node の syscall を modern eBPF で観測し、検知イベントを JSON で stdout に出力。
+# 既存の OTel Collector (filelog receiver) が /var/log/pods を tail して Loki へ
+# 送るため、Falco 側に配送コンポーネント (falcosidekick) を持たない。
+
+# =============================================================================
+# Driver (= modern eBPF CO-RE)
+# =============================================================================
+# NOTE: chart default は kind: auto。auto のままだと driver-loader init container
+# が残り、node 起動のたびに kernel module の build / download 経路に依存する。
+# Karpenter が node を頻繁に入れ替える構成では外部依存を減らしたいため
+# modern_ebpf を明示する (= chart の driverLoader helper が false を返し init
+# container が生成されなくなる)。
+# 前提: node は AL2023 (kernel 6.1 + BTF)、image は arm64 対応済。
+driver:
+  kind: modern_ebpf
+  modernEbpf:
+    # privileged: true を避け capabilities {BPF, SYS_RESOURCE, PERFMON,
+    # SYS_PTRACE} のみで動かす。security tool 自身を production で常時特権 Pod
+    # として走らせない。失敗時は BPF program の load エラーで CrashLoop するため
+    # 静かに壊れることはない。
+    leastPrivileged: true
+
+# =============================================================================
+# Rules (= OCI artifact、exact version に pin)
+# =============================================================================
+# Falco 0.36 以降ルールセットは image に同梱されず OCI artifact で配布される。
+# NOTE: キーパスが 2 系統に分かれる。falcoctl.artifact.*.enabled は container の
+# 有無を制御し、pin 対象の refs は falcoctl.config.artifact.install.refs 配下。
+# falcoctl.artifact.install.refs は存在せず、書いても無視される。
+# follow を無効化する理由: chart default は 168h ごとに rules を自動更新する。
+# ルールが Git の外で変わると、manifests/ に render した YAML をレビューしてから
+# 適用する hydration pattern の前提が崩れる。
+# install の ref を exact version にする理由: chart default の falco-rules:5 は
+# floating tag で、Pod 再起動のたびに major 5 系の最新を引く (= 同じ manifest
+# から異なる挙動が出る)。
+# NOTE: follow.refs は falco-rules:5 のまま render されるが、follow container が
+# 存在しないため consume されず無害。
+# Renovate の helmfile manager は OCI artifact を追えないため更新は手動。
+falcoctl:
+  artifact:
+    install:
+      enabled: true
+    follow:
+      enabled: false
+  config:
+    artifact:
+      install:
+        refs:
+          - falco-rules:5.1.0
+
+# =============================================================================
+# Falco config
+# =============================================================================
+falco:
+  # chart default false。OTel Collector が拾った本文を Loki 側で `| json` で
+  # パースするために必須。
+  json_output: true
+  # chart default true。container 内に syslog daemon が存在せず出力先がないため
+  # 明示的に潰す。
+  syslog_output:
+    enabled: false
+
+# =============================================================================
+# Scheduling (= 全 node をカバー)
+# =============================================================================
+# NOTE: chart default の tolerations は master / control-plane taint のみ。
+# そのままでは system_critical MNG (= taint dedicated=system-critical:NoSchedule)
+# に schedule されず、Karpenter controller / cilium-operator / CoreDNS が載る
+# node が監視の死角になる。OTel Collector と同じ全許容に上書きする。
+tolerations:
+  - effect: NoSchedule
+    operator: Exists
+  - effect: NoExecute
+    operator: Exists
+
+# NOTE: chart 固有の key 名は podPriorityClassName (= priorityClassName ではない)。
+# 値は OTel Collector と同じ。schedule されなかった瞬間の syscall イベントは
+# 後から取り直せないため、node レベル agent と同格に置く。
+podPriorityClassName: system-node-critical
+
+# =============================================================================
+# Metrics (= event drop の可視化)
+# =============================================================================
+# eBPF ring buffer が溢れると Falco は検知イベントを黙って落とす。監査ログの
+# 網羅性を主張するには drop 率の可視化が前提条件になる。
+# NOTE: chart 固有の key 名に注意。serviceMonitor.create (= enabled ではない)、
+# serviceMonitor.labels (= Beyla の additionalLabels / OTel Collector の
+# extraLabels とも異なる)。他 component からのコピーで誤りやすい。
+metrics:
+  enabled: true
+serviceMonitor:
+  create: true
+  labels:
+    release: kube-prometheus-stack

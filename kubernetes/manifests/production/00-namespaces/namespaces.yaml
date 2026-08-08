@@ -39,6 +39,23 @@ metadata:
     app.kubernetes.io/name: external-secrets
 ---
 # =============================================================================
+# Falco Namespace
+# =============================================================================
+# Falco DaemonSet の専用 namespace。monitoring に相乗りさせない理由は 2 つ。
+# 1. Falco は detective security control であり、signal を集めて貯める
+#    monitoring namespace とは責務が異なる
+# 2. Falco Pod は eBPF attach のため昇格した capability を持つ。将来 namespace
+#    単位で PodSecurity / NetworkPolicy を締めるとき、権限の高い Pod が
+#    monitoring 全体の設定を引きずるのを避ける
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: falco
+  labels:
+    app.kubernetes.io/name: falco
+---
+# =============================================================================
 # Karpenter Namespace
 # =============================================================================
 # This namespace contains the Karpenter controller. Chart default name is
