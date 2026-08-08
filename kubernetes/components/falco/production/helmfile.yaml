@@ -1,0 +1,21 @@
+# =============================================================================
+# Falco Helmfile for production
+# =============================================================================
+# Falco を falco namespace に DaemonSet deploy。node の syscall を modern eBPF
+# で観測し、検知イベントを JSON で stdout に出力する。配送は既存の OTel
+# Collector (filelog receiver) が担うため falcosidekick を持たない。
+# =============================================================================
+environments:
+  production:
+---
+repositories:
+  - name: falcosecurity
+    url: https://falcosecurity.github.io/charts
+
+releases:
+  - name: falco
+    namespace: falco
+    chart: falcosecurity/falco
+    version: "9.1.0"
+    values:
+      - values.yaml.gotmpl
