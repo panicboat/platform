@@ -1,0 +1,20 @@
+---
+# aqua - Declarative CLI Version Manager
+# https://aquaproj.github.io/
+#
+# repository root に置く。aqua は設定ファイルを cwd から root 方向にしか探さないため、
+# .github/ 配下だと AQUA_CONFIG を明示した実行 (= CI) でしか pin が効かず、ローカル実行は
+# global に入れた版に落ちる。この非対称が原因で hydrate 出力が CI とずれ、hydrator が
+# 空行だけの差分 commit を積む事象が起きた。CI とローカルに同じ発見機構を使わせる配置。
+registries:
+  - type: standard
+    ref: v4.311.0 # renovate: github_release aquaproj/aqua-registry
+
+packages:
+  - name: helmfile/helmfile@v0.169.2
+  - name: helm/helm@v3.17.3
+  - name: kubernetes-sigs/kustomize@kustomize/v5.6.0
+  - name: nektos/act@v0.2.87
+  - name: rhysd/actionlint@v1.7.7
+  - name: opentofu/opentofu@v1.12.0
+  - name: gruntwork-io/terragrunt@v1.0.2
