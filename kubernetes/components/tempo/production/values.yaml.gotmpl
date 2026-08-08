@@ -37,9 +37,16 @@ tempo:
         # Pod Identity 経由のため access_key / secret_key 不要
 
   # -------------------------------------------------------------------------
-  # Receivers (= 4b で OTel Collector からの OTLP 受信用、4a では未接続)
+  # Receivers (= OTel Collector からの OTLP 受信用)
   # -------------------------------------------------------------------------
+  # chart default の receivers に jaeger / opencensus が含まれ、values の map は
+  # deep-merge されるため otlp だけ書いても両者は残る。opencensus は null を置いて
+  # キーごと削除する。jaeger に同じ手は使えない: chart の _ports.tpl が
+  # .Values.tempo.receivers.jaeger.protocols.thrift_compact を無条件に参照しており、
+  # 削除すると Service の描画が nil pointer で失敗する。結果として jaeger の
+  # 4 protocol は開いたままになる (= chart が deprecated で修正の見込みがない)。
   receivers:
+    opencensus: null
     otlp:
       protocols:
         grpc:
