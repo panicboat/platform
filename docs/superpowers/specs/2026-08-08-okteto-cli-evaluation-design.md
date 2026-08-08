@@ -161,3 +161,34 @@ zsh 補完のために `dotfiles` を変更する必要は無い。
 homebrew-core の formula が `_okteto` を `/opt/homebrew/share/zsh/site-functions/` に配置し、`.zshrc` は既にそのディレクトリを FPATH に入れている。
 `.zshrc` を無変更のまま対話 zsh で `$_comps[okteto]` が解決することを確認した。
 `okteto completion zsh` サブコマンド自体は存在するが、それを呼ぶ設定を自前で持つと formula が同梱する補完と重複する。
+
+## Evaluation result
+
+成功基準である Flux の reconcile を跨いだ生存は通った。
+`flux reconcile kustomization flux-system --with-source` を二回実行しても、元の `sandbox` は 0 replica のまま、開発コンテナは再起動なしで Running を維持した。
+
+機構は kustomize-controller 自身の出力で確認できる。
+`server-side apply completed` のログには二回とも `Deployment/sandbox/sandbox: skipped` が記録され、同じ reconcile で `Namespace/sandbox` と `Service/sandbox/sandbox` は `unchanged` だった。
+`ssa: IfNotPresent` が Deployment だけを apply の対象から外している。
+
+`okteto up` は複製 Deployment を `sandbox-okteto` という名前で作り、元の `sandbox` を 0 replica にした。
+sync 用の PVC は `sandbox-okteto` として作られ、5Gi の gp3 に ReadWriteOnce で Bound した。
+`okteto down -v` で複製と PVC の両方が消え、元の Deployment が 1 replica に戻った。
+
+Service の selector は複製 pod に届いた。
+複製 pod は元の `app.kubernetes.io/name: sandbox` ラベルを継ぎ、そこへ okteto 独自の `interactive.dev.okteto.com` などが加わる形になる。
+Service の Endpoints が複製 pod の IP を指していることを確認した。
+このため `kubectl port-forward svc/sandbox` は差し替えの前後で同じように使える。
+
+配信内容は設計どおり三段階で切り替わった。
+差し替え前は起動コマンドが書いた `sandbox: cluster`、`okteto up` のあとはローカルの `sandbox: local`、ローカルファイルを編集すると `sandbox: edited` を返した。
+編集から反映までは一秒未満で、再ビルドも再デプロイも発生しない。
+
+判断: okteto OSS CLI を採用する。
+評価の中心だった Flux との衝突が resource 単位の SSA policy で解け、その機構を controller のログで確認できたため、Flux 管理下の workload に対して安全に使えると判断した。
+クラスタ側へのインストールが不要で、撤退が annotation の除去だけで済む点も、採用の可逆性を担保している。
+
+実アプリへの適用は `panicboat/monorepo` の workload が production で動くようになってから着手する。
+`okteto.yml` を対象 service のディレクトリへ移し、対象 Deployment に同じ SSA policy を付ける。
+その際、`ssa: IfNotPresent` が「以後 Flux はこの Deployment の manifest 変更を反映しない」という副作用を持つことに注意する。
+image tag を Flux image automation で更新している service では、この副作用が自動更新を止めるため、常時付与するのではなく `okteto up` を使う期間だけ付ける運用を検討する。
