@@ -219,7 +219,7 @@ EKS managed addons: `coredns` / `aws-ebs-csi-driver` / `eks-pod-identity-agent`�
 | Component / Resource | 配置 | 役割 |
 |---|---|---|
 | `kubernetes/components/falco/production/` | `falco` namespace | chart `falcosecurity/falco` (DaemonSet)。modern eBPF driver で node の syscall を観測し、検知イベントを JSON で stdout に出力。既存 OTel Collector の filelog receiver が拾って Loki へ送るため falcosidekick を持たない。ルールセットは OCI artifact `falco-rules:5.1.0` を exact pin し、falcoctl の自動更新サイドカーは無効化 (= ルールが Git 外で変わると hydration pattern の前提が崩れるため) |
-| Falco metrics | `falco:falco` Service :8765 → ServiceMonitor | eBPF ring buffer の event drop を可視化。drop が出ている状態では監査ログの網羅性を主張できない |
+| Falco metrics | `falco:falco-metrics` Service :8765 → ServiceMonitor | eBPF ring buffer の event drop を可視化。drop が出ている状態では監査ログの網羅性を主張できない |
 
 Falco は detective control であり、攻撃の遮断は担わない (= 遮断は Cilium NetworkPolicy / PodSecurity の責務)。`privileged` は使わず capabilities `{BPF, SYS_RESOURCE, PERFMON, SYS_PTRACE}` のみで動作する。
 
@@ -347,6 +347,8 @@ aws eks list-pod-identity-associations --cluster-name eks-production --namespace
 kubectl get ds -n falco falco                            # DESIRED == READY == node 数
 kubectl logs -n falco -l app.kubernetes.io/name=falco --tail=20
 kubectl logs -n falco -l app.kubernetes.io/name=falco | grep -i drop   # event drop の有無
+# PromQL: increase(falcosecurity_scap_n_drops_total[5m])
+# PromQL: sum by (dir, drop) (increase(falcosecurity_scap_n_drops_buffer_total[5m]))
 ```
 
 ### Troubleshooting

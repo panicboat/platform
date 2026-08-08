@@ -51,7 +51,7 @@ chart 9.1.0 の `falco.yaml` 設定に存在する output channel は `stdout` /
 ```mermaid
 flowchart LR
     subgraph Node["各 node (Karpenter AL2023 / ARM64)"]
-        Kernel["Linux kernel 6.1<br/>(BTF あり)"]
+        Kernel["Linux kernel 6.18<br/>(BTF あり)"]
         Falco["Falco DaemonSet<br/>(falco namespace)<br/>modern_ebpf driver"]
         OTelCol["OTel Collector<br/>(monitoring namespace)<br/>filelog receiver"]
     end
@@ -131,7 +131,7 @@ chart default の `auto` ではなく明示指定する。`modern_ebpf` を指�
 
 前提条件はすべて満たされている:
 
-- node OS は AL2023 (`kubernetes/components/karpenter/production/kustomization/ec2nodeclass.yaml` の `amiSelectorTerms: [alias: al2023@latest]`)。kernel 6.1 + BTF
+- node OS は AL2023 (`kubernetes/components/karpenter/production/kustomization/ec2nodeclass.yaml` の `amiSelectorTerms: [alias: al2023@latest]`)。deploy 後に実機で確認した kernel は `6.18.38-76.139.amzn2023.aarch64` (BTF あり)
 - image は arm64 対応 (VERIFIED: Docker Hub API で `falcosecurity/falco:0.44.1` = amd64 + arm64)
 
 ### Privilege: `leastPrivileged: true`
@@ -242,9 +242,9 @@ chart default (requests 100m / 512Mi、limits 1000m / 1024Mi) で開始し、実
 
 Falco は chatty なルールを `incubating` / `sandbox` ruleset に切り出しており、default では読み込まれない。「まず全部出して実測する」判断が成立するのはこの規模だからである。
 
-### `Contact K8S API Server From Container` は機能しない可能性が高い
+### `Contact K8S API Server From Container` は機能しない (実測確定)
 
-このルール (NOTICE) は当初「確実に発火する noise 源」と見積もっていたが、**逆に一度も発火しない可能性の方が高い**。
+このルール (NOTICE) は当初「確実に発火する noise 源」と見積もっていたが、**一度も発火しない**ことが deploy 後の実測で確定した。
 
 ルールの除外機構は `k8s_containers` マクロで、その中身は `kube-system` namespace 全体 + 特定 image のハードコード列挙である (VERIFIED: `falco_rules.yaml` の macro 定義)。この cluster では Flux 各 controller / Karpenter / external-secrets / external-dns / KEDA / cert-manager controller 本体 / OTel Collector が除外対象に含まれないため、**除外ロジックだけを見れば発火する**。
 
@@ -253,15 +253,41 @@ Falco は chatty なルールを `incubating` / `sandbox` ruleset に切り出�
 1. **Cilium socket-LB による connect 時 DNAT** — `kubeProxyReplacement: true` + `socketLB.enabled: true` (VERIFIED: `cilium/production/values.yaml.gotmpl:47,115-116`)。socket-LB は `cgroup/connect4` hook で connect(2) の時点で宛先を実 backend にDNAT する。Falco が socket tuple から読む `fd.sip` が DNAT 後のアドレスであれば、ClusterIP に紐づく DNS 名とは一致しない
 2. **in-cluster client が DNS を引かない** — client-go の in-cluster config は `KUBERNETES_SERVICE_HOST` 環境変数 (= ClusterIP) を直接使い、`kubernetes.default.svc.cluster.local` の名前解決を行わない。Falco が IP→名前の対応を DNS 応答の観測から得ているなら、その対応自体が学習されない
 
-2 は Cilium と無関係に成立するため、**このルールは本 cluster に限らず広範に空振りしている可能性がある**。
+**実測 (VERIFIED)**: 同一 Pod・同一時刻の対照実験で切り分けた。`default` namespace に検証用 Pod を立て、1 つのコマンド列で以下を連続実行した。
 
-検証レベルは **REASONED**。`fd.sip.name` の実装 (DNAT 前後どちらの tuple を読むか、名前解決の供給源) を一次情報で確認していない。
+```sh
+nc -w 3 kubernetes.default.svc.cluster.local 443 </dev/null   # API server へ connect
+cat /etc/shadow >/dev/null                                     # 対照
+```
+
+| 操作 | Falco の反応 |
+|---|---|
+| `cat /etc/shadow` | `Read sensitive file untrusted` が**発火** |
+| API server への `connect` | `Contact K8S API Server From Container` は**発火せず** |
+
+前者が発火したことで **Falco がこの Pod の syscall を観測できていた**ことが確定するため、後者の不発は「Falco が見ていなかった」では説明できない。また Pod は `kubernetes.default.svc.cluster.local` を CoreDNS で `172.20.0.1` に解決したうえで接続しており、**要因 2 (DNS 未使用) はこの実験では成立しない**。
+
+したがって原因は **要因 1 (Cilium socket-LB の connect 時 DNAT)** に特定される。cluster 全体でも Falco 起動以降このルールの発火は 0 件だった。
 
 **含意は「noise が減って良かった」ではなく「検知の死角がある」である。** 攻撃者の Pod が API server を叩いても同じ理由で記録されない。K8s API へのアクセス追跡が本当に必要なら、syscall ではなく control plane audit log (= 本 spec の Non-goals に置いた k8saudit-eks) が正しい情報源になる。
 
+### 実際に観測された唯一の定常 noise: Beyla の `Packet socket created in container`
+
+deploy 後 1 時間で発火したルールは 3 種類、うち 2 種類は検証で意図的に起こしたもので、**定常的に発火するのは 1 件だけ**だった。
+
+```
+rule: Packet socket created in container
+  pod: beyla-xxxxx  ns: monitoring  container: beyla
+  proc: beyla       cmdline: beyla
+```
+
+Beyla は eBPF で network を捕捉するため packet socket を開く。これは Beyla の正常動作であり、ルールとしては正しく検知している。恒常的に出るなら `customRules` で Beyla を除外する余地があるが、**発生頻度が低く (1 時間で 1 件)、監査ログとして残っていても害がない**ため初回では対処しない。
+
 ### noise の allowlist は初回リリースに入れない
 
-`user_known_contact_k8s_api_server_activities` という空マクロ (`(never_true)`) があり `customRules` で override append できるが、**初回では使わない**。上記のとおり発火するかどうかすら確定していない状態で先に穴を開けると、本当に見たいものまで塞ぐ。実測して出た送信元だけを、根拠付きで allowlist に追加する PR を別に立てる。
+`user_known_contact_k8s_api_server_activities` という空マクロ (`(never_true)`) があり `customRules` で override append できるが、**このルール自体が発火しないことが確定した**ため、そもそも allowlist が不要になった。
+
+より一般に、初回リリースで先回りして例外を書かない方針を取った。推測で穴を開けると本当に見たいものまで塞ぐためで、実測の結果 noise はほぼゼロだったので判断は妥当だった。
 
 ---
 
@@ -323,20 +349,13 @@ Step 6 の前に、Grafana Explore (https://grafana.panicboat.net) で以下の 
 
 label 名 `k8s_namespace_name` は既存 dashboard の LogQL と同一 (Loki の OTLP resource attribute マッピング由来)。
 
-### Cilium socket-LB 下での `Contact K8S API Server From Container` 実測
+### Cilium socket-LB Measurement Result for `Contact K8S API Server From Container`
 
-前節の REASONED な推論を実測で確定させる。deploy 後 30 分ほど放置してから確認する (Flux / Karpenter / external-secrets 等が定常的に API server を叩く時間)。
+実測済み。以下の LogQL の結果は 0 件だった。結論と検知範囲への影響は上記の「`Contact K8S API Server From Container` は機能しない (実測確定)」を参照。
 
 ```logql
 {k8s_namespace_name="falco"} | json | rule="Contact K8S API Server From Container"
 ```
-
-| 結果 | 解釈 | 対応 |
-|---|---|---|
-| ヒットなし | socket-LB の DNAT または DNS 未使用により条件が成立していない = **検知の死角**が確定 | spec の該当節を VERIFIED に更新し、K8s API 追跡が必要かを別 spec で判断する |
-| ヒットあり | ルールは機能している = 想定どおりの noise | 実際に出た送信元を根拠に allowlist を別 PR で追加する |
-
-**どちらでも本 spec の成功基準は満たされる。** この項目は Falco 導入の可否ではなく、Falco で何が見えて何が見えないかを確定させるための観測である。
 
 検証用 Pod は Flux 管理外の一時リソースであり、`kubectl` 直接操作でも GitOps の drift を生まない。
 
@@ -352,11 +371,12 @@ label 名 `k8s_namespace_name` は既存 dashboard の LogQL と同一 (Loki の
 
 | 項目 | 検証レベル | 内容と対処 |
 |---|---|---|
-| `leastPrivileged: true` が AL2023 / ARM64 で動くか | ASSUMED | Falco 公式の modern_ebpf 向けサポート経路だが、この OS / arch 組み合わせでの実績は未確認。失敗すれば BPF load エラーで CrashLoop するため即座に判明する。切り戻しは values 1 行で `false` に戻す |
-| `Contact K8S API Server From Container` が Cilium socket-LB 下で発火するか | REASONED | `fd.sip.name` が DNAT 前後どちらの tuple を読むか、および名前解決の供給源を一次情報で未確認。発火しない場合は noise 減ではなく**検知の死角**を意味する。Verification に実測項目を設けた |
-| Loki のログ増加量 | ASSUMED | stable ruleset は 25 件と小さく、主な発生源と見込んでいた API server ルールも空振りの可能性がある。当初見積もりより少ない方向にぶれる公算が大きい |
-| 新規 component 追加で deploy label が自動付与されるか | REASONED | `workflow-config.yaml` の `stack_conventions` が pattern 定義であることから推論。PR 作成時に実際の label 付与を確認する |
+| `leastPrivileged: true` が AL2023 / ARM64 で動くか | **VERIFIED** | 動作する。全 4 node で DaemonSet が READY、`Falco version: 0.44.1 (aarch64)` / `Linux 6.18.38-76.139.amzn2023.aarch64` で modern eBPF probe が起動し、`securityContext` は `capabilities.add: [BPF, SYS_RESOURCE, PERFMON, SYS_PTRACE]` のみで `privileged` を含まない |
+| `Contact K8S API Server From Container` が Cilium socket-LB 下で発火するか | **VERIFIED** | 発火しない。同一 Pod の対照実験で確定 (前掲 Noise analysis 節)。これは noise 減ではなく**検知の死角**。K8s API アクセスの追跡が必要なら syscall ではなく control plane audit log (= Out of scope の k8saudit-eks) が正しい情報源 |
+| Loki のログ増加量 | **VERIFIED** | 問題にならない。deploy 後 1 時間で Falco namespace の総ログ 224 行 (大半は 4 Pod 分の起動ログ)、うち検知イベントは 4 件のみ。cluster 全体の 5000 行超に対し十分小さい |
+| 新規 component 追加で deploy label が自動付与されるか | **VERIFIED** | 付与される。PR #738 に `deploy:falco` が自動で付き、`Deploy Kubernetes (falco:production) / Kustomize Diff` が実行された。`workflow-config.yaml` への明示登録は不要 |
 | ルール更新の追従 | 既知の制約 | Renovate は OCI artifact を追えない。`falco-rules` の新版は手動で確認・更新する。頻度が問題になれば custom manager を追加する |
+| resources が実測に対し過大 | **VERIFIED** | chart default の requests (cpu 100m / memory 512Mi) に対し実測は cpu 7-13m / memory 54-78Mi。right-size は別 PR で行う |
 
 ---
 
