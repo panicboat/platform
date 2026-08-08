@@ -1,0 +1,22 @@
+# =============================================================================
+# Keycloak Helmfile for production
+# =============================================================================
+# Phase 1: Keycloak 本体を動かして管理者コンソールに到達できる状態にする
+# ことのみが目的。dystopia 用 realm / client 作成は対象外
+# (docs/superpowers/specs/2026-08-07-keycloak-phase1-infra-design.md)。
+# =============================================================================
+environments:
+  production:
+
+---
+repositories:
+  - name: codecentric
+    url: https://codecentric.github.io/helm-charts
+
+releases:
+  - name: keycloak
+    namespace: keycloak
+    chart: codecentric/keycloakx
+    version: "7.2.2"
+    values:
+      - values.yaml.gotmpl

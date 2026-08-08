@@ -1,0 +1,12 @@
+# =============================================================================
+# Keycloak Namespace
+# =============================================================================
+# Keycloak 本体 + 専用 Postgres Cluster (CNPG) + admin bootstrap secret を
+# まとめて持つ namespace。
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keycloak
+  labels:
+    app.kubernetes.io/name: keycloak

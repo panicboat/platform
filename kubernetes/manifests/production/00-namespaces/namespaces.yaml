@@ -13,6 +13,22 @@ metadata:
     app.kubernetes.io/name: cert-manager
 ---
 # =============================================================================
+# CloudNativePG Namespace
+# =============================================================================
+# CloudNativePG (= PostgreSQL operator, CNCF Sandbox / EDB 主導) の専用
+# namespace。cert-manager / external-secrets と同じ「専用 namespace を持つ
+# operator」パターン。Keycloak 専用ではなく cluster 共有の operator であり、
+# 実際に Postgres を使う側 (Cluster CR) は kubernetes/components/keycloak/
+# 側で定義する。
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cloudnative-pg
+  labels:
+    app.kubernetes.io/name: cloudnative-pg
+---
+# =============================================================================
 # ExternalDNS Namespace
 # =============================================================================
 # This namespace contains the ExternalDNS controller. Chart default name is
@@ -81,6 +97,19 @@ metadata:
   name: keda
   labels:
     app.kubernetes.io/name: keda
+---
+# =============================================================================
+# Keycloak Namespace
+# =============================================================================
+# Keycloak 本体 + 専用 Postgres Cluster (CNPG) + admin bootstrap secret を
+# まとめて持つ namespace。
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keycloak
+  labels:
+    app.kubernetes.io/name: keycloak
 ---
 # =============================================================================
 # oauth2-proxy Namespace
