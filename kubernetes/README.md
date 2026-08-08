@@ -214,6 +214,15 @@ EKS managed addons: `coredns` / `aws-ebs-csi-driver` / `eks-pod-identity-agent`�
 | `kubernetes/components/beyla/production/` | `monitoring` namespace | chart `grafana/beyla` (DaemonSet)。eBPF auto-instrumentation で app の HTTP / SQL / gRPC を計装、OTLP gRPC で OTel Collector に traces + RED metrics (= `http_server_*` / `http_client_*` 等) を export |
 | `kubernetes/components/opentelemetry-collector/production/` | `monitoring` namespace | chart `opentelemetry/opentelemetry-collector` (DaemonSet、per-node)。Beyla からの OTLP gRPC traces を Tempo に route、chart preset `logsCollection` の filelog receiver で container log を tail し Loki に OTLP HTTP で export、`kubernetesAttributes` preset で k8s resource attribute を enrich |
 
+#### Security — Runtime security
+
+| Component / Resource | 配置 | 役割 |
+|---|---|---|
+| `kubernetes/components/falco/production/` | `falco` namespace | chart `falcosecurity/falco` (DaemonSet)。modern eBPF driver で node の syscall を観測し、検知イベントを JSON で stdout に出力。既存 OTel Collector の filelog receiver が拾って Loki へ送るため falcosidekick を持たない。ルールセットは OCI artifact `falco-rules:5.1.0` を exact pin し、falcoctl の自動更新サイドカーは無効化 (= ルールが Git 外で変わると hydration pattern の前提が崩れるため) |
+| Falco metrics | `falco:falco` Service :8765 → ServiceMonitor | eBPF ring buffer の event drop を可視化。drop が出ている状態では監査ログの網羅性を主張できない |
+
+Falco は detective control であり、攻撃の遮断は担わない (= 遮断は Cilium NetworkPolicy / PodSecurity の責務)。`privileged` は使わず capabilities `{BPF, SYS_RESOURCE, PERFMON, SYS_PTRACE}` のみで動作する。
+
 ### Branding separation
 
 2 ドメインを用途で分離する。ALB IngressGroup `application` で 1 ALB を共有し、ALB Controller が cert auto-discovery で両 wildcard cert (= `*.dystopia.city` + `*.panicboat.net`) を同一 ALB に attach する。
@@ -333,6 +342,11 @@ kubectl get ec2nodeclass system-components                # Ready=True
 kubectl get nodeclaim                                     # 現在 Karpenter が起動した NodeClaim 一覧
 kubectl get nodes -L karpenter.sh/nodepool                # nodepool 別の node 一覧
 aws eks list-pod-identity-associations --cluster-name eks-production --namespace karpenter
+
+# Falco (runtime security)
+kubectl get ds -n falco falco                            # DESIRED == READY == node 数
+kubectl logs -n falco -l app.kubernetes.io/name=falco --tail=20
+kubectl logs -n falco -l app.kubernetes.io/name=falco | grep -i drop   # event drop の有無
 ```
 
 ### Troubleshooting
@@ -357,6 +371,9 @@ aws eks list-pod-identity-associations --cluster-name eks-production --namespace
 | `kubectl get nodepool system-components` が `Ready=False` | EC2NodeClass の参照先 (Node IAM role) や subnet selector が誤り。`kubectl describe nodepool system-components` で詳細を確認、`aws iam get-role --role-name <ec2nodeclass.spec.role>` で role 存在確認 |
 | Pending pod があるのに Karpenter が node を起動しない | NodePool の requirements にマッチする instance type が region で出ない (capacity 不足) or `limits.cpu` に達している。`kubectl describe pod <pending-pod>` の events で Karpenter の判断ログを確認、必要なら一時的に NodePool requirements を緩める (e.g., `instance-generation` の下限を下げる、`instance-category` に他 series を追加) |
 | Karpenter pod が IAM role に assume できない | Pod Identity Association 未設定 or aws-pod-identity-agent (addon) が未稼働。`aws eks list-pod-identity-associations --cluster-name eks-production --namespace karpenter` で association 確認、`kubectl logs -n kube-system daemonset/eks-pod-identity-agent` で agent 状態確認 |
+| Falco Pod が `CrashLoopBackOff` で BPF 関連のエラーを出す | `leastPrivileged: true` の capabilities で BPF program を load できていない。`kubectl logs -n falco -l app.kubernetes.io/name=falco` でエラーを確認し、暫定対処として `values.yaml.gotmpl` の `driver.modernEbpf.leastPrivileged` を `false` に戻す (= chart default の `privileged: true` にフォールバック) |
+| Falco の init container `falcoctl-artifact-install` が失敗する | `ghcr.io` への egress が塞がれている。NetworkPolicy / SG / NAT の経路を確認する。ルールセットは image に同梱されないため、この init container が成功しないと Falco は起動しない |
+| Falco の検知イベントが Loki に出てこない | Falco Pod のログには出ているか (`kubectl logs -n falco -l app.kubernetes.io/name=falco`) をまず確認。出ているなら OTel Collector の filelog 経路の問題、出ていないなら `json_output` 設定かルール側の問題。LogQL は `{k8s_namespace_name="falco"} \| json` で引く |
 
 ### GitOps principles
 
