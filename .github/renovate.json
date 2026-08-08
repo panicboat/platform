@@ -111,6 +111,16 @@
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\n\\s*cluster_version\\s*=\\s*\"(?<currentValue>[^\"]+)\""
       ],
       "extractVersionTemplate": "^(?<version>\\d+\\.\\d+)"
+    },
+    {
+      "customType": "regex",
+      "description": "Falco ruleset OCI artifact pinned in values (helmfile manager does not see OCI refs)",
+      "managerFilePatterns": [
+        "/^kubernetes/components/falco/.+/values\\.yaml\\.gotmpl$/"
+      ],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s*\\n\\s*-\\s*falco-rules:(?<currentValue>\\S+)"
+      ]
     }
   ]
 }

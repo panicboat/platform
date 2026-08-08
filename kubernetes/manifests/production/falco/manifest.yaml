@@ -197,7 +197,7 @@ data:
         falcoversions: http://localhost:8765/versions
         pluginsDir: /plugins
         refs:
-        - falco-rules:5
+        - falco-rules:5.1.0
         rulesfilesDir: /rulesfiles
         stateDir: /artifactstate
       install:
@@ -211,6 +211,25 @@ data:
     indexes:
     - name: falcosecurity
       url: https://falcosecurity.github.io/falcoctl/index.yaml
+---
+# Source: falco/templates/rules-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falco-rules
+  namespace: falco
+  labels:
+    helm.sh/chart: falco-9.1.0
+    app.kubernetes.io/name: falco
+    app.kubernetes.io/instance: falco
+    app.kubernetes.io/version: "0.44.1"
+    app.kubernetes.io/managed-by: Helm
+data:
+  beyla-packet-socket.yaml: |-
+    - list: user_known_packet_socket_binaries
+      items: [beyla]
+      override:
+        items: append
 ---
 # Source: falco/templates/service.yaml
 apiVersion: v1
@@ -261,7 +280,7 @@ spec:
         app.kubernetes.io/instance: falco
       annotations:
         checksum/config: 16eeedd1b83ae65c870be4322c6ea79b1f12516d302c676d052ddcd0fc022d2d
-        checksum/rules: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        checksum/rules: 1c386d3cd218be185236929c557cd6702ab3ecfe9f4a68c063d74d31e7613013
         checksum/certs: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
         container.apparmor.security.beta.kubernetes.io/falco: unconfined
     spec:
@@ -281,8 +300,8 @@ spec:
               cpu: 1000m
               memory: 1024Mi
             requests:
-              cpu: 100m
-              memory: 512Mi
+              cpu: 50m
+              memory: 128Mi
           securityContext:
             capabilities:
               add:
@@ -362,6 +381,8 @@ spec:
             - mountPath: /etc/falco/falco.yaml
               name: falco-yaml
               subPath: falco.yaml
+            - mountPath: /etc/falco/rules.d
+              name: rules-volume
       initContainers:
         - name: falcoctl-artifact-install
           image: docker.io/falcosecurity/falcoctl:0.13.0
@@ -437,6 +458,9 @@ spec:
             items:
             - key: falco.yaml
               path: falco.yaml
+        - name: rules-volume
+          configMap:
+            name: falco-rules
   updateStrategy:
     type: RollingUpdate
 ---
