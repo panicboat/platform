@@ -60,13 +60,10 @@ jobs:
         uses: aquaproj/aqua-installer@96a9bc20066c5bf5e275b41019cfc165b25f4e2e # v4.0.5
         with:
           aqua_version: v2.48.2
-        env:
-          AQUA_CONFIG: .github/aqua.yaml
 
       - name: Hydrate changed components
         env:
           SERVICES_JSON: ${{ inputs.services }}
-          AQUA_CONFIG: ${{ github.workspace }}/.github/aqua.yaml
         run: |
           set -euo pipefail
           for svc in $(echo "$SERVICES_JSON" | jq -r '.[]'); do
@@ -74,8 +71,6 @@ jobs:
           done
 
       - name: Hydrate index
-        env:
-          AQUA_CONFIG: ${{ github.workspace }}/.github/aqua.yaml
         run: bash scripts/kubernetes-hydrate/hydrate-index.sh "${{ inputs.environment }}"
 
       - name: Commit and push hydrated manifests
