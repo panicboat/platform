@@ -20,6 +20,15 @@ args:
 http:
   relativePath: "/"
 
+# chart default の proxy.mode "forwarded" は RFC7239 Forwarded ヘッダーを
+# 期待するが、ALB は X-Forwarded-For/Proto/Port しか送らない (Keycloak 公式
+# ドキュメントも ALB 配下では xforwarded を使うよう明記)。ミスマッチのまま
+# だと Keycloak が元リクエストの scheme (https) を認識できず issuer URL が
+# http:// になり、Admin Console の 3rd-party cookie check iframe がタイム
+# アウトする不具合を確認したため上書きする。
+proxy:
+  mode: xforwarded
+
 database:
   vendor: postgres
   hostname: keycloak-db-rw.keycloak.svc.cluster.local
