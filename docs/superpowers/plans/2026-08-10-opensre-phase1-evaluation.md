@@ -36,35 +36,39 @@
 **Interfaces:**
 - Produces: ローカルに `opensre` コマンド。Task 5 で使う。Bedrock で利用可能な model ID 一覧（Task 2 の IAM policy resource に使う）
 
-- [ ] **Step 1: Bedrock で利用可能な model と inference profile を列挙する**
+- [x] **Step 1: Bedrock で利用可能な model と inference profile を列挙する**
 
-`ap-northeast-1` では foundation model を直接呼べず cross-region inference profile 経由になる場合がある。IAM policy の resource に何を書くかがこれで決まる。
+**実施済み。結果は以下。**
 
-```bash
-eks-login
-aws bedrock list-inference-profiles --region ap-northeast-1 \
-  --query 'inferenceProfileSummaries[].{id:inferenceProfileId,arn:inferenceProfileArn,status:status}' --output table
-aws bedrock list-foundation-models --region ap-northeast-1 \
-  --query 'modelSummaries[?providerName==`Anthropic`].{id:modelId,name:modelName}' --output table
-```
+`ap-northeast-1` では foundation model を直接呼べず cross-region inference profile 経由になる。`jp.` 接頭辞の profile は `ap-northeast-1` と `ap-northeast-3` にのみルーティングすることを `get-inference-profile` で確認した。データが日本国内に留まる。
 
-出力から使う model を 1 つ決める。まだ有効化されていない場合は AWS Console の Bedrock → Model access から有効化する。
+**`list-inference-profiles` の `status` は当てにならない。** 全 profile が `ACTIVE` を返すが、実際に invoke すると account に付与されていないものは `AccessDeniedException` になる。判定には invoke が要る。
 
-決めた model ID と、`inferenceProfileArn` および参照先 foundation model の ARN を控える。Task 2 で使う。
+| profile | 結果 |
+|---|---|
+| `jp.anthropic.claude-sonnet-4-6` | 利用可 |
+| `jp.anthropic.claude-sonnet-4-5-20250929-v1:0` | 利用可 |
+| `jp.anthropic.claude-haiku-4-5-20251001-v1:0` | 利用可 |
+| `jp.anthropic.claude-opus-4-8` / `-4-7` | AccessDenied |
+| `global.anthropic.claude-opus-5` / `claude-sonnet-5` | AccessDenied |
 
-- [ ] **Step 2: 疎通を先に素の AWS CLI で確認する**
+Opus tier と 5 世代はこの account で未有効。利用可能な最上位は Sonnet 4.6 である。
 
-OpenSRE を挟む前に、Bedrock 自体が呼べることを確定させる。ここで失敗したら原因は OpenSRE ではなく Bedrock 設定側にある。
+- [x] **Step 2: 疎通を先に素の AWS CLI で確認する（GATE 前半）**
+
+**実施済み。`jp.anthropic.claude-haiku-4-5-20251001-v1:0` に `converse` を投げて `ping ok` と token usage が返ることを確認した。** Bedrock 側の設定は正常である。
+
+再実行する場合:
 
 ```bash
 aws bedrock-runtime converse \
   --region ap-northeast-1 \
-  --model-id <Step 1 で決めた ID> \
-  --messages '[{"role":"user","content":[{"text":"ping"}]}]' \
-  --query 'output.message.content[0].text' --output text
+  --model-id jp.anthropic.claude-haiku-4-5-20251001-v1:0 \
+  --messages '[{"role":"user","content":[{"text":"Reply with exactly: ping ok"}]}]' \
+  --query '{text:output.message.content[0].text,usage:usage}' --output json
 ```
 
-期待: 応答テキストが返る。
+**注意: `aws` CLI のバージョン。** `/usr/local/bin/aws` に AWS 公式 pkg installer 由来の 2.11.4 が残っており、PATH で homebrew 版 (2.36.19) より優先される。2.11.4 は Bedrock リリース前のため `bedrock` サブコマンドを持たない。`/opt/homebrew/bin/aws` を明示するか、`/usr/local/bin/aws` を削除する。
 
 - [ ] **Step 3: ansible に tap を追加する**
 
@@ -107,7 +111,19 @@ which opensre
 opensre onboard
 ```
 
-対話で LLM provider に `bedrock` を選ぶ。`AWS_REGION` は `ap-northeast-1`、model は Step 1 で決めたものを指定する。この時点では既存の admin credential をそのまま使う（専用 role は Task 2 で作る）。
+対話で LLM provider に `bedrock` を選び、`AWS_REGION` に `ap-northeast-1` を設定する。この時点では既存の admin credential をそのまま使う（専用 role は Task 2 で作る）。
+
+model は 3 スロットに次を割り当てる。
+
+| 環境変数 | 値 |
+|---|---|
+| `BEDROCK_REASONING_MODEL` | `jp.anthropic.claude-sonnet-4-6` |
+| `BEDROCK_TOOLCALL_MODEL` | `jp.anthropic.claude-sonnet-4-6` |
+| `BEDROCK_CLASSIFICATION_MODEL` | `jp.anthropic.claude-haiku-4-5-20251001-v1:0` |
+
+toolcall に haiku を充てない理由は、PromQL / LogQL の組み立てとツール選択が失敗すると調査そのものが成立せず、「OpenSRE の推論品質」ではなく「model の力不足」を測ることになるためである。分類は高頻度・低難度なので haiku に落とす。
+
+Bedrock の現行モデル価格は AWS Pricing API に登録がなく（Anthropic は Claude 2.x / 3 世代のみ）、事前に確定できない。実測は Task 5 Step 2 の `/cost` で取る。
 
 - [ ] **Step 7: REPL で疎通を確認する（GATE）**
 
@@ -220,8 +236,15 @@ resource "aws_iam_role_policy" "opensre_bedrock_invoke" {
           "bedrock:InvokeModelWithResponseStream",
         ]
         Resource = [
-          "<INFERENCE_PROFILE_ARN>",
-          "<FOUNDATION_MODEL_ARN>",
+          # inference profile (呼び出し口)
+          "arn:aws:bedrock:${var.aws_region}:${data.aws_caller_identity.current.account_id}:inference-profile/jp.anthropic.claude-sonnet-4-6",
+          "arn:aws:bedrock:${var.aws_region}:${data.aws_caller_identity.current.account_id}:inference-profile/jp.anthropic.claude-haiku-4-5-20251001-v1:0",
+          # 参照先 foundation model。jp. profile は ap-northeast-1 と -3 の
+          # 二つへルーティングするため、両方を列挙しないと呼び出しが失敗する。
+          "arn:aws:bedrock:ap-northeast-1::foundation-model/anthropic.claude-sonnet-4-6",
+          "arn:aws:bedrock:ap-northeast-3::foundation-model/anthropic.claude-sonnet-4-6",
+          "arn:aws:bedrock:ap-northeast-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
+          "arn:aws:bedrock:ap-northeast-3::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
         ]
       }
     ]
