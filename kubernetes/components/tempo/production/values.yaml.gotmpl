@@ -39,14 +39,12 @@ tempo:
   # -------------------------------------------------------------------------
   # Receivers (= OTel Collector からの OTLP 受信用)
   # -------------------------------------------------------------------------
-  # chart default の receivers に jaeger / opencensus が含まれ、values の map は
-  # deep-merge されるため otlp だけ書いても両者は残る。opencensus は null を置いて
-  # キーごと削除する。jaeger に同じ手は使えない: chart の _ports.tpl が
-  # .Values.tempo.receivers.jaeger.protocols.thrift_compact を無条件に参照しており、
-  # 削除すると Service の描画が nil pointer で失敗する。結果として jaeger の
-  # 4 protocol は開いたままになる (= chart が deprecated で修正の見込みがない)。
+  # chart default の receivers に jaeger が含まれ、values の map は deep-merge
+  # されるため otlp だけ書いても jaeger の 4 protocol は開いたままになる。
+  # `jaeger: null` では消せない: chart の _ports.tpl が
+  # .Values.tempo.receivers.jaeger.protocols.thrift_compact を無条件に参照して
+  # おり、キーを削除すると Service の描画が nil pointer で失敗する。
   receivers:
-    opencensus: null
     otlp:
       protocols:
         grpc:
@@ -71,7 +69,7 @@ tempo:
   # tenant header (X-Scope-OrgID: anonymous) は既存 Prometheus remote_write と同値。
   # external_labels.cluster は multi-cluster 集約時の expectation に備えて付与。
   #
-  # NOTE: chart v1.24.4 は metricsGenerator.remoteWriteHeaders field を持たない。
+  # NOTE: chart 2.2.3 は metricsGenerator.remoteWriteHeaders field を持たない。
   # tenant header を渡すには storage.remote_write をフルリストで指定する
   # (chart template が空でない時のみリストをそのまま使うため remoteWriteUrl は無視される)。
   metricsGenerator:
@@ -129,7 +127,7 @@ persistence:
 # NOTE: chart default で PDB が enable の場合、replicas=1 で minAvailable=1 に
 # なり node drain 時に block する。Loki/production の SingleBinary podDisruptionBudget
 # と同じく明示 disable して node drain operations を安全に保つ。
-# (Tempo chart v1.24.4 は PDB テンプレートを持たないが、chart upgrade に
+# (Tempo chart 2.2.3 は PDB テンプレートを持たないが、chart upgrade に
 # 備えて明示 disable で意図を文書化する)
 podDisruptionBudget:
   enabled: false

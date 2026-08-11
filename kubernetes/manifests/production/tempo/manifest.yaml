@@ -6,10 +6,10 @@ metadata:
   name: tempo
   namespace: monitoring
   labels:
-    helm.sh/chart: tempo-1.24.4
+    helm.sh/chart: tempo-2.2.3
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
-    app.kubernetes.io/version: "2.9.0"
+    app.kubernetes.io/version: "2.10.7"
     app.kubernetes.io/managed-by: Helm
 automountServiceAccountToken: true
 ---
@@ -20,16 +20,17 @@ metadata:
   name: tempo
   namespace: monitoring
   labels:
-    helm.sh/chart: tempo-1.24.4
+    helm.sh/chart: tempo-2.2.3
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
-    app.kubernetes.io/version: "2.9.0"
+    app.kubernetes.io/version: "2.10.7"
     app.kubernetes.io/managed-by: Helm
 data:
   overrides.yaml: |
     overrides:
       {}
   tempo.yaml: |
+    stream_over_http_enabled: false
     memberlist:
       cluster_label: "tempo.monitoring"
     multitenancy_enabled: false
@@ -106,10 +107,10 @@ metadata:
   name: tempo
   namespace: monitoring
   labels:
-    helm.sh/chart: tempo-1.24.4
+    helm.sh/chart: tempo-2.2.3
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
-    app.kubernetes.io/version: "2.9.0"
+    app.kubernetes.io/version: "2.10.7"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -154,10 +155,6 @@ spec:
     port: 4318
     protocol: TCP
     targetPort: 4318
-  - name: tempo-opencensus
-    port: 55678
-    protocol: TCP
-    targetPort: 55678
   selector:
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
@@ -169,10 +166,10 @@ metadata:
   name: tempo
   namespace: monitoring
   labels:
-    helm.sh/chart: tempo-1.24.4
+    helm.sh/chart: tempo-2.2.3
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
-    app.kubernetes.io/version: "2.9.0"
+    app.kubernetes.io/version: "2.10.7"
     app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
@@ -187,7 +184,7 @@ spec:
         app.kubernetes.io/name: tempo
         app.kubernetes.io/instance: tempo
       annotations:
-        checksum/config: 8e3806583c07c406ea25dc3bbed8cc04a735cc117230003e1551207a9c449289
+        checksum/config: c092ab7e2b3bbff16e7e43105127823b4164cfddb3a95d3262bc722e171aed8f
     spec:
       serviceAccountName: tempo
       automountServiceAccountToken: true
@@ -195,7 +192,7 @@ spec:
       - args:
         - -config.file=/conf/tempo.yaml
         - -mem-ballast-size-mbs=1024
-        image: docker.io/grafana/tempo:2.9.0
+        image: docker.io/grafana/tempo:2.10.7
         imagePullPolicy: IfNotPresent
         name: tempo
         ports:
@@ -221,8 +218,6 @@ spec:
           name: otlp-httplegacy
         - containerPort: 4318
           name: otlp-http
-        - containerPort: 55678
-          name: opencensus
         livenessProbe:
             failureThreshold: 3
             httpGet:
@@ -293,23 +288,21 @@ metadata:
   namespace: monitoring
   labels:
     app: tempo
-    chart: tempo-1.24.4
+    chart: tempo-2.2.3
     heritage: Helm
     release: kube-prometheus-stack
 spec:
   selector:
     matchLabels:
-      helm.sh/chart: tempo-1.24.4
+      helm.sh/chart: tempo-2.2.3
       app.kubernetes.io/name: tempo
       app.kubernetes.io/instance: tempo
-      app.kubernetes.io/version: "2.9.0"
+      app.kubernetes.io/version: "2.10.7"
       app.kubernetes.io/managed-by: Helm
   namespaceSelector:
     matchNames:
       - "monitoring"
   endpoints:
     - port: tempo-prom-metrics
-      interval: 15s
-    - port: jaeger-metrics
       interval: 15s
 
