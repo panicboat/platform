@@ -66,6 +66,11 @@ resources:
 # 守るのは GWS テナント境界 (= テナントが複数ドメインを持てばその全部を通す)、
 # email_domains が守るのは monitoring UIs の利用者境界 (= panicboat.net のみ)。
 # テナントに追加ドメインが生えても本 UI の利用者が広がらないようにするのが後者。
+#
+# prefer_email_to_user は X-Forwarded-User に email を入れる (= default false だと
+# Google provider は sub claim の 21 桁数値を入れる)。Grafana は auth.proxy で
+# 同 header を user 名に使うため、これが無いと user 一覧が不透明な数値の羅列に
+# なり、誰の操作か判別できない。
 config:
   existingSecret: oauth2-proxy-google
   configFile: |-
@@ -83,6 +88,7 @@ config:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
+    prefer_email_to_user = true
 
 # =============================================================================
 # Deployment Annotations (= Reloader watch)

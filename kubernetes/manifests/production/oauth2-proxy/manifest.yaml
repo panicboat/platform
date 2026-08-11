@@ -70,6 +70,7 @@ data:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
+    prefer_email_to_user = true
 ---
 # Source: oauth2-proxy/templates/service.yaml
 apiVersion: v1
@@ -130,7 +131,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 7d327cf9e94d98cb39ab0fa0a88d236dc7f1e36b45d987471d1e347b2de2d696
+        checksum/config: 9ae8ded8d9c01822a431788234a76e6256ecfcb19d53a2606aab54d2b21d6db1
         checksum/secret: 9eb46bbdefd5cf844a2c4965b1241a7177addaa7c07789e7873ccda6b0104111
         checksum/google-secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
         checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
@@ -328,6 +329,7 @@ data:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
+    prefer_email_to_user = true
 ---
 # Source: oauth2-proxy/templates/service.yaml
 apiVersion: v1
@@ -388,7 +390,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: de503bb819e863770e3fa1f911bb0055cf1437b85e38c0590f417eb46eec765c
+        checksum/config: 496340958431cc033a4be129f33e2cb2638b8e8c65da639cf614f82a91f63617
         checksum/secret: 9eb46bbdefd5cf844a2c4965b1241a7177addaa7c07789e7873ccda6b0104111
         checksum/google-secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
         checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
@@ -586,6 +588,7 @@ data:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
+    prefer_email_to_user = true
 ---
 # Source: oauth2-proxy/templates/service.yaml
 apiVersion: v1
@@ -646,7 +649,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: e2074abdd7b150b9b1ef0daf4220696c7d006db1e8913ad44353b789b2519078
+        checksum/config: 15a0e0ae0791bd002ad8779ff6f54ccc919981511ac5af09f88adbde2e6df17b
         checksum/secret: 9eb46bbdefd5cf844a2c4965b1241a7177addaa7c07789e7873ccda6b0104111
         checksum/google-secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
         checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
@@ -844,6 +847,7 @@ data:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
+    prefer_email_to_user = true
 ---
 # Source: oauth2-proxy/templates/service.yaml
 apiVersion: v1
@@ -904,7 +908,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 3cc97e5ec01fe5f79d6734ce131d8387859e66e3a2cc8d08d445dc258380c96c
+        checksum/config: c527d7411b9580deb62a748b03142678929cdc5a392f3850052916a471139b7e
         checksum/secret: 9eb46bbdefd5cf844a2c4965b1241a7177addaa7c07789e7873ccda6b0104111
         checksum/google-secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
         checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
