@@ -3,8 +3,13 @@
 # =============================================================================
 # Traces stack の Tempo 本体。Monolithic mode (chart 内蔵の single binary
 # deploy、distributor + ingester + querier + compactor を 1 process に統合、
-# Tempo 公式が small production OK とする position に準拠)。grafana/tempo-
-# distributed への切替は HA / scale 要件が顕在化した時点で再評価する。
+# Tempo 公式が small production OK とする position に準拠)。tempo-distributed
+# への切替は HA / scale 要件が顕在化した時点で再評価する。
+# chart は grafana-community/helm-charts から取る。旧 grafana/helm-charts の
+# tempo chart は Chart.yaml に deprecated: true を持ち、repository 自体の
+# サポートが 2026-01-30 に終了している。移管先でも single binary mode の
+# 提供は継続する。renovate は参照中の repository index しか見ないため、
+# repository ごと移管される変更は検知できない。
 # S3 backend は `tempo-559744160976` を Pod Identity 経由でアクセス、IAM role
 # は bucket-wide (3 stack 同型) + application-level prefix env scope
 # (`s3.prefix: production`) で隔離。
@@ -24,13 +29,13 @@ environments:
           bucketPathPrefix: production
 ---
 repositories:
-  - name: grafana
-    url: https://grafana.github.io/helm-charts
+  - name: grafana-community
+    url: https://grafana-community.github.io/helm-charts
 
 releases:
   - name: tempo
     namespace: monitoring
-    chart: grafana/tempo
-    version: "1.24.4"
+    chart: grafana-community/tempo
+    version: "2.2.3"
     values:
       - values.yaml.gotmpl
