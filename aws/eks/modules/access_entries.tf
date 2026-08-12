@@ -24,22 +24,5 @@ locals {
         }
       }
     }
-
-    # OpenSRE evaluation. An LLM agent reasons over this cluster, so it gets a
-    # separate principal with view-only RBAC rather than reusing the admin
-    # role: the blast radius of a misbehaving agent is then bounded by IAM
-    # rather than by the agent's own restraint.
-    opensre = {
-      principal_arn = aws_iam_role.opensre_investigator.arn
-
-      policy_associations = {
-        view = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
-          access_scope = {
-            type = "cluster"
-          }
-        }
-      }
-    }
   }
 }
