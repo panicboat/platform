@@ -168,3 +168,16 @@ metadata:
   name: reloader
   labels:
     app.kubernetes.io/name: reloader
+---
+# =============================================================================
+# sandbox Namespace
+# =============================================================================
+# OpenSRE 評価用 namespace。原因が既知の障害を持つ workload を 2 つ持ち、
+# 調査レポートの採点対象にする。評価が終わったら component ごと削除する。
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sandbox
+  labels:
+    app.kubernetes.io/name: sandbox
