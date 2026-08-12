@@ -6,7 +6,7 @@
 
 **Architecture:** OpenSRE はローカル CLI として動かし、クラスタには何もインストールしない。専用の read-only IAM role を EKS access entry で Kubernetes RBAC へマップし、同じ role で Bedrock を呼ぶ。`sandbox` namespace に原因が既知の二層障害（frontend の接続エラー → backend の OOMKill）を仕込み、OpenSRE のレポートがその原因に到達するかで採点する。
 
-**Tech Stack:** OpenSRE CLI (homebrew tap `tracer-cloud/tap`), Amazon Bedrock, Terragrunt + OpenTofu, Kustomize + Flux CD, Ansible
+**Tech Stack:** OpenSRE CLI (GitHub release tarball を再署名してローカル配置), Amazon Bedrock, Terragrunt + OpenTofu, Kustomize + Flux CD
 
 **Design doc:** `docs/superpowers/specs/2026-08-10-opensre-phase1-evaluation-design.md`
 
@@ -27,14 +27,17 @@
 
 このタスクが失敗した場合、**以降のタスクをすべて中止する**。alpha の Bedrock 実装が機能しないなら、IAM stack と sandbox を作る意味が無い。
 
-`platform` には一切触れない。変更は `ansible` repo のみ。
+`platform` にも `ansible` にも触れない。導入はローカルマシンへの手動配置で完結する。
+
+当初は `ansible` の homebrew role に載せる計画だったが、**upstream の formula が壊れているため採らない**（Step 3）。壊れた formula をマシンセットアップに焼き込むことになる。
 
 **Files:**
-- Modify: `/Users/takanokenichi/GitHub/panicboat/ansible/roles/homebrew/tasks/main.yaml:13-14`（taps 定義）
-- Modify: `/Users/takanokenichi/GitHub/panicboat/ansible/roles/homebrew/tasks/main.yaml:58`（packages 一覧、`opentofu` の直前）
+- リポジトリへの変更なし
+- Create: `~/.local/opt/opensre-<version>/`（再署名済み bundle）
+- Create: `/opt/homebrew/bin/opensre`（symlink）
 
 **Interfaces:**
-- Produces: ローカルに `opensre` コマンド。Task 5 で使う。Bedrock で利用可能な model ID 一覧（Task 2 の IAM policy resource に使う）
+- Produces: ローカルに `opensre` コマンド。Task 4 と Task 5 で使う。Bedrock で利用可能な model ID 一覧（Task 2 の IAM policy resource に使う）
 
 - [x] **Step 1: Bedrock で利用可能な model と inference profile を列挙する**
 
@@ -70,80 +73,127 @@ aws bedrock-runtime converse \
 
 **注意: `aws` CLI のバージョン。** `/usr/local/bin/aws` に AWS 公式 pkg installer 由来の 2.11.4 が残っており、PATH で homebrew 版 (2.36.19) より優先される。2.11.4 は Bedrock リリース前のため `bedrock` サブコマンドを持たない。`/opt/homebrew/bin/aws` を明示するか、`/usr/local/bin/aws` を削除する。
 
-- [ ] **Step 3: ansible に tap を追加する**
+- [x] **Step 3: homebrew formula が壊れていることを確認する**
 
-`roles/homebrew/tasks/main.yaml` の `homebrew_taps` に 1 行足す。既存の `brew trust --tap` ループがそのまま新しい tap にも適用される。
+**実施済み。formula は使えない。**
 
-```yaml
-- name: define homebrew taps
-  ansible.builtin.set_fact:
-    homebrew_taps:
-      - name: fluxcd/tap
-      - name: tracer-cloud/tap
+`brew install tracer-cloud/tap/opensre` は成功したように見えるが、起動しない。formula の install block が実行ファイル 1 つしか配置しないためである。
+
+```ruby
+def install
+  bin.install "opensre"     # ← _internal/ を捨てている
+end
 ```
 
-- [ ] **Step 4: ansible に package を追加する**
+配布 tarball は PyInstaller の onedir バンドルで、`opensre/opensre` と `opensre/_internal/`（4882 エントリ）で構成される。実行ファイルは隣の `_internal/Python` を `dlopen` するため、これが無いと起動できない。
 
-一覧は表示名のアルファベット順（`fluxcd/tap/flux` は "flux" として f の位置にある）。`opensre` は `opentofu` の直前に入る。
+formula 自身の `test do` が `opensre --version` の成功を assert しているので、CI で `brew test` を回していれば検出できたはずの不具合である。
 
-```yaml
-      - nodenv                  # Node.js version manager
-      - tracer-cloud/tap/opensre # AI SRE agent framework for incident investigation
-      - opentofu                # Open-source Terraform-compatible IaC tool
+**ansible 経由の導入は採らない。** 壊れた formula をマシンセットアップに焼き込むことになる。upstream が修正し、かつ採用を決めてから改めて入れる。
+
+- [x] **Step 4: 配布物の署名が壊れていることを確認する**
+
+**実施済み。tarball を直接展開しても起動しない。**
+
+```
+_internal/Python.framework: code has no resources but signature indicates they must be present
 ```
 
-- [ ] **Step 5: ansible を適用して CLI が入ることを確認する**
+同梱される `Python.framework` と 110 個の Mach-O ライブラリの ad-hoc 署名が不正で、macOS がロードを拒否しプロセスを SIGKILL する（exit 137）。`v0.1.2026.8.10` でも同じであり、単発の回帰ではない。
+
+公式 installer（`curl -fsSL https://install.opensre.com | bash`）も自前の検証ステップでこれを検知して中断する。
+
+なお installer には `--release` と `--version` があり、plan 初版に書いた「main の rolling build しか取れない」は誤りだった。ただし署名不具合のため、どのみち installer では完了しない。
+
+- [x] **Step 5: 再署名して導入する**
+
+**実施済み。** 署名を付け直せば動作する。
 
 ```bash
-cd /Users/takanokenichi/GitHub/panicboat/ansible
-export HOMEBREW_NO_REQUIRE_TAP_TRUST=1
-ansible-playbook playbook.yaml -i inventory.ini
-which opensre
+V=0.1.2026.8.12
+S=$(mktemp -d) && cd $S
+curl -fsSL -o o.tar.gz "https://github.com/Tracer-Cloud/opensre/releases/download/v${V}/opensre_${V}_darwin-arm64.tar.gz"
+tar xzf o.tar.gz
+
+# 同梱 Mach-O をすべて ad-hoc 再署名する
+find opensre/_internal \( -name "*.dylib" -o -name "*.so" \) -print0 \
+  | xargs -0 -P 8 -n 20 codesign --force --sign -
+codesign --force --sign - opensre/_internal/Python.framework/Versions/3.13
+codesign --force --sign - opensre/opensre
+
+# 安定パスへ配置して PATH 上へ symlink する
+mkdir -p ~/.local/opt
+cp -R opensre ~/.local/opt/opensre-${V}
+ln -sfn ~/.local/opt/opensre-${V}/opensre /opt/homebrew/bin/opensre
 ```
 
-期待: `opensre` のパスが出力される。
+`~/.local/bin` は PATH に無く、`~/.zshrc` は dotfiles repo への symlink であるため、rc を書き換えると別リポジトリに差分が出る。それを避けて PATH 上の `/opt/homebrew/bin` へ symlink する。撤退は 2 パスの削除だけで済む。
 
-`HOMEBREW_NO_REQUIRE_TAP_TRUST=1` は既存の手順に含まれている環境変数で、third-party tap の追加に必要になる。
+期待: `opensre --version` が `opensre, version 0.1.2026.8.12` を返す。
 
-- [ ] **Step 6: OpenSRE を Bedrock で設定する**
+**この再署名は更新のたびに必要になる。** ほぼ日次リリースであることと合わせ、運用負荷として評価に記録する。
 
-```bash
-opensre onboard
-```
+- [x] **Step 6: 環境診断を取る**
 
-対話で LLM provider に `bedrock` を選び、`AWS_REGION` に `ap-northeast-1` を設定する。この時点では既存の admin credential をそのまま使う（専用 role は Task 2 で作る）。
+**実施済み。** `opensre doctor` が動作する。
 
-model は 3 スロットに次を割り当てる。
+初期状態の警告は次のとおり。`llm_provider` は Step 7 で解消する。
 
-| 環境変数 | 値 |
+| 項目 | 内容 |
 |---|---|
-| `BEDROCK_REASONING_MODEL` | `jp.anthropic.claude-sonnet-4-6` |
-| `BEDROCK_TOOLCALL_MODEL` | `jp.anthropic.claude-sonnet-4-6` |
-| `BEDROCK_CLASSIFICATION_MODEL` | `jp.anthropic.claude-haiku-4-5-20251001-v1:0` |
+| `llm_provider` | `provider=anthropic, auth missing` |
+| `agent_capabilities` | **`python execution is unavailable`** |
+| `env_file` | `.env not found` |
+| `integrations` | 未設定 |
+
+`agent_capabilities` の警告は調査能力に影響しうる。Task 5 の採点時、python 実行を要する分析ができないことが結果に効いていないかを確認する。
+
+- [x] **Step 7: Bedrock 疎通を確認する（GATE）**
+
+**実施済み。通過。**
+
+設定は環境変数で行う。`opensre onboard` の対話を経由する必要はない。
+
+```bash
+export LLM_PROVIDER=bedrock AWS_REGION=ap-northeast-1
+export BEDROCK_REASONING_MODEL=jp.anthropic.claude-sonnet-4-6
+export BEDROCK_TOOLCALL_MODEL=jp.anthropic.claude-sonnet-4-6
+export BEDROCK_CLASSIFICATION_MODEL=jp.anthropic.claude-haiku-4-5-20251001-v1:0
+
+opensre config    # Provider : bedrock / Auth : AWS credential chain
+opensre doctor    # llm_provider が ✓ になる
+```
 
 toolcall に haiku を充てない理由は、PromQL / LogQL の組み立てとツール選択が失敗すると調査そのものが成立せず、「OpenSRE の推論品質」ではなく「model の力不足」を測ることになるためである。分類は高頻度・低難度なので haiku に落とす。
 
-Bedrock の現行モデル価格は AWS Pricing API に登録がなく（Anthropic は Claude 2.x / 3 世代のみ）、事前に確定できない。実測は Task 5 Step 2 の `/cost` で取る。
-
-- [ ] **Step 7: REPL で疎通を確認する（GATE）**
+疎通は `investigate` を非対話で走らせて確認する。REPL は TTY を要求するため自動化できない。
 
 ```bash
-opensre
+opensre investigate --input-json '{"title":"probe","alert_name":"Probe","severity":"info","alert_source":"grafana","state":"alerting","commonAnnotations":{"summary":"Connectivity probe only."}}' -o /tmp/probe.json
 ```
 
-REPL で `/status` を実行し、続けて `Kubernetes とは何か一言で` のようなクラスタ非依存の質問を投げる。
+期待: `is_noise: true` の構造化出力が返る。severity が `info` で調査対象が無いため、noise 判定が正しい応答になる。
 
-期待: `/status` が provider と model を表示し、質問に応答が返る。
+**Bedrock を実際に呼んでいることの確認**: model ID を存在しない値に差し替えると `RuntimeError: Bedrock request rejected (HTTP 400): The provided model identifier is invalid.` になる。設定した model が実際に使われている証拠になる。
 
-**このステップが通らなかった場合**: 失敗内容を design doc の末尾に `## Evaluation result` として記録し、`ansible` の変更を revert して**評価を終了する**。Task 2 以降には進まない。
+このとき例外が処理されずプロセスごと落ちる（`Failed to execute script '__main__' due to unhandled exception!`）。エラーハンドリングの粗さとして評価に記録する。
 
-- [ ] **Step 8: ansible の変更を commit する**
+**このステップが通らなかった場合**: 失敗内容を design doc の末尾に `## Evaluation result` として記録し、Step 5 で作った 2 パスを削除して**評価を終了する**。Task 2 以降には進まない。
 
-```bash
-cd /Users/takanokenichi/GitHub/panicboat/ansible
-git add roles/homebrew/tasks/main.yaml
-git commit -s -m "feat(homebrew): add opensre CLI via tracer-cloud tap"
-```
+- [x] **Step 8: 非対話で駆動できる範囲を確定する**
+
+**実施済み。** plan 初版は「大半が人手」と見積もったが、実際には広く自動化できる。
+
+| 手段 | 用途 |
+|---|---|
+| `investigate --input-json` / `-i` / `-o` | 調査を非対話で実行し JSON で受け取る |
+| `investigate --evaluate` | scoring_points rubric に対する LLM-judge。Task 5 の採点に使える |
+| `investigate --print-template <src>` | grafana など各種アラート形式のテンプレート生成 |
+| `-y` / `--no-interactive` / `-j` | 対話プロンプトの自動確認と機械可読出力 |
+| `opensre doctor` | 接続設定の検証 |
+| `opensre config set` / `show` | `~/.opensre/config.yml` の読み書き |
+
+Task 4 と Task 5 はこれらを使い、REPL を介さず実行する。
 
 ---
 
@@ -750,11 +800,12 @@ plan が role 3 リソースと access entry 1 件の削除だけであること
 
 ```bash
 kubectl config delete-context opensre-view
-brew uninstall opensre
-brew untap tracer-cloud/tap
+rm /opt/homebrew/bin/opensre
+rm -rf ~/.local/opt/opensre-*
+rm -rf ~/.opensre
 ```
 
-`ansible` 側の変更も revert する（tap 定義と package 一覧から該当行を削除）。Grafana の service account は UI から削除する。
+`ansible` は変更していないため戻す対象が無い。Grafana の service account は UI から削除する。
 
 - [ ] **Step 4: 採用の場合のみ — Phase 2 の起点を記録する**
 
