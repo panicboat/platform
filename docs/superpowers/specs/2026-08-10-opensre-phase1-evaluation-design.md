@@ -263,3 +263,69 @@ slash command として `/help`、`/status`、`/cost`、`/sessions`、`/resume`�
 
 Kubernetes 接続は `KUBECONFIG`、`KUBECONFIG_CONTEXT`、`KUBECONFIG_NAMESPACE` で設定する。
 kubeconfig を渡す汎用方式であり、EKS 固有の設定項目は無い。
+
+## Evaluation result
+
+判断: **現時点では採用しない。** ただし本設計が測ろうとした「自クラスタのテレメトリに対する推論品質」は測れていない。macOS 配布物が調査を実行できず、評価対象が成立しなかったためである。
+
+### 何が起きたか
+
+`v0.1.2026.8.12` の darwin-arm64 配布物には、独立した 3 つのパッケージング不具合がある。いずれも upstream 側の問題で、本 repo の設定に起因しない。
+
+| # | 不具合 | 症状 |
+|---|---|---|
+| 1 | homebrew formula の install block が実行ファイルしか配置しない | PyInstaller onedir バンドルの `_internal/`（4882 エントリ）が捨てられ、`dlopen` が `_internal/Python` を見つけられず起動しない |
+| 2 | 同梱 `Python.framework` と 110 個の Mach-O の ad-hoc 署名が不正 | 「code has no resources but signature indicates they must be present」。macOS がロードを拒否し SIGKILL（exit 137） |
+| 3 | 調査用ツールモジュールがバンドルに含まれていない | `integrations.kubernetes.tools` 等がバンドル内に存在しない。動的 import の hidden-import 漏れと見られる |
+
+1 は formula 自身の `test do` が `opensre --version` の成功を assert しているため、CI で `brew test` を回していれば検出できた。2 は `v0.1.2026.8.10` にも存在し、単発の回帰ではない。vendor 自身の installer も 2 を検知して中断する。
+
+1 と 2 は全 Mach-O を ad-hoc 再署名すれば回避でき、実際に `opensre --version` / `doctor` / `investigate` は動作した。3 は回避できない。
+
+### 3 の帰結
+
+`integrations verify` は kubernetes / grafana とも `✓ passed` を返す。credential は正しく、`namespace 'sandbox' accessible` まで確認できる。それでも調査は次のようになる。
+
+```
+No tools available for investigation
+  ● Loading integrations  0ms   kubernetes, grafana_local
+  ● Investigation        48.6s  evidence:0 messages:2
+```
+
+integration はロードされるがツールが 0 件で、48.6 秒かけて証拠を 1 つも集めない。レポート自身が「No live tool calls could be made — all verification must be performed manually by the on-call engineer」と述べ、`kubectl get pods` すら実行しない。
+
+つまりこの配布物で測れるのは「アラート文面だけから何を推測できるか」であって、観測基盤との統合ではない。
+
+### 採点
+
+参考として、上記の制約下でのレポートを Grading criteria に照らす。
+
+> The most probable cause is that backend pod(s) are not running (CrashLoopBackOff, **OOMKilled**, or scaled to zero) **or** the Kubernetes Service has no healthy endpoints due to a selector or targetPort mismatch
+
+仕込んだ原因を複数候補の一つとして挙げたが特定しておらず、観測データの引用も無い。`validity_score` は自己申告 0.55。「backend の CrashLoopBackOff に言及するが memory limit と結びつけない」に該当し**不合格**である。
+
+ただしこれは推論能力の評価ではない。アラート文面だけを与えられた条件では、この程度の仮説列挙は妥当な出力とも言える。
+
+### 副次的な観測
+
+- **テレメトリを既定で収集する。** `~/.opensre/posthog_events.txt` に CLI バージョン、OS、`composite_fingerprint`（host / platform / user のハッシュ）、`llm_provider`、session_id、investigation のループ回数を記録する。クラスタ名・namespace・アラート内容は含まれない
+- **エラーハンドリングが粗い。** 不正な model ID を渡すと例外が処理されずプロセスごと落ちる
+- **非対話での駆動は可能。** `investigate --input-json` / `-o` / `--evaluate`、`-y` / `--no-interactive` / `-j` がある。integration 設定だけは対話ウィザードだが stdin パイプで駆動でき、`~/.opensre/integrations.json` を直接編集してもよい
+- **kubeconfig は inline YAML でのみ成立する。** `kubeconfig_path` 方式は保存できても検証を通らない
+- **更新のたびに 110 ファイルの再署名が要る。** ほぼ日次リリースと合わせると運用負荷は無視できない
+
+### Bedrock 側の結果
+
+Bedrock 連携そのものは機能した。`AWS_ROLE_ARN` を使わず、専用 role の credential で直接実行して推論が通る。不正な model ID が HTTP 400 を返すことで、設定した model が実際に使われていることを確認した。
+
+この account では Opus tier と 5 世代が未有効で、利用可能な最上位は Sonnet 4.6 だった。`list-inference-profiles` は付与されていない profile も `ACTIVE` と報告するため、判定には invoke が要る。
+
+### 権限設計の結果
+
+`AmazonEKSViewPolicy` が Secret を除外するという未確認の仮定は正しかった。Pod は 94 件読め、`secrets` は Forbidden になる。自前 ClusterRole への切り替えは不要である。
+
+### 次にやるなら
+
+推論品質の評価をやり直すには、PyInstaller バンドルを避けてソースから導入する必要がある。パッケージング不具合 3 件を一度に回避でき、ツールモジュールも揃う。
+
+再評価しない場合は、`aws/eks` の role と access entry、および sandbox component を撤去する。撤退手順は Rollback にある。
