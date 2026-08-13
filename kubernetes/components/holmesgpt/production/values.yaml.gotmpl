@@ -32,8 +32,11 @@ serviceAccount:
 # 二段階で採点する。sonnet-4-6 は OpenSRE 評価と同一 model であり、ツール間の
 # 比較を model 差に汚されずに行うために置く。opus-5 は現行世代での上限を見る。
 #
-# NOTE: opus-5 は 2026-08-13 時点で model access の反映待ち。agreement は
-# AVAILABLE を返すが runtime が AccessDenied を返す状態が 12 分継続した。
+# NOTE: sonnet-5 と opus-5 は 2026-08-13 時点で model access の反映待ち。
+# agreement は全 region で AVAILABLE / AUTHORIZED を返すが、inference profile
+# 経由でも foundation model 直接でも runtime が AccessDenied を返す状態が
+# 1 時間以上継続した。control plane と data plane の乖離である。
+# 反映され次第そのまま使えるよう、両方を modelList に置いておく。
 # 段階 1 の採点は sonnet-4-6 だけで成立する。
 additionalEnvVars:
   - name: AWS_REGION_NAME
@@ -42,6 +45,9 @@ additionalEnvVars:
 modelList:
   sonnet-4-6:
     model: bedrock/us.anthropic.claude-sonnet-4-6
+    temperature: 0
+  sonnet-5:
+    model: bedrock/us.anthropic.claude-sonnet-5
     temperature: 0
   opus-5:
     model: bedrock/us.anthropic.claude-opus-5
