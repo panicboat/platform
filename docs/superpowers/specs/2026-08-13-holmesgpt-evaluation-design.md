@@ -274,3 +274,81 @@ HolmesGPT は cluster 内に常駐し、読んだ内容を外部 LLM へ送る�
 read-only RBAC と `secrets` の除外で被害は限定されるが、`configmaps` と Pod のログは送信対象になりうる。
 prompt injection の観点では、ログの内容は攻撃者が影響を与えうる入力である。
 本評価は採点までを範囲とし、常用する場合はこの境界を改めて設計する。
+
+## Evaluation result
+
+判断: **採用する。** 段階 1 の採点で合格し、OpenSRE が到達できなかった水準の調査を実行した。
+
+### 段階 1（Sonnet 4.6）
+
+合格である。根本原因を「backend の memory limit 64 MiB による OOMKill」と特定し、観測データを引用した。
+
+引用された証拠は Pod 名 `backend-79cbbdd88d-7vzv5`、`State: Terminated / Reason: OOMKilled / Exit Code: 137`、`Restart Count: 2`、`Warning BackOff`、`Endpoints: <none>`、およびコンテナの起動コマンドそのものである。
+
+三層の連鎖も正しく説明した。加えて `Errno 113` と `Errno 111` の使い分けを、endpoint 不在時は 113、Pod 起動中で未リッスンなら 111 と説明した。仕込んだ設計には含まれない観察であり、実データから導いている。
+
+11 回のツール呼び出しを 43 秒で行った。経路は workload 一覧 → frontend のログ → Service の特定 → backend Pod の describe（ここで OOMKilled を発見）→ Endpoints 確認 → backend のログ、である。トークンは 19,785（うちキャッシュ 18,658）。
+
+### OpenSRE との比較
+
+同一の sandbox、同一世代の model、同一の採点基準で比較した。
+
+| | OpenSRE | HolmesGPT |
+|---|---|---|
+| tool_calls | 0 | 11 |
+| 調査時間 | 84s / 48.6s | 43s |
+| 根本原因 | 複数候補の一つとして OOMKilled を列挙。特定せず | memory limit 64 MiB による OOMKill と特定 |
+| 証拠 | `evidence:0`。`kubectl` すら未実行 | Pod 名・exit code・restart count・endpoints・コンテナコマンドを引用 |
+| 結論 | 「手動で確認せよ」 | 修正案まで提示 |
+| 判定 | 不合格 | 合格 |
+
+差の原因はツールの実行能力にある。OpenSRE は `integrations verify` が passed を返しながら `No tools available for investigation` のまま証拠を集められなかった。配布物にツールモジュールが含まれていなかったためである。
+
+### 段階 2（Opus 5）— 未実施
+
+`bedrock create-foundation-model-agreement` で Opus 5 と Sonnet 5 を有効化したが、`bedrock-runtime` は agreement 作成から約 1 時間経っても `AccessDeniedException` を返した。
+`get-foundation-model-availability` は三つの region すべてで `agreementAvailability: AVAILABLE` / `authorizationStatus: AUTHORIZED` / `entitlementAvailability: AVAILABLE` を返す。control plane と data plane の不一致である。
+
+経路を変えても解消しない。`us.` inference profile 経由に加え、`us-west-2` と `us-east-2` で foundation model を直接指定しても同じく拒否される。model 固有ではなく account 全体の状態である。
+
+段階 2 の対象としては Opus 5 より Sonnet 5 が適切である。現行世代でありながら $2 / $10（プロモーション価格）で、Opus 5 の $5 / $25 の半額以下になる。
+反映され次第そのまま使えるよう、IAM policy と `modelList` の両方に Sonnet 5 を含めてある。
+
+段階 1 で合格しているため採否の判断は成立する。IAM policy には Opus 5 の ARN を含めてあるので、反映されれば追加の apply なしで段階 2 を実施できる。
+
+### 設計上の発見
+
+**`k8sRBAC` の意味は名前と逆である。**
+
+```
+holmesgpt-service-account.yaml:      if and createServiceAccount (not k8sRBAC)
+holmesgpt-rbac-service-account.yaml: if and createServiceAccount k8sRBAC
+```
+
+`k8sRBAC: true` は「RBAC を自前で用意する」を意味し、chart の ClusterRole を丸ごと無効化する。加えて SA が `automountServiceAccountToken: false` の素のものになり、Kubernetes API を叩けなくなる。
+実装時に `true` と設定し、生成物の検証で ClusterRole が 0 件・`externalsecrets` が 0 件であることから気づいた。既定の `false` が正しい。
+
+**LiteLLM は `AWS_REGION_NAME` を見る。**
+
+IRSA の webhook は cluster の region（`ap-northeast-1`）を `AWS_REGION` として注入する。`us.` inference profile はその region に存在しないため、boto の既定解決に従うと失敗する。実際には `AWS_REGION_NAME=us-east-1` が優先され、呼び出しは成立した。
+
+**`bedrock/` 接頭辞に inference profile ID をそのまま渡せる。** 未確認の仮定であったが、`bedrock/us.anthropic.claude-sonnet-4-6` で起動時にモデルが登録され、`/api/model` が返した。
+
+**`bash` は `core` で不足しなかった。** 調査で使われたのは `kubectl describe` と `kubectl get endpoints` であり、いずれも core allowlist に含まれる。`extended` へ上げる必要は生じなかった。
+
+**LiteLLM のコスト追跡は既定では働かない。** 起動ログに `has no entry in litellm's cost map` が出る。必要なら `modelList` の各エントリに `input_cost_per_token` / `output_cost_per_token` を設定する。Bedrock の実価格は agreement offer の `rateCard` から取得できる。
+
+### 想定と違った点
+
+`prometheus/metrics` は使われなかった。`kubectl describe` の Event だけで OOMKill に到達している。
+本設計は根本層の痕跡を Mimir の container memory metric に置いたが、Kubernetes API だけで解ける題材だった。**観測基盤との統合は今回の採点では試されていない。**
+
+metric にしか痕跡が残らない題材を仕込めば測れる。採用後の課題として残す。
+
+### 常用に向けた課題
+
+- **Alertmanager receiver の設計。** 現状 receiver が未設定であり、アラート駆動の自動調査には別途の設計が要る
+- **prompt injection の境界。** ログは攻撃者が内容に影響を与えうる入力であり、`configmaps` と Pod のログが外部 LLM へ送られる。`secrets` は RBAC で除外されているが、境界を明示的に設計していない
+- **observability 統合の未検証。** Mimir / Loki / Tempo を要する題材での調査能力は測れていない
+- **`internet` toolset の egress。** NetworkPolicy による制限を入れていない
+- **Opus 5 での再評価。** model access が反映され次第、同一条件で段階 2 を実施する

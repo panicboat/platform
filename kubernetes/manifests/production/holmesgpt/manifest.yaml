@@ -638,6 +638,9 @@ data:
     sonnet-4-6:
       model: bedrock/us.anthropic.claude-sonnet-4-6
       temperature: 0
+    sonnet-5:
+      model: bedrock/us.anthropic.claude-sonnet-5
+      temperature: 0
 ---
 # Source: holmes/templates/holmesgpt-service-account.yaml
 kind: ClusterRole
@@ -1071,7 +1074,7 @@ spec:
         
       annotations:
         # checksum annotation triggering pod reload when .Values.toolsets changes by helm upgrade
-        checksum/toolset-config: 6f45670e5188af8501c9826e8ba672853e62286fdb6502f1bf0c66945033c0b2
+        checksum/toolset-config: 915b78204910d634799c7d48cd973206f4405f149fb3fe826616c31e9f61b6ae
     spec:
       serviceAccountName: holmesgpt
       securityContext:
