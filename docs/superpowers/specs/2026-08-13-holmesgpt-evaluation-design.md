@@ -75,11 +75,51 @@ bedrock:InvokeModel
 bedrock:InvokeModelWithResponseStream
 ```
 
-resource には `jp.` inference profile と参照先 foundation model を region ごとに列挙する。
-`jp.` profile は `ap-northeast-1` と `ap-northeast-3` の両方へルーティングするため、片方だけでは呼び出しが失敗する。
-OpenSRE 評価で確立した形をそのまま使う。
+resource には `us.` inference profile と参照先 foundation model を region ごとに列挙する。
+`us.` profile は `us-east-1` / `us-east-2` / `us-west-2` の三つへルーティングするため、一つだけでは呼び出しが失敗する。
 
 model ARN をワイルドカードにしない理由は、model ごとの価格が桁で違うためである。設定ミスで高価な model を呼んでも IAM で止まる。
+
+### Why us, not jp
+
+OpenSRE 評価では `jp.` を選んだが、本設計では `us.` を採る。
+
+Bedrock を選んだ理由は「cluster のログと設定が AWS の外へ出ない」ことであって、日本国内に限定する要件は無い。
+`jp.` はその要件を超えた制約であり、対価として選べる model が減る。
+
+実測すると、この account で使える model は `jp.` と `us.` で同じだった（Sonnet 4.6 と Haiku 4.5）。
+違いは profile の品揃えにある。
+
+- `jp.` の profile 一覧に `opus-5` / `sonnet-5` / `fable-5` は**存在しない**。最上位が `opus-4-8`
+- `us.` には存在する
+
+今日の能力が同じなら頭打ちの無いほうを選ぶ。`jp.` を選ぶと、5 世代を使う判断をした時点で region ごと移設することになる。
+
+対価として、production cluster のログと設定が米国リージョンへ出る。AWS の外へは出ない。これは既定ではなく選択であるため記録する。
+
+### Model selection
+
+採点を二段階に分け、ツールの質と model の質を分離する。
+
+| 段階 | model | 目的 |
+|---|---|---|
+| 1 | `bedrock/us.anthropic.claude-sonnet-4-6` | OpenSRE と同一 model での採点。両ツールを同じ条件で比較する |
+| 2 | `bedrock/us.anthropic.claude-opus-5` | 現行世代での採点。段階 1 との差が model 由来の差になる |
+
+段階 1 を先に置く理由は、OpenSRE との比較が本評価の主目的の一つであり、model を変えると比較が成立しないためである。
+
+`opus-5` と `sonnet-5` はこの account で未有効だったため、`bedrock create-foundation-model-agreement` で有効化した。
+`get-foundation-model-availability` が `AVAILABLE` を返しても runtime への反映には時間差がある。
+
+Bedrock の on-demand 価格は agreement offer の `rateCard` から取得できる（1M トークンあたり）。
+
+| model | input | output | 備考 |
+|---|---|---|---|
+| Opus 5 | $5 | $25 | `global_standard` |
+| Sonnet 5 | $2 | $10 | `global_standard`。プロモーション価格 |
+| Haiku 4.5 | $1.10 | $5.50 | `APN1`。first-party の $1 / $5 に対し約 10% 高い |
+
+Opus 5 と Sonnet 5 は global 推論で first-party と同額である。
 
 ## Toolset design
 
@@ -177,8 +217,11 @@ Mimir へは FQDN で namespace を跨いで到達できるため、`monitoring`
 | 7 | `POST /api/chat` で sandbox の調査を指示 | レポートが返る |
 | 8 | component ディレクトリを削除して hydrate | Flux prune で消える |
 
-手順 4 が通らない場合、Bedrock の model ID 形式（`bedrock/jp.anthropic.claude-sonnet-4-6`）が誤っている可能性が高い。
-公式ドキュメントは `bedrock/eu.anthropic.claude-sonnet-4-20250514-v1:0` という region 接頭辞付きの例を示すが、`jp.` での動作は未確認である。
+手順 4 が通らない場合、model ID 形式（`bedrock/us.anthropic.claude-sonnet-4-6`）が誤っている可能性が高い。
+
+`us.anthropic.claude-sonnet-4-6` が `bedrock-runtime converse` で応答することは確認済みである。
+未確認なのは、HolmesGPT が使う LiteLLM 形式の `bedrock/` 接頭辞に inference profile ID をそのまま渡してよいかである。
+公式ドキュメントは `bedrock/eu.anthropic.claude-sonnet-4-20250514-v1:0` という region 接頭辞付きの例を示すため成立する見込みだが、実地で確かめる。
 
 ### Grading criteria
 
