@@ -26,6 +26,6 @@ releases:
   - name: reloader
     namespace: reloader
     chart: stakater/reloader
-    version: "2.2.14"
+    version: "2.2.16"
     values:
       - values.yaml.gotmpl
