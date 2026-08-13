@@ -257,7 +257,14 @@ releases:
 # は namespace:serviceaccount を固定で参照するため、名前を固定する。
 createServiceAccount: true
 customServiceAccountName: holmesgpt
-k8sRBAC: true
+
+# k8sRBAC は「RBAC を自前で用意する」という意味で、true にすると chart 側の
+# ClusterRole が丸ごと無効になり、SA も automountServiceAccountToken: false の
+# 素のものだけになる (= Kubernetes API を叩けなくなる)。
+#   holmesgpt-service-account.yaml:      if and createServiceAccount (not k8sRBAC)
+#   holmesgpt-rbac-service-account.yaml: if and createServiceAccount k8sRBAC
+# chart の read-only ClusterRole をそのまま使うため既定の false を明示する。
+k8sRBAC: false
 
 serviceAccount:
   annotations:

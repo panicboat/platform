@@ -1,0 +1,28 @@
+# =============================================================================
+# holmesgpt Helmfile for production
+# =============================================================================
+# HolmesGPT (CNCF Sandbox) の deploy。chart が read-only ClusterRole と
+# ServiceAccount を自前で作るため、RBAC をこちらで定義しない。
+# =============================================================================
+environments:
+  production:
+    # NOTE: helmfile v1.4 は親 helmfile.yaml.gotmpl の environments values を
+    # 子 helmfile に auto-inherit しないため、ここで再定義する。RECREATE marker
+    # convention は kubernetes/helmfile.yaml.gotmpl 参照。値は親 helmfile と同期。
+    values:
+      - cluster:
+          # STABLE: aws/eks/modules/iam_holmesgpt.tf で deterministic 化済
+          # (= use_name_prefix = false)
+          holmesgptRoleArn: arn:aws:iam::559744160976:role/eks-production-holmesgpt
+---
+repositories:
+  - name: robusta
+    url: https://robusta-charts.storage.googleapis.com
+
+releases:
+  - name: holmesgpt
+    namespace: holmesgpt
+    chart: robusta/holmes
+    version: "0.39.0"
+    values:
+      - values.yaml.gotmpl

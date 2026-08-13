@@ -1,0 +1,1162 @@
+---
+# Source: holmes/crds/healthcheck.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: healthchecks.holmesgpt.dev
+spec:
+  group: holmesgpt.dev
+  names:
+    kind: HealthCheck
+    listKind: HealthCheckList
+    plural: healthchecks
+    singular: healthcheck
+    shortNames:
+      - hc
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                  description: "Natural language question about system health"
+                  minLength: 1
+                  maxLength: 5000
+                timeout:
+                  type: integer
+                  description: "Execution timeout in seconds"
+                  default: 30
+                  minimum: 1
+                  maximum: 300
+                mode:
+                  type: string
+                  description: "Execution mode: 'alert' sends notifications on failure, 'monitor' logs only"
+                  default: monitor
+                  enum:
+                    - alert
+                    - monitor
+                model:
+                  type: string
+                  description: "Override default LLM model for this check"
+                destinations:
+                  type: array
+                  description: "Alert destinations for failed checks (only used in alert mode)"
+                  items:
+                    type: object
+                    required:
+                      - type
+                    properties:
+                      type:
+                        type: string
+                        description: "Destination type (e.g., 'slack', 'pagerduty')"
+                      config:
+                        type: object
+                        description: "Destination-specific configuration"
+                        x-kubernetes-preserve-unknown-fields: true
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                  description: "Execution phase: Pending, Running, Completed, Failed"
+                  enum:
+                    - Pending
+                    - Running
+                    - Completed
+                    - Failed
+                startTime:
+                  type: string
+                  format: date-time
+                  description: "When the check execution started"
+                completionTime:
+                  type: string
+                  format: date-time
+                  description: "When the check execution completed"
+                result:
+                  type: string
+                  description: "Check result: pass, fail, or error"
+                  enum:
+                    - pass
+                    - fail
+                    - error
+                message:
+                  type: string
+                  description: "Human-readable summary of the result"
+                rationale:
+                  type: string
+                  description: "Detailed explanation from the LLM about the decision"
+                duration:
+                  type: number
+                  description: "Execution duration in seconds"
+                error:
+                  type: string
+                  description: "Error details if execution failed"
+                modelUsed:
+                  type: string
+                  description: "The actual LLM model used for execution"
+                conditions:
+                  type: array
+                  description: "Standard Kubernetes conditions"
+                  items:
+                    type: object
+                    required:
+                      - type
+                      - status
+                    properties:
+                      type:
+                        type: string
+                        description: "Condition type (e.g., 'Complete', 'Failed')"
+                      status:
+                        type: string
+                        description: "Condition status: True, False, or Unknown"
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                        description: "Last time the condition transitioned"
+                      reason:
+                        type: string
+                        description: "Machine-readable reason for the condition"
+                      message:
+                        type: string
+                        description: "Human-readable message about the condition"
+                notifications:
+                  type: array
+                  description: "Status of notification delivery attempts"
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        description: "Notification type (e.g., 'slack', 'pagerduty')"
+                      channel:
+                        type: string
+                        description: "Target channel or destination"
+                      status:
+                        type: string
+                        description: "Delivery status: sent, failed, skipped"
+                        enum:
+                          - sent
+                          - failed
+                          - skipped
+                      error:
+                        type: string
+                        description: "Error message if delivery failed"
+      additionalPrinterColumns:
+        - name: Phase
+          type: string
+          description: Execution phase
+          jsonPath: .status.phase
+        - name: Result
+          type: string
+          description: Check result
+          jsonPath: .status.result
+        - name: Message
+          type: string
+          description: Result message
+          jsonPath: .status.message
+          priority: 1
+        - name: Duration
+          type: number
+          description: Execution duration in seconds
+          jsonPath: .status.duration
+          priority: 1
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+
+---
+# Source: holmes/crds/scheduledhealthcheck.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: scheduledhealthchecks.holmesgpt.dev
+spec:
+  group: holmesgpt.dev
+  names:
+    kind: ScheduledHealthCheck
+    listKind: ScheduledHealthCheckList
+    plural: scheduledhealthchecks
+    singular: scheduledhealthcheck
+    shortNames:
+      - shc
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - schedule
+                - query
+              properties:
+                schedule:
+                  type: string
+                  description: "Cron expression for recurring execution (e.g., '*/5 * * * *')"
+                  pattern: '^.+$'
+                  minLength: 1
+                enabled:
+                  type: boolean
+                  description: "Whether the schedule is enabled"
+                  default: true
+                query:
+                  type: string
+                  description: "Natural language question about system health"
+                  minLength: 1
+                  maxLength: 5000
+                timeout:
+                  type: integer
+                  description: "Execution timeout in seconds"
+                  default: 30
+                  minimum: 1
+                  maximum: 300
+                mode:
+                  type: string
+                  description: "Execution mode: 'alert' sends notifications on failure, 'monitor' logs only"
+                  default: monitor
+                  enum:
+                    - alert
+                    - monitor
+                model:
+                  type: string
+                  description: "Override default LLM model for this check"
+                destinations:
+                  type: array
+                  description: "Alert destinations for failed checks (only used in alert mode)"
+                  items:
+                    type: object
+                    required:
+                      - type
+                    properties:
+                      type:
+                        type: string
+                        description: "Destination type (e.g., 'slack', 'pagerduty')"
+                      config:
+                        type: object
+                        description: "Destination-specific configuration"
+                        x-kubernetes-preserve-unknown-fields: true
+            status:
+              type: object
+              properties:
+                lastScheduleTime:
+                  type: string
+                  format: date-time
+                  description: "Last time a check was scheduled"
+                lastSuccessfulTime:
+                  type: string
+                  format: date-time
+                  description: "Last time a check passed"
+                lastResult:
+                  type: string
+                  description: "Result of the last execution: pass, fail, or error"
+                  enum:
+                    - pass
+                    - fail
+                    - error
+                message:
+                  type: string
+                  description: "Message from the last execution"
+                active:
+                  type: array
+                  description: "Currently running health checks"
+                  items:
+                    type: object
+                    required:
+                      - name
+                      - namespace
+                      - uid
+                      - startTime
+                    properties:
+                      name:
+                        type: string
+                        description: "Name of the HealthCheck resource"
+                      namespace:
+                        type: string
+                        description: "Namespace of the HealthCheck resource"
+                      uid:
+                        type: string
+                        description: "UID of the HealthCheck resource"
+                      startTime:
+                        type: string
+                        format: date-time
+                        description: "When the check started"
+                history:
+                  type: array
+                  description: "Recent execution history (last N executions)"
+                  items:
+                    type: object
+                    required:
+                      - executionTime
+                      - result
+                      - checkName
+                    properties:
+                      executionTime:
+                        type: string
+                        format: date-time
+                        description: "When the check was executed"
+                      result:
+                        type: string
+                        description: "Check result: pass, fail, or error"
+                        enum:
+                          - pass
+                          - fail
+                          - error
+                      duration:
+                        type: number
+                        description: "Execution duration in seconds"
+                      checkName:
+                        type: string
+                        description: "Name of the HealthCheck resource"
+                      message:
+                        type: string
+                        description: "Result message"
+                conditions:
+                  type: array
+                  description: "Standard Kubernetes conditions"
+                  items:
+                    type: object
+                    required:
+                      - type
+                      - status
+                    properties:
+                      type:
+                        type: string
+                        description: "Condition type (e.g., 'ScheduleRegistered', 'ExecutionFailed')"
+                      status:
+                        type: string
+                        description: "Condition status: True, False, or Unknown"
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                        description: "Last time the condition transitioned"
+                      reason:
+                        type: string
+                        description: "Machine-readable reason for the condition"
+                      message:
+                        type: string
+                        description: "Human-readable message about the condition"
+      additionalPrinterColumns:
+        - name: Schedule
+          type: string
+          description: Cron schedule
+          jsonPath: .spec.schedule
+        - name: Enabled
+          type: boolean
+          description: Whether the schedule is enabled
+          jsonPath: .spec.enabled
+        - name: Last Run
+          type: date
+          description: Last execution time
+          jsonPath: .status.lastScheduleTime
+        - name: Last Result
+          type: string
+          description: Result of last execution
+          jsonPath: .status.lastResult
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+
+---
+# Source: holmes/crds/triggeredhealthcheck.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: triggeredhealthchecks.holmesgpt.dev
+spec:
+  group: holmesgpt.dev
+  names:
+    kind: TriggeredHealthCheck
+    listKind: TriggeredHealthCheckList
+    plural: triggeredhealthchecks
+    singular: triggeredhealthcheck
+    shortNames:
+      - thc
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - deploymentRollout
+                - query
+              properties:
+                enabled:
+                  type: boolean
+                  description: "Whether the trigger is active"
+                  default: true
+                deploymentRollout:
+                  type: object
+                  description: "Fire when a matching Deployment rolls out a new pod template"
+                  properties:
+                    selector:
+                      type: object
+                      description: "Select which Deployments to watch (empty matches all in the namespace)"
+                      properties:
+                        matchLabels:
+                          type: object
+                          description: "Deployment labels that must all match"
+                          additionalProperties:
+                            type: string
+                delaySeconds:
+                  type: integer
+                  description: "How long to wait after a rollout before running the check (seconds). Gives the rollout time to finish and problems time to surface. Default 300 (5 min); 0 = check immediately; up to 604800 (7 days). The wait is saved on the resource and survives operator restarts."
+                  default: 300
+                  minimum: 0
+                  maximum: 604800
+                cooldownSeconds:
+                  type: integer
+                  description: "Suppress re-firing for the same Deployment within this many seconds (0 = disabled)"
+                  default: 0
+                  minimum: 0
+                query:
+                  type: string
+                  description: "Natural language question. Supports tokens {{ .deployment }}, {{ .namespace }}, {{ .old.image }}, {{ .new.image }}"
+                  minLength: 1
+                  maxLength: 5000
+                timeout:
+                  type: integer
+                  description: "Execution timeout in seconds"
+                  default: 120
+                  minimum: 1
+                  maximum: 300
+                mode:
+                  type: string
+                  description: "Execution mode: 'alert' sends notifications on failure, 'monitor' logs only"
+                  default: monitor
+                  enum:
+                    - alert
+                    - monitor
+                model:
+                  type: string
+                  description: "Override default LLM model for this check"
+                destinations:
+                  type: array
+                  description: "Alert destinations for failed checks (only used in alert mode)"
+                  items:
+                    type: object
+                    required:
+                      - type
+                    properties:
+                      type:
+                        type: string
+                        description: "Destination type (e.g., 'slack', 'pagerduty')"
+                      config:
+                        type: object
+                        description: "Destination-specific configuration"
+                        x-kubernetes-preserve-unknown-fields: true
+            status:
+              type: object
+              properties:
+                lastTriggerTime:
+                  type: string
+                  format: date-time
+                  description: "Last time the trigger fired"
+                lastTriggerDeployment:
+                  type: string
+                  description: "Deployment whose rollout last fired the trigger"
+                triggerCount:
+                  type: integer
+                  description: "Total number of times the trigger has fired"
+                cooldowns:
+                  type: array
+                  description: "Per-Deployment last-fire times used to enforce cooldownSeconds"
+                  items:
+                    type: object
+                    required:
+                      - deployment
+                      - lastTriggerTime
+                    properties:
+                      deployment:
+                        type: string
+                      lastTriggerTime:
+                        type: string
+                        format: date-time
+                pending:
+                  type: array
+                  description: "Delayed checks scheduled to run later (delaySeconds), persisted to survive operator restarts"
+                  items:
+                    type: object
+                    required:
+                      - deployment
+                      - fireAt
+                    properties:
+                      deployment:
+                        type: string
+                      fireAt:
+                        type: string
+                        format: date-time
+                      scheduledAt:
+                        type: string
+                        format: date-time
+                      oldImage:
+                        type: string
+                      newImage:
+                        type: string
+                history:
+                  type: array
+                  description: "Recent triggered executions (last N)"
+                  items:
+                    type: object
+                    required:
+                      - triggerTime
+                      - deployment
+                      - checkName
+                    properties:
+                      triggerTime:
+                        type: string
+                        format: date-time
+                      deployment:
+                        type: string
+                      checkName:
+                        type: string
+                      oldImage:
+                        type: string
+                      newImage:
+                        type: string
+                conditions:
+                  type: array
+                  description: "Standard Kubernetes conditions"
+                  items:
+                    type: object
+                    required:
+                      - type
+                      - status
+                    properties:
+                      type:
+                        type: string
+                        description: "Condition type (e.g., 'Ready', 'TriggerFailed')"
+                      status:
+                        type: string
+                        description: "Condition status: True, False, or Unknown"
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                      reason:
+                        type: string
+                      message:
+                        type: string
+      additionalPrinterColumns:
+        - name: Enabled
+          type: boolean
+          description: Whether the trigger is enabled
+          jsonPath: .spec.enabled
+        - name: Triggers
+          type: integer
+          description: Number of times fired
+          jsonPath: .status.triggerCount
+        - name: Last Fired
+          type: date
+          description: Last time the trigger fired
+          jsonPath: .status.lastTriggerTime
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+
+---
+# Source: holmes/templates/holmesgpt-service-account.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: holmesgpt
+  namespace: holmesgpt
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::559744160976:role/eks-production-holmesgpt
+---
+# Source: holmes/templates/toolset-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-toolsets-configmap
+  namespace: holmesgpt
+data:
+  custom_toolset.yaml: |-
+    toolsets: 
+      bash:
+        config:
+          builtin_allowlist: core
+        enabled: true
+      connectivity_check:
+        enabled: true
+      internet:
+        enabled: true
+      kubernetes/core:
+        enabled: true
+      kubernetes/logs:
+        enabled: true
+      prometheus/metrics:
+        config:
+          prometheus_url: http://mimir-distributed-gateway.monitoring.svc.cluster.local/prometheus
+        enabled: true
+      robusta:
+        enabled: false
+      skills:
+        enabled: true
+    mcp_servers: 
+      {}
+  model_list.yaml: |-
+    opus-5:
+      model: bedrock/us.anthropic.claude-opus-5
+      temperature: 0
+    sonnet-4-6:
+      model: bedrock/us.anthropic.claude-sonnet-4-6
+      temperature: 0
+---
+# Source: holmes/templates/holmesgpt-service-account.yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: holmesgpt-holmes-cluster-role
+  namespace : holmesgpt
+rules:
+  - apiGroups:
+      - "storage.k8s.io"
+    resources:
+      - storageclasses
+    verbs:
+      - list
+      - get
+      - watch
+  - apiGroups:
+      - "metrics.k8s.io"
+    resources:
+      - pods
+      - nodes
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - daemonsets
+      - deployments
+      - events
+      - namespaces
+      - persistentvolumes
+      - persistentvolumeclaims
+      - pods
+      - pods/status
+      - pods/log
+      - replicasets
+      - replicationcontrollers
+      - services
+      - serviceaccounts
+      - endpoints
+      - resourcequotas
+    verbs:
+      - get
+      - list
+      - watch
+
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+
+  - apiGroups:
+      - "apiregistration.k8s.io"
+    resources:
+      - apiservices
+    verbs:
+      - get
+      - list
+
+  - apiGroups:
+      - "rbac.authorization.k8s.io"
+    resources:
+      - clusterroles
+      - clusterrolebindings
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "autoscaling"
+    resources:
+      - horizontalpodautoscalers
+    verbs:
+      - get
+      - list
+      - watch
+
+  - apiGroups:
+      - apps
+    resources:
+      - daemonsets
+      - deployments
+      - deployments/scale
+      - replicasets
+      - replicasets/scale
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - watch
+
+  - apiGroups:
+      - extensions
+    resources:
+      - daemonsets
+      - deployments
+      - deployments/scale
+      - ingresses
+      - replicasets
+      - replicasets/scale
+      - replicationcontrollers/scale
+    verbs:
+      - get
+      - list
+      - watch
+
+  - apiGroups:
+      - batch
+    resources:
+      - cronjobs
+      - jobs
+    verbs:
+      - get
+      - list
+      - watch
+
+  - apiGroups:
+      - "events.k8s.io"
+    resources:
+      - events
+    verbs:
+      - get
+      - list
+
+  - apiGroups:
+      - "apiextensions.k8s.io"
+    resources:
+      - "customresourcedefinitions"
+    verbs:
+      - "list"
+      - "get"
+
+  - apiGroups:
+      - "admissionregistration.k8s.io"
+    resources:
+      - mutatingwebhookconfigurations
+      - validatingwebhookconfigurations
+    verbs:
+      - get
+      - list
+      - watch
+
+  - apiGroups:
+      - networking.k8s.io
+    resources:
+    - ingresses
+    - networkpolicies
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - autoscaling
+    resources:
+    - horizontalpodautoscalers
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - "policy"
+    resources:
+    - poddisruptionbudgets
+    - podsecuritypolicies
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+    - clusterroles
+    - clusterrolebindings
+    - roles
+    - rolebindings
+    verbs:
+      - get
+      - list
+  # Prometheus CRDs
+  - apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - alertmanagers
+      - alertmanagers/finalizers
+      - alertmanagers/status
+      - alertmanagerconfigs
+      - prometheuses
+      - prometheuses/finalizers
+      - prometheuses/status
+      - prometheusagents
+      - prometheusagents/finalizers
+      - prometheusagents/status
+      - thanosrulers
+      - thanosrulers/finalizers
+      - thanosrulers/status
+      - scrapeconfigs
+      - servicemonitors
+      - podmonitors
+      - probes
+      - prometheusrules
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - applications
+      - applicationsets
+      - appprojects
+      - workflows
+      - workflowtemplates
+      - cronworkflows
+      - rollouts
+      - analysisruns
+      - analysistemplates
+      - experiments
+      - eventsources
+      - sensors
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - source.toolkit.fluxcd.io
+    resources:
+      - gitrepositories
+      - helmrepositories
+      - helmcharts
+      - buckets
+      - ocirepositories
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - kustomize.toolkit.fluxcd.io
+    resources:
+      - kustomizations
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - helm.toolkit.fluxcd.io
+    resources:
+      - helmreleases
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - notification.toolkit.fluxcd.io
+    resources:
+      - alerts
+      - providers
+      - receivers
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - kafka.strimzi.io
+    resources:
+      - kafkas
+      - kafkatopics
+      - kafkausers
+      - kafkaconnects
+      - kafkaconnectors
+      - kafkamirrormakers
+      - kafkabridges
+      - kafkarebalances
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - keda.sh
+    resources:
+      - scaledobjects
+      - scaledjobs
+      - triggerauthentications
+      - clustertriggerauthentications
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - pkg.crossplane.io
+    resources:
+      - providers
+      - configurations
+      - functions
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apiextensions.crossplane.io
+    resources:
+      - compositions
+      - compositeresourcedefinitions
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - networking.istio.io
+    resources:
+      - virtualservices
+      - destinationrules
+      - gateways
+      - serviceentries
+      - sidecars
+      - workloadentries
+      - workloadgroups
+      - proxyconfigs
+      - envoyfilters
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - telemetry.istio.io
+    resources:
+      - telemetries
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - gateway.networking.k8s.io
+    resources:
+      - gatewayclasses
+      - gateways
+      - httproutes
+      - tcproutes
+      - tlsroutes
+      - udproutes
+      - grpcroutes
+      - referencegrants
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - velero.io
+    resources:
+      - backups
+      - restores
+      - schedules
+      - backupstoragelocations
+      - volumesnapshotlocations
+      - podvolumebackups
+      - podvolumerestores
+      - downloadrequests
+      - deletebackuprequests
+      - serverstatusrequests
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - external-secrets.io
+    resources:
+      - externalsecrets
+      - secretstores
+      - clustersecretstores
+      - clusterexternalsecrets
+    verbs:
+      - get
+      - list
+      - watch
+---
+# Source: holmes/templates/holmesgpt-service-account.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: holmesgpt-holmes-cluster-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: holmesgpt-holmes-cluster-role
+subjects:
+  - kind: ServiceAccount
+    name: holmesgpt
+    namespace: holmesgpt
+---
+# Source: holmes/templates/holmes.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: holmesgpt-holmes
+  namespace: holmesgpt
+  labels:
+    app: holmes
+    
+spec:
+  selector:
+    app: holmes
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 5050
+      appProtocol: http
+---
+# Source: holmes/templates/holmes.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: holmesgpt-holmes
+  namespace: holmesgpt
+  labels:
+    app: holmes
+    
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: holmes
+  template:
+    metadata:
+      labels:
+        app: holmes
+        
+      annotations:
+        # checksum annotation triggering pod reload when .Values.toolsets changes by helm upgrade
+        checksum/toolset-config: 6f45670e5188af8501c9826e8ba672853e62286fdb6502f1bf0c66945033c0b2
+    spec:
+      serviceAccountName: holmesgpt
+      securityContext:
+        fsGroup: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      dnsPolicy: ClusterFirst
+      containers:
+      - name: holmes
+        image: "robustadev/holmes:0.39.0"
+        imagePullPolicy: IfNotPresent
+        # Read-only root filesystem for security hardening.
+        # /tmp is mounted as a writable emptyDir for ephemeral tool result files.
+        # Required for OpenShift restricted SCC and other security-hardened
+        # environments that enforce read-only root filesystems.
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        command: ["python3", "-u", "server.py"]
+        ports:
+        - containerPort: 5050
+          name: http
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 10
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        env:
+          - name: LOG_LEVEL
+            value: INFO
+          - name: ENABLE_JSON_LOGS_FORMAT
+            value: "false"
+          - name: ENABLE_TELEMETRY
+            value: "true"
+          - name: SENTRY_DSN
+            value: 
+          
+          
+          - name: AWS_REGION_NAME
+            value: us-east-1
+        lifecycle:
+          preStop:
+            exec:
+              command: ["bash", "-c", "kill -SIGINT 1"]
+        volumeMounts:
+          - name: tmp-volume
+            mountPath: /tmp
+          - name: playbooks-config-secret
+            mountPath: /etc/robusta/config
+          - name: custom-toolsets-configmap
+            mountPath: /etc/holmes/config
+        resources:
+          requests:
+            cpu: 50m
+            memory: 512Mi
+          limits:
+            memory: 2Gi
+            
+      volumes:
+        - name: tmp-volume
+          emptyDir:
+            sizeLimit: 256Mi
+        - name: playbooks-config-secret
+          secret:
+            secretName: robusta-playbooks-config-secret
+            optional: true
+        - name: custom-toolsets-configmap
+          configMap:
+            name: custom-toolsets-configmap
+            optional: true
+
