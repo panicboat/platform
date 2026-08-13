@@ -1,0 +1,123 @@
+# =============================================================================
+# HolmesGPT Configuration for production
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# ServiceAccount / IRSA
+# -----------------------------------------------------------------------------
+# chart 既定の SA 名は release 名から導出されて変わりうる (= release holmesgpt
+# なら holmesgpt-holmes-service-account)。IRSA の trust policy は
+# namespace:serviceaccount を固定で参照するため、名前を固定する。
+createServiceAccount: true
+customServiceAccountName: holmesgpt
+
+# k8sRBAC は「RBAC を自前で用意する」という意味で、true にすると chart 側の
+# ClusterRole が丸ごと無効になり、SA も automountServiceAccountToken: false の
+# 素のものだけになる (= Kubernetes API を叩けなくなる)。
+#   holmesgpt-service-account.yaml:      if and createServiceAccount (not k8sRBAC)
+#   holmesgpt-rbac-service-account.yaml: if and createServiceAccount k8sRBAC
+# chart の read-only ClusterRole をそのまま使うため既定の false を明示する。
+k8sRBAC: false
+
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: {{ .Values.cluster.holmesgptRoleArn }}
+
+# -----------------------------------------------------------------------------
+# LLM (Amazon Bedrock)
+# -----------------------------------------------------------------------------
+# model ID は LiteLLM 形式の `bedrock/` 接頭辞 + inference profile ID。
+# us. profile は us-east-1 / us-east-2 / us-west-2 へルーティングする。
+#
+# 二段階で採点する。sonnet-4-6 は OpenSRE 評価と同一 model であり、ツール間の
+# 比較を model 差に汚されずに行うために置く。opus-5 は現行世代での上限を見る。
+#
+# NOTE: opus-5 は 2026-08-13 時点で model access の反映待ち。agreement は
+# AVAILABLE を返すが runtime が AccessDenied を返す状態が 12 分継続した。
+# 段階 1 の採点は sonnet-4-6 だけで成立する。
+additionalEnvVars:
+  - name: AWS_REGION_NAME
+    value: us-east-1
+
+modelList:
+  sonnet-4-6:
+    model: bedrock/us.anthropic.claude-sonnet-4-6
+    temperature: 0
+  opus-5:
+    model: bedrock/us.anthropic.claude-opus-5
+    temperature: 0
+
+# -----------------------------------------------------------------------------
+# Toolsets
+# -----------------------------------------------------------------------------
+toolsets:
+  kubernetes/core:
+    enabled: true
+  kubernetes/logs:
+    enabled: true
+
+  # Mimir が default datasource であり長期保存を持つ。Prometheus 互換 endpoint
+  # をそのまま向ける。Mimir は X-Scope-OrgID を要求しない (= Loki のみ
+  # anonymous 固定で要求する) ため追加ヘッダーは不要。
+  prometheus/metrics:
+    enabled: true
+    config:
+      prometheus_url: http://mimir-distributed-gateway.monitoring.svc.cluster.local/prometheus
+
+  # エラーメッセージや docs の参照に使う。製品価値の一部であり、落とすと機能を
+  # 削った状態で評価することになる。
+  internet:
+    enabled: true
+
+  # Robusta SaaS 連携。使わないのに外部通信が発生するため無効化する。
+  robusta:
+    enabled: false
+
+  # chart 既定は extended。差分の 11 コマンド (cat / base64 / ls / find / stat /
+  # du / df / tar -tf / gzip -l / zcat / zgrep) は調査対象である cluster では
+  # なく HolmesGPT 自身のコンテナを向いている。core でも kubectl get/describe/
+  # logs と jq / grep が残るため調査は成立する。
+  # 不足すればレポートに拒否として現れるので、見てから上げる。
+  bash:
+    enabled: true
+    config:
+      builtin_allowlist: "core"
+
+# -----------------------------------------------------------------------------
+# CRD permissions
+# -----------------------------------------------------------------------------
+# このクラスタが実際に使うものだけを有効化する。
+crdPermissions:
+  flux: true
+  gatewayApi: true
+  keda: true
+  externalSecrets: true
+
+# -----------------------------------------------------------------------------
+# Security context
+# -----------------------------------------------------------------------------
+# chart 既定は空。readOnlyRootFilesystem は chart が常に true にするため
+# ここでは指定しない。
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+# -----------------------------------------------------------------------------
+# Resources
+# -----------------------------------------------------------------------------
+resources:
+  requests:
+    cpu: 50m
+    memory: 512Mi
+  limits:
+    memory: 2Gi

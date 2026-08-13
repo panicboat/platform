@@ -72,6 +72,20 @@ metadata:
     app.kubernetes.io/name: falco
 ---
 # =============================================================================
+# holmesgpt Namespace
+# =============================================================================
+# HolmesGPT (CNCF Sandbox) の評価用 namespace。chart 提供の read-only
+# ClusterRole で cluster を調査し、Bedrock へは IRSA で接続する。
+# 採点が終わったら component ごと削除する。
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: holmesgpt
+  labels:
+    app.kubernetes.io/name: holmesgpt
+---
+# =============================================================================
 # Karpenter Namespace
 # =============================================================================
 # This namespace contains the Karpenter controller. Chart default name is
