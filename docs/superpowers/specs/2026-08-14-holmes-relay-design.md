@@ -51,14 +51,17 @@ Alertmanager (severity=critical) ──POST /alertmanager/webhook──┘      
   - `url_verification` challenge に応答（初回セットアップ時の Slack 側ハンドシェイク）。
   - `event_callback` / `event.type == "app_mention"` を処理。mention 部分を取り除いたテキストを調査依頼文として使う。
   - `X-Slack-Signature` / `X-Slack-Request-Timestamp` を signing secret で HMAC-SHA256 検証（Slack 公式の署名検証手順に従う）。
-- **非同期処理**: Slack Events API は 3 秒以内の ACK を要求するが、調査には数十秒かかる（評価時実測 43 秒程度）。リクエストを受けたら即座に 200 を返し、`chat.postMessage` で「🔍 調査中です」を即時投稿した上で、goroutine で Holmes 呼び出し→結果投稿を行う。
+- **スレッドコンテキストの考慮**: mention イベントに `thread_ts` が含まれる場合（= 既存スレッド内での mention）、`conversations.replies` でスレッド内の過去メッセージを取得し、Holmes への調査依頼文の前段に会話履歴として付与する。トップレベルの mention（`thread_ts` 無し）はメンション文のみを使い、その mention の `ts` を新規スレッドのルートとして返信する。
+  - holmes-relay 自身の過去の返信もスレッド履歴に含まれるため、同じスレッドで追加の質問をした場合は自然に前回の調査結果を踏まえた文脈で再調査できる。
+  - メッセージ内の `<@U12345>` 形式の生ユーザー ID はそのまま Holmes に渡す（表示名への解決はしない。可読性より実装の単純さを優先する初期実装の判断）。
+- **非同期処理**: Slack Events API は 3 秒以内の ACK を要求するが、調査には数十秒かかる（評価時実測 43 秒程度）。リクエストを受けたら即座に 200 を返し、`chat.postMessage` で「🔍 調査中です」を即時投稿した上で、goroutine でスレッド履歴取得→Holmes 呼び出し→結果投稿を行う。
 - **投稿先**: mention されたチャンネル・スレッド。
 
 ### Slack app の手動セットアップ (コードでは自動化できない)
 
 1. api.slack.com で新規 Slack app を作成
 2. Event Subscriptions を有効化し、Request URL に holmes-relay の公開エンドポイント (`https://<holmes-relay-host>/slack/events`) を設定
-3. Bot Token Scopes: `app_mentions:read`, `chat:write`
+3. Bot Token Scopes: `app_mentions:read`, `chat:write`, `channels:history`, `groups:history`（スレッド履歴取得のため。後者は private channel での利用に備える）
 4. Subscribe to bot events: `app_mention`
 5. ワークスペースにインストールし、signing secret と bot token を取得
 
