@@ -32,14 +32,14 @@ resource "aws_iam_policy" "holmesgpt_bedrock" {
           "bedrock:InvokeModelWithResponseStream",
         ]
         Resource = [
-          "arn:aws:bedrock:us-east-1:${data.aws_caller_identity.current.account_id}:inference-profile/us.anthropic.claude-sonnet-5",
-          "arn:aws:bedrock:us-east-1:${data.aws_caller_identity.current.account_id}:inference-profile/us.anthropic.claude-opus-5",
-          "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-5",
-          "arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-sonnet-5",
-          "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-sonnet-5",
-          "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-opus-5",
-          "arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-opus-5",
-          "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-opus-5",
+          "arn:aws:bedrock:us-east-1:${data.aws_caller_identity.current.account_id}:inference-profile/us.anthropic.claude-sonnet-4-6",
+          "arn:aws:bedrock:us-east-1:${data.aws_caller_identity.current.account_id}:inference-profile/us.anthropic.claude-opus-4-6",
+          "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-6",
+          "arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-sonnet-4-6",
+          "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-sonnet-4-6",
+          "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-opus-4-6",
+          "arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-opus-4-6",
+          "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-opus-4-6",
         ]
       }
     ]
