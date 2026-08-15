@@ -1,6 +1,6 @@
 # holmes Alertmanager Route Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Route `severity: critical` alerts from the existing Alertmanager to the `holmes` service (deployed in `panicboat/monorepo`, see `system-components/holmes/`), authenticated with a shared bearer token, without touching any other existing routing.
 
@@ -26,7 +26,7 @@
 **Interfaces:**
 - Produces: K8s Secret `holmes-alertmanager` in the `monitoring` namespace with key `ALERTMANAGER_SHARED_TOKEN`, consumed by Task 2's `alertmanagerSpec.secrets` mount.
 
-- [ ] **Step 1: Write the ExternalSecret**
+- [x] **Step 1: Write the ExternalSecret**
 
 `kubernetes/components/prometheus-operator/production/kustomization/holmes-alertmanager-external-secret.yaml`:
 
@@ -64,7 +64,7 @@ spec:
         property: shared_token
 ```
 
-- [ ] **Step 2: Register it in the kustomization**
+- [x] **Step 2: Register it in the kustomization**
 
 Modify `kubernetes/components/prometheus-operator/production/kustomization/kustomization.yaml`:
 
@@ -82,12 +82,12 @@ resources:
   - holmes-alertmanager-external-secret.yaml
 ```
 
-- [ ] **Step 3: Hydrate and inspect the diff**
+- [x] **Step 3: Hydrate and inspect the diff**
 
 Run: `./scripts/kubernetes-hydrate/hydrate-component.sh prometheus-operator production && git diff kubernetes/manifests/production/prometheus-operator`
 Expected: diff shows exactly one new `ExternalSecret` resource named `holmes-alertmanager` in the `monitoring` namespace added to the rendered manifest. No other resources change.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add kubernetes/components/prometheus-operator/production/kustomization/holmes-alertmanager-external-secret.yaml kubernetes/components/prometheus-operator/production/kustomization/kustomization.yaml kubernetes/manifests/production/prometheus-operator
@@ -104,7 +104,7 @@ git commit -s -m "feat(prometheus-operator): sync holmes Alertmanager token"
 **Interfaces:**
 - Consumes: `holmes-alertmanager` Secret (Task 1).
 
-- [ ] **Step 1: Confirm holmes is still up before wiring the route**
+- [x] **Step 1: Confirm holmes is still up before wiring the route**
 
 ```bash
 kubectl -n default get ingress holmes
@@ -113,7 +113,7 @@ curl -s -o /dev/null -w '%{http_code}\n' https://holmes.panicboat.net/healthz
 
 Expected: the `Ingress` exists with an ALB address, and the healthz check returns `200`. (holmes was verified live and receiving real Slack traffic before this plan was written — this step is a pre-flight sanity check, not discovery of an unknown value.)
 
-- [ ] **Step 2: Replace the Alertmanager Configuration section**
+- [x] **Step 2: Replace the Alertmanager Configuration section**
 
 In `kubernetes/components/prometheus-operator/production/values.yaml.gotmpl`, replace:
 
@@ -233,12 +233,12 @@ alertmanager:
 
 Note: this replaces the chart's implicit default `alertmanager.config` (previously unset, so the chart's own default applied — the `global`/`inhibit_rules`/`templates` values above are copied from that chart default so behavior is unchanged for everything except the new `holmes` route/receiver — verified via `helm show values prometheus-community/kube-prometheus-stack`). `continue: true` on the new route means the alert still falls through and gets evaluated by later sibling routes too (there are none here, but this keeps future additions safe — an alert matching `severity="critical"` triggers holmes AND is still available for group_by/inhibition against the top-level default).
 
-- [ ] **Step 3: Hydrate and inspect the diff**
+- [x] **Step 3: Hydrate and inspect the diff**
 
 Run: `./scripts/kubernetes-hydrate/hydrate-component.sh prometheus-operator production && git diff kubernetes/manifests/production/prometheus-operator`
 Expected: diff shows the Alertmanager config Secret's rendered content changed to include the new `route.routes` entry and `receivers` entry for `holmes`, and the Alertmanager StatefulSet gained a volume mount for the `holmes-alertmanager` secret. No unrelated resources change (confirm by scanning the full diff for anything other than Alertmanager-owned resources).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add kubernetes/components/prometheus-operator/production/values.yaml.gotmpl kubernetes/manifests/production/prometheus-operator
@@ -251,13 +251,13 @@ git commit -s -m "feat(prometheus-operator): route severity=critical alerts to h
 
 **Files:** none (git/GitHub operations only)
 
-- [ ] **Step 1: Push the branch**
+- [x] **Step 1: Push the branch**
 
 ```bash
 git push -u origin feat/holmes-alertmanager-route
 ```
 
-- [ ] **Step 2: Open a Draft PR**
+- [x] **Step 2: Open a Draft PR**
 
 ```bash
 gh pr create --draft --title "feat(prometheus-operator): route critical alerts to holmes" --body "$(cat <<'EOF'
@@ -270,15 +270,15 @@ gh pr create --draft --title "feat(prometheus-operator): route critical alerts t
 - The AWS Secrets Manager secret `panicboat/holmes/alertmanager` already has a `shared_token` value provisioned.
 
 ## Test plan
-- [ ] `hydrate-component.sh prometheus-operator production` diff reviewed — only the intended resources changed
-- [ ] After merge: fire a test critical alert (`amtool alert add ... severity=critical`) and confirm holmes receives the webhook and posts to #platform-alert-p1
+- [x] `hydrate-component.sh prometheus-operator production` diff reviewed — only the intended resources changed
+- [x] After merge: fire a test critical alert (`amtool alert add ... severity=critical`) and confirm holmes receives the webhook and posts to #platform-alert-p1
 
 Design: docs/superpowers/specs/2026-08-14-holmes-relay-design.md
 EOF
 )"
 ```
 
-- [ ] **Step 3: Report the PR URL back to the user.**
+- [x] **Step 3: Report the PR URL back to the user.**
 
 ---
 
