@@ -36,7 +36,7 @@ spec:
   # 動作しないため停止中。monolith は required な Secret (= monolith-database)
   # が無く CreateContainerConfigError で起動しない。
   # 再開する場合は monorepo 側の動作を確認してから `false` に戻す。
-  suspend: true
+  suspend: false
 ---
 # =============================================================================
 # ExternalSecret: Sync GitHub App credentials from AWS Secrets Manager
