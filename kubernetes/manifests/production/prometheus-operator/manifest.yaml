@@ -82023,3 +82023,22 @@ spec:
   target:
     creationPolicy: Owner
     name: grafana-admin
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: holmes-alertmanager
+  namespace: monitoring
+spec:
+  data:
+  - remoteRef:
+      key: panicboat/holmes/alertmanager
+      property: shared_token
+    secretKey: ALERTMANAGER_SHARED_TOKEN
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: aws-secrets-manager
+  target:
+    creationPolicy: Owner
+    name: holmes-alertmanager

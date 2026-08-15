@@ -1,11 +1,11 @@
 # =============================================================================
 # prometheus-operator production kustomization
 # =============================================================================
-# chart 範囲外 resource (= Grafana admin ExternalSecret) を helmfile output に
-# 上乗せする overlay。既存 chart-deployed Grafana Deployment が本 ExternalSecret
-# 由来の Secret grafana-admin を grafana.admin.existingSecret 経由で参照する。
+# chart 範囲外 resource (= Grafana admin ExternalSecret, holmes 用
+# Alertmanager token ExternalSecret) を helmfile output に上乗せする overlay。
 # =============================================================================
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - grafana-admin-external-secret.yaml
+  - holmes-alertmanager-external-secret.yaml
