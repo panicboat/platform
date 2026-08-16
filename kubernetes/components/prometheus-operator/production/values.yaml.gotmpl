@@ -309,7 +309,12 @@ alertmanager:
               fingerprint: `{{ "{{" }} .Fingerprint }}`
               {{ "{{" }} end }}
         webhook_configs:
-          - url: 'https://holmes.panicboat.net/alertmanager/webhook?channel=platform-alert-p1'
+          # channel is a Slack conversation ID, not a name: conversations.history
+          # (used by holmes to find the native notification by fingerprint)
+          # requires an ID and returns channel_not_found for a bare name, even
+          # though chat.postMessage tolerates either (verified live 2026-08-16 —
+          # every search attempt failed until this was fixed).
+          - url: 'https://holmes.panicboat.net/alertmanager/webhook?channel=C0BQE7KHUCE'
             send_resolved: false
             http_config:
               authorization:
