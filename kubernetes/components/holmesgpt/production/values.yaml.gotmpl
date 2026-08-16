@@ -3,10 +3,10 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# ServiceAccount / IRSA
+# ServiceAccount
 # -----------------------------------------------------------------------------
 # chart 既定の SA 名は release 名から導出されて変わりうる (= release holmesgpt
-# なら holmesgpt-holmes-service-account)。IRSA の trust policy は
+# なら holmesgpt-holmes-service-account)。Pod Identity Association は
 # namespace:serviceaccount を固定で参照するため、名前を固定する。
 createServiceAccount: true
 customServiceAccountName: holmesgpt
@@ -18,10 +18,6 @@ customServiceAccountName: holmesgpt
 #   holmesgpt-rbac-service-account.yaml: if and createServiceAccount k8sRBAC
 # chart の read-only ClusterRole をそのまま使うため既定の false を明示する。
 k8sRBAC: false
-
-serviceAccount:
-  annotations:
-    eks.amazonaws.com/role-arn: {{ .Values.cluster.holmesgptRoleArn }}
 
 # -----------------------------------------------------------------------------
 # LLM (Amazon Bedrock)

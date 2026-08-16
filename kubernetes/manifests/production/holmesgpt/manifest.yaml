@@ -597,8 +597,6 @@ kind: ServiceAccount
 metadata:
   name: holmesgpt
   namespace: holmesgpt
-  annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::559744160976:role/eks-production-holmesgpt
 ---
 # Source: holmes/templates/toolset-config.yaml
 apiVersion: v1

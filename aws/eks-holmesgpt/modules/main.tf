@@ -1,4 +1,4 @@
-# iam_holmesgpt.tf - IRSA role for the HolmesGPT evaluation (Bedrock inference only).
+# main.tf - HolmesGPT AWS-side infrastructure (IAM role + Pod Identity for Bedrock invoke).
 #
 # HolmesGPT runs in-cluster and reads the cluster through the Kubernetes API.
 # That access comes from the chart's own read-only ClusterRole, not from this
@@ -17,10 +17,33 @@
 # this account: the IAM grant is independent of Bedrock model-access enablement,
 # so having it in place avoids a second apply once propagation completes.
 
-resource "aws_iam_policy" "holmesgpt_bedrock" {
-  name        = "eks-${var.environment}-holmesgpt-bedrock"
-  description = "Bedrock invoke permissions for the HolmesGPT evaluation"
-  tags        = var.common_tags
+data "aws_caller_identity" "current" {}
+
+locals {
+  service_name = "holmesgpt" # K8s ServiceAccount name
+}
+
+# IAM role for Pod Identity Association
+resource "aws_iam_role" "pod_identity" {
+  name = "eks-${var.environment}-holmesgpt"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "pods.eks.amazonaws.com"
+      }
+      Action = ["sts:AssumeRole", "sts:TagSession"]
+    }]
+  })
+
+  tags = var.common_tags
+}
+
+resource "aws_iam_role_policy" "bedrock_invoke" {
+  name = "bedrock-invoke"
+  role = aws_iam_role.pod_identity.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -46,26 +69,12 @@ resource "aws_iam_policy" "holmesgpt_bedrock" {
   })
 }
 
-module "holmesgpt_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "~> 6.8"
-
-  name            = "eks-${var.environment}-holmesgpt"
-  use_name_prefix = false
-
-  policies = {
-    bedrock = aws_iam_policy.holmesgpt_bedrock.arn
-  }
-
-  # chart の既定 SA 名は release 名から導出されて変わりうるため、values 側で
-  # customServiceAccountName: holmesgpt を指定して固定する。trust policy が
-  # 参照する namespace:serviceaccount はそれと一致させる。
-  oidc_providers = {
-    main = {
-      provider_arn               = module.eks.oidc_provider_arn
-      namespace_service_accounts = ["holmesgpt:holmesgpt"]
-    }
-  }
+# Pod Identity Association binding K8s SA → IAM role
+resource "aws_eks_pod_identity_association" "this" {
+  cluster_name    = module.eks.cluster.name
+  namespace       = local.service_name
+  service_account = local.service_name
+  role_arn        = aws_iam_role.pod_identity.arn
 
   tags = var.common_tags
 }
