@@ -73,7 +73,7 @@ Slack (app_mention) ──POST /slack/events────────────
 
 - **エンドポイント**: `POST /alertmanager/webhook`（Alertmanager 標準の webhook payload 形式を受ける）。
 - **対象アラート**: `severity: critical` のみ。この絞り込みは **Alertmanager の route 側**で行う（holmes 側では絞り込まない）。理由: kube-prometheus-stack の default rule は既に `severity` ラベルを付与済み（VERIFIED: 2026-08-14 時点で firing 中の 6 アラート中、critical 3 / warning 1 / info 1 / ラベル無し 1）。新たなラベル付け作業が不要で、運用負担がゼロ。
-- **通知の責務分離**: 通知は Alertmanager 純正の `slack_configs`（Incoming Webhook 方式）で完結させ、holmes は調査結果の投稿のみを担う。理由: holmes の pod が落ちていても通知だけは届く可用性と、通知対象の severity 範囲を holmes の調査対象（critical のみ）と独立に決められる柔軟性を優先した。
+- **通知の責務分離**: 通知は Alertmanager 純正の `slack_configs`（Incoming Webhook 方式）で完結させ、holmes は調査結果の投稿のみを担う。理由: holmes の pod が落ちていても通知だけは届く可用性と、通知対象の severity 範囲を holmes の調査対象（critical のみ）と独立に決められる柔軟性を優先した。Incoming Webhook は holmes の Slack app とは別の、通知専用の新規 Slack app に作成する（holmes の app を作り直す・無効化する操作で通知チャネルも道連れにならないようにするため。Incoming Webhook は Slack 上でその app に所属するリソースであり、app が別なら互いに影響しない）。
 - **スレッド化**: holmes は webhook を受けたら、まず Alertmanager が投稿したはずの通知メッセージを Slack 履歴から検索する。
   - 検索キー: アラートの `fingerprint`（webhook payload の各 alert に含まれる一意識別子）。Alertmanager 側の Slack 通知テンプレートにも同じ `fingerprint` を埋め込み、テキスト一致で厳密に特定する（alertname だけだと同名アラートの再発火で誤検出するため）。
   - リトライ: `slack_configs` と `webhook_configs` は同一 receiver 内で並行送信され、到達順序は保証されない。指数バックオフ（初回 1 秒、以降 x2、合計約 1 分）で `conversations.history` を再検索する。
@@ -82,13 +82,19 @@ Slack (app_mention) ──POST /slack/events────────────
 - **チャンネル振り分け**: holmes 自体はチャンネルをハードコードしない。Alertmanager の receiver ごとに webhook URL のクエリパラメータでチャンネルを渡す（例: `.../alertmanager/webhook?channel=team-x-incidents`）。holmes は受け取った `channel` にそのまま投稿する汎用実装とする。これにより、チーム/サービスごとのチャンネル分離は Alertmanager の route 定義側だけで完結し、holmes のコード変更を必要としない。
 - **`platform` repo 側の変更**: `kubernetes/components/prometheus-operator/production/values.yaml.gotmpl` に `severity: critical` にマッチする route と、`slack_configs`（Incoming Webhook、fingerprint 埋め込みテンプレート）+ holmes を指す `webhook_configs` を両方持つ receiver を追加する。
 
+### 通知用 Slack app の手動セットアップ (コードでは自動化できない)
+
+1. api.slack.com で holmes とは別の新規 Slack app を作成（例: "Alertmanager"）
+2. Incoming Webhooks 機能を有効化し、通知先チャンネルに対して Webhook URL を発行
+3. 発行された Webhook URL を AWS Secrets Manager `panicboat/alertmanager/slack-notify`（`webhook_url`）に設定
+
 ## Secrets & Auth
 
 | 経路 | 認証方式 | 保存場所 |
 |---|---|---|
 | Slack → holmes | Slack 署名検証 (HMAC-SHA256) | AWS Secrets Manager `panicboat/holmes/slack`（`signing_secret`, `bot_token`）を ExternalSecret で sync |
 | Alertmanager → holmes | 共有 Bearer トークン | AWS Secrets Manager `panicboat/holmes/alertmanager`（`shared_token`）を ExternalSecret で sync |
-| Alertmanager → Slack（通知） | Incoming Webhook URL | AWS Secrets Manager `panicboat/holmes/alertmanager`（`slack_webhook_url`）を ExternalSecret で sync（`platform` repo 側、`monitoring` namespace） |
+| Alertmanager → Slack（通知） | Incoming Webhook URL | AWS Secrets Manager `panicboat/alertmanager/slack-notify`（`webhook_url`）を ExternalSecret で sync（`platform` repo 側、`monitoring` namespace）。holmes とは無関係の独立した secret path（通知専用の別 Slack app に対応） |
 | holmes → HolmesGPT `/api/chat` | 認証なし | Holmes API 自体が現状無認証設計のため踏襲。ClusterIP はクラスタ内到達可能。将来的に NetworkPolicy で holmes の pod からのみ許可する多層防御を検討事項として残す |
 | holmes → Slack API | Bot token (Bearer) | 上記 `panicboat/holmes/slack` と同じ Secret から取得。`chat.postMessage`（フォールバック通知・スレッド返信）と `conversations.history`（通知メッセージ検索）に使う |
 
