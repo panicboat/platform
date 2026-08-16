@@ -221,9 +221,12 @@ prometheus:
 # =============================================================================
 # Alertmanager Configuration
 # =============================================================================
-# severity: critical alerts only are webhook-forwarded to holmes
-# (panicboat/monorepo, system-components/holmes), which posts HolmesGPT's
-# investigation result to Slack. The severity label is already applied by
+# severity: critical alerts fire two independent things: a native Slack
+# notification (slack_configs, own Incoming Webhook/app — stays up even if
+# holmes is down) and a webhook to holmes (panicboat/monorepo,
+# system-components/holmes), which posts HolmesGPT's investigation result
+# threaded under whichever Slack message holmes finds by fingerprint match
+# (see design doc). The severity label is already applied by
 # kube-prometheus-stack's default rules, so no new labeling work is needed
 # (verified 2026-08-14: 3 of 6 firing alerts were critical). Alertmanager
 # evaluates sibling routes top-to-bottom on first match, so the existing
@@ -252,6 +255,7 @@ alertmanager:
     # (same AWS secret, two independent sync targets).
     secrets:
       - holmes-alertmanager
+      - alertmanager-slack-notify
   config:
     global:
       resolve_timeout: 5m
@@ -288,13 +292,22 @@ alertmanager:
         - receiver: 'null'
           matchers:
             - alertname = "Watchdog"
-        - receiver: 'holmes'
+        - receiver: 'critical-alerts'
           matchers:
             - severity = "critical"
           continue: true
     receivers:
       - name: 'null'
-      - name: 'holmes'
+      - name: 'critical-alerts'
+        slack_configs:
+          - api_url_file: /etc/alertmanager/secrets/alertmanager-slack-notify/SLACK_WEBHOOK_URL
+            send_resolved: false
+            title: 'Critical alert(s) firing'
+            text: |-
+              {{ "{{" }} range .Alerts }}*{{ "{{" }} .Labels.alertname }}* ({{ "{{" }} .Labels.namespace }})
+              {{ "{{" }} .Annotations.summary }}
+              fingerprint: `{{ "{{" }} .Fingerprint }}`
+              {{ "{{" }} end }}
         webhook_configs:
           - url: 'https://holmes.panicboat.net/alertmanager/webhook?channel=platform-alert-p1'
             send_resolved: false
