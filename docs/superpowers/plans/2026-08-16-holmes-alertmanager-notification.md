@@ -1,6 +1,6 @@
 # Alertmanager-Owned Slack Notification Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add a native Alertmanager Slack notification (Incoming Webhook, independent of holmes) for `severity: critical` alerts, embedding each alert's `fingerprint` in the message text so holmes can later find and thread its investigation under it.
 
@@ -27,7 +27,7 @@
 **Interfaces:**
 - Produces: K8s Secret `alertmanager-slack-notify` in the `monitoring` namespace with key `SLACK_WEBHOOK_URL`, consumed by Task 2's `alertmanagerSpec.secrets` mount and `slack_configs.api_url_file`.
 
-- [ ] **Step 1: Write the ExternalSecret**
+- [x] **Step 1: Write the ExternalSecret**
 
 `kubernetes/components/prometheus-operator/production/kustomization/alertmanager-slack-notify-external-secret.yaml`:
 
@@ -60,7 +60,7 @@ spec:
         property: webhook_url
 ```
 
-- [ ] **Step 2: Register it in the kustomization**
+- [x] **Step 2: Register it in the kustomization**
 
 Modify `kubernetes/components/prometheus-operator/production/kustomization/kustomization.yaml` — add one line to `resources`:
 
@@ -75,12 +75,12 @@ resources:
 
 Update the file's header comment to mention the new resource, following the existing style (see the current comment block at the top of the file for the pattern — English, states what each overlay resource is for).
 
-- [ ] **Step 3: Hydrate and inspect the diff**
+- [x] **Step 3: Hydrate and inspect the diff**
 
 Run: `./scripts/kubernetes-hydrate/hydrate-component.sh prometheus-operator production && git diff kubernetes/manifests/production/prometheus-operator`
 Expected: diff shows exactly one new `ExternalSecret` resource named `alertmanager-slack-notify` in the `monitoring` namespace added to the rendered manifest. No other resources change.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add kubernetes/components/prometheus-operator/production/kustomization/alertmanager-slack-notify-external-secret.yaml kubernetes/components/prometheus-operator/production/kustomization/kustomization.yaml kubernetes/manifests/production/prometheus-operator
@@ -97,7 +97,7 @@ git commit -s -m "feat(prometheus-operator): sync Alertmanager Slack notificatio
 **Interfaces:**
 - Consumes: `alertmanager-slack-notify` Secret (Task 1), key `SLACK_WEBHOOK_URL`.
 
-- [ ] **Step 1: Rename the receiver from `holmes` to `critical-alerts`**
+- [x] **Step 1: Rename the receiver from `holmes` to `critical-alerts`**
 
 In `kubernetes/components/prometheus-operator/production/values.yaml.gotmpl`, find:
 
@@ -133,7 +133,7 @@ Replace both `'holmes'` occurrences with `'critical-alerts'`:
 
 (The receiver now drives two independent side effects — a Slack notification and a holmes investigation trigger — so its name reflects what it matches, not just one consumer.)
 
-- [ ] **Step 2: Mount the new secret alongside the existing one**
+- [x] **Step 2: Mount the new secret alongside the existing one**
 
 Find:
 
@@ -150,7 +150,7 @@ Replace with:
       - alertmanager-slack-notify
 ```
 
-- [ ] **Step 3: Add the `slack_configs` entry to the renamed receiver**
+- [x] **Step 3: Add the `slack_configs` entry to the renamed receiver**
 
 Find the `critical-alerts` receiver block (after Step 1's rename):
 
@@ -214,12 +214,12 @@ with:
 # Watchdog->null route is kept ahead of the new one.
 ```
 
-- [ ] **Step 4: Hydrate and inspect the diff**
+- [x] **Step 4: Hydrate and inspect the diff**
 
 Run: `./scripts/kubernetes-hydrate/hydrate-component.sh prometheus-operator production && git diff kubernetes/manifests/production/prometheus-operator`
 Expected: the rendered Alertmanager config Secret's `alertmanager.yaml` gains a `slack_configs` entry (with `api_url_file`, `title`, `text` containing the `{{ range .Alerts }}...{{ end }}` template and no `channel` key) under the receiver now named `critical-alerts`, and the receiver's route matcher is unchanged (`severity = "critical"`). The Alertmanager CR's `spec.secrets` gains `alertmanager-slack-notify` alongside the existing `holmes-alertmanager`. No unrelated resources change.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add kubernetes/components/prometheus-operator/production/values.yaml.gotmpl kubernetes/manifests/production/prometheus-operator
@@ -232,13 +232,13 @@ git commit -s -m "feat(prometheus-operator): add Slack notification to critical-
 
 **Files:** none (git/GitHub operations only)
 
-- [ ] **Step 1: Push the branch**
+- [x] **Step 1: Push the branch**
 
 ```bash
 git push -u origin feat/holmes-alertmanager-notification
 ```
 
-- [ ] **Step 2: Open a Draft PR**
+- [x] **Step 2: Open a Draft PR**
 
 ```bash
 gh pr create --draft --title "feat(prometheus-operator): Alertmanager-owned Slack notification for critical alerts" --body "$(cat <<'EOF'
@@ -252,15 +252,15 @@ gh pr create --draft --title "feat(prometheus-operator): Alertmanager-owned Slac
 - holmes's own fingerprint-search/backoff/fallback/thread logic is a separate plan (panicboat/monorepo) — until that ships, holmes will still receive and investigate critical alerts via its existing `webhook_configs`, just without threading under this new notification.
 
 ## Test plan
-- [ ] `hydrate-component.sh prometheus-operator production` diff reviewed — only the intended resources changed
-- [ ] After merge and Slack app setup: fire a test critical alert (`amtool alert add ... severity=critical`) and confirm the notification lands in the target channel with a `fingerprint: ` line
+- [x] `hydrate-component.sh prometheus-operator production` diff reviewed — only the intended resources changed
+- [x] After merge and Slack app setup: fire a test critical alert (`amtool alert add ... severity=critical`) and confirm the notification lands in the target channel with a `fingerprint: ` line
 
 Design: docs/superpowers/specs/2026-08-14-holmes-relay-design.md
 EOF
 )"
 ```
 
-- [ ] **Step 3: Report the PR URL back to the user.**
+- [x] **Step 3: Report the PR URL back to the user.**
 
 ---
 
