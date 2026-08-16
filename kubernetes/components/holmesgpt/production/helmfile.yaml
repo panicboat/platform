@@ -3,17 +3,13 @@
 # =============================================================================
 # HolmesGPT (CNCF Sandbox) の deploy。chart が read-only ClusterRole と
 # ServiceAccount を自前で作るため、RBAC をこちらで定義しない。
+#
+# Authentication: Pod Identity (provisioned by aws/eks-holmesgpt/ stack の
+# Pod Identity Association)。Helm chart の serviceAccount.annotations は
+# 不要 (Pod Identity Association が SA-to-role mapping を直接管理)。
 # =============================================================================
 environments:
   production:
-    # NOTE: helmfile v1.4 は親 helmfile.yaml.gotmpl の environments values を
-    # 子 helmfile に auto-inherit しないため、ここで再定義する。RECREATE marker
-    # convention は kubernetes/helmfile.yaml.gotmpl 参照。値は親 helmfile と同期。
-    values:
-      - cluster:
-          # STABLE: aws/eks/modules/iam_holmesgpt.tf で deterministic 化済
-          # (= use_name_prefix = false)
-          holmesgptRoleArn: arn:aws:iam::559744160976:role/eks-production-holmesgpt
 ---
 repositories:
   - name: robusta
