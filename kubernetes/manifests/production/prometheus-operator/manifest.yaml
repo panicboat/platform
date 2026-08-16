@@ -82006,6 +82006,25 @@ spec:
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
+  name: alertmanager-slack-notify
+  namespace: monitoring
+spec:
+  data:
+  - remoteRef:
+      key: panicboat/alertmanager/slack-notify
+      property: webhook_url
+    secretKey: SLACK_WEBHOOK_URL
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: aws-secrets-manager
+  target:
+    creationPolicy: Owner
+    name: alertmanager-slack-notify
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
   name: grafana-admin
   namespace: monitoring
 spec:
