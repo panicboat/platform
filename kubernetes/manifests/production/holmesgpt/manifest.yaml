@@ -611,6 +611,16 @@ data:
     toolsets: 
       bash:
         config:
+          allow:
+          - git clone
+          - git log
+          - git show
+          - git diff
+          - git blame
+          - git ls-files
+          - git grep
+          - cat
+          - find
           builtin_allowlist: core
         enabled: true
       connectivity_check:
@@ -1074,7 +1084,7 @@ spec:
         
       annotations:
         # checksum annotation triggering pod reload when .Values.toolsets changes by helm upgrade
-        checksum/toolset-config: 915b78204910d634799c7d48cd973206f4405f149fb3fe826616c31e9f61b6ae
+        checksum/toolset-config: a6e1a24f2da6b95ef97ee6b08272388346bdcc4e674666e818cb76156cedccf9
     spec:
       serviceAccountName: holmesgpt
       securityContext:
