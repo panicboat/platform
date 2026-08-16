@@ -221,7 +221,13 @@ prometheus:
 # =============================================================================
 # Alertmanager Configuration
 # =============================================================================
-# NOTE: receiver 設定 (Slack / SNS / PagerDuty) は未設定
+# severity: critical alerts only are webhook-forwarded to holmes
+# (panicboat/monorepo, system-components/holmes), which posts HolmesGPT's
+# investigation result to Slack. The severity label is already applied by
+# kube-prometheus-stack's default rules, so no new labeling work is needed
+# (verified 2026-08-14: 3 of 6 firing alerts were critical). Alertmanager
+# evaluates sibling routes top-to-bottom on first match, so the existing
+# Watchdog->null route is kept ahead of the new one.
 alertmanager:
   enabled: true
   alertmanagerSpec:
@@ -240,6 +246,63 @@ alertmanager:
           resources:
             requests:
               storage: 2Gi
+    # holmes's Alertmanager shared token, file-mounted. alertmanagerSpec.secrets
+    # can only reference a Secret in the same namespace as Alertmanager, so
+    # this ExternalSecret is separate from system-components/holmes's own
+    # (same AWS secret, two independent sync targets).
+    secrets:
+      - holmes-alertmanager
+  config:
+    global:
+      resolve_timeout: 5m
+    inhibit_rules:
+      - source_matchers:
+          - 'severity = critical'
+        target_matchers:
+          - 'severity =~ warning|info'
+        equal:
+          - 'namespace'
+          - 'alertname'
+      - source_matchers:
+          - 'severity = warning'
+        target_matchers:
+          - 'severity = info'
+        equal:
+          - 'namespace'
+          - 'alertname'
+      - source_matchers:
+          - 'alertname = InfoInhibitor'
+        target_matchers:
+          - 'severity = info'
+        equal:
+          - 'namespace'
+      - target_matchers:
+          - 'alertname = InfoInhibitor'
+    route:
+      group_by: ['namespace']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: 'null'
+      routes:
+        - receiver: 'null'
+          matchers:
+            - alertname = "Watchdog"
+        - receiver: 'holmes'
+          matchers:
+            - severity = "critical"
+          continue: true
+    receivers:
+      - name: 'null'
+      - name: 'holmes'
+        webhook_configs:
+          - url: 'https://holmes.panicboat.net/alertmanager/webhook?channel=platform-alert-p1'
+            send_resolved: false
+            http_config:
+              authorization:
+                credentials_file: /etc/alertmanager/secrets/holmes-alertmanager/ALERTMANAGER_SHARED_TOKEN
+    templates:
+      - '/etc/alertmanager/config/*.tmpl'
 
 # =============================================================================
 # Prometheus Node Exporter
