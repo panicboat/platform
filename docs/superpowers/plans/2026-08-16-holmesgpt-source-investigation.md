@@ -55,14 +55,17 @@ In `kubernetes/components/holmesgpt/production/values.yaml.gotmpl`, find:
 Replace with:
 
 ```yaml
-  # chart 既定は extended。差分の 11 コマンド (cat / base64 / ls / find / stat /
-  # du / df / tar -tf / gzip -l / zcat / zgrep) は当初、調査対象である cluster
-  # ではなく HolmesGPT 自身のコンテナを向いていたため core に絞っていた。
-  # ソースコード調査 (git clone 後の読み取り) のため cat / find だけを allow で
-  # 個別追加する。extended 全体 (ls / stat / du / df / tar 系) までは不要。
-  # git の書き込み系サブコマンド (push / commit / config 等) は allow に含めない
-  # — prefix マッチしないコマンドは HolmesGPT 側で自動的に拒否される。
-  # 対象は panicboat/monorepo・panicboat/platform (両方 public、認証不要)。
+  # Chart default is "extended". The 11 extra commands (cat / base64 / ls /
+  # find / stat / du / df / tar -tf / gzip -l / zcat / zgrep) originally
+  # targeted HolmesGPT's own container filesystem, not the cluster under
+  # investigation, so this was narrowed to "core". Only cat and find are
+  # added individually via allow for source-code investigation (reading
+  # files after git clone) — the rest of "extended" (ls / stat / du / df /
+  # tar family) isn't needed. Write-capable git subcommands (push / commit /
+  # config, etc.) are deliberately excluded from allow — prefixes that
+  # don't match are automatically rejected by HolmesGPT's own bash toolset.
+  # Targets: panicboat/monorepo and panicboat/platform (both public, no
+  # auth needed for read-only clone).
   bash:
     enabled: true
     config:
