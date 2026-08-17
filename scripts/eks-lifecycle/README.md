@@ -74,13 +74,14 @@ make eks-teardown-verify ENV=production    # orphan verify only
 - `40-orphan-verify.sh` は read-only verify で auto-delete しない (= false-positive 含み得る出力を operator が目視精査し、必要なら提示された AWS CLI コマンドで個別削除)。検出時の exit code は live run = 1 (= operator 注意喚起 + make chain 停止)、DRY_RUN=1 = 0 (= live cluster の現役 resource を warn として列挙、make chain は継続)
 - `terragrunt destroy` で `Module version requirements have changed` (= 既存 `.terragrunt-cache/` の module version と現行 main.tf の constraint が乖離) のエラーが出たら、対象 stack を `terragrunt init -upgrade` で更新してから再開する。 8 stack 一括は以下:
   ```bash
-  for stack in karpenter eks-secrets eks-logs eks-metrics eks-traces eks alb vpc; do
+  for stack in eks-karpenter eks-secrets eks-logs eks-metrics eks-traces eks alb vpc; do
     echo "=== init: $stack ==="
     ( cd aws/$stack/envs/production && TG_TF_PATH=tofu terragrunt init -upgrade )
   done
   make eks-teardown-aws ENV=production   # 中断地点から再開、 fail fast 後の再 run は idempotent
   ```
   発生例: Renovate PR で `terraform-aws-modules/eks/aws` を `~> 21.20` に更新済みだが、 操作者の `.terragrunt-cache/` には v21.19.0 がキャッシュされているケース
+- `terragrunt destroy` (alb / vpc stack) が `DependencyViolation: ... has some mapped public address(es)` (IGW detach) や `has dependencies and cannot be deleted` (subnet/VPC) で fail する → AWS Load Balancer Controller が管理する ALB/NLB (+ 自動作成 security group) が terraform 管理外のまま残っている。 shared IngressGroup を `kubectl delete ingress --all` で 1 件ずつ消す際、 controller が同名 ALB を再作成するレースが原因 (= Step 10.4 の一度きりの tag sweep はこれを捕捉できない)。 `30-destroy-stacks.sh` は `eks` stack destroy 直後 (= controller 消滅後の安全なタイミング) に `elbv2.k8s.aws/cluster` タグで再 sweep するため通常は自動解消するが、 万一残る場合は `aws resourcegroupstaggingapi get-resources --resource-type-filters elasticloadbalancing:loadbalancer --tag-filters Key=elbv2.k8s.aws/cluster,Values=eks-production` で ALB を、 `aws ec2 describe-security-groups --filters Name=tag:elbv2.k8s.aws/cluster,Values=eks-production` で security group を特定し手動削除する
 
 ## What is preserved through teardown
 
