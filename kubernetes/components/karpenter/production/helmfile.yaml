@@ -7,7 +7,7 @@
 # into Karpenter NodePool `system-components` (capacity type: spot +
 # on-demand fallback)。
 #
-# Authentication: Pod Identity (provisioned by aws/karpenter/ stack の
+# Authentication: Pod Identity (provisioned by aws/eks-karpenter/ stack の
 # Pod Identity Association)。Helm chart の serviceAccount.annotations は
 # 不要 (Pod Identity Association が SA-to-role mapping を直接管理)。
 # =============================================================================
@@ -21,7 +21,7 @@ environments:
       - cluster:
           name: eks-production
         karpenter:
-          # Source: aws/karpenter/envs/production terragrunt output
+          # Source: aws/eks-karpenter/envs/production terragrunt output
           interruptionQueueName: Karpenter-eks-production
 ---
 repositories:

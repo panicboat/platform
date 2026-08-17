@@ -11,7 +11,7 @@
 EKS cluster cold-start は cilium native CNI ENI mode (= PR #393) との chicken-and-egg があり、 単一 sequence の自動化では完走できない:
 
 - `aws/eks` apply で cluster + addon (= coredns / aws-ebs-csi-driver) を install 試行
-- addon は `system_critical` MNG (= `aws/karpenter` stack が作る) に schedule 必要だが MNG 未作成で **DEGRADED**
+- addon は `system_critical` MNG (= `aws/eks-karpenter` stack が作る) に schedule 必要だが MNG 未作成で **DEGRADED**
 - 順序入れ替えても `system_critical` MNG node は **cilium agent 不在で NotReady のまま** → MNG `CREATE_FAILED`
 
 本 runbook は **2 terminal 並行** で `aws/eks` apply の addon wait 期間中に cilium install + karpenter apply を進める clean path を 10 Phase で明文化する。
@@ -169,7 +169,7 @@ kubectl get pods -n kube-system -l app.kubernetes.io/part-of=cilium
 Phase 4 の cilium install 完了後、 Terminal A の Phase 2 がまだ addon wait 中の間に **別 sub-terminal で**:
 
 ```bash
-( cd aws/karpenter/envs/production && TG_TF_PATH=tofu terragrunt init -upgrade && TG_TF_PATH=tofu terragrunt apply -auto-approve )
+( cd aws/eks-karpenter/envs/production && TG_TF_PATH=tofu terragrunt init -upgrade && TG_TF_PATH=tofu terragrunt apply -auto-approve )
 ```
 
 挙動:
@@ -367,7 +367,7 @@ done
 | Phase 9.2 (Flux core install) を Phase 9.1 (hydrate + merge) より先に実行してしまい、 cilium agent が **旧 (destroy 済) cluster endpoint** への DNS 解決失敗で crash loop、 かつ他 pod も CNI 未提供で ContainerCreating のまま止まる | Phase 9.1 の PR merge 前に Flux が `main` の stale RECREATE marker 値で reconcile し、 `kustomize-controller` field manager が cilium DaemonSet/Deployment を旧値で上書きした (= Phase 9 冒頭 §NOTE 参照)。 webhook 提供 pod が壊れた node で止まると Flux 自身の reconcile も webhook dry-run 失敗で止まり循環依存になる | `flux suspend kustomization flux-system` → Phase 9.1 の PR を merge → `flux resume kustomization flux-system && flux reconcile source git flux-system && flux reconcile kustomization flux-system`。 循環依存で進まない場合は壊れた Deployment/DaemonSet の該当 env var を `kubectl set env` で直接正しい値に patch して CNI を先に復旧させ、 webhook 提供 pod 起動後に Flux reconcile で収束させる |
 | Pending pods が `pod has unbound immediate PersistentVolumeClaims` | gp3 StorageClass 未作成 | **PR #406 merge 後は不要**。 旧 cluster recreate で pre-PR #406 commit から始める場合のみ手動作成 |
 | post-merge CI が apply 中に operator local apply 試行で衝突 | CI が state lock 保持 | CI 完走待ち、 OR CI cancel + force-unlock。 将来は `skip-deploy` label scheme (= PR #404 design Phase B) で防止 |
-| Karpenter が spot node を起動できず consolidation/scale-out が進まない (= karpenter controller log に `AuthFailure.ServiceLinkedRoleCreationNotPermitted`) | `AWSServiceRoleForEC2Spot` service-linked role が account に未作成。 Karpenter controller IAM policy は least-privilege 設計で `iam:CreateServiceLinkedRole` を含まないため AWS 側の自動作成が失敗する | `aws/iam-service-linked-roles` (account 単位 singleton、 `aws/karpenter` の destroy/recreate cycle 対象外) を apply する。 通常は §2.1 の pre-condition で済んでいるはずなので、 発生する場合は `aws iam get-role --role-name AWSServiceRoleForEC2Spot` で存在確認 |
+| Karpenter が spot node を起動できず consolidation/scale-out が進まない (= karpenter controller log に `AuthFailure.ServiceLinkedRoleCreationNotPermitted`) | `AWSServiceRoleForEC2Spot` service-linked role が account に未作成。 Karpenter controller IAM policy は least-privilege 設計で `iam:CreateServiceLinkedRole` を含まないため AWS 側の自動作成が失敗する | `aws/iam-service-linked-roles` (account 単位 singleton、 `aws/eks-karpenter` の destroy/recreate cycle 対象外) を apply する。 通常は §2.1 の pre-condition で済んでいるはずなので、 発生する場合は `aws iam get-role --role-name AWSServiceRoleForEC2Spot` で存在確認 |
 | cilium 系 resource で **git から削除したはずの field が cluster 上に残る** (= Flux は `Ready=True` なのに実体が git と食い違う) | Phase 4 の `cilium install` が field manager `cilium` で `Update` した field は、 Flux (= `kustomize-controller`) の server-side apply では削除できない (= 他 manager 所有 field は消せない) | `kubectl get <resource> -n <ns> --show-managed-fields -o json` で所有 manager を確認 → `kubectl patch <resource> -n <ns> --type=json -p='[{"op":"remove","path":"/<field-path>"}]'` で明示除去。 除去後は Flux reconcile しても復活しない |
 | Karpenter が node を作り続け pod が再 schedule され続ける (= karpenter controller log に `could not schedule pod` + `unsatisfiable topology constraint for pod affinity`) | hard pod affinity (`requiredDuringScheduling`) を持つ pod が、 cilium DaemonSet 未配置の新 node に置けず、 Karpenter が capacity 不足と誤認して provision を繰り返す | **PR #695 で `hubble.relay.affinity` を preferred 化 + `consolidateAfter` 5m 化して解消済**。 他 component で再発した場合も同様に hard affinity を preferred へ緩和する |
 

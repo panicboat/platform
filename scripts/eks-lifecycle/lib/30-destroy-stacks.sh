@@ -2,7 +2,7 @@
 # 30-destroy-stacks.sh - Destroy 8 EKS-related stacks in fixed order.
 #
 # Order:
-#   karpenter -> eks-secrets -> eks-logs -> eks-metrics -> eks-traces
+#   eks-karpenter -> eks-secrets -> eks-logs -> eks-metrics -> eks-traces
 #   -> eks -> alb -> vpc
 #
 # Each stack runs `terragrunt destroy -auto-approve`. On failure, fail
@@ -19,7 +19,7 @@ require_env
 require_cmd terragrunt tofu
 
 STACKS=(
-  "karpenter"
+  "eks-karpenter"
   "eks-secrets"
   "eks-logs"
   "eks-metrics"

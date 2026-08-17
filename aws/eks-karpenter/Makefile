@@ -1,4 +1,4 @@
-# Makefile for Karpenter
+# Makefile for EKS Karpenter
 
 # Default values
 ENV ?= production
@@ -13,7 +13,7 @@ NC := \033[0m # No Color
 .PHONY: help init plan apply destroy validate fmt check clean
 
 help: ## Show this help message
-	@echo "Karpenter - Terragrunt Commands"
+	@echo "EKS Karpenter - Terragrunt Commands"
 	@echo ""
 	@echo "Usage: make <target> [ENV=<environment>]"
 	@echo ""

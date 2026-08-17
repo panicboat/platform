@@ -17,7 +17,7 @@
 ```
 .
 ├── .github/workflows/   # reusable executor, deploy trigger, hydrator/builder など
-├── aws/                 # service ごとの Terragrunt stack (envs/{environment})。_modules/ は共有 OpenTofu module
+├── aws/                 # service ごとの Terragrunt stack (envs/{environment})
 ├── github/              # GitHub repo / branch 設定の Terragrunt stack
 ├── kubernetes/
 │   ├── clusters/        # cluster ごとの Flux bootstrap

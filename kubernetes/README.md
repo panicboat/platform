@@ -179,7 +179,7 @@ EKS managed addons: `coredns` / `aws-ebs-csi-driver` / `eks-pod-identity-agent`�
 | `system_critical` MNG | (小規模 ARM MNG、2 nodes) | cluster bootstrap-critical workload (= Karpenter controller / cilium-operator / CoreDNS) 専用の最小構成 EKS managed nodegroup。 taint `dedicated=system-critical:NoSchedule` で application workload を排除、 label `node-role/system-critical=true` で nodeSelector。 host pin 対象は各 chart values で個別設定 (chart に通知できない CoreDNS は EKS addon `configuration_values` で tolerations を inject) |
 | EC2NodeClass `system-components` | (cluster-scoped) | AMI (AL2023 ARM64) / subnet `Tier=private` / SG `aws:eks:cluster-name` / Node IAM / EBS gp3 / IMDSv2 |
 | NodePool `system-components` | (cluster-scoped) | requirements: arm64 / spot 優先 + on-demand fallback / general-purpose family / 中型 size 帯。consolidation policy で utilization-driven scale-down、定期的に node expire させて OS patch サイクルを回す |
-| Karpenter sub-module (aws/karpenter stack) | (AWS) | SQS interruption queue + EventBridge rules + Controller IAM role + Pod Identity Association + Node IAM role + EC2 Instance Profile を独立 stack で集約 |
+| Karpenter sub-module (aws/eks-karpenter stack) | (AWS) | SQS interruption queue + EventBridge rules + Controller IAM role + Pod Identity Association + Node IAM role + EC2 Instance Profile を独立 stack で集約 |
 
 #### Observability — Metrics stack
 
