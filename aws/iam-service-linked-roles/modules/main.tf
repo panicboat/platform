@@ -12,11 +12,11 @@
 # の自動作成に失敗し spot 経由の node 起動/consolidation が
 # AuthFailure.ServiceLinkedRoleCreationNotPermitted で失敗する。
 #
-# aws/karpenter (per-env stack) には埋め込まない。理由:
+# aws/eks-karpenter (per-env stack) には埋め込まない。理由:
 # 1. account 単位 singleton なので、複数 env (production 以外に将来
 #    staging/develop 等) が同一 account に増えると 2 つ目以降の env の
 #    apply が確実に EntityAlreadyExists で失敗する。
-# 2. aws/karpenter は docs/runbooks/eks-production-recreate.md の
+# 2. aws/eks-karpenter は docs/runbooks/eks-production-recreate.md の
 #    destroy/recreate cycle 対象。spot instance が残っている間は
 #    DeleteServiceLinkedRole が AWS 側で非同期に遅延/失敗しうるため、
 #    destroy/recreate に巻き込むと無用な失敗点になる。

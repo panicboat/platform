@@ -6,7 +6,7 @@ locals {
 
   environment_tags = {
     Environment = local.environment
-    Component   = "karpenter"
+    Component   = "eks-karpenter"
     Owner       = "panicboat"
   }
 }

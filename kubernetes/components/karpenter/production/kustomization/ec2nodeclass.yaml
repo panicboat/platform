@@ -5,8 +5,8 @@
 # - AMI: AL2023 ARM64 (latest)
 # - Subnet: VPC private subnets (Tier=private tag で discover)
 # - SecurityGroup: cluster SG (aws:eks:cluster-name tag で discover)
-# - Role: aws/karpenter/ stack が provision した Node IAM role
-#   (aws/karpenter/envs/production terragrunt output `node_role_name` の値)
+# - Role: aws/eks-karpenter/ stack が provision した Node IAM role
+#   (aws/eks-karpenter/envs/production terragrunt output `node_role_name` の値)
 # - EBS: gp3 30 GiB (Karpenter-managed node 用 sizing、Plan 1c-β L2 学び参照)
 # - Metadata: IMDSv2 token required (security best practice)
 # =============================================================================
@@ -24,7 +24,7 @@ spec:
   securityGroupSelectorTerms:
     - tags:
         "aws:eks:cluster-name": eks-production
-  # STABLE: aws/karpenter/modules/main.tf で node_iam_role_use_name_prefix = false +
+  # STABLE: aws/eks-karpenter/modules/main.tf で node_iam_role_use_name_prefix = false +
   # node_iam_role_name = "Karpenter-eks-${var.environment}" に固定済、recreate でも変化しない
   role: Karpenter-eks-production
   blockDeviceMappings:

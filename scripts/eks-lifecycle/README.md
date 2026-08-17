@@ -91,6 +91,6 @@ make eks-teardown-verify ENV=production    # orphan verify only
 
 ## What is destroyed
 
-- `aws/eks`, `aws/karpenter`, `aws/eks-secrets`, `aws/eks-logs`, `aws/eks-metrics`, `aws/eks-traces` (= EKS 専用)
+- `aws/eks`, `aws/eks-karpenter`, `aws/eks-secrets`, `aws/eks-logs`, `aws/eks-metrics`, `aws/eks-traces` (= EKS 専用)
 - `aws/alb` (= ACM wildcard cert *.panicboat.net、recreate 時は DNS validation 5〜10 分)
 - `aws/vpc` (= NAT gateway 含む)

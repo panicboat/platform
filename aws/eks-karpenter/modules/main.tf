@@ -25,7 +25,7 @@
 
 # EC2 Spot service-linked role (AWSServiceRoleForEC2Spot) は
 # aws/ec2-spot-service-role で管理する (= account 単位 singleton かつ
-# 複数 env 共有のため、per-env stack である karpenter からは分離)。
+# 複数 env 共有のため、per-env stack である eks-karpenter からは分離)。
 # system-components NodePool の capacity-type [spot, on-demand] はこの role
 # の存在を前提にする。
 

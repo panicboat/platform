@@ -17,7 +17,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.
 ```
 .
 ├── .github/workflows/   # Reusable executors, deploy trigger, hydrator/builder, etc.
-├── aws/                 # Terragrunt stacks per service (envs/{environment}); _modules/ holds shared OpenTofu modules
+├── aws/                 # Terragrunt stacks per service (envs/{environment})
 ├── github/              # Terragrunt stacks for GitHub repo / branch settings
 ├── kubernetes/
 │   ├── clusters/        # Flux bootstrap (per cluster)

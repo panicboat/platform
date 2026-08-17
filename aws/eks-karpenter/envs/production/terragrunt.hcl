@@ -15,7 +15,7 @@ include "env" {
 # modules/lookups.tf resolve `../../eks/lookup` and `../../vpc/lookup` from
 # within the cache.
 terraform {
-  source = "../../..//karpenter/modules"
+  source = "../../..//eks-karpenter/modules"
 }
 
 inputs = {
@@ -25,7 +25,7 @@ inputs = {
   common_tags = merge(
     include.env.locals.environment_tags,
     {
-      Project    = "karpenter"
+      Project    = "eks-karpenter"
       ManagedBy  = "terraform"
       Repository = "panicboat/platform"
     }

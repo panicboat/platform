@@ -75,7 +75,7 @@ if [ "${CLUSTER_EXISTS:-}" = "true" ]; then
   # --cascade=foreground waits for owned NodeClaims (= and their EC2 instances)
   # to be deleted before returning. This avoids the historical failure mode where
   # NodePool delete returned immediately while leaving EC2 alive, eventually
-  # stranded after karpenter stack destroy (= controller gone, no terminate path).
+  # stranded after eks-karpenter stack destroy (= controller gone, no terminate path).
   if kubectl get nodepools.karpenter.sh >/dev/null 2>&1; then
     run kubectl delete nodepools.karpenter.sh --all --cascade=foreground --timeout=600s || \
       warn "NodePool foreground deletion incomplete (= will rely on AWS-tag fallback below)"

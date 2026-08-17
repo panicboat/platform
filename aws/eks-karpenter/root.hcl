@@ -1,8 +1,8 @@
-# root.hcl - Root Terragrunt configuration for Karpenter
+# root.hcl - Root Terragrunt configuration for EKS Karpenter
 # This file contains common settings shared across all environments
 
 locals {
-  project_name = "karpenter"
+  project_name = "eks-karpenter"
 
   path_parts  = split("/", path_relative_to_include())
   environment = element(local.path_parts, length(local.path_parts) - 1)
@@ -12,7 +12,7 @@ locals {
     Environment = local.environment
     ManagedBy   = "terragrunt"
     Repository  = "monorepo"
-    Component   = "karpenter"
+    Component   = "eks-karpenter"
     Team        = "panicboat"
   }
 }
@@ -25,7 +25,7 @@ remote_state {
   }
   config = {
     bucket         = "terragrunt-state-${get_aws_account_id()}"
-    key            = "platform/karpenter/${local.environment}/terraform.tfstate"
+    key            = "platform/eks-karpenter/${local.environment}/terraform.tfstate"
     region         = "ap-northeast-1"
     dynamodb_table = "terragrunt-state-locks"
     encrypt        = true
