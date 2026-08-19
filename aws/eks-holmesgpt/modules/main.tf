@@ -12,37 +12,20 @@
 #
 # `us.` inference profiles route to three regions. Listing only the profile ARN
 # is not enough — the call fails on whichever region the profile picks.
-#
-# Sonnet 5 / Opus 5 are granted but cannot currently be invoked: every
-# tokens-per-minute quota for them reads 0, and the self-service increase
-# requests were closed without approval (the account has no usage history to
-# justify one). Only Sonnet 4.6 has non-zero quota. The IAM grant is
-# independent of those quotas, so listing them costs nothing and avoids a
-# second apply if the quotas are ever raised.
 
 data "aws_caller_identity" "current" {}
 
 locals {
   service_name = "holmesgpt" # K8s ServiceAccount name
 
-  # Models HolmesGPT invokes. Must stay in sync with `modelList` in
-  # kubernetes/components/holmesgpt/production/values.yaml.gotmpl — a model
-  # present there but missing here fails at runtime with AccessDenied.
-  #
-  # Written once and expanded into both the inference-profile ARNs and the
-  # foundation-model ARNs below. Hand-listing both forms is what let
-  # `anthropic.claude-opus-4-6` (the real id carries a `-v1` suffix) sit here
-  # unused while the models actually in `modelList` went ungranted.
+  # Must match `modelList` in
+  # kubernetes/components/holmesgpt/production/values.yaml.gotmpl; a model there
+  # but not here fails at runtime with AccessDenied.
   bedrock_models = [
     "anthropic.claude-sonnet-4-6",
-    "anthropic.claude-sonnet-5",
-    "anthropic.claude-opus-5",
   ]
 
-  # Regions the `us.` cross-region profiles route to, from
-  # `aws bedrock get-inference-profile --inference-profile-identifier us.<model>`
-  # (models[].modelArn). Granting the profile alone is not enough: the call is
-  # authorized against the foundation model in whichever region it lands on.
+  # Routing targets of the `us.` profiles, per `aws bedrock get-inference-profile`.
   bedrock_profile_regions = ["us-east-1", "us-east-2", "us-west-2"]
 
   bedrock_invoke_resources = concat(
