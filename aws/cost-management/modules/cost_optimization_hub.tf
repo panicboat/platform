@@ -1,36 +1,22 @@
 # cost_optimization_hub.tf - AWS Cost Optimization Hub enrollment
 
-# Workaround for hashicorp/terraform-provider-aws#39520: the
-# aws_costoptimizationhub_enrollment_status resource produces a perpetual
-# in-place update on every plan because the provider always plans
-# include_member_accounts=false even when omitted from HCL, while the AWS
-# API does not return that attribute on Read for non-management accounts.
-# lifecycle.ignore_changes (including = all) does not suppress this.
+# `status` は provider 6.60.0 で computed 属性 (= 設定不可)。リソースが存在する
+# こと自体が Active を意味し、destroy で Inactive に戻る。
 #
-# Workaround: invoke the AWS CLI directly via terraform_data + local-exec.
-# This bypasses the broken provider resource while keeping enrollment
-# managed in Terraform. The call is idempotent (re-enrolling an Active
-# account is a no-op).
-resource "terraform_data" "cost_optimization_hub_enrollment" {
-  triggers_replace = {
-    # Re-run only when this version string changes.
-    version = "v1"
-  }
-
-  provisioner "local-exec" {
-    command = "aws cost-optimization-hub update-enrollment-status --status Active --region us-east-1"
-  }
-}
+# `include_member_accounts` は optional + computed。省略すると AWS API が返す値を
+# そのまま採用するため、省略した状態で plan に差分が出ない。org 横断の登録
+# (= member アカウントを一括 opt-in) を有効にする場合のみ true を明示する。
+# 有効化には Organizations 側で cost-optimization-hub.amazonaws.com の信頼された
+# サービスアクセスが別途必要。
+resource "aws_costoptimizationhub_enrollment_status" "this" {}
 
 # aws_costoptimizationhub_preferences is intentionally NOT managed here.
-# The AWS Terraform provider always sends member_account_discount_visibility
-# (defaulting to "All" if unset), and the AWS API rejects that attribute
-# from non-management accounts with:
-#   ValidationException: Only management accounts can update member account
-#   discount visibility.
-# AWS defaults are used: savings_estimation_mode = "AfterDiscounts" (verified
-# via "aws cost-optimization-hub get-preferences"). For a standalone account
-# without enterprise discount programs, BeforeDiscounts and AfterDiscounts
-# produce identical numbers.
-# Add this resource back when the account becomes an Organization management
-# account.
+#
+# `member_account_discount_visibility` は optional + computed だが、AWS API の
+# GetPreferences がこの属性を返さないため、リソースを追加すると provider が
+# 毎回 "All" を書き込もうとする (= plan に `+ member_account_discount_visibility
+# = "All"` が出続ける)。AWS 既定値も "All" のため、管理しても得られるものが無い。
+#
+# savings_estimation_mode も AWS 既定の "AfterDiscounts" のまま
+# (= `aws cost-optimization-hub get-preferences` で確認)。既定から変える要件が
+# 出た時点で、上記の書き込みを許容するかと併せて再検討する。
