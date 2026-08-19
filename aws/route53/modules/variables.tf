@@ -1,7 +1,12 @@
 # variables.tf - Inputs for the route53 module.
 
 variable "environment" {
-  description = "Environment name (e.g., production)"
+  description = "Environment name (e.g., master)"
+  type        = string
+}
+
+variable "production_account_id" {
+  description = "AWS account ID allowed to assume route53-zone-access"
   type        = string
 }
 
