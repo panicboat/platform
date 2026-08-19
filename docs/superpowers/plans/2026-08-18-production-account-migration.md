@@ -538,6 +538,15 @@ Expected: `us.anthropic.claude-sonnet-4-6` が `ACTIVE`。`modelList` の `sonne
 
 # Phase 2: State Backend Bootstrap
 
+> **実行記録（2026-08-20 完了、PR #809）**
+>
+> - Task 2.1 / 4.2 / 4.3 の `terragrunt backend bootstrap` は `--non-interactive` が必須（既定では bucket 作成の y/N プロンプトで停止する）
+> - Task 3.5 の `terragrunt backend migrate` は**移行元ディレクトリが存在している必要がある**。先に `git mv` すると `src unit not found` で失敗するため、コピーで並存させてから移行し、あとで旧ディレクトリを削除する
+> - `terragrunt backend migrate` は移行先へのコピーだけでなく**旧 state の削除まで行う**。plan の「旧 state を削除」ステップは不要だった
+> - Task 3.6 の policy に **`route53:ListTagsForResource` が必要**だった。`data.aws_route53_zone` は zone 解決の一環でタグを読むため、無いと Task 5.1 の plan が 403 になる
+> - Task 3.1 の apply で OIDC provider の thumbprint が更新される（`22ff8958...` → `ab9d0263...`）。`data.tls_certificate.github` の再計算による既存ドリフトで、AWS は当該 IdP の thumbprint を検証しないため影響なしと判断（REASONED）
+> - `github/repository` に `allow_forking = true -> false` の既存ドリフトあり。env 移設とは無関係
+
 ### Task 2.1: 両新アカウントに state バケットとロックテーブルを作る
 
 全 `root.hcl` が `bucket = "terragrunt-state-${get_aws_account_id()}"` で組むため、コード変更は不要。
@@ -548,7 +557,7 @@ Expected: `us.anthropic.claude-sonnet-4-6` が `ACTIVE`。`modelList` の `sonne
 - Consumes: Task 1.1 の `337169763788` / `270242382571`
 - Produces: 両アカウントの `terragrunt-state-<ID>` バケットと `terragrunt-state-locks` テーブル
 
-- [ ] **Step 1: production アカウントで bootstrap**
+- [x] **Step 1: production アカウントで bootstrap**
 
 `vpc` は依存が無く最も軽い。Task 1.2 Step 1 の認証情報がまだ有効ならそのまま使う。
 
@@ -558,7 +567,7 @@ cd aws/vpc/envs/production && TG_TF_PATH=tofu terragrunt backend bootstrap
 
 Expected: S3 バケットと DynamoDB テーブルが作成される旨のログ
 
-- [ ] **Step 2: production の backend を確認**
+- [x] **Step 2: production の backend を確認**
 
 ```bash
 aws s3api head-bucket --bucket terragrunt-state-337169763788
@@ -569,7 +578,7 @@ aws dynamodb describe-table --table-name terragrunt-state-locks --region ap-nort
 
 Expected: バケットが存在し versioning が `Enabled`、HASH キーが `LockID`
 
-- [ ] **Step 3: develop アカウントの認証情報に切り替える**
+- [x] **Step 3: develop アカウントの認証情報に切り替える**
 
 ```bash
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
@@ -584,7 +593,7 @@ aws sts get-caller-identity --query Account --output text
 
 Expected: `270242382571`
 
-- [ ] **Step 4: develop アカウントで bootstrap**
+- [x] **Step 4: develop アカウントで bootstrap**
 
 develop env を持つ唯一のスタックが `github-oidc-auth`。
 
@@ -592,7 +601,7 @@ develop env を持つ唯一のスタックが `github-oidc-auth`。
 cd aws/github-oidc-auth/envs/develop && TG_TF_PATH=tofu terragrunt backend bootstrap
 ```
 
-- [ ] **Step 5: develop の backend を確認**
+- [x] **Step 5: develop の backend を確認**
 
 ```bash
 aws s3api head-bucket --bucket terragrunt-state-270242382571
@@ -619,7 +628,7 @@ Expected: バケットとテーブルが存在する
 **Interfaces:**
 - Produces: `github-oidc-auth-master-github-actions-{plan,apply}-role` と、`master` state が所有する OIDC provider。Task 3.2 の `workflow-config.yaml` が参照する
 
-- [ ] **Step 1: 管理アカウントの認証情報であることを確認**
+- [x] **Step 1: 管理アカウントの認証情報であることを確認**
 
 ```bash
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
@@ -628,7 +637,7 @@ aws sts get-caller-identity --query Arn --output text
 
 Expected: `arn:aws:iam::559744160976:user/panicboat`
 
-- [ ] **Step 2: `env.hcl` を作成**
+- [x] **Step 2: `env.hcl` を作成**
 
 ```hcl
 # env.hcl - Master environment configuration
@@ -667,7 +676,7 @@ locals {
 }
 ```
 
-- [ ] **Step 3: `terragrunt.hcl` を作成**
+- [x] **Step 3: `terragrunt.hcl` を作成**
 
 ```hcl
 # terragrunt.hcl - Master environment Terragrunt configuration
@@ -713,7 +722,7 @@ inputs = {
 }
 ```
 
-- [ ] **Step 4: `develop` state から provider を外す**
+- [x] **Step 4: `develop` state から provider を外す**
 
 二重管理を作らないため、import より先に実行する。
 
@@ -724,7 +733,7 @@ TG_TF_PATH=tofu terragrunt state rm 'aws_iam_openid_connect_provider.github[0]'
 
 Expected: `Successfully removed 1 resource instance(s).`
 
-- [ ] **Step 5: `master` state へ provider を import**
+- [x] **Step 5: `master` state へ provider を import**
 
 ```bash
 cd aws/github-oidc-auth/envs/master
@@ -735,7 +744,7 @@ TG_TF_PATH=tofu terragrunt import 'aws_iam_openid_connect_provider.github[0]' \
 
 Expected: `Import successful!`
 
-- [ ] **Step 6: plan で provider が再作成されないことを確認**
+- [x] **Step 6: plan で provider が再作成されないことを確認**
 
 ```bash
 cd aws/github-oidc-auth/envs/master && TG_TF_PATH=tofu terragrunt plan
@@ -743,13 +752,13 @@ cd aws/github-oidc-auth/envs/master && TG_TF_PATH=tofu terragrunt plan
 
 Expected: `aws_iam_openid_connect_provider.github[0]` に `create` や `replace` が出ず、追加は plan / apply role・policy・attachment 3・log group のみ。tag の in-place update は許容
 
-- [ ] **Step 7: apply**
+- [x] **Step 7: apply**
 
 ```bash
 cd aws/github-oidc-auth/envs/master && TG_TF_PATH=tofu terragrunt apply -auto-approve
 ```
 
-- [ ] **Step 8: provider とロールを確認**
+- [x] **Step 8: provider とロールを確認**
 
 ```bash
 aws iam list-open-id-connect-providers
@@ -759,7 +768,7 @@ aws iam get-role --role-name github-oidc-auth-master-github-actions-apply-role -
 
 Expected: provider が 1 件のまま（重複作成されていない）、両ロールの ARN が返る
 
-- [ ] **Step 9: コミット**
+- [x] **Step 9: コミット**
 
 ```bash
 git add aws/github-oidc-auth/envs/master/
@@ -773,7 +782,7 @@ git commit -s -m "feat(aws/github-oidc-auth): add master environment and adopt t
 **Files:**
 - Modify: `workflow-config.yaml`
 
-- [ ] **Step 1: `master` env を `environments:` の先頭に追加**
+- [x] **Step 1: `master` env を `environments:` の先頭に追加**
 
 ```yaml
   - environment: master
@@ -784,7 +793,7 @@ git commit -s -m "feat(aws/github-oidc-auth): add master environment and adopt t
         iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-master-github-actions-apply-role
 ```
 
-- [ ] **Step 2: YAML として妥当か確認**
+- [x] **Step 2: YAML として妥当か確認**
 
 ```bash
 python3 -c "import yaml; d=yaml.safe_load(open('workflow-config.yaml')); print([e['environment'] for e in d['environments']])"
@@ -792,7 +801,7 @@ python3 -c "import yaml; d=yaml.safe_load(open('workflow-config.yaml')); print([
 
 Expected: `['master', 'develop', 'production']`
 
-- [ ] **Step 3: コミット**
+- [x] **Step 3: コミット**
 
 ```bash
 git add workflow-config.yaml
@@ -812,7 +821,7 @@ hosted zone は管理アカウントの資産なので env 帰属を移す。sta
 - Consumes: Task 3.2 の `master` env 宣言
 - Produces: `platform/route53/master/terraform.tfstate`。Task 3.6 が同スタックに追記する
 
-- [ ] **Step 1: 移行前の state を確認**
+- [x] **Step 1: 移行前の state を確認**
 
 ```bash
 cd aws/route53/envs/production && TG_TF_PATH=tofu terragrunt state list
@@ -820,7 +829,7 @@ cd aws/route53/envs/production && TG_TF_PATH=tofu terragrunt state list
 
 Expected: 6 個の `aws_route53_record` と 2 個の `module.route53.data.aws_route53_zone`
 
-- [ ] **Step 2: `env.hcl` を作成**
+- [x] **Step 2: `env.hcl` を作成**
 
 ```hcl
 # env.hcl - Environment-specific configuration for master
@@ -845,7 +854,7 @@ locals {
 }
 ```
 
-- [ ] **Step 3: `terragrunt.hcl` を作成**
+- [x] **Step 3: `terragrunt.hcl` を作成**
 
 ```hcl
 # terragrunt.hcl - Terragrunt configuration for master environment
@@ -886,13 +895,13 @@ inputs = {
 }
 ```
 
-- [ ] **Step 4: state を移行**
+- [x] **Step 4: state を移行**
 
 ```bash
 terragrunt backend migrate aws/route53/envs/production aws/route53/envs/master
 ```
 
-- [ ] **Step 5: 移行先 state を確認**
+- [x] **Step 5: 移行先 state を確認**
 
 ```bash
 cd aws/route53/envs/master && TG_TF_PATH=tofu terragrunt state list
@@ -900,7 +909,7 @@ cd aws/route53/envs/master && TG_TF_PATH=tofu terragrunt state list
 
 Expected: Step 1 と同じ 8 エントリ
 
-- [ ] **Step 6: 差分を確認**
+- [x] **Step 6: 差分を確認**
 
 ```bash
 cd aws/route53/envs/master && TG_TF_PATH=tofu terragrunt plan
@@ -908,14 +917,14 @@ cd aws/route53/envs/master && TG_TF_PATH=tofu terragrunt plan
 
 Expected: レコードの再作成が無いこと。`Environment` タグの develop→master 変更に伴う in-place update は許容
 
-- [ ] **Step 7: 旧 env と旧 state を削除**
+- [x] **Step 7: 旧 env と旧 state を削除**
 
 ```bash
 git rm -r aws/route53/envs/production
 aws s3 rm s3://terragrunt-state-559744160976/platform/route53/production/terraform.tfstate
 ```
 
-- [ ] **Step 8: コミット**
+- [x] **Step 8: コミット**
 
 ```bash
 git add aws/route53/envs/master/
@@ -931,7 +940,7 @@ Compute Optimizer と Cost Optimization Hub の登録は支払アカウント単
 - Create: `aws/cost-management/envs/master/terragrunt.hcl`
 - Delete: `aws/cost-management/envs/develop/`
 
-- [ ] **Step 1: 移行前の state を確認**
+- [x] **Step 1: 移行前の state を確認**
 
 ```bash
 cd aws/cost-management/envs/develop && TG_TF_PATH=tofu terragrunt state list
@@ -939,7 +948,7 @@ cd aws/cost-management/envs/develop && TG_TF_PATH=tofu terragrunt state list
 
 Expected: `aws_computeoptimizer_enrollment_status.this` と `aws_costoptimizationhub_enrollment_status.this` の 2 件（後者は #801 で `terraform_data` + `local-exec` の回避策から置き換え済）
 
-- [ ] **Step 2: `env.hcl` を作成**
+- [x] **Step 2: `env.hcl` を作成**
 
 module 側が `us-east-1` に固定しているため `aws_region` は現状を踏襲する。
 
@@ -962,7 +971,7 @@ locals {
 }
 ```
 
-- [ ] **Step 3: `terragrunt.hcl` を作成**
+- [x] **Step 3: `terragrunt.hcl` を作成**
 
 develop 版との差分は先頭コメントの env 名のみ（`aws_region` は module が `us-east-1` に固定するため渡していない）。
 
@@ -1001,13 +1010,13 @@ inputs = {
 }
 ```
 
-- [ ] **Step 4: state を移行**
+- [x] **Step 4: state を移行**
 
 ```bash
 terragrunt backend migrate aws/cost-management/envs/develop aws/cost-management/envs/master
 ```
 
-- [ ] **Step 5: 差分を確認**
+- [x] **Step 5: 差分を確認**
 
 ```bash
 cd aws/cost-management/envs/master && TG_TF_PATH=tofu terragrunt plan
@@ -1017,14 +1026,14 @@ Expected: `aws_computeoptimizer_enrollment_status` と `aws_costoptimizationhub_
 
 `aws_costoptimizationhub_enrollment_status` は `include_member_accounts` が `optional + computed` で、省略時は AWS API の返り値を採用するため差分が出ない（#801 で実 state での `No changes.` を確認済）。差分が出る場合は provider のバージョンが上がって挙動が変わっている可能性があるため、apply せずに調査する
 
-- [ ] **Step 6: 旧 env と旧 state を削除**
+- [x] **Step 6: 旧 env と旧 state を削除**
 
 ```bash
 git rm -r aws/cost-management/envs/develop
 aws s3 rm s3://terragrunt-state-559744160976/platform/cost-management/develop/terraform.tfstate
 ```
 
-- [ ] **Step 7: コミット**
+- [x] **Step 7: コミット**
 
 ```bash
 git add aws/cost-management/envs/master/
@@ -1039,7 +1048,7 @@ GitHub リポジトリと ruleset は環境を持たない組織横断資産。�
 - Move: `github/repository/envs/develop/` → `github/repository/envs/master/`
 - Move: `github/branch/envs/develop/` → `github/branch/envs/master/`
 
-- [ ] **Step 1: 移行前の state を確認**
+- [x] **Step 1: 移行前の state を確認**
 
 ```bash
 cd github/repository/envs/develop && TG_TF_PATH=tofu terragrunt state list
@@ -1048,7 +1057,7 @@ cd ../../../branch/envs/develop && TG_TF_PATH=tofu terragrunt state list
 
 Expected: repository 側は `aws_cloudwatch_log_group.github_repository_logs` / `github_repository.repository` / `github_workflow_repository_permissions.repository` の 3 件、branch 側は `data.github_repository.repo` / `github_repository_ruleset.branches` の 2 件
 
-- [ ] **Step 2: ディレクトリを `git mv` で移動**
+- [x] **Step 2: ディレクトリを `git mv` で移動**
 
 per-repo の `.hcl` ファイル（`monorepo.hcl` 等）も一緒に移す。
 
@@ -1060,7 +1069,7 @@ ls github/repository/envs/master/ github/branch/envs/master/
 
 Expected: repository 側に 7 ファイル（`terragrunt.hcl` + repo 別 6 本）、branch 側に 5 ファイル（`terragrunt.hcl` + `defaults.hcl` + repo 別 3 本）
 
-- [ ] **Step 3: ハードコードされた `develop` が無いことを確認**
+- [x] **Step 3: ハードコードされた `develop` が無いことを確認**
 
 env 名は `root.hcl` がディレクトリパスから導出するため、移動だけで切り替わるはず。
 
@@ -1070,7 +1079,7 @@ grep -rn "develop" github/repository/envs/master/ github/branch/envs/master/
 
 Expected: 出力なし。あれば `master` に書き換える
 
-- [ ] **Step 4: `GITHUB_TOKEN` を設定して state を移行**
+- [x] **Step 4: `GITHUB_TOKEN` を設定して state を移行**
 
 両スタックとも `get_env("GITHUB_TOKEN")` を読むため、未設定だと terragrunt が評価時に失敗する。
 
@@ -1080,7 +1089,7 @@ terragrunt backend migrate github/repository/envs/develop github/repository/envs
 terragrunt backend migrate github/branch/envs/develop github/branch/envs/master
 ```
 
-- [ ] **Step 5: 差分を確認**
+- [x] **Step 5: 差分を確認**
 
 ```bash
 cd github/repository/envs/master && TG_TF_PATH=tofu terragrunt plan
@@ -1089,14 +1098,14 @@ cd ../../../branch/envs/master && TG_TF_PATH=tofu terragrunt plan
 
 Expected: GitHub リポジトリ・ruleset・ログ グループの再作成や削除が無いこと。ログ グループの `Environment` タグ in-place update は許容
 
-- [ ] **Step 6: 旧 state を削除**
+- [x] **Step 6: 旧 state を削除**
 
 ```bash
 aws s3 rm s3://terragrunt-state-559744160976/platform/repository/develop/terraform.tfstate
 aws s3 rm s3://terragrunt-state-559744160976/platform/branch/develop/terraform.tfstate
 ```
 
-- [ ] **Step 7: コミット**
+- [x] **Step 7: コミット**
 
 ```bash
 git add github/
@@ -1115,7 +1124,7 @@ production アカウントから管理アカウントの hosted zone を操作�
 - Consumes: Task 3.3 の `production_account_id` input
 - Produces: `arn:aws:iam::559744160976:role/route53-zone-access`。Task 4.2 の `assume_role_arns`、Task 5.1 の provider alias、Task 5.2 の external-dns IAM、Task 5.3 の helm 値が参照する
 
-- [ ] **Step 1: `variables.tf` に変数を追加**
+- [x] **Step 1: `variables.tf` に変数を追加**
 
 `aws/route53/modules/variables.tf` の末尾に追記する。
 
@@ -1126,7 +1135,7 @@ variable "production_account_id" {
 }
 ```
 
-- [ ] **Step 2: `zone_access.tf` を作成**
+- [x] **Step 2: `zone_access.tf` を作成**
 
 ```hcl
 # zone_access.tf - Cross-account role that lets the production account manage
@@ -1201,7 +1210,7 @@ resource "aws_iam_role_policy" "zone_access" {
 }
 ```
 
-- [ ] **Step 3: fmt と validate**
+- [x] **Step 3: fmt と validate**
 
 ```bash
 tofu fmt -recursive aws/route53/
@@ -1210,7 +1219,7 @@ cd aws/route53/envs/master && TG_TF_PATH=tofu terragrunt validate
 
 Expected: fmt が差分を出さず、validate が成功
 
-- [ ] **Step 4: plan で追加内容を確認**
+- [x] **Step 4: plan で追加内容を確認**
 
 ```bash
 cd aws/route53/envs/master && TG_TF_PATH=tofu terragrunt plan
@@ -1218,13 +1227,13 @@ cd aws/route53/envs/master && TG_TF_PATH=tofu terragrunt plan
 
 Expected: `aws_iam_role.zone_access` と `aws_iam_role_policy.zone_access` の 2 追加のみ。既存レコード 6 件に変更が出ないこと
 
-- [ ] **Step 5: apply**
+- [x] **Step 5: apply**
 
 ```bash
 cd aws/route53/envs/master && TG_TF_PATH=tofu terragrunt apply -auto-approve
 ```
 
-- [ ] **Step 6: ロールとポリシーを確認**
+- [x] **Step 6: ロールとポリシーを確認**
 
 ```bash
 aws iam get-role --role-name route53-zone-access --query 'Role.AssumeRolePolicyDocument' --output json
@@ -1233,7 +1242,7 @@ aws iam get-role-policy --role-name route53-zone-access --policy-name route53-zo
 
 Expected: trust の Principal が `arn:aws:iam::337169763788:root`、ポリシー 1 つ目の Resource が 2 zone ARN
 
-- [ ] **Step 7: コミット**
+- [x] **Step 7: コミット**
 
 ```bash
 git add aws/route53/modules/
@@ -1257,7 +1266,7 @@ git commit -s -m "feat(aws/route53): add cross-account zone access role for prod
 **Interfaces:**
 - Produces: `assume_role_arns` input。Task 4.3 の production env.hcl が値を渡す
 
-- [ ] **Step 1: `variables.tf` に変数を追加**
+- [x] **Step 1: `variables.tf` に変数を追加**
 
 ```hcl
 variable "assume_role_arns" {
@@ -1267,7 +1276,7 @@ variable "assume_role_arns" {
 }
 ```
 
-- [ ] **Step 2: `main.tf` にインラインポリシーを追加**
+- [x] **Step 2: `main.tf` にインラインポリシーを追加**
 
 `aws_iam_role_policy_attachment.plan_state_lock` リソースの直後に追記する。
 
@@ -1296,7 +1305,7 @@ resource "aws_iam_role_policy" "plan_assume_role" {
 }
 ```
 
-- [ ] **Step 3: fmt と validate**
+- [x] **Step 3: fmt と validate**
 
 ```bash
 tofu fmt -recursive aws/github-oidc-auth/
@@ -1305,7 +1314,7 @@ cd aws/github-oidc-auth/envs/master && TG_TF_PATH=tofu terragrunt validate
 
 Expected: 成功
 
-- [ ] **Step 4: `master` env に差分が出ないことを確認**
+- [x] **Step 4: `master` env に差分が出ないことを確認**
 
 デフォルト空リストなので `count = 0` となり影響しないはず。
 
@@ -1315,7 +1324,7 @@ cd aws/github-oidc-auth/envs/master && TG_TF_PATH=tofu terragrunt plan
 
 Expected: `No changes.`
 
-- [ ] **Step 5: コミット**
+- [x] **Step 5: コミット**
 
 ```bash
 git add aws/github-oidc-auth/modules/
@@ -1328,7 +1337,7 @@ git commit -s -m "feat(aws/github-oidc-auth): allow granting cross-account assum
 
 **Files:** なし（既存スタックの apply のみ）
 
-- [ ] **Step 1: develop アカウントの認証情報に切り替える**
+- [x] **Step 1: develop アカウントの認証情報に切り替える**
 
 ```bash
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
@@ -1343,7 +1352,7 @@ aws sts get-caller-identity --query Account --output text
 
 Expected: `270242382571`
 
-- [ ] **Step 2: plan**
+- [x] **Step 2: plan**
 
 state は Task 2.1 で bootstrap した新バケットを向くため、全て新規追加になる。
 
@@ -1353,13 +1362,13 @@ cd aws/github-oidc-auth/envs/develop && TG_TF_PATH=tofu terragrunt init && TG_TF
 
 Expected: OIDC provider / plan role / apply role / state lock policy / attachment 3 / log group が全て新規追加
 
-- [ ] **Step 3: apply**
+- [x] **Step 3: apply**
 
 ```bash
 cd aws/github-oidc-auth/envs/develop && TG_TF_PATH=tofu terragrunt apply -auto-approve
 ```
 
-- [ ] **Step 4: ロールと provider を確認**
+- [x] **Step 4: ロールと provider を確認**
 
 ```bash
 aws iam list-open-id-connect-providers
@@ -1379,7 +1388,7 @@ Expected: provider が 1 件、両ロールの ARN が `270242382571`
 - Consumes: Task 3.6 の `route53-zone-access` ARN、Task 4.1 の `assume_role_arns`
 - Produces: 新アカウントの production plan / apply ロール
 
-- [ ] **Step 1: `env.hcl` の OIDC provider 設定を反転**
+- [x] **Step 1: `env.hcl` の OIDC provider 設定を反転**
 
 以下 2 行を置き換える。
 
@@ -1401,7 +1410,7 @@ Expected: provider が 1 件、両ロールの ARN が `270242382571`
   oidc_provider_arn    = ""
 ```
 
-- [ ] **Step 2: `env.hcl` に `assume_role_arns` を追加**
+- [x] **Step 2: `env.hcl` に `assume_role_arns` を追加**
 
 `additional_tags` ブロックの直前に追記する。
 
@@ -1413,7 +1422,7 @@ Expected: provider が 1 件、両ロールの ARN が `270242382571`
   ]
 ```
 
-- [ ] **Step 3: `terragrunt.hcl` で input を渡す**
+- [x] **Step 3: `terragrunt.hcl` で input を渡す**
 
 `inputs` ブロックに追記する。
 
@@ -1421,7 +1430,7 @@ Expected: provider が 1 件、両ロールの ARN が `270242382571`
   assume_role_arns = include.env.locals.assume_role_arns
 ```
 
-- [ ] **Step 4: production アカウントの認証情報に切り替える**
+- [x] **Step 4: production アカウントの認証情報に切り替える**
 
 ```bash
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
@@ -1436,7 +1445,7 @@ aws sts get-caller-identity --query Account --output text
 
 Expected: `337169763788`
 
-- [ ] **Step 5: plan と apply**
+- [x] **Step 5: plan と apply**
 
 ```bash
 cd aws/github-oidc-auth/envs/production && TG_TF_PATH=tofu terragrunt init && TG_TF_PATH=tofu terragrunt plan
@@ -1445,7 +1454,7 @@ cd aws/github-oidc-auth/envs/production && TG_TF_PATH=tofu terragrunt apply -aut
 
 Expected: plan は全て新規追加。apply が成功する
 
-- [ ] **Step 6: ロールと assume ポリシーを確認**
+- [x] **Step 6: ロールと assume ポリシーを確認**
 
 ```bash
 aws iam get-role --role-name github-oidc-auth-production-github-actions-plan-role --query 'Role.Arn' --output text
@@ -1456,7 +1465,7 @@ aws iam get-role-policy --role-name github-oidc-auth-production-github-actions-p
 
 Expected: 両ロールの ARN が `337169763788`、assume ポリシーの Resource が `route53-zone-access` ARN
 
-- [ ] **Step 7: クロスアカウント assume の疎通を確認**
+- [x] **Step 7: クロスアカウント assume の疎通を確認**
 
 ```bash
 aws sts assume-role \
@@ -1467,7 +1476,7 @@ aws sts assume-role \
 
 Expected: `arn:aws:sts::559744160976:assumed-role/route53-zone-access/migration-check`
 
-- [ ] **Step 8: コミット**
+- [x] **Step 8: コミット**
 
 ```bash
 git add aws/github-oidc-auth/envs/production/
@@ -1479,7 +1488,7 @@ git commit -s -m "feat(aws/github-oidc-auth): provision production OIDC in its d
 **Files:**
 - Modify: `workflow-config.yaml`
 
-- [ ] **Step 1: 両アカウントのロールが存在することを再確認**
+- [x] **Step 1: 両アカウントのロールが存在することを再確認**
 
 差し替え前の必須ゲート。ここを飛ばして先にマージすると CI が存在しないロールを assume して壊れる。
 
@@ -1496,7 +1505,7 @@ done
 
 Expected: develop アカウントで develop の 2 ロール、production アカウントで production の 2 ロールが返る
 
-- [ ] **Step 2: `develop` と `production` の ARN を差し替え**
+- [x] **Step 2: `develop` と `production` の ARN を差し替え**
 
 ```yaml
   - environment: develop
@@ -1514,7 +1523,7 @@ Expected: develop アカウントで develop の 2 ロール、production アカ
         iam_role_apply: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-apply-role
 ```
 
-- [ ] **Step 3: 3 env が正しいアカウントを向いていることを確認**
+- [x] **Step 3: 3 env が正しいアカウントを向いていることを確認**
 
 ```bash
 python3 - <<'EOF'
@@ -1528,7 +1537,7 @@ EOF
 
 Expected: `master` が `559744160976`、`develop` が `270242382571`、`production` が `337169763788`
 
-- [ ] **Step 4: コミット**
+- [x] **Step 4: コミット**
 
 ```bash
 git add workflow-config.yaml
@@ -1557,7 +1566,7 @@ git commit -s -m "feat(workflow-config): point develop and production at their d
 - Consumes: Task 3.6 の `route53-zone-access` ARN
 - Produces: `var.route53_zone_role_arn`（`aws/alb` 内）
 
-- [ ] **Step 1: `variables.tf` に変数を追加**
+- [x] **Step 1: `variables.tf` に変数を追加**
 
 ```hcl
 variable "route53_zone_role_arn" {
@@ -1566,7 +1575,7 @@ variable "route53_zone_role_arn" {
 }
 ```
 
-- [ ] **Step 2: `terraform.tf` に alias provider を追加**
+- [x] **Step 2: `terraform.tf` に alias provider を追加**
 
 既存 `provider "aws"` ブロックの直後に追記する。
 
@@ -1587,7 +1596,7 @@ provider "aws" {
 }
 ```
 
-- [ ] **Step 3: `lookups.tf` で provider を差し替え**
+- [x] **Step 3: `lookups.tf` で provider を差し替え**
 
 ファイル全体を以下に置き換える。
 
@@ -1607,7 +1616,7 @@ module "route53" {
 }
 ```
 
-- [ ] **Step 4: validation レコードに provider を指定**
+- [x] **Step 4: validation レコードに provider を指定**
 
 `aws/alb/modules/main.tf` の `aws_route53_record.wildcard_panicboat_net_validation` と `aws_route53_record.wildcard_dystopia_city_validation` の両方に、`for_each` の直前へ 1 行追加する。
 
@@ -1617,7 +1626,7 @@ module "route53" {
 
 ACM 証明書（`aws_acm_certificate`）と検証待ち（`aws_acm_certificate_validation`）は production アカウント側のリソースなので default provider のまま。
 
-- [ ] **Step 5: `env.hcl` に ARN を追加**
+- [x] **Step 5: `env.hcl` に ARN を追加**
 
 `environment_tags` ブロックの直前に追記する。
 
@@ -1626,7 +1635,7 @@ ACM 証明書（`aws_acm_certificate`）と検証待ち（`aws_acm_certificate_v
   route53_zone_role_arn = "arn:aws:iam::559744160976:role/route53-zone-access"
 ```
 
-- [ ] **Step 6: `terragrunt.hcl` で input を渡す**
+- [x] **Step 6: `terragrunt.hcl` で input を渡す**
 
 `inputs` ブロック、`aws_region` の次の行に追記する。
 
@@ -1634,7 +1643,7 @@ ACM 証明書（`aws_acm_certificate`）と検証待ち（`aws_acm_certificate_v
   route53_zone_role_arn = include.env.locals.route53_zone_role_arn
 ```
 
-- [ ] **Step 7: fmt と validate**
+- [x] **Step 7: fmt と validate**
 
 ```bash
 tofu fmt -recursive aws/alb/
@@ -1643,7 +1652,7 @@ cd aws/alb/envs/production && TG_TF_PATH=tofu terragrunt init -upgrade && TG_TF_
 
 Expected: 成功
 
-- [ ] **Step 8: plan で zone が解決できることを確認**
+- [x] **Step 8: plan で zone が解決できることを確認**
 
 production アカウントの認証情報で実行する。
 
@@ -1653,7 +1662,7 @@ cd aws/alb/envs/production && TG_TF_PATH=tofu terragrunt plan
 
 Expected: `data.aws_route53_zone` の解決に成功し、ACM 証明書 2 枚と validation レコードの新規作成が計画される。`Invalid provider configuration` や `no matching Route53Zone found` が出ないこと
 
-- [ ] **Step 9: コミット**
+- [x] **Step 9: コミット**
 
 ```bash
 git add aws/alb/
@@ -1675,7 +1684,7 @@ git commit -s -m "feat(aws/alb): resolve hosted zones through a cross-account pr
 - Consumes: Task 3.6 の `route53-zone-access` ARN
 - Produces: `eks-production-external-dns` ロールが `sts:AssumeRole` を持つ。Task 5.3 の helm 値と対になる
 
-- [ ] **Step 1: `module.route53` の参照箇所が 1 つだけであることを再確認**
+- [x] **Step 1: `module.route53` の参照箇所が 1 つだけであることを再確認**
 
 ```bash
 grep -rn "module\.route53" aws/eks/modules/
@@ -1683,7 +1692,7 @@ grep -rn "module\.route53" aws/eks/modules/
 
 Expected: `addons.tf` の 2 行（`panicboat_net.arn` / `dystopia_city.arn`）のみ
 
-- [ ] **Step 2: `variables.tf` に変数を追加**
+- [x] **Step 2: `variables.tf` に変数を追加**
 
 ```hcl
 variable "route53_zone_role_arn" {
@@ -1692,7 +1701,7 @@ variable "route53_zone_role_arn" {
 }
 ```
 
-- [ ] **Step 3: `addons.tf` の external-dns IRSA を差し替え**
+- [x] **Step 3: `addons.tf` の external-dns IRSA を差し替え**
 
 `module "external_dns_irsa"` ブロック全体を以下に置き換える。`terraform-aws-modules/iam//modules/iam-role-for-service-accounts` v6 は `source_policy_documents` が非空なら `create_policy` が真になりインラインポリシーを生成する。
 
@@ -1732,7 +1741,7 @@ module "external_dns_irsa" {
 }
 ```
 
-- [ ] **Step 4: `lookups.tf` から route53 lookup を削除**
+- [x] **Step 4: `lookups.tf` から route53 lookup を削除**
 
 ファイル全体を以下に置き換える。
 
@@ -1745,7 +1754,7 @@ module "vpc" {
 }
 ```
 
-- [ ] **Step 5: `env.hcl` に ARN を追加**
+- [x] **Step 5: `env.hcl` に ARN を追加**
 
 `environment_tags` ブロックの直前に追記する。
 
@@ -1754,7 +1763,7 @@ module "vpc" {
   route53_zone_role_arn = "arn:aws:iam::559744160976:role/route53-zone-access"
 ```
 
-- [ ] **Step 6: `terragrunt.hcl` で input を渡す**
+- [x] **Step 6: `terragrunt.hcl` で input を渡す**
 
 `inputs` ブロックに追記する。
 
@@ -1762,7 +1771,7 @@ module "vpc" {
   route53_zone_role_arn = include.env.locals.route53_zone_role_arn
 ```
 
-- [ ] **Step 7: fmt と validate**
+- [x] **Step 7: fmt と validate**
 
 ```bash
 tofu fmt -recursive aws/eks/
@@ -1771,7 +1780,7 @@ cd aws/eks/envs/production && TG_TF_PATH=tofu terragrunt init -upgrade && TG_TF_
 
 Expected: 成功。`module.route53` への未解決参照が残っていればここで落ちる
 
-- [ ] **Step 8: コミット**
+- [x] **Step 8: コミット**
 
 ```bash
 git add aws/eks/
@@ -1786,7 +1795,7 @@ git commit -s -m "feat(aws/eks): grant external-dns cross-account assume instead
 **Interfaces:**
 - Consumes: Task 5.2 の IRSA ロール、Task 3.6 の `route53-zone-access`
 
-- [ ] **Step 1: `extraArgs` セクションを追加**
+- [x] **Step 1: `extraArgs` セクションを追加**
 
 `txtOwnerId` ブロックと `serviceAccount` ブロックの間に挿入する。
 
@@ -1801,7 +1810,7 @@ extraArgs:
   - --aws-assume-role=arn:aws:iam::559744160976:role/route53-zone-access
 ```
 
-- [ ] **Step 2: helmfile が template できることを確認**
+- [x] **Step 2: helmfile が template できることを確認**
 
 ```bash
 helmfile -e production -f kubernetes/components/external-dns/production/helmfile.yaml template \
@@ -1810,7 +1819,7 @@ helmfile -e production -f kubernetes/components/external-dns/production/helmfile
 
 Expected: `--aws-assume-role=arn:aws:iam::559744160976:role/route53-zone-access` が出力される
 
-- [ ] **Step 3: コミット**
+- [x] **Step 3: コミット**
 
 ```bash
 git add kubernetes/components/external-dns/production/values.yaml.gotmpl
@@ -1828,13 +1837,13 @@ git commit -s -m "feat(external-dns): assume the management-account role for Rou
 **Interfaces:**
 - Consumes: Task 0.4 の退避ファイル `$HOME/.secrets-backup-559744160976.json`
 
-- [ ] **Step 1: production アカウントの認証情報で `iam-service-linked-roles` を apply**
+- [x] **Step 1: production アカウントの認証情報で `iam-service-linked-roles` を apply**
 
 ```bash
 cd aws/iam-service-linked-roles/envs/production && TG_TF_PATH=tofu terragrunt init && TG_TF_PATH=tofu terragrunt apply -auto-approve
 ```
 
-- [ ] **Step 2: service-linked role を確認**
+- [x] **Step 2: service-linked role を確認**
 
 ```bash
 aws iam get-role --role-name AWSServiceRoleForEC2Spot --query 'Role.Arn' --output text
@@ -1842,7 +1851,7 @@ aws iam get-role --role-name AWSServiceRoleForEC2Spot --query 'Role.Arn' --outpu
 
 Expected: `arn:aws:iam::337169763788:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot`
 
-- [ ] **Step 3: platform 管理外の secret 6 件を作成**
+- [x] **Step 3: platform 管理外の secret 6 件を作成**
 
 `panicboat/holmes/{slack,alertmanager}` は monorepo が管理するため Task 8.1 で扱う。
 
@@ -1859,7 +1868,7 @@ do
 done
 ```
 
-- [ ] **Step 4: 退避した値を投入**
+- [x] **Step 4: 退避した値を投入**
 
 ```bash
 jq -c 'select(.name | test("holmes/(slack|alertmanager)$") | not)' \
@@ -1875,7 +1884,7 @@ jq -c 'select(.name | test("holmes/(slack|alertmanager)$") | not)' \
 
 Expected: 6 件の `restored:` 行
 
-- [ ] **Step 5: 投入結果を確認**
+- [x] **Step 5: 投入結果を確認**
 
 ```bash
 aws secretsmanager list-secrets --region ap-northeast-1 --query 'SecretList[].Name' --output text | tr '\t' '\n' | sort
