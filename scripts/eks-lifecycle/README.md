@@ -50,7 +50,7 @@ make eks-teardown ENV=production
 実行内容:
 
 1. `10-k8s-cleanup.sh`: kubectl delete ingress / LB svc / Karpenter NodePool、ノード drain 待機
-2. `30-destroy-stacks.sh`: 「8 stack を destroy するか」y/N 確認 → 8 stacks を固定順で `terragrunt destroy` (= karpenter → eks-secrets → eks-logs/metrics/traces → eks → alb → vpc)
+2. `30-destroy-stacks.sh`: 「9 stack を destroy するか」y/N 確認 → 9 stacks を固定順で `terragrunt destroy` (= eks-karpenter → eks-holmesgpt → eks-secrets → eks-logs/metrics/traces → eks → alb → vpc)
 3. `40-orphan-verify.sh`: ENI / EBS / target group / SG / Route53 record / CloudWatch log group の orphan 検出 (= 削除はしない、人間に diagnostic 提示)
 
 部分実行:
@@ -72,9 +72,9 @@ make eks-teardown-verify ENV=production    # orphan verify only
 - ロールバックは前進復旧のみ (= teardown 中断は再 teardown)
 - admin role 一時 credentials の expire (= 1h STS session) は `30-destroy-stacks.sh` の各 stack 開始時に `creds_expiring_soon` (< 5min) で検出して `00-auth.sh` を re-source、admin role を assume し直す
 - `40-orphan-verify.sh` は read-only verify で auto-delete しない (= false-positive 含み得る出力を operator が目視精査し、必要なら提示された AWS CLI コマンドで個別削除)。検出時の exit code は live run = 1 (= operator 注意喚起 + make chain 停止)、DRY_RUN=1 = 0 (= live cluster の現役 resource を warn として列挙、make chain は継続)
-- `terragrunt destroy` で `Module version requirements have changed` (= 既存 `.terragrunt-cache/` の module version と現行 main.tf の constraint が乖離) のエラーが出たら、対象 stack を `terragrunt init -upgrade` で更新してから再開する。 8 stack 一括は以下:
+- `terragrunt destroy` で `Module version requirements have changed` (= 既存 `.terragrunt-cache/` の module version と現行 main.tf の constraint が乖離) のエラーが出たら、対象 stack を `terragrunt init -upgrade` で更新してから再開する。 9 stack 一括は以下:
   ```bash
-  for stack in eks-karpenter eks-secrets eks-logs eks-metrics eks-traces eks alb vpc; do
+  for stack in eks-karpenter eks-holmesgpt eks-secrets eks-logs eks-metrics eks-traces eks alb vpc; do
     echo "=== init: $stack ==="
     ( cd aws/$stack/envs/production && TG_TF_PATH=tofu terragrunt init -upgrade )
   done
@@ -92,6 +92,6 @@ make eks-teardown-verify ENV=production    # orphan verify only
 
 ## What is destroyed
 
-- `aws/eks`, `aws/eks-karpenter`, `aws/eks-secrets`, `aws/eks-logs`, `aws/eks-metrics`, `aws/eks-traces` (= EKS 専用)
+- `aws/eks`, `aws/eks-karpenter`, `aws/eks-holmesgpt`, `aws/eks-secrets`, `aws/eks-logs`, `aws/eks-metrics`, `aws/eks-traces` (= EKS 専用)
 - `aws/alb` (= ACM wildcard cert *.panicboat.net、recreate 時は DNS validation 5〜10 分)
 - `aws/vpc` (= NAT gateway 含む)
