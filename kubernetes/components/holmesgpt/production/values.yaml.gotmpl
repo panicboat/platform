@@ -25,10 +25,6 @@ k8sRBAC: false
 # model ID は LiteLLM 形式の `bedrock/` 接頭辞 + inference profile ID。
 # us. profile は us-east-1 / us-east-2 / us-west-2 へルーティングする。
 #
-# Claude 5 世代は載せない。tokens-per-minute quota が 0 で invoke できず、
-# self-service の増枠申請も CASE_CLOSED (= 利用実績が無いと承認されない)。
-# model access は AUTHORIZED を返すため使えそうに見えるが拒否は quota 側で起きる。
-#
 # 追加時は aws/eks-holmesgpt/modules/main.tf の `bedrock_models` も同時に更新する。
 additionalEnvVars:
   - name: AWS_REGION_NAME
