@@ -14,3 +14,8 @@ variable "common_tags" {
   description = "Common tags applied to all resources"
   type        = map(string)
 }
+
+variable "route53_zone_role_arn" {
+  description = "Role in the management account assumed to read/write the hosted zones"
+  type        = string
+}
