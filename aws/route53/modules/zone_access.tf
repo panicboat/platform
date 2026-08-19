@@ -42,6 +42,8 @@ resource "aws_iam_role_policy" "zone_access" {
           "route53:ChangeResourceRecordSets",
           "route53:ListResourceRecordSets",
           "route53:GetHostedZone",
+          # data.aws_route53_zone reads tags as part of resolving a zone.
+          "route53:ListTagsForResource",
         ]
         Resource = [
           module.route53.zones.panicboat_net.arn,
