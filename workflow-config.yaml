@@ -1,4 +1,11 @@
 environments:
+  - environment: master
+    stacks:
+      terragrunt:
+        aws_region: ap-northeast-1
+        iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-master-github-actions-plan-role
+        iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-master-github-actions-apply-role
+
   - environment: develop
     stacks:
       terragrunt:
