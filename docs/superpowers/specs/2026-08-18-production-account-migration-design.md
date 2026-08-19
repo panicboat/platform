@@ -307,19 +307,31 @@ Terraform 管理外だが、クラスタ再構築で自動的に作り直され�
 
 ## 7. State Migration Map
 
-`master` へ移すスタックは、アカウントは変わらず state key だけが変わる（`terragrunt backend migrate`）。`develop` / `production` はアカウントごと変わるため、state を移送せず新アカウントで作り直す。
+state の所在は 2 つの要素で決まり、移行では**それぞれ独立に変わる**。
 
-| 現 state key | 移行後 | 方式 |
-|---|---|---|
-| `platform/route53/production` | `platform/route53/master` | `terragrunt backend migrate` |
-| `platform/repository/develop` | `platform/repository/master` | 同上 |
-| `platform/branch/develop` | `platform/branch/master` | 同上 |
-| `platform/cost-management/develop` | `platform/cost-management/master` | 同上 |
-| `platform/github-oidc-auth/develop` | provider のみ `platform/github-oidc-auth/master` へ | `state rm` + `import` |
-| `platform/github-oidc-auth/production` | 新 production アカウントで新規作成 | 移送しない |
-| `platform/iam-service-linked-roles/production` | 同上 | 移送しない |
-| `platform/eks-holmesgpt/production` | 同上 | 移送しない（先にドリフト解消して destroy） |
-| `system-components/holmes/production` | 同上 | 移送しない（値は手動退避 → 再投入） |
+- **key** — 全 `root.hcl` が `platform/{service}/${local.environment}/terraform.tfstate` で組む。`local.environment` は `path_relative_to_include()` の末尾要素、つまり `envs/` 直下のディレクトリ名から導出される。したがって `envs/develop` → `envs/master` のリネームだけで key が変わり、`root.hcl` の編集は不要
+- **バケット** — 全 `root.hcl` が `terragrunt-state-${get_aws_account_id()}` で組む。実行時の認証情報で解決されるため、assume するアカウントを変えるだけでバケットが変わる。こちらも編集は不要
+
+| スタック | key | バケット | 方式 |
+|---|---|---|---|
+| `aws/route53` | `.../production` → `.../master` | 559744160976 のまま | `terragrunt backend migrate` |
+| `aws/cost-management` | `.../develop` → `.../master` | 同上 | 同上 |
+| `github/repository` | `.../develop` → `.../master` | 同上 | 同上 |
+| `github/branch` | `.../develop` → `.../master` | 同上 | 同上 |
+| `aws/github-oidc-auth`（master） | 新規 `.../master` | 同上 | 新規作成 + provider を `state rm` → `import` |
+| `aws/github-oidc-auth`（develop） | `.../develop` のまま | **`terragrunt-state-<DEV_ACCOUNT_ID>` へ** | 移送せず新アカウントで新規作成 |
+| `aws/{vpc,alb,eks,eks-*,iam-service-linked-roles,github-oidc-auth}`（production） | `.../production` のまま | **`terragrunt-state-<PROD_ACCOUNT_ID>` へ** | 同上 |
+| `system-components/holmes`（monorepo） | `.../production` のまま | 同上 | 同上（値は手動退避 → 再投入） |
+| `services/monolith`（monorepo） | `.../production` のまま | 同上 | 同上（resources=0） |
+
+### 同名 key が新旧バケットに並存する点への注意
+
+`platform/github-oidc-auth/develop` と `platform/*/production` は、**key が完全に同じまま**バケットだけが変わる。移行期間中は旧バケット（`terragrunt-state-559744160976`）と新バケットの両方に同名の state が存在する。
+
+どちらを操作するかは `get_aws_account_id()` の解決結果、つまり**そのとき assume しているアカウント**だけで決まる。terragrunt のコマンドラインからは区別がつかないため、以下を守る。
+
+- state を破壊する操作（`destroy` / `state rm` / `aws s3 rm`）の前に必ず `aws sts get-caller-identity --query Account --output text` で対象アカウントを確認する
+- Phase 9 の旧 state 削除は `aws s3 rm s3://terragrunt-state-559744160976/...` とバケット名を明示した形で行い、`terragrunt destroy` を使わない（Task 9.1 / 9.2 はこの方針で書いてある）
 
 ### 削除する孤児 state
 
