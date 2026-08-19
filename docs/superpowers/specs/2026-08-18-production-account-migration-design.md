@@ -63,7 +63,7 @@ state は 26 ファイル中 11 ファイルにのみ resources が入ってい�
 - IAM instance profile `eks-production_513473553642647435`（Roles 空）が孤児として残存。Karpenter が生成した Terraform 管理外リソース
 - state に対応の無いログ グループ 3 本: `/github-repository/generated-manifests`、`/github-repository/kubernetes-clusters`、`us-east-1` の `/github-actions/claude-code-action-monorepo`
 - `dystopia.city` zone に削除済み ALB を指す ALIAS レコード 4 件（`dystopia.city.` A/AAAA、`auth.dystopia.city.` A/AAAA）と external-dns 所有権 TXT 2 件（`aaaa-auth.` / `cname-auth.`、`owner=eks-production`）が残存
-- `aws/cost-management/modules/cost_optimization_hub.tf` のコメントが「standalone account」「Add this resource back when the account becomes an Organization management account」と書かれているが、`559744160976` は 2026-08-04 に管理アカウントになっている。前提が変わった記述が残っている（本移行の対象外。§10 参照）
+- `aws/cost-management/modules/cost_optimization_hub.tf` が 2 つの回避策（`terraform_data` + `local-exec` による enrollment、`aws_costoptimizationhub_preferences` の非管理）を抱えているが、どちらも根拠が「非管理アカウントだから」であり、`559744160976` は 2026-08-04 に管理アカウントになっている。**本移行の前に別 PR で解消する**（§10 参照）
 
 ## 2. Decisions
 
@@ -396,5 +396,19 @@ trust policy の ARN 誤記、`sts:AssumeRole` 権限の欠落、provider alias 
 - Route53 登録ドメイン 3 件のアカウント間移管。zone を管理アカウントに残す決定により不要
 - IAM Identity Center の permission set 細分化。`AdministratorAccess` 1 本のまま新 2 アカウントへ割当を追加するのみ
 - SCP による新アカウントのガードレール設定
-- `aws/cost-management` の `include_member_accounts` / `aws_costoptimizationhub_preferences` の見直し。`559744160976` が管理アカウントになったことでモジュール内コメントの前提が変わっているが、挙動変更を伴うため本移行とは分ける
+- `aws/cost-management` の回避策解消と org 横断化。詳細は下記
+
+### `aws/cost-management` の切り分け
+
+3 つの作業が混在しているため、依存関係で分ける。本移行が扱うのは 2 のみ。
+
+| # | 作業 | いつ | 依存 |
+|---|---|---|---|
+| 1 | 回避策 A / B の解消（native リソース化） | **本移行の前に別 PR** | 無し。単独で検証できる |
+| 2 | env を `develop` → `master` へ移す | 本移行（Task 3.4） | 1 が先行していれば差分が env 移動だけになる |
+| 3 | org 横断化（`include_member_accounts = true`） | 本移行の完了後 | member アカウントの存在。加えて Organizations の信頼されたサービスアクセス有効化と最大 24 時間の反映待ち |
+
+**1 と 3 は独立している。** `UpdateEnrollmentStatus` API は `includeMemberAccounts` を引数に取るため、現行の `local-exec` に `--include-member-accounts` を足すだけでも 3 は達成できてしまう。それでは回避策の代償（state に載らない・ドリフトを検知しない・destroy で解除されない・AWS CLI への暗黙依存）が残るため、1 を先に片付ける。
+
+3 の前提として、現在 Organizations で有効な信頼されたサービスアクセスは `sso.amazonaws.com` のみ（`aws organizations list-aws-service-access-for-organization` で確認）。`aws cost-optimization-hub list-enrollment-statuses --include-organization-info` は `AccessDeniedException: Service access must be enabled to access member account data` を返す。`compute-optimizer.amazonaws.com` と `cost-optimization-hub.amazonaws.com` の有効化が要る。
 - develop アカウントへのワークロード構築。器を用意するところまで
