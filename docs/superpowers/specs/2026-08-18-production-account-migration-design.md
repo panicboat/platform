@@ -80,18 +80,20 @@ state は 26 ファイル中 11 ファイルにのみ resources が入ってい�
 
 | env | アドレス |
 |---|---|
-| `production` | `aws+production@dystopia.city` |
-| `develop` | `aws+develop@dystopia.city` |
+| `production` | `aws+production@panicboat.net` |
+| `develop` | `aws+develop@panicboat.net` |
 
-クローズ済みアカウント `504150922582` が `aws@dystopia.city` を保持しているが、プラスアドレスは AWS から別アドレスとして扱われるため衝突しない。`dystopia.city` は Google Workspace（MX = `smtp.google.com`）でプラスアドレスが配送される。
+クローズ済みアカウントが保持しているのは `admin@panicboat.net`（583677814390）と `aws@dystopia.city`（504150922582）で、いずれも上記とは別アドレスのため衝突しない。
+
+**前提条件:** `panicboat.net` は Google Workspace（MX = `smtp.google.com`）で、プラスアドレスはベースとなるメールボックスへ配送される。したがって `aws@panicboat.net` がユーザーまたはエイリアスとして存在している必要がある。存在しないとルートアカウントの検証メールとパスワードリセットが届かず、アカウントを復旧できなくなる。アカウント作成前に実際に受信できることを確認する。
 
 ## 3. Environment Taxonomy
 
 | env | アカウント | workflow-config の region | スタック |
 |---|---|---|---|
 | `master` | 559744160976（管理） | `ap-northeast-1` | `aws/route53`、`aws/cost-management`、`aws/github-oidc-auth`、`github/repository`、`github/branch` |
-| `develop` | 新規（`aws+develop@dystopia.city`） | `us-east-1` | `aws/github-oidc-auth` |
-| `production` | 新規（`aws+production@dystopia.city`） | `ap-northeast-1` | `aws/{vpc,alb,eks,eks-karpenter,eks-secrets,eks-logs,eks-metrics,eks-traces,eks-holmesgpt,iam-service-linked-roles,github-oidc-auth}` |
+| `develop` | 新規（`aws+develop@panicboat.net`） | `us-east-1` | `aws/github-oidc-auth` |
+| `production` | 新規（`aws+production@panicboat.net`） | `ap-northeast-1` | `aws/{vpc,alb,eks,eks-karpenter,eks-secrets,eks-logs,eks-metrics,eks-traces,eks-holmesgpt,iam-service-linked-roles,github-oidc-auth}` |
 
 `workflow-config.yaml` の `aws_region` は CI が OIDC ロールを assume する際のリージョンであり、スタック内のリソースリージョンとは独立している（現状も `develop` = `us-east-1` に対し `github/repository/root.hcl` の inputs は `ap-northeast-1` で既に乖離している）。`aws/cost-management` は module 側で `us-east-1` に固定されているため `master` に移しても挙動は変わらない。
 

@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - 管理アカウント ID: `559744160976`（Organization `o-es9qoj85gw`、Identity Center `ssoins-7758e2d4fb37f3a7`、permission set `ps-77583734ef962d6b`、ユーザー `e7146ab8-20b1-70eb-a63d-b9887df5d7a6`）
-- 新アカウントのルートメール: production = `aws+production@dystopia.city`、develop = `aws+develop@dystopia.city`
+- 新アカウントのルートメール: production = `aws+production@panicboat.net`、develop = `aws+develop@panicboat.net`
 - `<PROD_ACCOUNT_ID>` / `<DEV_ACCOUNT_ID>` は Task 1.1 で確定する。以降のタスクではこの実値に置換すること
 - hosted zone: `panicboat.net` = `Z07598371GKBU0WMF89MD`、`dystopia.city` = `Z03420722KS9MTSCUSIQZ`
 - クロスアカウントロール: `arn:aws:iam::559744160976:role/route53-zone-access`
@@ -353,29 +353,41 @@ aws organizations list-accounts --query 'Accounts[].{Id:Id,Name:Name,Email:Email
 
 Expected: `583677814390`（CLOSED）、`504150922582`（CLOSED）、`559744160976`（ACTIVE）
 
-- [ ] **Step 2: production アカウントを作成**
+- [ ] **Step 2: `aws@panicboat.net` が受信できることを確認**
 
-`aws@dystopia.city` はクローズ済みアカウントが保持しているが、プラスアドレスは別アドレスとして扱われる。
+`panicboat.net` は Google Workspace（MX = `smtp.google.com`）で、プラスアドレスはベースのメールボックスへ配送される。`aws@panicboat.net` がユーザーまたはエイリアスとして存在しないと、ルートアカウントの検証メールとパスワードリセットが届かずアカウントを復旧できなくなる。
+
+```bash
+dig +short MX panicboat.net
+```
+
+Expected: `1 smtp.google.com.`
+
+Google Workspace 管理コンソール（Directory → Users、または該当ユーザーの Alternate email addresses）で `aws@panicboat.net` の存在を確認する。無ければエイリアスを作成し、外部から `aws+production@panicboat.net` 宛にテストメールを送って受信できることを確かめてから次へ進む。
+
+- [ ] **Step 3: production アカウントを作成**
+
+クローズ済みアカウントが保持しているのは `admin@panicboat.net` と `aws@dystopia.city` で、いずれも下記とは別アドレス。
 
 ```bash
 aws organizations create-account \
-  --email 'aws+production@dystopia.city' \
+  --email 'aws+production@panicboat.net' \
   --account-name 'production' \
   --iam-user-access-to-billing DENY
 ```
 
 Expected: `CreateAccountStatus.State` が `IN_PROGRESS`
 
-- [ ] **Step 3: develop アカウントを作成**
+- [ ] **Step 4: develop アカウントを作成**
 
 ```bash
 aws organizations create-account \
-  --email 'aws+develop@dystopia.city' \
+  --email 'aws+develop@panicboat.net' \
   --account-name 'develop' \
   --iam-user-access-to-billing DENY
 ```
 
-- [ ] **Step 4: 両方の完了とアカウント ID を確認**
+- [ ] **Step 5: 両方の完了とアカウント ID を確認**
 
 ```bash
 aws organizations list-create-account-status --states SUCCEEDED FAILED \
@@ -383,9 +395,9 @@ aws organizations list-create-account-status --states SUCCEEDED FAILED \
   --output table
 ```
 
-Expected: 両方 `SUCCEEDED` で `AccountId` が返る。この 2 値を `<PROD_ACCOUNT_ID>` / `<DEV_ACCOUNT_ID>` として記録する。`EMAIL_ALREADY_EXISTS` で失敗した場合は別のプラスアドレス（例: `aws+prod2@dystopia.city`）で再試行する
+Expected: 両方 `SUCCEEDED` で `AccountId` が返る。この 2 値を `<PROD_ACCOUNT_ID>` / `<DEV_ACCOUNT_ID>` として記録する。`EMAIL_ALREADY_EXISTS` で失敗した場合は別のプラスアドレス（例: `aws+prod2@panicboat.net`）で再試行する
 
-- [ ] **Step 5: 両アカウントで `OrganizationAccountAccessRole` を assume できることを確認**
+- [ ] **Step 6: 両アカウントで `OrganizationAccountAccessRole` を assume できることを確認**
 
 ```bash
 for acct in <PROD_ACCOUNT_ID> <DEV_ACCOUNT_ID>; do
@@ -398,7 +410,7 @@ done
 
 Expected: 2 行とも `arn:aws:sts::<acct>:assumed-role/OrganizationAccountAccessRole/bootstrap-check`
 
-- [ ] **Step 6: Identity Center の AdministratorAccess を両アカウントに割当**
+- [ ] **Step 7: Identity Center の AdministratorAccess を両アカウントに割当**
 
 ```bash
 for acct in <PROD_ACCOUNT_ID> <DEV_ACCOUNT_ID>; do
@@ -413,7 +425,7 @@ for acct in <PROD_ACCOUNT_ID> <DEV_ACCOUNT_ID>; do
 done
 ```
 
-- [ ] **Step 7: 割当を確認**
+- [ ] **Step 8: 割当を確認**
 
 ```bash
 aws sso-admin list-accounts-for-provisioned-permission-set \
