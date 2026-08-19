@@ -123,6 +123,26 @@ resource "aws_iam_role_policy_attachment" "plan_state_lock" {
   policy_arn = aws_iam_policy.terragrunt_state_lock.arn
 }
 
+# ReadOnlyAccess does not include sts:AssumeRole, so cross-account data sources
+# need it granted explicitly. The apply role gets it from AdministratorAccess.
+resource "aws_iam_role_policy" "plan_assume_role" {
+  count = length(var.assume_role_arns) > 0 ? 1 : 0
+
+  name = "cross-account-assume"
+  role = aws_iam_role.plan.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "sts:AssumeRole"
+        Resource = var.assume_role_arns
+      }
+    ]
+  })
+}
+
 # Apply role: AdministratorAccess gated by main push or environment
 resource "aws_iam_role" "apply" {
   name                 = "${var.project_name}-${var.environment}-github-actions-apply-role"
