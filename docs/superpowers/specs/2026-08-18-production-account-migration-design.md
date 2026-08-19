@@ -245,7 +245,7 @@ Terraform 管理外だが、クラスタ再構築で自動的に作り直され�
 | リポジトリ variable `APP_ID` | `platform` / `monorepo` の両方に設定 | 変更不要 |
 | リポジトリ secret `APP_PRIVATE_KEY` | `platform` / `monorepo` の両方に設定 | 変更不要 |
 | リポジトリ secret `SLACK_BOT_TOKEN` | `monorepo` のみ | 変更不要 |
-| Organization レベルの secret / variable | `gh api orgs/panicboat/actions/{secrets,variables}` が 404（トークンのスコープ不足の可能性あり、**未確認**） | 実装時に org 管理権限のあるトークンで再確認する |
+| Organization レベルの secret / variable | **存在し得ない。** `panicboat` は Organization ではなく User アカウント（`gh api users/panicboat` が `"type":"User"`）。org secrets / variables は Organization 専用機能 | 対応不要 |
 | GitHub Environments | `platform` / `monorepo` ともに **0 件** | `aws/github-oidc-auth` の trust policy が `repo:panicboat/*:environment:{master,develop,production}` を許可条件に含むが、Environment が存在しないためこの条件は現状使われていない。environment gate を使う場合は GitHub 側での作成が別途必要 |
 | `GITHUB_TOKEN` 環境変数 | `github/{repository,branch}/envs/*/terragrunt.hcl` が `get_env("GITHUB_TOKEN")` で読む | `master` env に移しても供給経路は変わらない。CI 側で `panicboat/panicboat-actions/terragrunt-run` が `token` input を `GITHUB_TOKEN` として export しているかは**未確認**。`master` env の初回 CI 実行で検証する |
 | ruleset 3 本（`{monorepo,platform,deploy-actions}-main`） | `platform/branch/develop` state が管理、GitHub 上で `active` | state を `master` へ移すのみ。GitHub 側の実体は変わらない |

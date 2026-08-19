@@ -64,6 +64,14 @@
 
 新アカウントを作る前に、管理アカウント側のドリフトと孤児を解消し、失うと復旧できない値を退避する。全て `559744160976` で完結する。
 
+> **実行記録（2026-08-19 完了）**
+>
+> 記載順（0.1 → 0.5）ではなく、**失うと復旧できない退避を先に**した（0.4 → 0.5 → 0.1 → 0.2 → 0.3）。
+>
+> - Task 0.1: Step 5 の destroy が `-refresh=false` 無しでは通らなかった。手順を修正済。スクリプト側の修正は #802
+> - Task 0.5: `panicboat` は Organization ではなく User アカウントだった（`gh api users/panicboat` が `"type":"User"`）。org レベルの secret / variable は存在し得ないことが確定し、未確認項目が 1 つ解消
+> - Task 0.3 の後に `aws/route53/envs/production` で `terragrunt plan` を実行し `No changes.` を確認（stale レコード削除が Terraform 管理レコードに影響していないこと）
+
 ### Task 0.1: `eks-holmesgpt` を teardown 対象に追加して destroy
 
 `scripts/eks-lifecycle/lib/30-destroy-stacks.sh` の `STACKS` 配列は 8 スタックだが `eks-holmesgpt` が抜けている（#795 の追加漏れ）。そのため `eks-production-holmesgpt` ロールが残存し、state 内の `data.aws_eks_cluster.this` が存在しないクラスタ `eks-production` を参照している。
@@ -74,7 +82,7 @@
 **Interfaces:**
 - Produces: `platform/eks-holmesgpt/production` state が resources=0 になる。Task 9.2 の削除対象に含められる
 
-- [ ] **Step 1: 現状のドリフトを確認**
+- [x] **Step 1: 現状のドリフトを確認**
 
 ```bash
 cd aws/eks-holmesgpt/envs/production && TG_TF_PATH=tofu terragrunt plan
@@ -82,7 +90,7 @@ cd aws/eks-holmesgpt/envs/production && TG_TF_PATH=tofu terragrunt plan
 
 Expected: `data.aws_eks_cluster.this` の解決に失敗する（`No cluster found for name: eks-production`）
 
-- [ ] **Step 2: `STACKS` 配列に `eks-holmesgpt` を追加**
+- [x] **Step 2: `STACKS` 配列に `eks-holmesgpt` を追加**
 
 `scripts/eks-lifecycle/lib/30-destroy-stacks.sh` の `STACKS=(` ブロックを以下に置き換える。`eks-holmesgpt` は EKS クラスタの Pod Identity Association を持つため `eks` より前に置く。
 
@@ -100,7 +108,7 @@ STACKS=(
 )
 ```
 
-- [ ] **Step 3: 件数の記述を更新**
+- [x] **Step 3: 件数の記述を更新**
 
 同ファイル冒頭のコメントを以下に置き換える。
 
@@ -114,7 +122,7 @@ STACKS=(
 
 さらに `confirm "About to DESTROY 8 stacks for ENV=${ENV}. Continue?"` と `ok "All 8 stacks destroyed"` の `8` を `9` に変更する。
 
-- [ ] **Step 4: 存在しないリソースを state から外す**
+- [x] **Step 4: 存在しないリソースを state から外す**
 
 クラスタが無いため Pod Identity Association は AWS 上に存在しない。
 
@@ -125,15 +133,17 @@ TG_TF_PATH=tofu terragrunt state rm aws_eks_pod_identity_association.this
 
 Expected: `Successfully removed 1 resource instance(s).`
 
-- [ ] **Step 5: 残りを destroy**
+- [x] **Step 5: 残りを destroy**
+
+`-refresh=false` が必須。クラスタが既に無いため、通常の destroy は plan 生成時に `module.eks.data.aws_eks_cluster.this` の解決で落ちる（Step 4 で `state rm` してもこの data source は config 上に残るため結果は同じ）。
 
 ```bash
-cd aws/eks-holmesgpt/envs/production && TG_TF_PATH=tofu terragrunt destroy -auto-approve
+cd aws/eks-holmesgpt/envs/production && TG_TF_PATH=tofu terragrunt destroy -auto-approve -refresh=false
 ```
 
-Expected: `aws_iam_role.pod_identity` と `aws_iam_role_policy.bedrock_invoke` が destroy される
+Expected: `Plan: 0 to add, 0 to change, 2 to destroy.` に続いて `aws_iam_role_policy.bedrock_invoke` と `aws_iam_role.pod_identity` が destroy される
 
-- [ ] **Step 6: ロールが消えたことを確認**
+- [x] **Step 6: ロールが消えたことを確認**
 
 ```bash
 aws iam get-role --role-name eks-production-holmesgpt
@@ -141,7 +151,7 @@ aws iam get-role --role-name eks-production-holmesgpt
 
 Expected: `NoSuchEntity` エラー
 
-- [ ] **Step 7: コミット**
+- [x] **Step 7: コミット**
 
 ```bash
 git add scripts/eks-lifecycle/lib/30-destroy-stacks.sh
@@ -152,7 +162,7 @@ git commit -s -m "fix(scripts/eks-lifecycle): include eks-holmesgpt in destroy o
 
 **Files:** なし（AWS API 操作のみ）
 
-- [ ] **Step 1: 孤児 instance profile を確認**
+- [x] **Step 1: 孤児 instance profile を確認**
 
 ```bash
 aws iam list-instance-profiles \
@@ -161,13 +171,13 @@ aws iam list-instance-profiles \
 
 Expected: `eks-production_513473553642647435` が `Roles: []` で 1 件返る
 
-- [ ] **Step 2: instance profile を削除**
+- [x] **Step 2: instance profile を削除**
 
 ```bash
 aws iam delete-instance-profile --instance-profile-name eks-production_513473553642647435
 ```
 
-- [ ] **Step 3: レガシーログ グループを削除**
+- [x] **Step 3: レガシーログ グループを削除**
 
 state に対応の無い 3 本のみ。`/github-repository/{ansible,deploy-actions,dotfiles,monorepo,panicboat-actions,platform}` は `platform/repository/develop` state が管理しているため残す。
 
@@ -177,7 +187,7 @@ aws logs delete-log-group --region ap-northeast-1 --log-group-name /github-repos
 aws logs delete-log-group --region us-east-1   --log-group-name /github-actions/claude-code-action-monorepo
 ```
 
-- [ ] **Step 4: 削除を確認**
+- [x] **Step 4: 削除を確認**
 
 ```bash
 aws iam list-instance-profiles --query 'InstanceProfiles[].InstanceProfileName' --output text
@@ -193,7 +203,7 @@ Expected: instance profile が空、`ap-northeast-1` が 8 本、`us-east-1` が
 
 **Files:** なし（Route53 API 操作のみ）
 
-- [ ] **Step 1: 対象レコードを確認**
+- [x] **Step 1: 対象レコードを確認**
 
 ```bash
 aws route53 list-resource-record-sets --hosted-zone-id Z03420722KS9MTSCUSIQZ \
@@ -202,7 +212,7 @@ aws route53 list-resource-record-sets --hosted-zone-id Z03420722KS9MTSCUSIQZ \
 
 Expected: 6 件。ALIAS の向き先が `k8s-application-92fded7941-*` であること
 
-- [ ] **Step 2: 削除用 change batch を生成**
+- [x] **Step 2: 削除用 change batch を生成**
 
 値を手で書き写すと ALIAS の `HostedZoneId` を取り違えるため、必ず API 出力から生成する。
 
@@ -218,7 +228,7 @@ cat /tmp/dystopia-stale-delete.json
 
 Expected: `Changes` が 6 要素
 
-- [ ] **Step 3: 削除を実行**
+- [x] **Step 3: 削除を実行**
 
 ```bash
 aws route53 change-resource-record-sets \
@@ -226,7 +236,7 @@ aws route53 change-resource-record-sets \
   --change-batch file:///tmp/dystopia-stale-delete.json
 ```
 
-- [ ] **Step 4: 残存レコードを確認**
+- [x] **Step 4: 残存レコードを確認**
 
 ```bash
 aws route53 list-resource-record-sets --hosted-zone-id Z03420722KS9MTSCUSIQZ \
@@ -244,7 +254,7 @@ Expected: 5 件（`dystopia.city.` の SOA / NS / MX / TXT、`google._domainkey.
 **Interfaces:**
 - Produces: `$HOME/.secrets-backup-559744160976.json`。Task 6.1 と Task 8.1 が読む
 
-- [ ] **Step 1: 全 secret 名を列挙**
+- [x] **Step 1: 全 secret 名を列挙**
 
 ```bash
 aws secretsmanager list-secrets --region ap-northeast-1 --query 'SecretList[].Name' --output text | tr '\t' '\n'
@@ -252,7 +262,7 @@ aws secretsmanager list-secrets --region ap-northeast-1 --query 'SecretList[].Na
 
 Expected: 8 件（`panicboat/oauth2-proxy/google`, `panicboat/grafana/admin`, `panicboat/github-app/panicboat`, `panicboat/keycloak/admin`, `panicboat/holmes/slack`, `panicboat/holmes/alertmanager`, `panicboat/holmes/github`, `panicboat/alertmanager/slack-notify`）
 
-- [ ] **Step 2: 値を退避**
+- [x] **Step 2: 値を退避**
 
 出力には認証情報が含まれるため、リポジトリ外かつパーミッション 0600 のファイルに書く。
 
@@ -270,7 +280,7 @@ ls -l "$OUT"
 
 Expected: パーミッションが `-rw-------`
 
-- [ ] **Step 3: 退避件数を確認**
+- [x] **Step 3: 退避件数を確認**
 
 ```bash
 grep -c '"name"' "$HOME/.secrets-backup-559744160976.json"
@@ -284,18 +294,17 @@ Expected: `8`
 
 **Files:** なし
 
-- [ ] **Step 1: org 管理権限のあるトークンで org レベルの設定を確認**
+- [x] **Step 1: `panicboat` が Organization かどうかを確認**
 
-`gh auth token` の既定トークンでは `admin:org` スコープが無く 404 になる。必要なら `gh auth refresh -s admin:org` でスコープを足す。
+org レベルの secret / variable は Organization アカウント専用の機能。所有者が User アカウントなら概念ごと存在しない。
 
 ```bash
-gh api orgs/panicboat/actions/secrets --jq '.secrets[].name' 2>&1
-gh api orgs/panicboat/actions/variables --jq '.variables[].name' 2>&1
+gh api users/panicboat --jq '{login, type}'
 ```
 
-Expected: 一覧が返る。AWS アカウント ID を含む値があれば Phase 4 の差し替え対象に加える。404 が続く場合は「スコープ不足のため未確認」として記録し、GitHub Web UI（Settings → Secrets and variables → Actions）で目視確認する
+Expected: `{"login":"panicboat","type":"User"}` — **User なので org レベルの secret / variable は存在し得ない**。`gh api orgs/panicboat/actions/secrets` が 404 を返すのはスコープ不足ではなくこれが理由。`"type":"Organization"` が返った場合のみ、`gh auth refresh -s admin:org` でスコープを足して一覧を取得し、AWS アカウント ID を含む値があれば Phase 4 の差し替え対象に加える
 
-- [ ] **Step 2: リポジトリレベルの設定が AWS アカウントに依存しないことを確認**
+- [x] **Step 2: リポジトリレベルの設定が AWS アカウントに依存しないことを確認**
 
 ```bash
 for r in platform monorepo; do
@@ -307,7 +316,7 @@ done
 
 Expected: `platform` は `APP_PRIVATE_KEY` / `APP_ID`（`1371999`）、`monorepo` は加えて `SLACK_BOT_TOKEN`。いずれも GitHub App とSlack の資格情報で AWS アカウント ID を含まない
 
-- [ ] **Step 3: GitHub Environments の有無を確認**
+- [x] **Step 3: GitHub Environments の有無を確認**
 
 `aws/github-oidc-auth` の trust policy が `repo:panicboat/*:environment:{master,develop,production}` を許可条件に含むが、Environment が存在しなければこの条件は使われない。
 
@@ -320,7 +329,7 @@ done
 
 Expected: 両方とも出力なし（0 件）。もし存在する場合は、移行後も同名で残っていることを Phase 9 で再確認する
 
-- [ ] **Step 4: ruleset の現状を記録**
+- [x] **Step 4: ruleset の現状を記録**
 
 Phase 3 の `github/branch` re-home 前後で変化していないことを比較するための基準値。
 
