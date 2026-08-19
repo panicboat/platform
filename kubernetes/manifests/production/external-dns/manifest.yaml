@@ -254,6 +254,7 @@ spec:
             - --domain-filter=panicboat.net
             - --domain-filter=dystopia.city
             - --provider=aws
+            - "--aws-assume-role=arn:aws:iam::559744160976:role/route53-zone-access"
           ports:
             - name: http
               protocol: TCP
