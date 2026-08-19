@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# 30-destroy-stacks.sh - Destroy 8 EKS-related stacks in fixed order.
+# 30-destroy-stacks.sh - Destroy 9 EKS-related stacks in fixed order.
 #
 # Order:
-#   eks-karpenter -> eks-secrets -> eks-logs -> eks-metrics -> eks-traces
-#   -> eks -> alb -> vpc
+#   eks-karpenter -> eks-holmesgpt -> eks-secrets -> eks-logs -> eks-metrics
+#   -> eks-traces -> eks -> alb -> vpc
 #
 # Each stack runs `terragrunt destroy -auto-approve`. On failure, fail
 # fast with a diagnostic. 30s sleep between stacks for AWS API
@@ -69,8 +69,13 @@ sweep_lb_controller_orphans() {
   fi
 }
 
+# eks-holmesgpt は eks より前に置く必要がある。同 stack の module "eks" が
+# `data "aws_eks_cluster"` で cluster を名前引きしており、cluster 削除後に
+# destroy すると plan 生成時点で "couldn't find resource" になって落ちる
+# (= 順序を誤ると `-refresh=false` を付けた手動 destroy が必要になる)。
 STACKS=(
   "eks-karpenter"
+  "eks-holmesgpt"
   "eks-secrets"
   "eks-logs"
   "eks-metrics"
@@ -80,7 +85,7 @@ STACKS=(
   "vpc"
 )
 
-confirm "About to DESTROY 8 stacks for ENV=${ENV}. Continue?"
+confirm "About to DESTROY 9 stacks for ENV=${ENV}. Continue?"
 
 for stack in "${STACKS[@]}"; do
   info "Step 30.${stack}: terragrunt destroy aws/${stack}/envs/${ENV}"
@@ -112,4 +117,4 @@ After resolving, re-run: make eks-teardown-aws ENV=${ENV}"
   fi
 done
 
-ok "All 8 stacks destroyed"
+ok "All 9 stacks destroyed"
