@@ -28,12 +28,14 @@ k8sRBAC: false
 # 二段階で採点する。sonnet-4-6 は OpenSRE 評価と同一 model であり、ツール間の
 # 比較を model 差に汚されずに行うために置く。opus-5 は現行世代での上限を見る。
 #
-# NOTE: sonnet-5 と opus-5 は 2026-08-13 時点で model access の反映待ち。
-# agreement は全 region で AVAILABLE / AUTHORIZED を返すが、inference profile
-# 経由でも foundation model 直接でも runtime が AccessDenied を返す状態が
-# 1 時間以上継続した。control plane と data plane の乖離である。
-# 反映され次第そのまま使えるよう、両方を modelList に置いておく。
-# 段階 1 の採点は sonnet-4-6 だけで成立する。
+# NOTE: sonnet-5 と opus-5 は quota が 0 のため invoke できない。
+# `aws service-quotas list-service-quotas --service-code bedrock --region us-east-1`
+# で両 model の tokens-per-minute 系が全て 0.0、sonnet-4-6 のみ 6,000,000 (TPM) /
+# 10,000 (RPM)。self-service の増枠申請は 4 件とも CASE_CLOSED で、利用実績が無い
+# アカウントには承認されない。model access (= agreement / authorization) は
+# AVAILABLE / AUTHORIZED を返すため一見使えそうに見えるが、拒否は quota 側で起きる。
+# 増枠が通ればそのまま使えるよう modelList には残す。
+# 実際に採点に使えるのは sonnet-4-6 だけ。
 additionalEnvVars:
   - name: AWS_REGION_NAME
     value: us-east-1
