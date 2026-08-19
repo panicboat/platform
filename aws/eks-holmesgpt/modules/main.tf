@@ -12,15 +12,34 @@
 #
 # `us.` inference profiles route to three regions. Listing only the profile ARN
 # is not enough — the call fails on whichever region the profile picks.
-#
-# Opus 5 is included even though model access has not finished propagating for
-# this account: the IAM grant is independent of Bedrock model-access enablement,
-# so having it in place avoids a second apply once propagation completes.
 
 data "aws_caller_identity" "current" {}
 
 locals {
   service_name = "holmesgpt" # K8s ServiceAccount name
+
+  # Must match `modelList` in
+  # kubernetes/components/holmesgpt/production/values.yaml.gotmpl; a model there
+  # but not here fails at runtime with AccessDenied.
+  bedrock_models = [
+    "anthropic.claude-sonnet-4-6",
+  ]
+
+  # Routing targets of the `us.` profiles, per `aws bedrock get-inference-profile`.
+  bedrock_profile_regions = ["us-east-1", "us-east-2", "us-west-2"]
+
+  bedrock_invoke_resources = concat(
+    [
+      for m in local.bedrock_models :
+      "arn:aws:bedrock:us-east-1:${data.aws_caller_identity.current.account_id}:inference-profile/us.${m}"
+    ],
+    flatten([
+      for m in local.bedrock_models : [
+        for r in local.bedrock_profile_regions :
+        "arn:aws:bedrock:${r}::foundation-model/${m}"
+      ]
+    ]),
+  )
 }
 
 # IAM role for Pod Identity Association
@@ -54,16 +73,7 @@ resource "aws_iam_role_policy" "bedrock_invoke" {
           "bedrock:InvokeModel",
           "bedrock:InvokeModelWithResponseStream",
         ]
-        Resource = [
-          "arn:aws:bedrock:us-east-1:${data.aws_caller_identity.current.account_id}:inference-profile/us.anthropic.claude-sonnet-4-6",
-          "arn:aws:bedrock:us-east-1:${data.aws_caller_identity.current.account_id}:inference-profile/us.anthropic.claude-opus-4-6",
-          "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-6",
-          "arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-sonnet-4-6",
-          "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-sonnet-4-6",
-          "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-opus-4-6",
-          "arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-opus-4-6",
-          "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-opus-4-6",
-        ]
+        Resource = local.bedrock_invoke_resources
       }
     ]
   })
