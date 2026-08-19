@@ -1,8 +1,8 @@
-# env.hcl - Environment-specific configuration for develop
+# env.hcl - Environment-specific configuration for master
 
 locals {
   # Environment-specific settings
-  environment = "develop"
+  environment = "master"
 
   # AWS configuration (Cost Optimization Hub / Compute Optimizer home region)
   aws_region = "us-east-1"
