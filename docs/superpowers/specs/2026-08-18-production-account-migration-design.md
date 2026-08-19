@@ -65,10 +65,9 @@ state は 26 ファイル中 11 ファイルにのみ resources が入ってい�
 - `dystopia.city` zone に削除済み ALB を指す ALIAS レコード 4 件（`dystopia.city.` A/AAAA、`auth.dystopia.city.` A/AAAA）と external-dns 所有権 TXT 2 件（`aaaa-auth.` / `cname-auth.`、`owner=eks-production`）が残存
 - ~~`aws/cost-management/modules/cost_optimization_hub.tf` の `terraform_data` + `local-exec` 回避策~~ → **#801 で解消済み**。provider 6.60.0 で `include_member_accounts` が `optional + computed` になり恒久差分が出なくなっていたため、native リソースに置き換えた（§10 参照）
 - `workflow-config.yaml` の `stack_conventions` で **`aws/{service}` の規約だけがコメントアウトされている**。そのため `aws/` 配下の変更は label-dispatcher がサービスとして検出せず、deploy label が付かず CI の terragrunt が起動しない（§8 末尾参照）
-- `aws/eks-holmesgpt` の IAM ポリシーと HolmesGPT の `modelList` が食い違っている（**本移行の対象外。記録のみ**）
-  - ポリシー（`modules/main.tf:58-65`）は `us.anthropic.claude-opus-4-6` と `anthropic.claude-opus-4-6` を許可しているが、実在する ID は `us.anthropic.claude-opus-4-6-v1` / `anthropic.claude-opus-4-6-v1` で **`-v1` サフィックスが欠けている**。Opus 4.6 を呼ぶと IAM で拒否される
-  - `kubernetes/components/holmesgpt/production/values.yaml.gotmpl` の `modelList` は `sonnet-4-6` / `sonnet-5` / `opus-5` を並べており、**Opus 4.6 は使っていない**。逆に `sonnet-5` / `opus-5` はポリシーに含まれていない
-  - 実際に使えているのは `sonnet-4-6` のみ（ポリシーと ID が一致する唯一の組み合わせ）。`sonnet-5` / `opus-5` は quota 0 で呼べないため、現状は顕在化していない
+- ~~`aws/eks-holmesgpt` の IAM ポリシーと HolmesGPT の `modelList` の食い違い~~ → **#803 で解消**。ポリシーは `us.anthropic.claude-opus-4-6`（実在 ID は `-v1` 付き）を許可する一方、`modelList` が使う `sonnet-5` / `opus-5` を含んでいなかった。model ID のリスト 1 つから両形式の ARN を導出する形に変更
+  - あわせてコメントの誤りも訂正した。`sonnet-5` / `opus-5` が使えない理由は「model access の反映待ち」ではなく **quota が 0**（`aws service-quotas list-service-quotas --service-code bedrock` で TPM 系が全て `0.0`、`sonnet-4-6` のみ 6,000,000）。self-service 増枠は 4 件とも `CASE_CLOSED` で、利用実績の無いアカウントには承認されない
+  - 実際に invoke できるのは `sonnet-4-6` のみという状態は #803 の後も変わらない
 
 ## 2. Decisions
 
