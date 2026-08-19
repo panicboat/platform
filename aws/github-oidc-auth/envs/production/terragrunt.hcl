@@ -27,6 +27,7 @@ inputs = {
   create_oidc_provider     = include.env.locals.create_oidc_provider
   oidc_provider_arn        = include.env.locals.oidc_provider_arn
   max_session_duration     = include.env.locals.max_session_duration
+  assume_role_arns         = include.env.locals.assume_role_arns
 
   # Merge environment-specific tags with common tags
   common_tags = merge(
