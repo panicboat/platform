@@ -1,4 +1,4 @@
-# terragrunt.hcl - Terragrunt configuration for production environment
+# terragrunt.hcl - Terragrunt configuration for master environment
 
 # Include root configuration
 include "root" {
@@ -21,8 +21,9 @@ terraform {
 
 # Input variables for the module
 inputs = {
-  environment = include.env.locals.environment
-  aws_region  = include.env.locals.aws_region
+  environment           = include.env.locals.environment
+  aws_region            = include.env.locals.aws_region
+  production_account_id = include.env.locals.production_account_id
 
   common_tags = merge(
     include.env.locals.environment_tags,
