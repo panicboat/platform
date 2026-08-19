@@ -65,6 +65,10 @@ state は 26 ファイル中 11 ファイルにのみ resources が入ってい�
 - `dystopia.city` zone に削除済み ALB を指す ALIAS レコード 4 件（`dystopia.city.` A/AAAA、`auth.dystopia.city.` A/AAAA）と external-dns 所有権 TXT 2 件（`aaaa-auth.` / `cname-auth.`、`owner=eks-production`）が残存
 - ~~`aws/cost-management/modules/cost_optimization_hub.tf` の `terraform_data` + `local-exec` 回避策~~ → **#801 で解消済み**。provider 6.60.0 で `include_member_accounts` が `optional + computed` になり恒久差分が出なくなっていたため、native リソースに置き換えた（§10 参照）
 - `workflow-config.yaml` の `stack_conventions` で **`aws/{service}` の規約だけがコメントアウトされている**。そのため `aws/` 配下の変更は label-dispatcher がサービスとして検出せず、deploy label が付かず CI の terragrunt が起動しない（§8 末尾参照）
+- `aws/eks-holmesgpt` の IAM ポリシーと HolmesGPT の `modelList` が食い違っている（**本移行の対象外。記録のみ**）
+  - ポリシー（`modules/main.tf:58-65`）は `us.anthropic.claude-opus-4-6` と `anthropic.claude-opus-4-6` を許可しているが、実在する ID は `us.anthropic.claude-opus-4-6-v1` / `anthropic.claude-opus-4-6-v1` で **`-v1` サフィックスが欠けている**。Opus 4.6 を呼ぶと IAM で拒否される
+  - `kubernetes/components/holmesgpt/production/values.yaml.gotmpl` の `modelList` は `sonnet-4-6` / `sonnet-5` / `opus-5` を並べており、**Opus 4.6 は使っていない**。逆に `sonnet-5` / `opus-5` はポリシーに含まれていない
+  - 実際に使えているのは `sonnet-4-6` のみ（ポリシーと ID が一致する唯一の組み合わせ）。`sonnet-5` / `opus-5` は quota 0 で呼べないため、現状は顕在化していない
 
 ## 2. Decisions
 
@@ -77,24 +81,24 @@ state は 26 ファイル中 11 ファイルにのみ resources が入ってい�
 | `github/*` スタックの所属 | `master` | GitHub リポジトリ・ruleset は環境を持たない組織横断資産。付随する CloudWatch ログ グループも管理アカウントに残る |
 | `aws/cost-management` の所属 | `master` | Compute Optimizer / Cost Optimization Hub の登録は支払アカウント単位。管理アカウントから離せない |
 
-### 新アカウントのルートメールアドレス
+### 新アカウント（2026-08-20 作成済）
 
-| env | アドレス |
-|---|---|
-| `production` | `aws+production@panicboat.net` |
-| `develop` | `aws+develop@panicboat.net` |
+| env | Account ID | ルートメールアドレス |
+|---|---|---|
+| `production` | `337169763788` | `aws+production@panicboat.net` |
+| `develop` | `270242382571` | `aws+develop@panicboat.net` |
 
-クローズ済みアカウントが保持しているのは `admin@panicboat.net`（583677814390）と `aws@dystopia.city`（504150922582）で、いずれも上記とは別アドレスのため衝突しない。
+クローズ済みアカウントが保持しているのは `admin@panicboat.net`（583677814390）と `aws@dystopia.city`（504150922582）で、いずれも上記とは別アドレスのため衝突しなかった。
 
-**前提条件:** `panicboat.net` は Google Workspace（MX = `smtp.google.com`）で、プラスアドレスはベースとなるメールボックスへ配送される。したがって `aws@panicboat.net` がユーザーまたはエイリアスとして存在している必要がある。存在しないとルートアカウントの検証メールとパスワードリセットが届かず、アカウントを復旧できなくなる。アカウント作成前に実際に受信できることを確認する。
+`panicboat.net` は Google Workspace（MX = `smtp.google.com`）で、プラスアドレスはベースとなるメールボックスへ配送される。`aws@panicboat.net` がエイリアスとして存在することを作成前に確認済（存在しないとルートアカウントの検証メールとパスワードリセットが届かず復旧不能になる）。
 
 ## 3. Environment Taxonomy
 
 | env | アカウント | workflow-config の region | スタック |
 |---|---|---|---|
 | `master` | 559744160976（管理） | `ap-northeast-1` | `aws/route53`、`aws/cost-management`、`aws/github-oidc-auth`、`github/repository`、`github/branch` |
-| `develop` | 新規（`aws+develop@panicboat.net`） | `us-east-1` | `aws/github-oidc-auth` |
-| `production` | 新規（`aws+production@panicboat.net`） | `ap-northeast-1` | `aws/{vpc,alb,eks,eks-karpenter,eks-secrets,eks-logs,eks-metrics,eks-traces,eks-holmesgpt,iam-service-linked-roles,github-oidc-auth}` |
+| `develop` | 270242382571 | `us-east-1` | `aws/github-oidc-auth` |
+| `production` | 337169763788 | `ap-northeast-1` | `aws/{vpc,alb,eks,eks-karpenter,eks-secrets,eks-logs,eks-metrics,eks-traces,eks-holmesgpt,iam-service-linked-roles,github-oidc-auth}` |
 
 `workflow-config.yaml` の `aws_region` は CI が OIDC ロールを assume する際のリージョンであり、スタック内のリソースリージョンとは独立している（現状も `develop` = `us-east-1` に対し `github/repository/root.hcl` の inputs は `ap-northeast-1` で既に乖離している）。`aws/cost-management` は module 側で `us-east-1` に固定されているため `master` に移しても挙動は変わらない。
 
@@ -137,7 +141,7 @@ Route53 hosted zone を参照しているのは 3 箇所のみ（cert-manager �
 
 **信頼するプリンシパル**
 
-`arn:aws:iam::<PROD_ACCOUNT_ID>:root` の 1 つ。実際に誰が assume できるかは production アカウント側の IAM で制御する。
+`arn:aws:iam::337169763788:root` の 1 つ。実際に誰が assume できるかは production アカウント側の IAM で制御する。
 
 | production 側のプリンシパル | assume 許可の出どころ |
 |---|---|
@@ -205,8 +209,8 @@ Terragrunt が bootstrap するため、どの state にも入らない。
 | リソース | 対応 |
 |---|---|
 | S3 `terragrunt-state-559744160976` | 管理アカウントに残す（`master` スタックの state 置き場） |
-| S3 `terragrunt-state-<PROD_ACCOUNT_ID>` | `terragrunt backend bootstrap` で新規作成 |
-| S3 `terragrunt-state-<DEV_ACCOUNT_ID>` | 同上 |
+| S3 `terragrunt-state-337169763788` | `terragrunt backend bootstrap` で新規作成 |
+| S3 `terragrunt-state-270242382571` | 同上 |
 | DynamoDB `terragrunt-state-locks` | 3 アカウントそれぞれに必要（バケットと同時に bootstrap される） |
 
 ### 5-3. AWS — シークレットの値
@@ -319,8 +323,8 @@ state の所在は 2 つの要素で決まり、移行では**それぞれ独立
 | `github/repository` | `.../develop` → `.../master` | 同上 | 同上 |
 | `github/branch` | `.../develop` → `.../master` | 同上 | 同上 |
 | `aws/github-oidc-auth`（master） | 新規 `.../master` | 同上 | 新規作成 + provider を `state rm` → `import` |
-| `aws/github-oidc-auth`（develop） | `.../develop` のまま | **`terragrunt-state-<DEV_ACCOUNT_ID>` へ** | 移送せず新アカウントで新規作成 |
-| `aws/{vpc,alb,eks,eks-*,iam-service-linked-roles,github-oidc-auth}`（production） | `.../production` のまま | **`terragrunt-state-<PROD_ACCOUNT_ID>` へ** | 同上 |
+| `aws/github-oidc-auth`（develop） | `.../develop` のまま | **`terragrunt-state-270242382571` へ** | 移送せず新アカウントで新規作成 |
+| `aws/{vpc,alb,eks,eks-*,iam-service-linked-roles,github-oidc-auth}`（production） | `.../production` のまま | **`terragrunt-state-337169763788` へ** | 同上 |
 | `system-components/holmes`（monorepo） | `.../production` のまま | 同上 | 同上（値は手動退避 → 再投入） |
 | `services/monolith`（monorepo） | `.../production` のまま | 同上 | 同上（resources=0） |
 

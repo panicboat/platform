@@ -14,7 +14,7 @@
 
 - 管理アカウント ID: `559744160976`（Organization `o-es9qoj85gw`、Identity Center `ssoins-7758e2d4fb37f3a7`、permission set `ps-77583734ef962d6b`、ユーザー `e7146ab8-20b1-70eb-a63d-b9887df5d7a6`）
 - 新アカウントのルートメール: production = `aws+production@panicboat.net`、develop = `aws+develop@panicboat.net`
-- `<PROD_ACCOUNT_ID>` / `<DEV_ACCOUNT_ID>` は Task 1.1 で確定する。以降のタスクではこの実値に置換すること
+- `337169763788` / `270242382571` は Task 1.1 で確定する。以降のタスクではこの実値に置換すること
 - hosted zone: `panicboat.net` = `Z07598371GKBU0WMF89MD`、`dystopia.city` = `Z03420722KS9MTSCUSIQZ`
 - クロスアカウントロール: `arn:aws:iam::559744160976:role/route53-zone-access`
 - region: `master` = `ap-northeast-1`、`develop` = `us-east-1`、`production` = `ap-northeast-1`
@@ -347,14 +347,27 @@ Expected: 3 本とも `active`（`15519991 monorepo-main` / `15519990 platform-m
 
 手動 AWS 操作のみ。コード変更もコミットも無い。
 
+> **実行記録（2026-08-20 完了）**
+>
+> | env | Account ID | root email |
+> |---|---|---|
+> | production | `337169763788` | `aws+production@panicboat.net` |
+> | develop | `270242382571` | `aws+develop@panicboat.net` |
+>
+> - 両アカウントとも `SUCCEEDED`。プラスアドレスの衝突は起きなかった
+> - `OrganizationAccountAccessRole` の assume を両方で確認済
+> - Identity Center の `AdministratorAccess` を 3 アカウント全てに割当済
+> - Task 1.2 Step 2 の実測値は On-Demand / Spot ともに **5.0**（設計の予測どおり AWS デフォルト）。増枠 2 件を申請し `PENDING`
+> - **Task 1.2 Step 5 のコンソール操作は不要だった。** Bedrock のモデルアクセスは新アカウントで既に有効（`authorizationStatus: AUTHORIZED` / `entitlementAvailability: AVAILABLE` / `agreementAvailability: NOT_AVAILABLE` = 同意取得不要）。手順を修正済
+
 ### Task 1.1: メンバーアカウント 2 つを作成
 
 **Files:** なし
 
 **Interfaces:**
-- Produces: `<PROD_ACCOUNT_ID>` と `<DEV_ACCOUNT_ID>`。以降の全タスクが依存する
+- Produces: `337169763788` と `270242382571`。以降の全タスクが依存する
 
-- [ ] **Step 1: 既存アカウント一覧を確認**
+- [x] **Step 1: 既存アカウント一覧を確認**
 
 ```bash
 aws organizations list-accounts --query 'Accounts[].{Id:Id,Name:Name,Email:Email,State:State}' --output table
@@ -362,7 +375,7 @@ aws organizations list-accounts --query 'Accounts[].{Id:Id,Name:Name,Email:Email
 
 Expected: `583677814390`（CLOSED）、`504150922582`（CLOSED）、`559744160976`（ACTIVE）
 
-- [ ] **Step 2: `aws@panicboat.net` が受信できることを確認**
+- [x] **Step 2: `aws@panicboat.net` が受信できることを確認**
 
 `panicboat.net` は Google Workspace（MX = `smtp.google.com`）で、プラスアドレスはベースのメールボックスへ配送される。`aws@panicboat.net` がユーザーまたはエイリアスとして存在しないと、ルートアカウントの検証メールとパスワードリセットが届かずアカウントを復旧できなくなる。
 
@@ -374,7 +387,7 @@ Expected: `1 smtp.google.com.`
 
 Google Workspace 管理コンソール（Directory → Users、または該当ユーザーの Alternate email addresses）で `aws@panicboat.net` の存在を確認する。無ければエイリアスを作成し、外部から `aws+production@panicboat.net` 宛にテストメールを送って受信できることを確かめてから次へ進む。
 
-- [ ] **Step 3: production アカウントを作成**
+- [x] **Step 3: production アカウントを作成**
 
 クローズ済みアカウントが保持しているのは `admin@panicboat.net` と `aws@dystopia.city` で、いずれも下記とは別アドレス。
 
@@ -387,7 +400,7 @@ aws organizations create-account \
 
 Expected: `CreateAccountStatus.State` が `IN_PROGRESS`
 
-- [ ] **Step 4: develop アカウントを作成**
+- [x] **Step 4: develop アカウントを作成**
 
 ```bash
 aws organizations create-account \
@@ -396,7 +409,7 @@ aws organizations create-account \
   --iam-user-access-to-billing DENY
 ```
 
-- [ ] **Step 5: 両方の完了とアカウント ID を確認**
+- [x] **Step 5: 両方の完了とアカウント ID を確認**
 
 ```bash
 aws organizations list-create-account-status --states SUCCEEDED FAILED \
@@ -404,12 +417,12 @@ aws organizations list-create-account-status --states SUCCEEDED FAILED \
   --output table
 ```
 
-Expected: 両方 `SUCCEEDED` で `AccountId` が返る。この 2 値を `<PROD_ACCOUNT_ID>` / `<DEV_ACCOUNT_ID>` として記録する。`EMAIL_ALREADY_EXISTS` で失敗した場合は別のプラスアドレス（例: `aws+prod2@panicboat.net`）で再試行する
+Expected: 両方 `SUCCEEDED` で `AccountId` が返る。この 2 値を `337169763788` / `270242382571` として記録する。`EMAIL_ALREADY_EXISTS` で失敗した場合は別のプラスアドレス（例: `aws+prod2@panicboat.net`）で再試行する
 
-- [ ] **Step 6: 両アカウントで `OrganizationAccountAccessRole` を assume できることを確認**
+- [x] **Step 6: 両アカウントで `OrganizationAccountAccessRole` を assume できることを確認**
 
 ```bash
-for acct in <PROD_ACCOUNT_ID> <DEV_ACCOUNT_ID>; do
+for acct in 337169763788 270242382571; do
   aws sts assume-role \
     --role-arn "arn:aws:iam::${acct}:role/OrganizationAccountAccessRole" \
     --role-session-name bootstrap-check \
@@ -419,10 +432,10 @@ done
 
 Expected: 2 行とも `arn:aws:sts::<acct>:assumed-role/OrganizationAccountAccessRole/bootstrap-check`
 
-- [ ] **Step 7: Identity Center の AdministratorAccess を両アカウントに割当**
+- [x] **Step 7: Identity Center の AdministratorAccess を両アカウントに割当**
 
 ```bash
-for acct in <PROD_ACCOUNT_ID> <DEV_ACCOUNT_ID>; do
+for acct in 337169763788 270242382571; do
   aws sso-admin create-account-assignment \
     --instance-arn arn:aws:sso:::instance/ssoins-7758e2d4fb37f3a7 \
     --permission-set-arn arn:aws:sso:::permissionSet/ssoins-7758e2d4fb37f3a7/ps-77583734ef962d6b \
@@ -434,7 +447,7 @@ for acct in <PROD_ACCOUNT_ID> <DEV_ACCOUNT_ID>; do
 done
 ```
 
-- [ ] **Step 8: 割当を確認**
+- [x] **Step 8: 割当を確認**
 
 ```bash
 aws sso-admin list-accounts-for-provisioned-permission-set \
@@ -451,12 +464,12 @@ Expected: `AccountIds` に 3 件（管理 + production + develop）
 
 **Files:** なし
 
-- [ ] **Step 1: production アカウントの認証情報に切り替える**
+- [x] **Step 1: production アカウントの認証情報に切り替える**
 
 ```bash
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 CREDS=$(aws sts assume-role \
-  --role-arn arn:aws:iam::<PROD_ACCOUNT_ID>:role/OrganizationAccountAccessRole \
+  --role-arn arn:aws:iam::337169763788:role/OrganizationAccountAccessRole \
   --role-session-name quota-request --query Credentials --output json)
 export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | jq -r .AccessKeyId)
 export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | jq -r .SecretAccessKey)
@@ -464,9 +477,9 @@ export AWS_SESSION_TOKEN=$(echo "$CREDS" | jq -r .SessionToken)
 aws sts get-caller-identity --query Account --output text
 ```
 
-Expected: `<PROD_ACCOUNT_ID>`
+Expected: `337169763788`
 
-- [ ] **Step 2: 現在値を確認**
+- [x] **Step 2: 現在値を確認**
 
 ```bash
 for qc in L-1216C47A L-34B43A08; do
@@ -477,7 +490,7 @@ done
 
 Expected: いずれも `5.0`（AWS デフォルト）
 
-- [ ] **Step 3: 増枠を申請**
+- [x] **Step 3: 増枠を申請**
 
 管理アカウントの適用値（On-Demand 64 / Spot 256）に合わせる。
 
@@ -488,7 +501,7 @@ aws service-quotas request-service-quota-increase \
   --service-code ec2 --quota-code L-34B43A08 --desired-value 256 --region ap-northeast-1
 ```
 
-- [ ] **Step 4: 申請が受理されたことを確認**
+- [x] **Step 4: 申請が受理されたことを確認**
 
 ```bash
 aws service-quotas list-requested-service-quota-change-history --region ap-northeast-1 \
@@ -497,18 +510,29 @@ aws service-quotas list-requested-service-quota-change-history --region ap-north
 
 Expected: 2 件が `PENDING` または `CASE_OPENED`
 
-- [ ] **Step 5: Bedrock のモデルアクセスを有効化**
+- [x] **Step 5: Bedrock のモデルアクセス状態を確認**
 
-`us-east-1` の Bedrock コンソールで、HolmesGPT が使う Anthropic Claude モデル（`anthropic.claude-sonnet-4-6` / `anthropic.claude-opus-4-6`）へのアクセスをリクエストする。CLI では完結しないためコンソール操作。
-
-- [ ] **Step 6: モデルが見えることを確認**
+Anthropic の Claude モデルは同意取得が不要になっており、新アカウントでも既定でアクセス可能。コンソールでのアクセスリクエストは不要（2026-08-20 実測）。
 
 ```bash
-aws bedrock list-foundation-models --region us-east-1 \
-  --query 'modelSummaries[?contains(modelId, `claude-sonnet-4-6`)].modelId' --output text
+for m in anthropic.claude-sonnet-4-6 anthropic.claude-opus-4-6-v1; do
+  aws bedrock get-foundation-model-availability --model-id "$m" --region us-east-1 \
+    --query '{model:modelId,agreement:agreementAvailability.status,auth:authorizationStatus,entitlement:entitlementAvailability}' --output json
+done
 ```
 
-Expected: `anthropic.claude-sonnet-4-6` が返る
+Expected: `authorizationStatus: AUTHORIZED` かつ `entitlementAvailability: AVAILABLE`。`agreementAvailability: NOT_AVAILABLE` は「同意取得の仕組み自体が無い」= 不要という意味で、異常ではない。`auth` が `NOT_AUTHORIZED` の場合のみ `us-east-1` の Bedrock コンソールでアクセスをリクエストする
+
+- [x] **Step 6: HolmesGPT が使う inference profile が存在することを確認**
+
+`kubernetes/components/holmesgpt/production/values.yaml.gotmpl` の `modelList` は inference profile ID を直接指定する。
+
+```bash
+aws bedrock list-inference-profiles --region us-east-1 \
+  --query 'inferenceProfileSummaries[?starts_with(inferenceProfileId, `us.anthropic.claude`)].{Id:inferenceProfileId,Status:status}' --output table
+```
+
+Expected: `us.anthropic.claude-sonnet-4-6` が `ACTIVE`。`modelList` の `sonnet-5` / `opus-5` は 2026-08-20 時点で quota 0 のため使えない（`aws/eks-holmesgpt` の IAM ポリシーにも含まれていない）。詳細は設計 §1「既存の不整合」参照
 
 ---
 
@@ -521,7 +545,7 @@ Expected: `anthropic.claude-sonnet-4-6` が返る
 **Files:** なし
 
 **Interfaces:**
-- Consumes: Task 1.1 の `<PROD_ACCOUNT_ID>` / `<DEV_ACCOUNT_ID>`
+- Consumes: Task 1.1 の `337169763788` / `270242382571`
 - Produces: 両アカウントの `terragrunt-state-<ID>` バケットと `terragrunt-state-locks` テーブル
 
 - [ ] **Step 1: production アカウントで bootstrap**
@@ -537,8 +561,8 @@ Expected: S3 バケットと DynamoDB テーブルが作成される旨のログ
 - [ ] **Step 2: production の backend を確認**
 
 ```bash
-aws s3api head-bucket --bucket terragrunt-state-<PROD_ACCOUNT_ID>
-aws s3api get-bucket-versioning --bucket terragrunt-state-<PROD_ACCOUNT_ID>
+aws s3api head-bucket --bucket terragrunt-state-337169763788
+aws s3api get-bucket-versioning --bucket terragrunt-state-337169763788
 aws dynamodb describe-table --table-name terragrunt-state-locks --region ap-northeast-1 \
   --query 'Table.KeySchema' --output json
 ```
@@ -550,7 +574,7 @@ Expected: バケットが存在し versioning が `Enabled`、HASH キーが `Lo
 ```bash
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 CREDS=$(aws sts assume-role \
-  --role-arn arn:aws:iam::<DEV_ACCOUNT_ID>:role/OrganizationAccountAccessRole \
+  --role-arn arn:aws:iam::270242382571:role/OrganizationAccountAccessRole \
   --role-session-name terragrunt-bootstrap --query Credentials --output json)
 export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | jq -r .AccessKeyId)
 export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | jq -r .SecretAccessKey)
@@ -558,7 +582,7 @@ export AWS_SESSION_TOKEN=$(echo "$CREDS" | jq -r .SessionToken)
 aws sts get-caller-identity --query Account --output text
 ```
 
-Expected: `<DEV_ACCOUNT_ID>`
+Expected: `270242382571`
 
 - [ ] **Step 4: develop アカウントで bootstrap**
 
@@ -571,7 +595,7 @@ cd aws/github-oidc-auth/envs/develop && TG_TF_PATH=tofu terragrunt backend boots
 - [ ] **Step 5: develop の backend を確認**
 
 ```bash
-aws s3api head-bucket --bucket terragrunt-state-<DEV_ACCOUNT_ID>
+aws s3api head-bucket --bucket terragrunt-state-270242382571
 aws dynamodb describe-table --table-name terragrunt-state-locks --region ap-northeast-1 \
   --query 'Table.KeySchema' --output json
 ```
@@ -810,7 +834,7 @@ locals {
 
   # production アカウント (= route53-zone-access を assume する側)。
   # Task 1.1 で確定した値に置き換えること。
-  production_account_id = "<PROD_ACCOUNT_ID>"
+  production_account_id = "337169763788"
 
   # Environment-specific tags
   environment_tags = {
@@ -1207,7 +1231,7 @@ aws iam get-role --role-name route53-zone-access --query 'Role.AssumeRolePolicyD
 aws iam get-role-policy --role-name route53-zone-access --policy-name route53-zone-access --output json
 ```
 
-Expected: trust の Principal が `arn:aws:iam::<PROD_ACCOUNT_ID>:root`、ポリシー 1 つ目の Resource が 2 zone ARN
+Expected: trust の Principal が `arn:aws:iam::337169763788:root`、ポリシー 1 つ目の Resource が 2 zone ARN
 
 - [ ] **Step 7: コミット**
 
@@ -1309,7 +1333,7 @@ git commit -s -m "feat(aws/github-oidc-auth): allow granting cross-account assum
 ```bash
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 CREDS=$(aws sts assume-role \
-  --role-arn arn:aws:iam::<DEV_ACCOUNT_ID>:role/OrganizationAccountAccessRole \
+  --role-arn arn:aws:iam::270242382571:role/OrganizationAccountAccessRole \
   --role-session-name oidc-bootstrap --query Credentials --output json)
 export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | jq -r .AccessKeyId)
 export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | jq -r .SecretAccessKey)
@@ -1317,7 +1341,7 @@ export AWS_SESSION_TOKEN=$(echo "$CREDS" | jq -r .SessionToken)
 aws sts get-caller-identity --query Account --output text
 ```
 
-Expected: `<DEV_ACCOUNT_ID>`
+Expected: `270242382571`
 
 - [ ] **Step 2: plan**
 
@@ -1343,7 +1367,7 @@ aws iam get-role --role-name github-oidc-auth-develop-github-actions-plan-role -
 aws iam get-role --role-name github-oidc-auth-develop-github-actions-apply-role --query 'Role.Arn' --output text
 ```
 
-Expected: provider が 1 件、両ロールの ARN が `<DEV_ACCOUNT_ID>`
+Expected: provider が 1 件、両ロールの ARN が `270242382571`
 
 ### Task 4.3: `production` の OIDC ロールを新アカウントに作る
 
@@ -1402,7 +1426,7 @@ Expected: provider が 1 件、両ロールの ARN が `<DEV_ACCOUNT_ID>`
 ```bash
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 CREDS=$(aws sts assume-role \
-  --role-arn arn:aws:iam::<PROD_ACCOUNT_ID>:role/OrganizationAccountAccessRole \
+  --role-arn arn:aws:iam::337169763788:role/OrganizationAccountAccessRole \
   --role-session-name oidc-bootstrap --query Credentials --output json)
 export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | jq -r .AccessKeyId)
 export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | jq -r .SecretAccessKey)
@@ -1410,7 +1434,7 @@ export AWS_SESSION_TOKEN=$(echo "$CREDS" | jq -r .SessionToken)
 aws sts get-caller-identity --query Account --output text
 ```
 
-Expected: `<PROD_ACCOUNT_ID>`
+Expected: `337169763788`
 
 - [ ] **Step 5: plan と apply**
 
@@ -1430,7 +1454,7 @@ aws iam get-role-policy --role-name github-oidc-auth-production-github-actions-p
   --policy-name cross-account-assume --output json
 ```
 
-Expected: 両ロールの ARN が `<PROD_ACCOUNT_ID>`、assume ポリシーの Resource が `route53-zone-access` ARN
+Expected: 両ロールの ARN が `337169763788`、assume ポリシーの Resource が `route53-zone-access` ARN
 
 - [ ] **Step 7: クロスアカウント assume の疎通を確認**
 
@@ -1460,7 +1484,7 @@ git commit -s -m "feat(aws/github-oidc-auth): provision production OIDC in its d
 差し替え前の必須ゲート。ここを飛ばして先にマージすると CI が存在しないロールを assume して壊れる。
 
 ```bash
-for acct in <DEV_ACCOUNT_ID> <PROD_ACCOUNT_ID>; do
+for acct in 270242382571 337169763788; do
   CREDS=$(aws sts assume-role --role-arn "arn:aws:iam::${acct}:role/OrganizationAccountAccessRole" \
     --role-session-name verify --query Credentials --output json)
   AWS_ACCESS_KEY_ID=$(echo "$CREDS" | jq -r .AccessKeyId) \
@@ -1479,15 +1503,15 @@ Expected: develop アカウントで develop の 2 ロール、production アカ
     stacks:
       terragrunt:
         aws_region: us-east-1
-        iam_role_plan: arn:aws:iam::<DEV_ACCOUNT_ID>:role/github-oidc-auth-develop-github-actions-plan-role
-        iam_role_apply: arn:aws:iam::<DEV_ACCOUNT_ID>:role/github-oidc-auth-develop-github-actions-apply-role
+        iam_role_plan: arn:aws:iam::270242382571:role/github-oidc-auth-develop-github-actions-plan-role
+        iam_role_apply: arn:aws:iam::270242382571:role/github-oidc-auth-develop-github-actions-apply-role
 
   - environment: production
     stacks:
       terragrunt:
         aws_region: ap-northeast-1
-        iam_role_plan: arn:aws:iam::<PROD_ACCOUNT_ID>:role/github-oidc-auth-production-github-actions-plan-role
-        iam_role_apply: arn:aws:iam::<PROD_ACCOUNT_ID>:role/github-oidc-auth-production-github-actions-apply-role
+        iam_role_plan: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-plan-role
+        iam_role_apply: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-apply-role
 ```
 
 - [ ] **Step 3: 3 env が正しいアカウントを向いていることを確認**
@@ -1502,7 +1526,7 @@ for e in d['environments']:
 EOF
 ```
 
-Expected: `master` が `559744160976`、`develop` が `<DEV_ACCOUNT_ID>`、`production` が `<PROD_ACCOUNT_ID>`
+Expected: `master` が `559744160976`、`develop` が `270242382571`、`production` が `337169763788`
 
 - [ ] **Step 4: コミット**
 
@@ -1816,7 +1840,7 @@ cd aws/iam-service-linked-roles/envs/production && TG_TF_PATH=tofu terragrunt in
 aws iam get-role --role-name AWSServiceRoleForEC2Spot --query 'Role.Arn' --output text
 ```
 
-Expected: `arn:aws:iam::<PROD_ACCOUNT_ID>:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot`
+Expected: `arn:aws:iam::337169763788:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot`
 
 - [ ] **Step 3: platform 管理外の secret 6 件を作成**
 
@@ -1886,14 +1910,14 @@ Expected: 12 行（親 5 + 子 6 + Task 5.3 で追加した `--aws-assume-role` 
 ```bash
 grep -rl "559744160976" kubernetes/helmfile.yaml.gotmpl kubernetes/components/ \
   | grep -v 'external-dns/production/values.yaml.gotmpl' \
-  | xargs sed -i '' 's/559744160976/<PROD_ACCOUNT_ID>/g'
+  | xargs sed -i '' 's/559744160976/337169763788/g'
 ```
 
 - [ ] **Step 3: 置換結果を検証**
 
 ```bash
 grep -rn "559744160976" kubernetes/helmfile.yaml.gotmpl kubernetes/components/
-grep -rn "<PROD_ACCOUNT_ID>" kubernetes/helmfile.yaml.gotmpl kubernetes/components/ | wc -l
+grep -rn "337169763788" kubernetes/helmfile.yaml.gotmpl kubernetes/components/ | wc -l
 ```
 
 Expected: 1 つ目は `external-dns/production/values.yaml.gotmpl` の `--aws-assume-role` 行 1 本のみ。2 つ目は 11
@@ -1940,12 +1964,12 @@ Expected: On-Demand が 64 以上、Spot が 256 以上
 2.2 節の operator environment 記述:
 
 ```
-- production アカウント (= `<PROD_ACCOUNT_ID>`) の AdministratorAccess 相当の principal
+- production アカウント (= `337169763788`) の AdministratorAccess 相当の principal
   (= IAM Identity Center の AdministratorAccess、または管理アカウントから
   `OrganizationAccountAccessRole` を assume した session)
 ```
 
-Phase 0 の期待値コメント `# → arn:aws:iam::559744160976:user/panicboat` は、`aws sts get-caller-identity --query Account --output text` が `<PROD_ACCOUNT_ID>` を返すことを確認する記述に変える。
+Phase 0 の期待値コメント `# → arn:aws:iam::559744160976:user/panicboat` は、`aws sts get-caller-identity --query Account --output text` が `337169763788` を返すことを確認する記述に変える。
 
 - [ ] **Step 3: runbook の Phase 1-10 を実行**
 
@@ -2049,21 +2073,21 @@ environments:
     stacks:
       terragrunt:
         aws_region: ap-northeast-1
-        iam_role_plan: arn:aws:iam::<DEV_ACCOUNT_ID>:role/github-oidc-auth-develop-github-actions-plan-role
-        iam_role_apply: arn:aws:iam::<DEV_ACCOUNT_ID>:role/github-oidc-auth-develop-github-actions-apply-role
+        iam_role_plan: arn:aws:iam::270242382571:role/github-oidc-auth-develop-github-actions-plan-role
+        iam_role_apply: arn:aws:iam::270242382571:role/github-oidc-auth-develop-github-actions-apply-role
 
   - environment: production
     stacks:
       terragrunt:
         aws_region: ap-northeast-1
-        iam_role_plan: arn:aws:iam::<PROD_ACCOUNT_ID>:role/github-oidc-auth-production-github-actions-plan-role
-        iam_role_apply: arn:aws:iam::<PROD_ACCOUNT_ID>:role/github-oidc-auth-production-github-actions-apply-role
+        iam_role_plan: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-plan-role
+        iam_role_apply: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-apply-role
 ```
 
 - [ ] **Step 6: 新アカウントの state を確認**
 
 ```bash
-aws s3 ls s3://terragrunt-state-<PROD_ACCOUNT_ID>/ --recursive
+aws s3 ls s3://terragrunt-state-337169763788/ --recursive
 ```
 
 Expected: `services/monolith/production` と `system-components/holmes/production` が存在する
@@ -2223,7 +2247,7 @@ Expected: Draft のまま。レビュー依頼は Verification Checklist を全�
 
 - [ ] `aws organizations list-accounts` に ACTIVE なアカウントが 3 件（管理 + production + develop）
 - [ ] `aws iam list-open-id-connect-providers` が 3 アカウントそれぞれで 1 件を返す
-- [ ] `terragrunt-state-<PROD_ACCOUNT_ID>` と `terragrunt-state-<DEV_ACCOUNT_ID>` が存在する
+- [ ] `terragrunt-state-337169763788` と `terragrunt-state-270242382571` が存在する
 - [ ] 管理アカウントの state バケットに残るのが `platform/*/master/` 5 件と `services/nginx-app/develop` のみ
 - [ ] 新 production アカウントから `route53-zone-access` を assume できる
 - [ ] `aws eks list-clusters --region ap-northeast-1` が新 production アカウントで `eks-production` を返す
