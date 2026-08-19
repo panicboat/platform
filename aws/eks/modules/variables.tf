@@ -26,3 +26,8 @@ variable "log_retention_days" {
   type        = number
   default     = 7
 }
+
+variable "route53_zone_role_arn" {
+  description = "Role in the management account that external-dns assumes to manage hosted zone records"
+  type        = string
+}
