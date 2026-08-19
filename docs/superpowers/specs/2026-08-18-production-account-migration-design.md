@@ -63,7 +63,8 @@ state は 26 ファイル中 11 ファイルにのみ resources が入ってい�
 - IAM instance profile `eks-production_513473553642647435`（Roles 空）が孤児として残存。Karpenter が生成した Terraform 管理外リソース
 - state に対応の無いログ グループ 3 本: `/github-repository/generated-manifests`、`/github-repository/kubernetes-clusters`、`us-east-1` の `/github-actions/claude-code-action-monorepo`
 - `dystopia.city` zone に削除済み ALB を指す ALIAS レコード 4 件（`dystopia.city.` A/AAAA、`auth.dystopia.city.` A/AAAA）と external-dns 所有権 TXT 2 件（`aaaa-auth.` / `cname-auth.`、`owner=eks-production`）が残存
-- `aws/cost-management/modules/cost_optimization_hub.tf` が 2 つの回避策（`terraform_data` + `local-exec` による enrollment、`aws_costoptimizationhub_preferences` の非管理）を抱えているが、どちらも根拠が「非管理アカウントだから」であり、`559744160976` は 2026-08-04 に管理アカウントになっている。**本移行の前に別 PR で解消する**（§10 参照）
+- ~~`aws/cost-management/modules/cost_optimization_hub.tf` の `terraform_data` + `local-exec` 回避策~~ → **#801 で解消済み**。provider 6.60.0 で `include_member_accounts` が `optional + computed` になり恒久差分が出なくなっていたため、native リソースに置き換えた（§10 参照）
+- `workflow-config.yaml` の `stack_conventions` で **`aws/{service}` の規約だけがコメントアウトされている**。そのため `aws/` 配下の変更は label-dispatcher がサービスとして検出せず、deploy label が付かず CI の terragrunt が起動しない（§8 末尾参照）
 
 ## 2. Decisions
 
@@ -347,6 +348,27 @@ Terraform 管理外だが、クラスタ再構築で自動的に作り直され�
 
 Phase 1 の Service Quota 増枠は承認待ちが最長のクリティカルパスになるため、アカウント作成直後に投げる。
 
+### `aws/` スタックは CI の自動 apply 対象ではない
+
+`workflow-config.yaml` の `stack_conventions` は `github/{service}` と `kubernetes/components/{service}` のみ有効で、`aws/{service}` はコメントアウトされている。そのため `aws/` 配下だけを変更した PR は label-dispatcher がサービスを検出せず、deploy label が付かない。
+
+#801（`aws/cost-management/modules/cost_optimization_hub.tf` の 1 ファイル変更）で実測した dispatcher の出力:
+
+```
+CHANGED_FILES:     ["aws/cost-management/modules/cost_optimization_hub.tf"]
+SERVICES_DETECTED: []
+DEPLOY_LABELS:     []
+```
+
+結果として main へマージしても terragrunt は起動せず、手元から apply する必要があった。過去の `aws/` 変更にラベルが付いていたのは、同じ PR が `kubernetes/components/{service}` も触っていたためで（#798 の `deploy:karpenter`、#795 の `deploy:holmesgpt`）、`aws/` 側は寄与していない。
+
+本移行への影響は 2 つ。
+
+1. Phase 3-7 の terragrunt 実行はいずれもローカル apply で書いてあるため、手順自体は成立する
+2. `master` env に置く 3 スタック（`aws/route53`、`aws/cost-management`、`aws/github-oidc-auth`）は移行後も自動デプロイされない。`github/{service}` の 2 スタックのみ CI に載る
+
+`stack_conventions` の有効化は全 `aws/` PR を自動デプロイ対象に変える影響範囲の大きい変更のため、本移行とは分ける（§10 参照）。
+
 ## 9. Risks & Mitigations
 
 ### リスク 1: Service Quota 不足で Karpenter が node を出せない
@@ -363,7 +385,9 @@ Phase 1 の Service Quota 増枠は承認待ちが最長のクリティカルパ
 
 ### リスク 3: `workflow-config.yaml` の差し替えタイミングを誤り CI が壊れる
 
-**対策:** Phase 4 で各アカウントのロール存在を `aws iam get-role` で確認してから `workflow-config.yaml` を含む PR をマージする。
+`aws/{service}` が `stack_conventions` で無効なため、`aws/` 配下の変更だけでは deploy label が付かず CI の terragrunt は起動しない（§8 末尾）。したがって差し替え直後に自動で壊れることは無く、誰かが手動でラベルを付けたときに顕在化する遅発性のリスクになる。
+
+**対策:** Phase 4 で各アカウントのロール存在を `aws iam get-role` で確認してから `workflow-config.yaml` を含む PR をマージする。`github/{service}` の 2 スタックは `master` env で自動デプロイ対象になるため、こちらは差し替え後の初回 CI で即座に検証できる。
 
 ### リスク 4: クロスアカウント assume が効かず `alb` / `eks` の apply が失敗する
 
@@ -396,19 +420,24 @@ trust policy の ARN 誤記、`sts:AssumeRole` 権限の欠落、provider alias 
 - Route53 登録ドメイン 3 件のアカウント間移管。zone を管理アカウントに残す決定により不要
 - IAM Identity Center の permission set 細分化。`AdministratorAccess` 1 本のまま新 2 アカウントへ割当を追加するのみ
 - SCP による新アカウントのガードレール設定
-- `aws/cost-management` の回避策解消と org 横断化。詳細は下記
+- `workflow-config.yaml` の `stack_conventions` で `aws/{service}` を有効化すること。全 `aws/` PR が自動デプロイ対象に変わる影響範囲の大きい変更で、移行作業中の PR と race するリスクがある。移行完了後に単独で判断する
+- `aws/cost-management` の org 横断化。詳細は下記
 
 ### `aws/cost-management` の切り分け
 
 3 つの作業が混在しているため、依存関係で分ける。本移行が扱うのは 2 のみ。
 
-| # | 作業 | いつ | 依存 |
+| # | 作業 | いつ | 状態 |
 |---|---|---|---|
-| 1 | 回避策 A / B の解消（native リソース化） | **本移行の前に別 PR** | 無し。単独で検証できる |
-| 2 | env を `develop` → `master` へ移す | 本移行（Task 3.4） | 1 が先行していれば差分が env 移動だけになる |
-| 3 | org 横断化（`include_member_accounts = true`） | 本移行の完了後 | member アカウントの存在。加えて Organizations の信頼されたサービスアクセス有効化と最大 24 時間の反映待ち |
+| 1 | 回避策 A の解消（native リソース化） | 本移行の前に別 PR | **完了（#801、2026-08-19 apply 済）** |
+| 2 | env を `develop` → `master` へ移す | 本移行（Task 3.4） | 本移行で実施 |
+| 3 | org 横断化（`include_member_accounts = true`） | 本移行の完了後 | 未着手 |
 
-**1 と 3 は独立している。** `UpdateEnrollmentStatus` API は `includeMemberAccounts` を引数に取るため、現行の `local-exec` に `--include-member-accounts` を足すだけでも 3 は達成できてしまう。それでは回避策の代償（state に載らない・ドリフトを検知しない・destroy で解除されない・AWS CLI への暗黙依存）が残るため、1 を先に片付ける。
+1 は provider 6.60.0 で `include_member_accounts` が `optional + computed`、`status` が computed 専用になっており、#39520 の恒久差分が解消していたため native リソースへ置き換えた。apply 後の plan が `No changes.` になることを実 state で確認済。
+
+回避策 B（`aws_costoptimizationhub_preferences` の非管理）は**維持**した。`member_account_discount_visibility` は `optional + computed` だが AWS API の `GetPreferences` がこの属性を返さないため、リソースを追加すると provider が毎回 `"All"` を書き込もうとする。AWS 既定値も `"All"` のため管理する動機が無い。
+
+**1 と 3 は独立していた。** `UpdateEnrollmentStatus` API は `includeMemberAccounts` を引数に取るため、回避策のまま `local-exec` に `--include-member-accounts` を足すだけでも 3 は達成できた。それでは回避策の代償（state に載らない・ドリフトを検知しない・destroy で解除されない・AWS CLI への暗黙依存）が残るため 1 を先に片付けた。
 
 3 の前提として、現在 Organizations で有効な信頼されたサービスアクセスは `sso.amazonaws.com` のみ（`aws organizations list-aws-service-access-for-organization` で確認）。`aws cost-optimization-hub list-enrollment-statuses --include-organization-info` は `AccessDeniedException: Service access must be enabled to access member account data` を返す。`compute-optimizer.amazonaws.com` と `cost-optimization-hub.amazonaws.com` の有効化が要る。
 - develop アカウントへのワークロード構築。器を用意するところまで

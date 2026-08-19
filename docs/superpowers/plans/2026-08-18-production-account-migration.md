@@ -904,7 +904,7 @@ Compute Optimizer と Cost Optimization Hub の登録は支払アカウント単
 cd aws/cost-management/envs/develop && TG_TF_PATH=tofu terragrunt state list
 ```
 
-Expected: `aws_computeoptimizer_enrollment_status.this` と `terraform_data.cost_optimization_hub_enrollment` の 2 件
+Expected: `aws_computeoptimizer_enrollment_status.this` と `aws_costoptimizationhub_enrollment_status.this` の 2 件（後者は #801 で `terraform_data` + `local-exec` の回避策から置き換え済）
 
 - [ ] **Step 2: `env.hcl` を作成**
 
@@ -980,7 +980,9 @@ terragrunt backend migrate aws/cost-management/envs/develop aws/cost-management/
 cd aws/cost-management/envs/master && TG_TF_PATH=tofu terragrunt plan
 ```
 
-Expected: `aws_computeoptimizer_enrollment_status` の再作成が無いこと。`terraform_data` の `triggers_replace` は `version = "v1"` で固定なので replace されないこと。タグの in-place update は許容
+Expected: `aws_computeoptimizer_enrollment_status` と `aws_costoptimizationhub_enrollment_status` のどちらにも再作成が出ないこと。タグの in-place update は許容
+
+`aws_costoptimizationhub_enrollment_status` は `include_member_accounts` が `optional + computed` で、省略時は AWS API の返り値を採用するため差分が出ない（#801 で実 state での `No changes.` を確認済）。差分が出る場合は provider のバージョンが上がって挙動が変わっている可能性があるため、apply せずに調査する
 
 - [ ] **Step 6: 旧 env と旧 state を削除**
 
