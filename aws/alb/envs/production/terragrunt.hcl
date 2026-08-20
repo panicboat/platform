@@ -24,6 +24,8 @@ inputs = {
   environment = include.env.locals.environment
   aws_region  = include.env.locals.aws_region
 
+  route53_zone_role_arn = include.env.locals.route53_zone_role_arn
+
   common_tags = merge(
     include.env.locals.environment_tags,
     {

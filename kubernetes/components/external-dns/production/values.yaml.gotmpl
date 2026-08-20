@@ -37,6 +37,14 @@ policy: sync
 txtOwnerId: eks-production
 
 # =============================================================================
+# Cross-account Route53 access
+# =============================================================================
+# hosted zone は管理アカウントにあるため、IRSA ロールは sts:AssumeRole のみを
+# 持ち (= aws/eks/modules/addons.tf)、実操作は assume 先の権限で行う。
+extraArgs:
+  - --aws-assume-role=arn:aws:iam::559744160976:role/route53-zone-access
+
+# =============================================================================
 # ServiceAccount with IRSA
 # =============================================================================
 serviceAccount:

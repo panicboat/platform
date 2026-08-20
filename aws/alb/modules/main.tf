@@ -14,6 +14,8 @@ resource "aws_acm_certificate" "wildcard_panicboat_net" {
 
 # DNS validation records in the panicboat.net hosted zone.
 resource "aws_route53_record" "wildcard_panicboat_net_validation" {
+  provider = aws.route53
+
   for_each = {
     for dvo in aws_acm_certificate.wildcard_panicboat_net.domain_validation_options :
     dvo.domain_name => {
@@ -52,6 +54,8 @@ resource "aws_acm_certificate" "wildcard_dystopia_city" {
 
 # DNS validation records in the dystopia.city hosted zone.
 resource "aws_route53_record" "wildcard_dystopia_city_validation" {
+  provider = aws.route53
+
   for_each = {
     for dvo in aws_acm_certificate.wildcard_dystopia_city.domain_validation_options :
     dvo.domain_name => {

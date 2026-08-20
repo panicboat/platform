@@ -11,6 +11,9 @@ locals {
   # renovate: datasource=endoflife-date depName=amazon-eks versioning=loose
   cluster_version = "1.36"
 
+  # external-dns が管理アカウントの hosted zone を操作するための assume 先。
+  route53_zone_role_arn = "arn:aws:iam::559744160976:role/route53-zone-access"
+
   # Environment-specific tags
   environment_tags = {
     Environment = local.environment

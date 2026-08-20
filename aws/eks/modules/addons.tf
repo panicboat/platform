@@ -49,17 +49,24 @@ module "alb_controller_irsa" {
   tags = var.common_tags
 }
 
+# Hosted zone は管理アカウントにあるため、Pod は Route53 を直接叩かず
+# route53-zone-access を assume する (= external-dns の --aws-assume-role、
+# kubernetes/components/external-dns/production/values.yaml.gotmpl)。
+data "aws_iam_policy_document" "external_dns_assume_zone_access" {
+  statement {
+    actions   = ["sts:AssumeRole"]
+    resources = [var.route53_zone_role_arn]
+  }
+}
+
 module "external_dns_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "~> 6.8"
 
-  name                          = "eks-${var.environment}-external-dns"
-  use_name_prefix               = false
-  attach_external_dns_policy    = true
-  external_dns_hosted_zone_arns = [
-    module.route53.zones.panicboat_net.arn,
-    module.route53.zones.dystopia_city.arn,
-  ]
+  name            = "eks-${var.environment}-external-dns"
+  use_name_prefix = false
+
+  source_policy_documents = [data.aws_iam_policy_document.external_dns_assume_zone_access.json]
 
   oidc_providers = {
     main = {

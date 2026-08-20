@@ -1,4 +1,4 @@
-# terragrunt.hcl - Terragrunt configuration for develop environment
+# terragrunt.hcl - Terragrunt configuration for master environment
 
 # Include root configuration
 include "root" {

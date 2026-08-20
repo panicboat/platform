@@ -65,3 +65,9 @@ variable "oidc_provider_arn" {
   type        = string
   default     = ""
 }
+
+variable "assume_role_arns" {
+  description = "Cross-account role ARNs the plan role may assume"
+  type        = list(string)
+  default     = []
+}
