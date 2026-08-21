@@ -52,6 +52,7 @@ serviceAccount:
   name: external-dns
   annotations:
     eks.amazonaws.com/role-arn: {{ .Values.cluster.externalDnsRoleArn }}
+    verify.panicboat/kustomize-diff-check: "true"
 
 # =============================================================================
 # Replicas / Resources
