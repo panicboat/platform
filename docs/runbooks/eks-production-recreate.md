@@ -28,7 +28,7 @@ EKS cluster cold-start は cilium native CNI ENI mode (= PR #393) との chicken
 ### 2.2 Operator environment
 
 - panicboat IAM user 直接 (= `AdministratorAccess` policy attach 済)
-- shell env clean: `unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN` 後 `aws sts get-caller-identity --query Arn --output text` で `arn:aws:iam::559744160976:user/panicboat` が返ること (= `eks-login` 等で事前 role assume していない状態)
+- shell env clean: `unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN` 後 `aws sts get-caller-identity --query Account --output text` で production アカウント (= `337169763788`) の principal が返ること (= `eks-login` 等で事前 role assume していない状態。管理アカウントの IAM user ではなく production アカウントの Identity Center session または `OrganizationAccountAccessRole` を使う)
 - 2 terminal を同時に使える (= IDE の split terminal / tmux 等)
 
 ### 2.3 CLI tools
@@ -50,8 +50,8 @@ cd /Users/takanokenichi/GitHub/panicboat/platform
 
 # AWS env reset (= eks-login 等の assumed-role state 解除)
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
-aws sts get-caller-identity --query Arn --output text
-# → arn:aws:iam::559744160976:user/panicboat
+aws sts get-caller-identity --query Account --output text
+# → 337169763788 (production アカウント)
 
 # git working tree clean 確認
 git status --short
@@ -98,7 +98,7 @@ echo "cluster ACTIVE"
 
 # admin role assume + kubeconfig
 ADMIN_CREDS=$(aws sts assume-role \
-  --role-arn arn:aws:iam::559744160976:role/eks-admin-production \
+  --role-arn arn:aws:iam::337169763788:role/eks-admin-production \
   --role-session-name bootstrap \
   --query Credentials --output json)
 export AWS_ACCESS_KEY_ID=$(echo "$ADMIN_CREDS" | jq -r .AccessKeyId)
