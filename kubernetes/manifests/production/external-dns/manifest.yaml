@@ -200,8 +200,6 @@ kind: Deployment
 metadata:
   name: external-dns
   namespace: external-dns
-  annotations:
-    verify.panicboat/kustomize-diff-check: "true"
   labels:
     helm.sh/chart: external-dns-1.21.1
     app.kubernetes.io/name: external-dns
@@ -279,3 +277,4 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 5
+
