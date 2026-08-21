@@ -41,11 +41,11 @@ spec:
 # =============================================================================
 # ExternalSecret: Sync GitHub App credentials from AWS Secrets Manager
 # =============================================================================
-# AWS Secrets Manager の `panicboat/github-app/panicboat` から App
+# AWS Secrets Manager の `github-app/fluxcd-bot` から App
 # credentials (appID / installationID / privateKey) を flux-system の K8s
-# Secret として sync し、GitRepository monorepo の write 認証に使う。
-# AWS Secrets Manager 内の secret は user が console で 1 回手動で put した
-# 既存 panicboat App の credentials (Contents: Read & Write 権限あり)。
+# Secret として sync し、GitRepository monorepo の clone 認証に使う。
+# panicboat-fluxcd-bot は monorepo clone 専用の GitHub App (Contents: Read-only)。
+# CI (panicboat-ci-bot) とは別の App。
 # =============================================================================
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
@@ -63,13 +63,13 @@ spec:
   data:
     - secretKey: githubAppID
       remoteRef:
-        key: panicboat/github-app/panicboat
+        key: github-app/fluxcd-bot
         property: app_id
     - secretKey: githubAppInstallationID
       remoteRef:
-        key: panicboat/github-app/panicboat
+        key: github-app/fluxcd-bot
         property: installation_id
     - secretKey: githubAppPrivateKey
       remoteRef:
-        key: panicboat/github-app/panicboat
+        key: github-app/fluxcd-bot
         property: private_key

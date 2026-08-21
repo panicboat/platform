@@ -82012,7 +82012,7 @@ metadata:
 spec:
   data:
   - remoteRef:
-      key: panicboat/alertmanager/slack-notify
+      key: eks/alertmanager/slack
       property: webhook_url
     secretKey: SLACK_WEBHOOK_URL
   refreshInterval: 1h
@@ -82031,11 +82031,11 @@ metadata:
 spec:
   data:
   - remoteRef:
-      key: panicboat/grafana/admin
+      key: eks/grafana/admin
       property: admin-user
     secretKey: admin-user
   - remoteRef:
-      key: panicboat/grafana/admin
+      key: eks/grafana/admin
       property: admin-password
     secretKey: admin-password
   refreshInterval: 1h
@@ -82054,7 +82054,7 @@ metadata:
 spec:
   data:
   - remoteRef:
-      key: panicboat/holmes/alertmanager
+      key: eks/holmes/alertmanager
       property: shared_token
     secretKey: ALERTMANAGER_SHARED_TOKEN
   refreshInterval: 1h

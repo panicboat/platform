@@ -1043,15 +1043,15 @@ metadata:
 spec:
   data:
   - remoteRef:
-      key: panicboat/oauth2-proxy/google
+      key: eks/oauth2-proxy/google
       property: client_id
     secretKey: client-id
   - remoteRef:
-      key: panicboat/oauth2-proxy/google
+      key: eks/oauth2-proxy/google
       property: client_secret
     secretKey: client-secret
   - remoteRef:
-      key: panicboat/oauth2-proxy/google
+      key: eks/oauth2-proxy/google
       property: cookie_secret
     secretKey: cookie-secret
   refreshInterval: 1h
