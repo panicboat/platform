@@ -10,7 +10,7 @@
 # サポートが 2026-01-30 に終了している。移管先でも single binary mode の
 # 提供は継続する。renovate は参照中の repository index しか見ないため、
 # repository ごと移管される変更は検知できない。
-# S3 backend は `tempo-559744160976` を Pod Identity 経由でアクセス、IAM role
+# S3 backend は `tempo-337169763788` を Pod Identity 経由でアクセス、IAM role
 # は bucket-wide (3 stack 同型) + application-level prefix env scope
 # (`s3.prefix: production`) で隔離。
 # multitenancy は OFF (1 tenant 運用、Mimir / Loki と対称)。retention は
@@ -25,7 +25,7 @@ environments:
     # 同期すること (tempo.bucketName / tempo.bucketPathPrefix)。
     values:
       - tempo:
-          bucketName: tempo-559744160976
+          bucketName: tempo-337169763788
           bucketPathPrefix: production
 ---
 repositories:

@@ -5,7 +5,7 @@
 # 9 Pod Microservices ではなく 1-2 Pod 構成、Loki 公式が small production OK
 # とする position に準拠)。Microservices mode への upgrade path は chart の
 # `deploymentMode` 切替で確保。
-# S3 backend は `loki-559744160976` を Pod Identity 経由でアクセス。
+# S3 backend は `loki-337169763788` を Pod Identity 経由でアクセス。
 # tenancy は anonymous + auth_enabled=false で Mimir / Tempo と対称運用。
 # =============================================================================
 environments:
@@ -16,7 +16,7 @@ environments:
     # 同期すること (loki.bucketName / loki.bucketPathPrefix)。
     values:
       - loki:
-          bucketName: loki-559744160976
+          bucketName: loki-337169763788
           bucketPathPrefix: production
 ---
 repositories:
