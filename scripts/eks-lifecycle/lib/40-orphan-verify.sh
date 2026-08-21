@@ -57,6 +57,7 @@ if [ -n "$SG_IDS" ]; then
 fi
 
 info "Step 40.5: Route53 stale external-dns records"
+use_route53_creds  # = panicboat.net zone lives in master, not production
 HOSTED_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
   --dns-name panicboat.net --query 'HostedZones[0].Id' --output text 2>/dev/null | sed 's|/hostedzone/||')
 if [ -n "$HOSTED_ZONE_ID" ] && [ "$HOSTED_ZONE_ID" != "None" ]; then
@@ -80,6 +81,8 @@ if [ -n "$HOSTED_ZONE_ID" ] && [ "$HOSTED_ZONE_ID" != "None" ]; then
     ORPHAN_FOUND=1
   fi
 fi
+
+use_apply_creds  # = back to production account creds (Step 40.5 switched to master for Route53)
 
 info "Step 40.6: CloudWatch log groups"
 LG_NAMES=$(aws logs describe-log-groups --region "$REGION" \

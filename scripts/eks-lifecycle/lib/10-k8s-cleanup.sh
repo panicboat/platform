@@ -130,7 +130,7 @@ info "Step 10.8: AWS-API fallback — delete leftover external-dns Route53 recor
 # 残る。 cluster destroy 後は external-dns 経路で消せないので、 ownership marker tag を頼りに
 # AWS API で直接削除する。
 if [ "${DRY_RUN:-0}" != "1" ]; then
-  use_apply_creds  # = need route53 permissions (= operator's chain)
+  use_route53_creds  # = panicboat.net zone lives in master, not production
   HOSTED_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
     --dns-name panicboat.net --query 'HostedZones[0].Id' --output text 2>/dev/null | sed 's|/hostedzone/||')
   if [ -n "$HOSTED_ZONE_ID" ] && [ "$HOSTED_ZONE_ID" != "None" ]; then
