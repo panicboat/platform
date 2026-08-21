@@ -112,7 +112,6 @@ metadata:
     app.kubernetes.io/managed-by: Helm
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::559744160976:role/eks-production-external-dns
-    verify.panicboat/kustomize-diff-check: "true"
 automountServiceAccountToken: true
 ---
 # Source: external-dns/templates/clusterrole.yaml
