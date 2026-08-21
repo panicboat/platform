@@ -52,11 +52,49 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
-      - name: Kustomize Diff
-        uses: panicboat/panicboat-actions/kustomize-diff@fd41cb7fb30ee0b650acedb9f504cbff719844a6 # main
+      - name: Checkout base ref
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
           token: ${{ steps.app-token.outputs.token }}
-          service-name: ${{ inputs.service-name }}
-          environment: ${{ inputs.environment }}
-          path: kubernetes/manifests/${{ inputs.environment }}/${{ inputs.service-name }}
+
+      - name: Build head manifests
+        id: kustomize-head
+        uses: int128/kustomize-action@6cb04b0da49fce7201ff08e086072f33475d376e # v1.188.0
+        with:
+          kustomization: kubernetes/manifests/${{ inputs.environment }}/${{ inputs.service-name }}/kustomization.yaml
+          write-individual-files: true
+
+      - name: Build base manifests
+        id: kustomize-base
+        uses: int128/kustomize-action@6cb04b0da49fce7201ff08e086072f33475d376e # v1.188.0
+        with:
+          base-directory: base
+          kustomization: kubernetes/manifests/${{ inputs.environment }}/${{ inputs.service-name }}/kustomization.yaml
+          write-individual-files: true
+
+      - name: Diff manifests
+        id: diff
+        uses: int128/diff-action@77a301a80335bebb9abb2d28a3dacfa844105395 # v2.28.0
+        with:
+          base: ${{ steps.kustomize-base.outputs.directory }}
+          head: ${{ steps.kustomize-head.outputs.directory }}
+
+      - name: Comment PR
+        if: steps.pr-info.outputs.number != ''
+        uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
+        with:
+          message: |
+            ## Kustomize Diff
+
+            **Service**: `${{ inputs.service-name }}`
+            **Environment**: `${{ inputs.environment }}`
+
+            ${{ steps.diff.outputs.comment-body || 'No changes' }}
+          comment-tag: "kubernetes-${{ inputs.service-name }}-${{ inputs.environment }}"
+          mode: upsert
           pr-number: ${{ steps.pr-info.outputs.number }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          reactions: ${{ steps.diff.outputs.has-diff == 'true' && 'rocket' || '' }}
+        continue-on-error: true
