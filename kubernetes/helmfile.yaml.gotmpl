@@ -36,9 +36,9 @@ environments:
       - cluster:
           name: eks-production
           # RECREATE: cd aws/eks/envs/production && TG_TF_PATH=tofu terragrunt output -raw cluster_endpoint_hostname
-          eksApiEndpoint: 1AB3F2B186B7887FDD0D6C5D90ED08B0.gr7.ap-northeast-1.eks.amazonaws.com
+          eksApiEndpoint: 60C557B50FC8EBB8CC6748A08CE08F41.gr7.ap-northeast-1.eks.amazonaws.com
           # RECREATE: cd aws/vpc/envs/production && TG_TF_PATH=tofu terragrunt output -raw vpc_id
-          vpcId: vpc-07ca4f46a66dc15ed
+          vpcId: vpc-014774a5d97e1fd9e
           # STABLE: aws/eks/modules/addons.tf で use_name_prefix = false に設定済、timestamp suffix なしの deterministic 名
           albControllerRoleArn: arn:aws:iam::337169763788:role/eks-production-alb-controller
           # STABLE: 同上
