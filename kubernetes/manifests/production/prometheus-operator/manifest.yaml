@@ -82054,7 +82054,7 @@ metadata:
 spec:
   data:
   - remoteRef:
-      key: eks/holmes/alertmanager
+      key: eks/holmesgpt/alertmanager
       property: shared_token
     secretKey: ALERTMANAGER_SHARED_TOKEN
   refreshInterval: 1h
