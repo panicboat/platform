@@ -243,11 +243,11 @@ metadata:
 spec:
   data:
   - remoteRef:
-      key: panicboat/keycloak/admin
+      key: eks/keycloak/admin
       property: username
     secretKey: username
   - remoteRef:
-      key: panicboat/keycloak/admin
+      key: eks/keycloak/admin
       property: password
     secretKey: password
   refreshInterval: 1h
