@@ -36,13 +36,13 @@ environments:
       - cluster:
           name: eks-production
           # RECREATE: cd aws/eks/envs/production && TG_TF_PATH=tofu terragrunt output -raw cluster_endpoint_hostname
-          eksApiEndpoint: 1AB3F2B186B7887FDD0D6C5D90ED08B0.gr7.ap-northeast-1.eks.amazonaws.com
+          eksApiEndpoint: 60C557B50FC8EBB8CC6748A08CE08F41.gr7.ap-northeast-1.eks.amazonaws.com
           # RECREATE: cd aws/vpc/envs/production && TG_TF_PATH=tofu terragrunt output -raw vpc_id
-          vpcId: vpc-07ca4f46a66dc15ed
+          vpcId: vpc-014774a5d97e1fd9e
           # STABLE: aws/eks/modules/addons.tf で use_name_prefix = false に設定済、timestamp suffix なしの deterministic 名
-          albControllerRoleArn: arn:aws:iam::559744160976:role/eks-production-alb-controller
+          albControllerRoleArn: arn:aws:iam::337169763788:role/eks-production-alb-controller
           # STABLE: 同上
-          externalDnsRoleArn: arn:aws:iam::559744160976:role/eks-production-external-dns
+          externalDnsRoleArn: arn:aws:iam::337169763788:role/eks-production-external-dns
         karpenter:
           # STABLE: aws/karpenter/modules/main.tf で node_iam_role_name + node_iam_role_use_name_prefix = false に設定済
           nodeRoleName: Karpenter-eks-production
@@ -54,19 +54,19 @@ environments:
           # helmfile v1.4 は親→子 の auto-inherit をしないため、
           # kubernetes/components/mimir/production/helmfile.yaml の
           # environments.production.values にも同値を再定義済 (cilium / karpenter 同パターン)。
-          bucketName: mimir-559744160976
+          bucketName: mimir-337169763788
           bucketPathPrefix: production
           # verification 用 (helmfile values としては unused、Pod Identity Association は
           # aws/eks-metrics/ 側で provision 済)。
           podIdentityRoleName: eks-production-mimir
         loki:
           # Source: aws/eks-logs/envs/production terragrunt output
-          bucketName: loki-559744160976
+          bucketName: loki-337169763788
           bucketPathPrefix: production
           podIdentityRoleName: eks-production-loki
         tempo:
           # Source: aws/eks-traces/envs/production terragrunt output
-          bucketName: tempo-559744160976
+          bucketName: tempo-337169763788
           bucketPathPrefix: production
           podIdentityRoleName: eks-production-tempo
   # staging:

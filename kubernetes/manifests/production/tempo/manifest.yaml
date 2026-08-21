@@ -67,7 +67,7 @@ data:
             local:
               path: /var/tempo/traces
             s3:
-              bucket: tempo-559744160976
+              bucket: tempo-337169763788
               endpoint: s3.ap-northeast-1.amazonaws.com
               prefix: production
               region: ap-northeast-1
@@ -184,7 +184,7 @@ spec:
         app.kubernetes.io/name: tempo
         app.kubernetes.io/instance: tempo
       annotations:
-        checksum/config: c092ab7e2b3bbff16e7e43105127823b4164cfddb3a95d3262bc722e171aed8f
+        checksum/config: f9cf417c830eba251f09e45293df8c92ac0a113873a3087c03388cc096d56d49
     spec:
       serviceAccountName: tempo
       automountServiceAccountToken: true

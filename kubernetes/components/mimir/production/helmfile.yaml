@@ -19,7 +19,7 @@ environments:
     values:
       - mimir:
           # Source: aws/eks-metrics/envs/production terragrunt output bucket_name
-          bucketName: mimir-559744160976
+          bucketName: mimir-337169763788
           # Source: aws/eks-metrics/envs/production terragrunt output bucket_path_prefix
           bucketPathPrefix: production
 ---

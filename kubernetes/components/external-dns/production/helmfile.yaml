@@ -13,7 +13,7 @@ environments:
     values:
       - cluster:
           # STABLE: aws/eks/modules/addons.tf で deterministic 化済
-          externalDnsRoleArn: arn:aws:iam::559744160976:role/eks-production-external-dns
+          externalDnsRoleArn: arn:aws:iam::337169763788:role/eks-production-external-dns
 ---
 repositories:
   - name: external-dns

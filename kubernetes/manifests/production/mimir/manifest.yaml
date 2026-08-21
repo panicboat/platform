@@ -509,7 +509,7 @@ data:
             timeout: 750ms
         sync_dir: /data/tsdb-sync
       s3:
-        bucket_name: mimir-559744160976
+        bucket_name: mimir-337169763788
         endpoint: s3.ap-northeast-1.amazonaws.com
         region: ap-northeast-1
       storage_prefix: production
@@ -521,7 +521,7 @@ data:
       storage:
         backend: s3
         s3:
-          bucket_name: mimir-559744160976
+          bucket_name: mimir-337169763788
           endpoint: s3.ap-northeast-1.amazonaws.com
           region: ap-northeast-1
     compactor:
@@ -1357,7 +1357,7 @@ spec:
         app.kubernetes.io/component: distributor
         app.kubernetes.io/part-of: memberlist
       annotations:
-        checksum/config: 28b65dfe6b910744a580c3d00c2283811063dbbdd50985acb1c8cd0e71f763aa
+        checksum/config: 320f7303414bf0a0c6fe6eb83da675311789bcb1769ef531a623fa32fcb826d0
       namespace: "monitoring"
     spec:
       serviceAccountName: mimir
@@ -1601,7 +1601,7 @@ spec:
         app.kubernetes.io/component: querier
         app.kubernetes.io/part-of: memberlist
       annotations:
-        checksum/config: 28b65dfe6b910744a580c3d00c2283811063dbbdd50985acb1c8cd0e71f763aa
+        checksum/config: 320f7303414bf0a0c6fe6eb83da675311789bcb1769ef531a623fa32fcb826d0
     spec:
       serviceAccountName: mimir
       securityContext:
@@ -1725,7 +1725,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/component: query-frontend
       annotations:
-        checksum/config: 28b65dfe6b910744a580c3d00c2283811063dbbdd50985acb1c8cd0e71f763aa
+        checksum/config: 320f7303414bf0a0c6fe6eb83da675311789bcb1769ef531a623fa32fcb826d0
       namespace: "monitoring"
     spec:
       serviceAccountName: mimir
@@ -1847,7 +1847,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/component: query-scheduler
       annotations:
-        checksum/config: 28b65dfe6b910744a580c3d00c2283811063dbbdd50985acb1c8cd0e71f763aa
+        checksum/config: 320f7303414bf0a0c6fe6eb83da675311789bcb1769ef531a623fa32fcb826d0
     spec:
       serviceAccountName: mimir
       securityContext:
@@ -2076,7 +2076,7 @@ spec:
         app.kubernetes.io/component: compactor
         app.kubernetes.io/part-of: memberlist
       annotations:
-        checksum/config: 28b65dfe6b910744a580c3d00c2283811063dbbdd50985acb1c8cd0e71f763aa
+        checksum/config: 320f7303414bf0a0c6fe6eb83da675311789bcb1769ef531a623fa32fcb826d0
       namespace: "monitoring"
     spec:
       serviceAccountName: mimir
@@ -2209,7 +2209,7 @@ spec:
         app.kubernetes.io/component: ingester
         app.kubernetes.io/part-of: memberlist
       annotations:
-        checksum/config: 28b65dfe6b910744a580c3d00c2283811063dbbdd50985acb1c8cd0e71f763aa
+        checksum/config: 320f7303414bf0a0c6fe6eb83da675311789bcb1769ef531a623fa32fcb826d0
       namespace: "monitoring"
     spec:
       serviceAccountName: mimir
@@ -2346,7 +2346,7 @@ spec:
         app.kubernetes.io/component: store-gateway
         app.kubernetes.io/part-of: memberlist
       annotations:
-        checksum/config: 28b65dfe6b910744a580c3d00c2283811063dbbdd50985acb1c8cd0e71f763aa
+        checksum/config: 320f7303414bf0a0c6fe6eb83da675311789bcb1769ef531a623fa32fcb826d0
       namespace: "monitoring"
     spec:
       serviceAccountName: mimir
