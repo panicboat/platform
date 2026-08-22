@@ -32,10 +32,6 @@ spec:
   sourceRef:
     kind: GitRepository
     name: monorepo
-  # monorepo 側の workload (= monolith / frontend) は現状 production で正常に
-  # 動作しないため停止中。monolith は required な Secret (= monolith-database)
-  # が無く CreateContainerConfigError で起動しない。
-  # 再開する場合は monorepo 側の動作を確認してから `false` に戻す。
   suspend: false
 ---
 # =============================================================================

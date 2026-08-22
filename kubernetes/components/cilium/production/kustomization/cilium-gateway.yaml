@@ -24,6 +24,11 @@ spec:
     - name: http
       port: 8080  # = hostNetwork mode、 eks-pod-identity-agent の port 80 と collision 回避
       protocol: HTTP
+      # allowedRoutes.namespaces.from: All so monorepo can add product
+      # namespaces (dystopia / system-components / future ones) without
+      # editing this file each time. The cluster is a single GitOps tenant,
+      # so Selector's "only namespaces I labelled" gate has no threat model
+      # to enforce.
       allowedRoutes:
         namespaces:
-          from: Same
+          from: All
