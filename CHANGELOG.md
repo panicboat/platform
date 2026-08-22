@@ -1,5 +1,112 @@
 # Changelog
 
+## 1.0.0 (2026-08-22)
+
+
+### Features
+
+* **aws/eks,kubernetes:** evaluate OpenSRE with a read-only role and a fault-injected sandbox ([#751](https://github.com/panicboat/platform/issues/751)) ([647ef5e](https://github.com/panicboat/platform/commit/647ef5eea5e479827ed75fcbf629f439d26b970b))
+* **aws/eks:** grant SSO AdministratorAccess an EKS access entry ([#820](https://github.com/panicboat/platform/issues/820)) ([884ca8e](https://github.com/panicboat/platform/commit/884ca8e2cc24c4b95ed86e5262b23e3d2f2f8ff3))
+* **aws/karpenter:** create EC2 Spot service-linked role ([#672](https://github.com/panicboat/platform/issues/672)) ([fac501e](https://github.com/panicboat/platform/commit/fac501e6e261af2cb12039e4ca7422262efc3bb6))
+* **aws/route53:** add DKIM and dystopia.city apex records ([#714](https://github.com/panicboat/platform/issues/714)) ([5f441d8](https://github.com/panicboat/platform/commit/5f441d8c3670626905659878f39e86be042d5e34))
+* **aws/route53:** manage panicboat.net apex TXT/MX via Terraform ([#713](https://github.com/panicboat/platform/issues/713)) ([712a6a0](https://github.com/panicboat/platform/commit/712a6a032bb1a5718d9b6ab1bc23edfc6deb2c8c))
+* **ci:** release-please workflow を追加 ([#412](https://github.com/panicboat/platform/issues/412)) ([4739e4f](https://github.com/panicboat/platform/commit/4739e4fc43acfa7d88097f00d978433f532e581e))
+* **eks-{logs,metrics,traces}:** add force_destroy to S3 buckets ([#324](https://github.com/panicboat/platform/issues/324)) ([f9729fe](https://github.com/panicboat/platform/commit/f9729fe98f152f65b3c80e6f04739861401e8062))
+* **eks-lifecycle:** teardown + recreate scripts ([#390](https://github.com/panicboat/platform/issues/390)) ([a6333f2](https://github.com/panicboat/platform/commit/a6333f2f5b31db84b0d924355eeea4ba8194ed11))
+* **eks:** Cilium native CNI (ENI mode) 化 + system-critical MNG rename ([#393](https://github.com/panicboat/platform/issues/393)) ([201a6bc](https://github.com/panicboat/platform/commit/201a6bc59023a10a3cba03c35eadc8b354360577))
+* **eks:** cilium-operator IRSA → Pod Identity Association ([#401](https://github.com/panicboat/platform/issues/401)) ([e1d9594](https://github.com/panicboat/platform/commit/e1d959457c11eacf9c8adff2229ad3567d2032a9))
+* **eks:** deterministic IRSA names + hydrate-time substitution ([#326](https://github.com/panicboat/platform/issues/326)) ([113c00c](https://github.com/panicboat/platform/commit/113c00cf435b3d4dd48ba482f0b96e6c4bd3cbd0))
+* **eks:** otel-native log collection (replace fluent-bit) ([#342](https://github.com/panicboat/platform/issues/342)) ([534aad4](https://github.com/panicboat/platform/commit/534aad41aa1b919f06dd1f5d9eb266fd3c919ecf))
+* **eks:** Phase 4-1 — cert-manager + Cilium TLS migration ([#306](https://github.com/panicboat/platform/issues/306)) ([a30e5ff](https://github.com/panicboat/platform/commit/a30e5ffd675fef18dd3e499420ece77af55e69dd))
+* **eks:** Phase 4-2 — ESO + Reloader foundation ([#308](https://github.com/panicboat/platform/issues/308)) ([6f4b169](https://github.com/panicboat/platform/commit/6f4b169a6e0ef15f20b42d76872c9a34cde00ef9))
+* **eks:** Phase 4-3 — Grafana auth + monitoring UIs Ingress ([#310](https://github.com/panicboat/platform/issues/310)) ([9809f3f](https://github.com/panicboat/platform/commit/9809f3f473e0749c71109da56e3d3443f37fa3ff))
+* **eks:** Phase 5-1 — Beyla eBPF auto-instrumentation foundation ([#315](https://github.com/panicboat/platform/issues/315)) ([952024e](https://github.com/panicboat/platform/commit/952024eecdd135ac7ad0cb846edcec8d700c0828))
+* **eks:** Phase 5-2 — nginx end-to-end validation ([#318](https://github.com/panicboat/platform/issues/318)) ([0c09c3f](https://github.com/panicboat/platform/commit/0c09c3f8db573ed4b32038d5155f3a757875a3ec))
+* **eks:** Phase 6-1 — monorepo migration foundation ([#323](https://github.com/panicboat/platform/issues/323)) ([d14b6f6](https://github.com/panicboat/platform/commit/d14b6f6601769b608372c1e154b342fbb2a1f202))
+* **eks:** Phase 6-2 — monorepo application deploy ([#343](https://github.com/panicboat/platform/issues/343)) ([87cf7c7](https://github.com/panicboat/platform/commit/87cf7c78463f177dbb0ae781f0216328820de106))
+* **eks:** Phase 6-3 application end-to-end validation companion (= nginx-sample 削除) ([#367](https://github.com/panicboat/platform/issues/367)) ([3a367bb](https://github.com/panicboat/platform/commit/3a367bb9e276ffda81f7f4ff8d7464b1e97eb72f))
+* **eks:** port grafana dashboards to production ([#331](https://github.com/panicboat/platform/issues/331)) ([d3c6b2b](https://github.com/panicboat/platform/commit/d3c6b2b98ae9725d37c8ef2bd0deea7a39746547))
+* **eks:** tempo metrics-generator + service graph datasource ([#345](https://github.com/panicboat/platform/issues/345)) ([ae559f7](https://github.com/panicboat/platform/commit/ae559f77ee148fe047d0808bc551a36138dfdc00))
+* **flux:** add gotk-components + image-reflector/automation controllers ([#407](https://github.com/panicboat/platform/issues/407)) ([b473258](https://github.com/panicboat/platform/commit/b4732580eb3e3d6fe625d389e370bdff48377380))
+* **flux:** grant monorepo GitRepository write access via GitHub App ([#436](https://github.com/panicboat/platform/issues/436)) ([c919ee8](https://github.com/panicboat/platform/commit/c919ee8dc465f9b4b3881ec71c70514415755e7a))
+* **github/branch:** allow GitHub App bypass for monorepo main ruleset ([#445](https://github.com/panicboat/platform/issues/445)) ([4503a81](https://github.com/panicboat/platform/commit/4503a81102e5e64a9d4f4258e825342b856140fb))
+* **holmesgpt:** allow read-only git commands for source investigation ([#784](https://github.com/panicboat/platform/issues/784)) ([15db18c](https://github.com/panicboat/platform/commit/15db18c22019fbec2b8890f1fa25db57a5c196c5))
+* **kubernetes/components/oauth2-proxy/production:** gate monitoring UIs on panicboat.net domain ([#734](https://github.com/panicboat/platform/issues/734)) ([cd82d69](https://github.com/panicboat/platform/commit/cd82d69da4df33ce0b132f3b54f1e8fd2d92c0c0))
+* **kubernetes/components/tempo/production:** move to the grafana-community chart ([#762](https://github.com/panicboat/platform/issues/762)) ([b0aa54f](https://github.com/panicboat/platform/commit/b0aa54f9bbe10beee08ff0107a1557d772259178))
+* **kubernetes:** add bootstrap-webhooks kustomize root ([#410](https://github.com/panicboat/platform/issues/410)) ([c48d77c](https://github.com/panicboat/platform/commit/c48d77c012fe332c05701fed37cd9f6e157d1540))
+* **kubernetes:** add gp3 StorageClass for production cluster ([#406](https://github.com/panicboat/platform/issues/406)) ([2ffb74f](https://github.com/panicboat/platform/commit/2ffb74f138ff74ba87270ba049341a757a8cea4d))
+* **kubernetes:** add sandbox for okteto CLI evaluation ([#736](https://github.com/panicboat/platform/issues/736)) ([c93bd05](https://github.com/panicboat/platform/commit/c93bd056fe42dd5e836c2ff909a67b18b40fdef5))
+* **kubernetes:** deploy Keycloak Phase 1 infra (CloudNativePG + Keycloak) ([#735](https://github.com/panicboat/platform/issues/735)) ([5d4715b](https://github.com/panicboat/platform/commit/5d4715b274d0b3a8597e27911298abea960b725c))
+* **kubernetes:** introduce Falco runtime security ([#738](https://github.com/panicboat/platform/issues/738)) ([5a5ae79](https://github.com/panicboat/platform/commit/5a5ae7935767b3ce19d3a7bb93fff220c9238b20))
+* **kubernetes:** patch gp2 StorageClass to non-default ([#409](https://github.com/panicboat/platform/issues/409)) ([eb43a16](https://github.com/panicboat/platform/commit/eb43a16785ebd3a7fa8d7595d0a369a338aa6387))
+* **kubernetes:** recreate production EKS cluster in dedicated AWS account ([#817](https://github.com/panicboat/platform/issues/817)) ([ca7d91d](https://github.com/panicboat/platform/commit/ca7d91d7d5a049d6dd227f008a83bc42544a6f71))
+* **kubernetes:** restore fault-injected sandbox for HolmesGPT evaluation ([#767](https://github.com/panicboat/platform/issues/767)) ([de63e6d](https://github.com/panicboat/platform/commit/de63e6d5265c67f83a2d817aa42092b5c6c71395))
+* migrate application to dystopia.city + unify ALB IngressGroup ([#433](https://github.com/panicboat/platform/issues/433)) ([43ebbd5](https://github.com/panicboat/platform/commit/43ebbd564cef63653910f4fe6f7d38d04d10352f))
+* **prometheus-operator:** Alertmanager-owned Slack notification for critical alerts ([#782](https://github.com/panicboat/platform/issues/782)) ([ad9174a](https://github.com/panicboat/platform/commit/ad9174a4fee6461e65cfa7a3add62b9d6a8f6d81))
+* **prometheus-operator:** route critical alerts to holmes ([#780](https://github.com/panicboat/platform/issues/780)) ([b5110d9](https://github.com/panicboat/platform/commit/b5110d9d99f50c9db0ec335051601e90e7b9d98d))
+* **scripts:** post-flight Pod Identity injection probe + [#25](https://github.com/panicboat/platform/issues/25) upstream block note ([#419](https://github.com/panicboat/platform/issues/419)) ([faca8f7](https://github.com/panicboat/platform/commit/faca8f7f5071112b191727b89f6d731701b41785))
+* split production and develop into dedicated AWS accounts (Phase 2-6) ([#809](https://github.com/panicboat/platform/issues/809)) ([100da1d](https://github.com/panicboat/platform/commit/100da1d2fc1f35c7add72eb1deee88de34c7dec1))
+* unify aws resource provenance tag schema across iac + k8s controllers ([#427](https://github.com/panicboat/platform/issues/427)) ([fc04183](https://github.com/panicboat/platform/commit/fc04183fd55d8470273d99b69fa62c70b4ba9fe8))
+* **vpc:** add S3 gateway VPC endpoint to private route table ([#354](https://github.com/panicboat/platform/issues/354)) ([f1566d2](https://github.com/panicboat/platform/commit/f1566d2c5659233dcb8998b922cc0e3619f92fc7))
+* wire holmes into production (DNS + Alertmanager route) ([#777](https://github.com/panicboat/platform/issues/777)) ([8eb0c02](https://github.com/panicboat/platform/commit/8eb0c023522dc76e31d887300f0ff7c30dcc14de))
+
+
+### Bug Fixes
+
+* **auto-approve:** skip self-authored PRs from panicboat-ci-bot ([#810](https://github.com/panicboat/platform/issues/810)) ([2db15d5](https://github.com/panicboat/platform/commit/2db15d548e2940c3c31547702f77fb2bdbbe6b99))
+* **aws/ai-assistant:** drop GitHubOrg + GitHubRepos tags from actions role ([#429](https://github.com/panicboat/platform/issues/429)) ([71d6f46](https://github.com/panicboat/platform/commit/71d6f46a4c078cf964025cac53a3a1ec0da43ed6))
+* **aws/eks:** disable unused ebs-csi-driver snapshotter sidecar ([#698](https://github.com/panicboat/platform/issues/698)) ([14a38c6](https://github.com/panicboat/platform/commit/14a38c6d15c1e2af3084b6d4167a4cc579202576))
+* **aws/eks:** grant eks:ListPodIdentityAssociations to eks-admin role ([#420](https://github.com/panicboat/platform/issues/420)) ([93f9fef](https://github.com/panicboat/platform/commit/93f9fef01781b839dc817b81c040653922e32a1e))
+* **aws/eks:** grant ExternalDNS IAM access to dystopia.city zone ([#435](https://github.com/panicboat/platform/issues/435)) ([70a2dd1](https://github.com/panicboat/platform/commit/70a2dd1bcd7af4ddbc5ae0bba51f3fa756cf4e72))
+* **aws/iam-service-linked-roles:** use envs/production for CI dispatch ([#694](https://github.com/panicboat/platform/issues/694)) ([7ddde31](https://github.com/panicboat/platform/commit/7ddde31435d48a266c64d159c00869e2e2e92bbb))
+* **aws/karpenter:** set force_update_version on system_critical MNG ([#432](https://github.com/panicboat/platform/issues/432)) ([3a519a8](https://github.com/panicboat/platform/commit/3a519a87607ab4e885ccbed70a8fb924a7a39fb4))
+* **ci:** drive deploy-trigger from pull_request:closed instead of push:main ([#322](https://github.com/panicboat/platform/issues/322)) ([0f72e06](https://github.com/panicboat/platform/commit/0f72e06b0b286c21a746341cd50bced0bb5f1879))
+* **cilium-gateway:** allow HTTPRoutes from any namespace ([#825](https://github.com/panicboat/platform/issues/825)) ([49b6cd7](https://github.com/panicboat/platform/commit/49b6cd7d75cdc7f339b299c7be4101a195316777))
+* **cilium:** exclude cilium-envoy from system_critical MNG nodes ([#423](https://github.com/panicboat/platform/issues/423)) ([fd9cc60](https://github.com/panicboat/platform/commit/fd9cc60b81919da58d4c26a0ebe3cdb265814c77))
+* **docs:** Update EKS login command in README ([#353](https://github.com/panicboat/platform/issues/353)) ([fed2928](https://github.com/panicboat/platform/commit/fed2928a5956aea07037d2c49c35dd93a741582b))
+* **eks-lifecycle:** 00-auth.sh kubectl reachability check inside admin subshell ([#405](https://github.com/panicboat/platform/issues/405)) ([df26b79](https://github.com/panicboat/platform/commit/df26b79b6a80c7044302fd852a9834c856b74d4b))
+* **eks-lifecycle:** 10-k8s-cleanup.sh ALB/NLB foreground cascade + AWS-tag fallback ([#398](https://github.com/panicboat/platform/issues/398)) ([25d8986](https://github.com/panicboat/platform/commit/25d8986b9203cc9a0962170380ba571a6c870ae1))
+* **eks-lifecycle:** 10-k8s-cleanup.sh Karpenter foreground cascade + AWS-tag fallback ([#397](https://github.com/panicboat/platform/issues/397)) ([99c5301](https://github.com/panicboat/platform/commit/99c5301c2114509e0fe3c978e36221dfff5835b3))
+* **eks-lifecycle:** 40-orphan-verify.sh exit 0 in DRY_RUN ([#395](https://github.com/panicboat/platform/issues/395)) ([c972a71](https://github.com/panicboat/platform/commit/c972a7174a2d3d5a614ba4c19b286d1ab6243a53))
+* **eks/monitoring:** Phase 6-3 Theme B monitoring stack hardening ([#361](https://github.com/panicboat/platform/issues/361)) ([677450f](https://github.com/panicboat/platform/commit/677450f715084472b702a0d22d77b779d13f32a1))
+* **eks:** add ec2:DescribeRouteTables to cilium-operator policy ([#402](https://github.com/panicboat/platform/issues/402)) ([ca23f44](https://github.com/panicboat/platform/commit/ca23f442aa11d3eb95c28cf1e7fbb5f950b2cdea))
+* **eks:** Cilium Hubble CA-based ClusterIssuer for mTLS ([#316](https://github.com/panicboat/platform/issues/316)) ([c5f444b](https://github.com/panicboat/platform/commit/c5f444bbafc0813d0f6f94abcf26fab2bea8f26e))
+* **eks:** disable OTel Operator metrics auth (= 6-1 fix forward) ([#327](https://github.com/panicboat/platform/issues/327)) ([055b6f6](https://github.com/panicboat/platform/commit/055b6f6f5c48c53ba1d350cfaca3052bdc49154b))
+* **eks:** Mimir cardinality limit + apiserver bucket drop ([#314](https://github.com/panicboat/platform/issues/314)) ([d28ed2b](https://github.com/panicboat/platform/commit/d28ed2bd58387e1d6d28e3e1821f3ebc2f15bffc))
+* **eks:** Mimir replication_factor 1 for single-replica ring ([#312](https://github.com/panicboat/platform/issues/312)) ([4d53bca](https://github.com/panicboat/platform/commit/4d53bca4e3726745df0327b05af7777915a48af3))
+* **eks:** oauth2-proxy 4 instances per backend (Phase 4-3 fix forward) ([#311](https://github.com/panicboat/platform/issues/311)) ([0f0d291](https://github.com/panicboat/platform/commit/0f0d291409c0c33a66f09f015e3f56fe83cbd506))
+* **eks:** observability DaemonSets PriorityClass system-node-critical ([#305](https://github.com/panicboat/platform/issues/305)) ([11aff95](https://github.com/panicboat/platform/commit/11aff9529100abbd4f1463af1b76a387f712ddfc))
+* **eks:** Phase 3 Sub-project 4b — Fluent Bit rolling + OTel otlp_http ([#303](https://github.com/panicboat/platform/issues/303)) ([0f5d156](https://github.com/panicboat/platform/commit/0f5d1562c858d11c7d2baeb66bdc3eb45f347d2c))
+* **eks:** Phase 3 Sub-project 4b — OTel Collector logs to otlphttp/loki ([#302](https://github.com/panicboat/platform/issues/302)) ([a7b7abd](https://github.com/panicboat/platform/commit/a7b7abd7f2cddb01375e10b5fa158d860938898f))
+* **eks:** remove ruby from Instrumentation CR (= 6-2 fix forward) ([#344](https://github.com/panicboat/platform/issues/344)) ([ee33736](https://github.com/panicboat/platform/commit/ee33736a033455fa3186ae0b81e0dc9de712a917))
+* **flux:** AWS Secrets Manager property names to snake_case ([#444](https://github.com/panicboat/platform/issues/444)) ([70b8c33](https://github.com/panicboat/platform/commit/70b8c33fb5ef9ff67abce2f41f4f3b24de6d9761))
+* **flux:** ExternalSecret apiVersion v1beta1 -&gt; v1 ([#442](https://github.com/panicboat/platform/issues/442)) ([8fdeecf](https://github.com/panicboat/platform/commit/8fdeecf05bbf65975f9beca3d92bf6179a846295))
+* **flux:** K8s Secret keys to camelCase for source-controller compatibility ([#443](https://github.com/panicboat/platform/issues/443)) ([7461e9a](https://github.com/panicboat/platform/commit/7461e9abbebdc3f412f0b2fc04fb05fa51825ac8))
+* **karpenter:** EC2NodeClass.spec.role to deterministic name ([#332](https://github.com/panicboat/platform/issues/332)) ([7ae57ed](https://github.com/panicboat/platform/commit/7ae57eddb1b582574c3a164794df79e25c3ddc1d))
+* **kubernetes/components/oauth2-proxy/production:** pass email as the upstream username ([#763](https://github.com/panicboat/platform/issues/763)) ([2f773fc](https://github.com/panicboat/platform/commit/2f773fc1553dfe801cc1de42a4615553320d73f3))
+* **kubernetes/components/tempo/production:** drop the chart-default opencensus receiver ([#743](https://github.com/panicboat/platform/issues/743)) ([9efc8c1](https://github.com/panicboat/platform/commit/9efc8c173685a446c2a47b95683af8b6046cf149))
+* **kubernetes/dashboard:** correct kube_pod_status_phase query filters ([#700](https://github.com/panicboat/platform/issues/700)) ([ed669d0](https://github.com/panicboat/platform/commit/ed669d0ebf2f82d2ef839a826f379133c208d641))
+* **kubernetes:** stop Karpenter node churn loop from hubble-relay affinity ([#695](https://github.com/panicboat/platform/issues/695)) ([00f6d37](https://github.com/panicboat/platform/commit/00f6d37ba95a2fbe9624532fc997d52cc2108b31))
+* **kubernetes:** use xforwarded proxy headers for Keycloak behind ALB ([#745](https://github.com/panicboat/platform/issues/745)) ([43b8c9b](https://github.com/panicboat/platform/commit/43b8c9b307359d4508e2b1964adc73b1d57d803e))
+* pin hydrate toolchain and render against the cluster Kubernetes version ([#740](https://github.com/panicboat/platform/issues/740)) ([63f7ff2](https://github.com/panicboat/platform/commit/63f7ff2f2ff898e1844095349b9d49444de5887d))
+* **prometheus-operator:** use Slack channel ID for holmes webhook ([#783](https://github.com/panicboat/platform/issues/783)) ([27da39d](https://github.com/panicboat/platform/commit/27da39dfd47afcf7e37cd38b43fb7d0c5faeb677))
+* **renovate:** extract major.minor from EKS cluster_version updates ([#670](https://github.com/panicboat/platform/issues/670)) ([7285e16](https://github.com/panicboat/platform/commit/7285e16500cfc9662f2be4c37c2fba72cf4be993))
+* **scripts/eks-lifecycle:** assume into production's dedicated account ([#821](https://github.com/panicboat/platform/issues/821)) ([8e4b516](https://github.com/panicboat/platform/commit/8e4b51648d410dc4659b52e07fae730376ff17bc))
+* **scripts/eks-lifecycle:** sweep orphan ALB controller LB/SG before vpc destroy ([#799](https://github.com/panicboat/platform/issues/799)) ([1100792](https://github.com/panicboat/platform/commit/1100792f2fe0dfd692a03e2368d77e712366a18b))
+* **scripts/eks-lifecycle:** sweep orphan EBS / Route53 in teardown chain ([#452](https://github.com/panicboat/platform/issues/452)) ([8432d24](https://github.com/panicboat/platform/commit/8432d24a0056c3ed4be4f252d1486b7929a613bc))
+* **terraform:** pin required_version to 1.11.6 across multiple modules ([#428](https://github.com/panicboat/platform/issues/428)) ([fd0626b](https://github.com/panicboat/platform/commit/fd0626bdb09384153d1a4a982515e181ba66d7a8))
+
+
+### Performance Improvements
+
+* **kubernetes:** right-size CPU requests to actual usage ([#699](https://github.com/panicboat/platform/issues/699)) ([1946ef3](https://github.com/panicboat/platform/commit/1946ef38d94a28466cc5a8894e94fc036bb13bf6))
+
+
+### Reverts
+
+* **ci:** restore push:main deploy-trigger (revert [#322](https://github.com/panicboat/platform/issues/322) + [#325](https://github.com/panicboat/platform/issues/325)) ([#334](https://github.com/panicboat/platform/issues/334)) ([392e859](https://github.com/panicboat/platform/commit/392e859c3d52a19d137226f25fccc8a089529165))
+* PR [#423](https://github.com/panicboat/platform/issues/423) cilium-envoy tolerations override ([#434](https://github.com/panicboat/platform/issues/434)) ([23d4eb1](https://github.com/panicboat/platform/commit/23d4eb186f5a68fedeb38eec3446182db619c9d7))
+
 ## 0.1.0 (2026-05-16)
 
 
