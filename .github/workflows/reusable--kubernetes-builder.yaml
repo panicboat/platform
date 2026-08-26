@@ -76,7 +76,7 @@ jobs:
 
       - name: Diff manifests
         id: diff
-        uses: int128/diff-action@77a301a80335bebb9abb2d28a3dacfa844105395 # v2.28.0
+        uses: int128/diff-action@4ea4f95e4684b2c719b963eefd7ff4b76d06ff8b # v2.36.0
         with:
           base: ${{ steps.kustomize-base.outputs.directory }}
           head: ${{ steps.kustomize-head.outputs.directory }}
