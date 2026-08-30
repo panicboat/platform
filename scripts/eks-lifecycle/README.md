@@ -76,7 +76,7 @@ make eks-teardown-verify ENV=production    # orphan verify only
   ```bash
   for stack in eks-karpenter eks-holmesgpt eks-secrets eks-logs eks-metrics eks-traces eks alb vpc; do
     echo "=== init: $stack ==="
-    ( cd aws/$stack/envs/production && TG_TF_PATH=tofu terragrunt init -upgrade )
+    ( cd aws/$stack/production && TG_TF_PATH=tofu terragrunt init -upgrade )
   done
   make eks-teardown-aws ENV=production   # 中断地点から再開、 fail fast 後の再 run は idempotent
   ```

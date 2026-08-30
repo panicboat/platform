@@ -83,7 +83,7 @@ export REPO_ROOT
 # ----------------------------------------------------------------------------
 resolve_aws_region() {
   # BSD sed (= macOS default) does not understand \s; use [[:space:]] for portability.
-  local env_file="${REPO_ROOT}/aws/eks/envs/${ENV}/env.hcl"
+  local env_file="${REPO_ROOT}/aws/eks/${ENV}/env.hcl"
   if [ -f "$env_file" ]; then
     grep -E '^[[:space:]]*aws_region[[:space:]]*=' "$env_file" | head -1 | \
       sed -E 's/^[[:space:]]*aws_region[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/'
