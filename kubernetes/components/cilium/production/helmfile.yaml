@@ -14,7 +14,7 @@ environments:
     # convention は kubernetes/helmfile.yaml.gotmpl 参照。値は親 helmfile と同期。
     values:
       - cluster:
-          # RECREATE: cd aws/eks/envs/production && TG_TF_PATH=tofu terragrunt output -raw cluster_endpoint_hostname
+          # RECREATE: cd aws/eks/production && TG_TF_PATH=tofu terragrunt output -raw cluster_endpoint_hostname
           eksApiEndpoint: 60C557B50FC8EBB8CC6748A08CE08F41.gr7.ap-northeast-1.eks.amazonaws.com
 ---
 repositories:

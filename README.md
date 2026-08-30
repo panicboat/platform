@@ -17,7 +17,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.
 ```
 .
 ├── .github/workflows/   # Reusable executors, deploy trigger, hydrator/builder, etc.
-├── aws/                 # Terragrunt stacks per service (envs/{environment})
+├── aws/                 # Terragrunt stacks per service ({environment})
 ├── github/              # Terragrunt stacks for GitHub repo / branch settings
 ├── kubernetes/
 │   ├── clusters/        # Flux bootstrap (per cluster)
@@ -40,8 +40,8 @@ A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.
 
 | Stack | Path convention | Tooling |
 |-------|-----------------|---------|
-| AWS infrastructure | `aws/{service}/envs/{environment}` | Terragrunt + OpenTofu (`reusable--terragrunt-executor.yaml`) |
-| GitHub configuration | `github/{service}/envs/{environment}` | Terragrunt + OpenTofu (`reusable--terragrunt-executor.yaml`) |
+| AWS infrastructure | `aws/{service}/{environment}` | Terragrunt + OpenTofu (`reusable--terragrunt-executor.yaml`) |
+| GitHub configuration | `github/{service}/{environment}` | Terragrunt + OpenTofu (`reusable--terragrunt-executor.yaml`) |
 | Kubernetes platform | `kubernetes/components/{service}/{environment}` | Helmfile → Kustomize hydration (`reusable--kubernetes-hydrator.yaml` / `reusable--kubernetes-builder.yaml`) → Flux CD |
 
 ### Environments and authentication
