@@ -61,8 +61,8 @@ git status --short
 ### Phase 1: VPC + ALB stack (= Terminal A、 sequential)
 
 ```bash
-( cd aws/vpc/envs/production && TG_TF_PATH=tofu terragrunt init -upgrade && TG_TF_PATH=tofu terragrunt apply -auto-approve )
-( cd aws/alb/envs/production && TG_TF_PATH=tofu terragrunt init -upgrade && TG_TF_PATH=tofu terragrunt apply -auto-approve )
+( cd aws/vpc/production && TG_TF_PATH=tofu terragrunt init -upgrade && TG_TF_PATH=tofu terragrunt apply -auto-approve )
+( cd aws/alb/production && TG_TF_PATH=tofu terragrunt init -upgrade && TG_TF_PATH=tofu terragrunt apply -auto-approve )
 ```
 
 期待結果: VPC + subnet + NAT gateway + ACM wildcard cert 作成。 5-10 分 (= ACM の DNS validation 込)。
@@ -70,7 +70,7 @@ git status --short
 ### Phase 2: EKS cluster apply 開始 (= Terminal A、 background)
 
 ```bash
-( cd aws/eks/envs/production && TG_TF_PATH=tofu terragrunt init -upgrade && TG_TF_PATH=tofu terragrunt apply -auto-approve ) 2>&1 | tee /tmp/eks-apply.log
+( cd aws/eks/production && TG_TF_PATH=tofu terragrunt init -upgrade && TG_TF_PATH=tofu terragrunt apply -auto-approve ) 2>&1 | tee /tmp/eks-apply.log
 ```
 
 挙動:
@@ -115,9 +115,9 @@ kubectl get ns
 # 1. 新 cluster_endpoint_hostname + vpc_id 取得 (= operator IAM user の env で terragrunt output)
 (
   unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
-  NEW_EKS_EP=$(cd aws/eks/envs/production && TG_TF_PATH=tofu terragrunt output -raw cluster_endpoint_hostname 2>/dev/null \
+  NEW_EKS_EP=$(cd aws/eks/production && TG_TF_PATH=tofu terragrunt output -raw cluster_endpoint_hostname 2>/dev/null \
                || aws eks describe-cluster --region ap-northeast-1 --name eks-production --query 'cluster.endpoint' --output text | sed 's|https://||')
-  NEW_VPC_ID=$(cd aws/vpc/envs/production && TG_TF_PATH=tofu terragrunt output -raw vpc_id)
+  NEW_VPC_ID=$(cd aws/vpc/production && TG_TF_PATH=tofu terragrunt output -raw vpc_id)
   echo "NEW_EKS_EP=$NEW_EKS_EP"
   echo "NEW_VPC_ID=$NEW_VPC_ID"
 )
@@ -169,7 +169,7 @@ kubectl get pods -n kube-system -l app.kubernetes.io/part-of=cilium
 Phase 4 の cilium install 完了後、 Terminal A の Phase 2 がまだ addon wait 中の間に **別 sub-terminal で**:
 
 ```bash
-( cd aws/eks-karpenter/envs/production && TG_TF_PATH=tofu terragrunt init -upgrade && TG_TF_PATH=tofu terragrunt apply -auto-approve )
+( cd aws/eks-karpenter/production && TG_TF_PATH=tofu terragrunt init -upgrade && TG_TF_PATH=tofu terragrunt apply -auto-approve )
 ```
 
 挙動:
@@ -200,7 +200,7 @@ done'
 ```bash
 for stack in eks-secrets eks-logs eks-metrics eks-traces; do
   echo "=== apply: $stack ==="
-  ( cd aws/$stack/envs/production && TG_TF_PATH=tofu terragrunt init -upgrade && TG_TF_PATH=tofu terragrunt apply -auto-approve )
+  ( cd aws/$stack/production && TG_TF_PATH=tofu terragrunt init -upgrade && TG_TF_PATH=tofu terragrunt apply -auto-approve )
 done
 ```
 

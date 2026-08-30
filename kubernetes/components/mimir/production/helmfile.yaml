@@ -18,9 +18,9 @@ environments:
     # 値は kubernetes/helmfile.yaml.gotmpl の production env block と同期。
     values:
       - mimir:
-          # Source: aws/eks-metrics/envs/production terragrunt output bucket_name
+          # Source: aws/eks-metrics/production terragrunt output bucket_name
           bucketName: mimir-337169763788
-          # Source: aws/eks-metrics/envs/production terragrunt output bucket_path_prefix
+          # Source: aws/eks-metrics/production terragrunt output bucket_path_prefix
           bucketPathPrefix: production
 ---
 repositories:

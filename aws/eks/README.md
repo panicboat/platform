@@ -10,7 +10,7 @@ EKS clusters `eks-${env}` for the panicboat platform.
 |---|---|---|---|
 | `production` | `ap-northeast-1` | `eks-production` | Active |
 
-新環境を追加する際は、対応する `aws_region` を `envs/${env}/env.hcl` に書き、`panicboat/ansible` 側の `eks-login.sh` の `case` 文にも region を追加すること（DRY 違反の二重管理だが現状は許容）。
+新環境を追加する際は、対応する `aws_region` を `${env}/env.hcl` に書き、`panicboat/ansible` 側の `eks-login.sh` の `case` 文にも region を追加すること（DRY 違反の二重管理だが現状は許容）。
 
 ## Cluster (production)
 
@@ -18,7 +18,7 @@ EKS clusters `eks-${env}` for the panicboat platform.
 |---|---|
 | Name | `eks-production` |
 | Region | `ap-northeast-1` |
-| Version | tracked via Renovate (`endoflife-date/amazon-eks`); see `envs/production/env.hcl` |
+| Version | tracked via Renovate (`endoflife-date/amazon-eks`); see `production/env.hcl` |
 | Endpoint | public + private 両方有効 |
 | Authentication | EKS Access Entries (`authentication_mode = "API"`) |
 | Compute | Managed Node Group `system` (Graviton ARM64, gp3 EBS root) |
@@ -59,7 +59,7 @@ source ~/Workspace/eks-login.sh staging us-west-2        # 未知 env は region
 ENV=production
 REGION=ap-northeast-1
 
-ADMIN_ROLE_ARN=$(cd aws/eks/envs/${ENV} && TG_TF_PATH=tofu terragrunt output -raw admin_role_arn)
+ADMIN_ROLE_ARN=$(cd aws/eks/${ENV} && TG_TF_PATH=tofu terragrunt output -raw admin_role_arn)
 CREDS=$(aws sts assume-role \
   --role-arn "$ADMIN_ROLE_ARN" \
   --role-session-name "kubectl-${USER:-debug}" \
@@ -80,7 +80,7 @@ session を破棄するには `unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS
 通常は CI が PR 経由で plan / apply を実行する（merge 時に main push が trigger）。手元から流したい場合：
 
 ```bash
-cd aws/eks/envs/production
+cd aws/eks/production
 TG_TF_PATH=tofu terragrunt plan
 TG_TF_PATH=tofu terragrunt apply -auto-approve
 TG_TF_PATH=tofu terragrunt destroy -auto-approve
@@ -108,6 +108,6 @@ apply role の credentials が必要（CI と同じ `github-oidc-auth-production
 
 ## Renovate
 
-`envs/production/env.hcl` の `cluster_version` 行に Renovate marker（`# renovate: datasource=endoflife-date depName=amazon-eks versioning=loose`）が埋め込まれており、AWS が新しい EKS バージョンを GA するたびに Renovate が PR を起票する。production パスは既存 `packageRules` で **automerge 無効** + `⚠️ production` ラベル付与の対象になるため、手動 merge 必須。
+`production/env.hcl` の `cluster_version` 行に Renovate marker（`# renovate: datasource=endoflife-date depName=amazon-eks versioning=loose`）が埋め込まれており、AWS が新しい EKS バージョンを GA するたびに Renovate が PR を起票する。production パスは既存 `packageRules` で **automerge 無効** + `⚠️ production` ラベル付与の対象になるため、手動 merge 必須。
 
 EKS は **minor skip upgrade 不可**（1.34 → 1.36 のような飛び級は不可、1 minor ずつ）。Renovate は 1 minor ずつしか PR を出さないので運用上は素直に merge していけば追従できる。

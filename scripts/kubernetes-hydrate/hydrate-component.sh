@@ -27,7 +27,7 @@ out_dir="kubernetes/manifests/${env}/${component}"
 # the rendered output depend on which helm binary ran, and renders capability-gated
 # templates against the wrong Kubernetes version. Take the version from the Terraform
 # stack that owns the cluster so there is one source for it.
-env_hcl="aws/eks/envs/${env}/env.hcl"
+env_hcl="aws/eks/${env}/env.hcl"
 if [ ! -f "${env_hcl}" ]; then
     echo "hydrate-component.sh: ${env_hcl} not found; cannot determine cluster version" >&2
     exit 1

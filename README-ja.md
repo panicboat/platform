@@ -17,7 +17,7 @@
 ```
 .
 ├── .github/workflows/   # reusable executor, deploy trigger, hydrator/builder など
-├── aws/                 # service ごとの Terragrunt stack (envs/{environment})
+├── aws/                 # service ごとの Terragrunt stack ({environment})
 ├── github/              # GitHub repo / branch 設定の Terragrunt stack
 ├── kubernetes/
 │   ├── clusters/        # cluster ごとの Flux bootstrap
@@ -40,8 +40,8 @@
 
 | Stack | Path convention | Tooling |
 |-------|-----------------|---------|
-| AWS infrastructure | `aws/{service}/envs/{environment}` | Terragrunt + OpenTofu (`reusable--terragrunt-executor.yaml`) |
-| GitHub configuration | `github/{service}/envs/{environment}` | Terragrunt + OpenTofu (`reusable--terragrunt-executor.yaml`) |
+| AWS infrastructure | `aws/{service}/{environment}` | Terragrunt + OpenTofu (`reusable--terragrunt-executor.yaml`) |
+| GitHub configuration | `github/{service}/{environment}` | Terragrunt + OpenTofu (`reusable--terragrunt-executor.yaml`) |
 | Kubernetes platform | `kubernetes/components/{service}/{environment}` | Helmfile → Kustomize hydration (`reusable--kubernetes-hydrator.yaml` / `reusable--kubernetes-builder.yaml`) → Flux CD |
 
 ### Environments and Authentication

@@ -31,15 +31,15 @@ help: ## Show this help message
 
 init: ## Initialize Terragrunt
 	@printf "$(YELLOW)Initializing Terragrunt for $(ENV)...$(NC)\n"
-	cd envs/$(ENV) && terragrunt init
+	cd $(ENV) && terragrunt init
 
 plan: ## Plan Terragrunt changes
 	@printf "$(YELLOW)Planning Terragrunt changes for $(ENV)...$(NC)\n"
-	cd envs/$(ENV) && terragrunt plan
+	cd $(ENV) && terragrunt plan
 
 apply: ## Apply Terragrunt changes
 	@printf "$(YELLOW)Applying Terragrunt changes for $(ENV)...$(NC)\n"
-	cd envs/$(ENV) && terragrunt apply -auto-approve
+	cd $(ENV) && terragrunt apply -auto-approve
 
 destroy: ## Destroy Terragrunt resources
 	@printf "$(RED)Destroying Terragrunt resources for $(ENV)...$(NC)\n"
@@ -47,14 +47,14 @@ destroy: ## Destroy Terragrunt resources
 	@read -p "Are you sure? [y/N] " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		cd envs/$(ENV) && terragrunt destroy; \
+		cd $(ENV) && terragrunt destroy; \
 	else \
 		printf "$(YELLOW)Cancelled.$(NC)\n"; \
 	fi
 
 validate: ## Validate Terragrunt configuration
 	@printf "$(YELLOW)Validating Terragrunt configuration for $(ENV)...$(NC)\n"
-	cd envs/$(ENV) && terragrunt validate
+	cd $(ENV) && terragrunt validate
 
 fmt: ## Format Terraform files
 	@printf "$(YELLOW)Formatting Terraform files...$(NC)\n"
@@ -70,12 +70,12 @@ clean: ## Clean Terragrunt cache
 
 show: ## Show current Terragrunt state
 	@printf "$(YELLOW)Showing current state for $(ENV)...$(NC)\n"
-	cd envs/$(ENV) && terragrunt show
+	cd $(ENV) && terragrunt show
 
 output: ## Show Terragrunt outputs
 	@printf "$(YELLOW)Showing outputs for $(ENV)...$(NC)\n"
-	cd envs/$(ENV) && terragrunt output
+	cd $(ENV) && terragrunt output
 
 refresh: ## Refresh Terragrunt state
 	@printf "$(YELLOW)Refreshing state for $(ENV)...$(NC)\n"
-	cd envs/$(ENV) && terragrunt refresh
+	cd $(ENV) && terragrunt refresh

@@ -6,7 +6,7 @@
 # - Subnet: VPC private subnets (Tier=private tag で discover)
 # - SecurityGroup: cluster SG (aws:eks:cluster-name tag で discover)
 # - Role: aws/eks-karpenter/ stack が provision した Node IAM role
-#   (aws/eks-karpenter/envs/production terragrunt output `node_role_name` の値)
+#   (aws/eks-karpenter/production terragrunt output `node_role_name` の値)
 # - EBS: gp3 30 GiB (Karpenter-managed node 用 sizing、Plan 1c-β L2 学び参照)
 # - Metadata: IMDSv2 token required (security best practice)
 # =============================================================================

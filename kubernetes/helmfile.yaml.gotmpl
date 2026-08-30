@@ -35,9 +35,9 @@ environments:
     values:
       - cluster:
           name: eks-production
-          # RECREATE: cd aws/eks/envs/production && TG_TF_PATH=tofu terragrunt output -raw cluster_endpoint_hostname
+          # RECREATE: cd aws/eks/production && TG_TF_PATH=tofu terragrunt output -raw cluster_endpoint_hostname
           eksApiEndpoint: 60C557B50FC8EBB8CC6748A08CE08F41.gr7.ap-northeast-1.eks.amazonaws.com
-          # RECREATE: cd aws/vpc/envs/production && TG_TF_PATH=tofu terragrunt output -raw vpc_id
+          # RECREATE: cd aws/vpc/production && TG_TF_PATH=tofu terragrunt output -raw vpc_id
           vpcId: vpc-014774a5d97e1fd9e
           # STABLE: aws/eks/modules/addons.tf で use_name_prefix = false に設定済、timestamp suffix なしの deterministic 名
           albControllerRoleArn: arn:aws:iam::337169763788:role/eks-production-alb-controller
@@ -49,7 +49,7 @@ environments:
           # STABLE: Karpenter sub-module が cluster_name から決定論的に生成
           interruptionQueueName: Karpenter-eks-production
         mimir:
-          # Source: aws/eks-metrics/envs/production terragrunt output
+          # Source: aws/eks-metrics/production terragrunt output
           # S3 backend / Pod Identity role を mimir-distributed chart が consume。
           # helmfile v1.4 は親→子 の auto-inherit をしないため、
           # kubernetes/components/mimir/production/helmfile.yaml の
@@ -60,12 +60,12 @@ environments:
           # aws/eks-metrics/ 側で provision 済)。
           podIdentityRoleName: eks-production-mimir
         loki:
-          # Source: aws/eks-logs/envs/production terragrunt output
+          # Source: aws/eks-logs/production terragrunt output
           bucketName: loki-337169763788
           bucketPathPrefix: production
           podIdentityRoleName: eks-production-loki
         tempo:
-          # Source: aws/eks-traces/envs/production terragrunt output
+          # Source: aws/eks-traces/production terragrunt output
           bucketName: tempo-337169763788
           bucketPathPrefix: production
           podIdentityRoleName: eks-production-tempo

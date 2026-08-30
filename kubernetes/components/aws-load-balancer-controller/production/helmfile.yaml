@@ -13,7 +13,7 @@ environments:
     # convention は kubernetes/helmfile.yaml.gotmpl 参照。値は親 helmfile と同期。
     values:
       - cluster:
-          # RECREATE: cd aws/vpc/envs/production && TG_TF_PATH=tofu terragrunt output -raw vpc_id
+          # RECREATE: cd aws/vpc/production && TG_TF_PATH=tofu terragrunt output -raw vpc_id
           vpcId: vpc-014774a5d97e1fd9e
           # STABLE: aws/eks/modules/addons.tf で deterministic 化済
           albControllerRoleArn: arn:aws:iam::337169763788:role/eks-production-alb-controller

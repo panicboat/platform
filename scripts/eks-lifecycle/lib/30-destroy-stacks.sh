@@ -88,7 +88,7 @@ STACKS=(
 confirm "About to DESTROY 9 stacks for ENV=${ENV}. Continue?"
 
 for stack in "${STACKS[@]}"; do
-  info "Step 30.${stack}: terragrunt destroy aws/${stack}/envs/${ENV}"
+  info "Step 30.${stack}: terragrunt destroy aws/${stack}/${ENV}"
 
   # Refresh credentials if expiring soon
   if creds_expiring_soon; then
@@ -97,10 +97,10 @@ for stack in "${STACKS[@]}"; do
     . "${LIB_DIR}/00-auth.sh"
   fi
 
-  if ! ( cd "${REPO_ROOT}/aws/${stack}/envs/${ENV}" && \
+  if ! ( cd "${REPO_ROOT}/aws/${stack}/${ENV}" && \
          run env TG_TF_PATH=tofu terragrunt destroy -auto-approve ); then
     error "terragrunt destroy failed at aws/${stack}. Manually inspect:
-    cd aws/${stack}/envs/${ENV} && TG_TF_PATH=tofu terragrunt destroy
+    cd aws/${stack}/${ENV} && TG_TF_PATH=tofu terragrunt destroy
 After resolving, re-run: make eks-teardown-aws ENV=${ENV}"
     exit 1
   fi

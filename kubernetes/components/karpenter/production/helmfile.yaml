@@ -21,7 +21,7 @@ environments:
       - cluster:
           name: eks-production
         karpenter:
-          # Source: aws/eks-karpenter/envs/production terragrunt output
+          # Source: aws/eks-karpenter/production terragrunt output
           interruptionQueueName: Karpenter-eks-production
 ---
 repositories:

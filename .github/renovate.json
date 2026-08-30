@@ -105,7 +105,7 @@
       "customType": "regex",
       "description": "EKS Kubernetes version pinned in env.hcl",
       "managerFilePatterns": [
-        "/^aws/eks/envs/.+/env\\.hcl$/"
+        "/^aws/eks/.+/env\\.hcl$/"
       ],
       "matchStrings": [
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\n\\s*cluster_version\\s*=\\s*\"(?<currentValue>[^\"]+)\""
