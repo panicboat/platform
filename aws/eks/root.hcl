@@ -6,7 +6,7 @@ locals {
   project_name = "eks"
 
   # Parse environment from the directory path
-  # This assumes environments are in envs/<environment>/ directories
+  # The environment is the last path segment (e.g. .../production)
   path_parts  = split("/", path_relative_to_include())
   environment = element(local.path_parts, length(local.path_parts) - 1)
 
