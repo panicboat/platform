@@ -24,13 +24,13 @@ stack_conventions:
   - root: "aws/{service}"
     stacks:
       - name: terragrunt
-        directory: "envs/{environment}"
+        directory: "{environment}"
         required_attributes: [aws_region, iam_role_plan, iam_role_apply]
 
   - root: "github/{service}"
     stacks:
       - name: terragrunt
-        directory: "envs/{environment}"
+        directory: "{environment}"
         required_attributes: [aws_region, iam_role_plan, iam_role_apply]
 
   - root: "kubernetes/components/{service}"
