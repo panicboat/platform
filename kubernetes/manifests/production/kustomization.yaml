@@ -4,7 +4,6 @@ resources:
   - ./beyla
   - ./cert-manager
   - ./cilium
-  - ./cloudnative-pg
   - ./dashboard
   - ./external-dns
   - ./external-secrets
@@ -13,7 +12,6 @@ resources:
   - ./holmesgpt
   - ./karpenter
   - ./keda
-  - ./keycloak
   - ./loki
   - ./metrics-server
   - ./mimir
