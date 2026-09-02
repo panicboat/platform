@@ -35,15 +35,3 @@ resource "github_workflow_repository_permissions" "repository" {
   default_workflow_permissions     = "read"
   can_approve_pull_request_reviews = false
 }
-
-resource "aws_cloudwatch_log_group" "github_repository_logs" {
-  for_each = var.repositories
-
-  name              = "/github-repository/${each.value.name}"
-  retention_in_days = var.log_retention_days
-
-  tags = merge(var.common_tags, {
-    LogGroup = "${var.project_name}-${each.value.name}"
-    Purpose  = "github-repository-management"
-  })
-}

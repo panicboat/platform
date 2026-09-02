@@ -10,16 +10,6 @@ output "oidc_provider_url" {
   value       = "https://token.actions.githubusercontent.com"
 }
 
-output "cloudwatch_log_group_name" {
-  description = "Name of the CloudWatch log group for GitHub Actions"
-  value       = aws_cloudwatch_log_group.github_actions_logs.name
-}
-
-output "cloudwatch_log_group_arn" {
-  description = "ARN of the CloudWatch log group for GitHub Actions"
-  value       = aws_cloudwatch_log_group.github_actions_logs.arn
-}
-
 output "github_org" {
   description = "GitHub organization name"
   value       = var.github_org

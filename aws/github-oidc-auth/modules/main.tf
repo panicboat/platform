@@ -185,13 +185,3 @@ resource "aws_iam_role_policy_attachment" "apply_additional_policies" {
   role       = aws_iam_role.apply.name
   policy_arn = var.additional_iam_policies[count.index]
 }
-
-# CloudWatch Log Group for GitHub Actions
-resource "aws_cloudwatch_log_group" "github_actions_logs" {
-  name              = "/github-actions/${var.project_name}-${var.environment}"
-  retention_in_days = var.environment == "production" ? 30 : 7
-
-  tags = merge(var.common_tags, {
-    LogGroup = "${var.project_name}-${var.environment}-github-actions"
-  })
-}
