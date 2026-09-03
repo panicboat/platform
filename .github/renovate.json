@@ -121,6 +121,16 @@
       "matchStrings": [
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s*\\n\\s*-\\s*falco-rules:(?<currentValue>\\S+)"
       ]
+    },
+    {
+      "customType": "regex",
+      "description": "Karpenter OCI chart pinned in helmfile (helmfile manager does not see oci:// chart refs)",
+      "managerFilePatterns": [
+        "/^kubernetes/components/karpenter/.+/helmfile\\.yaml$/"
+      ],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s*\\n\\s*version:\\s*\"(?<currentValue>[^\"]+)\""
+      ]
     }
   ]
 }
