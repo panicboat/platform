@@ -1099,7 +1099,7 @@ spec:
               memory: 2Gi
             requests:
               cpu: 100m
-              memory: 1Gi
+              memory: 256Mi
         - name: loki-sc-rules
           image: docker.io/kiwigrid/k8s-sidecar:2.10.3
           imagePullPolicy: IfNotPresent

@@ -18,10 +18,12 @@ defaultArgs:
 # Resources
 # =============================================================================
 # cpu request: 実測平均 4m に対し 100m は過大。right-size。
+# memory: 2026-09-04 recreate 直後 (アイドル状態) の実測 25Mi に対し 200Mi は
+# 過大。実トラフィック投入後に再計測して見直すこと。
 resources:
   requests:
     cpu: 25m
-    memory: 200Mi
+    memory: 64Mi
   limits:
     cpu: 1000m
     memory: 1Gi
