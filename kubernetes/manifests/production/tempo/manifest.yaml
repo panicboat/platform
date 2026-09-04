@@ -242,7 +242,7 @@ spec:
             memory: 2Gi
           requests:
             cpu: 50m
-            memory: 512Mi
+            memory: 128Mi
         env:
         volumeMounts:
         - mountPath: /conf

@@ -3,5 +3,29 @@
 # =============================================================================
 # Resources / Replicas
 # =============================================================================
-# chart default を採用 (HA / resource tuning は現状不要、AWS scaler の IRSA も
-# 利用が顕在化していないため未設定)。
+# cpu/memory request: chart default (各 100m/100Mi) は 2026-09-04 recreate
+# 直後 (アイドル状態) の実測 (operator 1-4m/22-28Mi、metricServer 4m/28Mi、
+# webhooks 1m/8Mi) に対し過大。right-size。実トラフィック投入後に再計測して
+# 見直すこと。
+resources:
+  operator:
+    requests:
+      cpu: 15m
+      memory: 48Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  metricServer:
+    requests:
+      cpu: 15m
+      memory: 48Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  webhooks:
+    requests:
+      cpu: 10m
+      memory: 24Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi

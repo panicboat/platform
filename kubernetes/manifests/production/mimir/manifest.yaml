@@ -1315,7 +1315,7 @@ spec:
               memory: 200Mi
             requests:
               cpu: 25m
-              memory: 100Mi
+              memory: 32Mi
 ---
 # Source: mimir-distributed/templates/distributor/distributor-dep.yaml
 apiVersion: apps/v1
@@ -1415,7 +1415,7 @@ spec:
               memory: 1Gi
             requests:
               cpu: 50m
-              memory: 256Mi
+              memory: 128Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -1526,7 +1526,7 @@ spec:
               memory: 256Mi
             requests:
               cpu: 25m
-              memory: 128Mi
+              memory: 64Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -1652,7 +1652,7 @@ spec:
               memory: 1Gi
             requests:
               cpu: 25m
-              memory: 256Mi
+              memory: 96Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -1776,7 +1776,7 @@ spec:
               memory: 512Mi
             requests:
               cpu: 25m
-              memory: 256Mi
+              memory: 64Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -1891,7 +1891,7 @@ spec:
           resources:
             requests:
               cpu: 25m
-              memory: 128Mi
+              memory: 32Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -2149,7 +2149,7 @@ spec:
               memory: 2Gi
             requests:
               cpu: 25m
-              memory: 512Mi
+              memory: 96Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -2285,7 +2285,7 @@ spec:
               memory: 2Gi
             requests:
               cpu: 75m
-              memory: 512Mi
+              memory: 768Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -2420,7 +2420,7 @@ spec:
               memory: 2Gi
             requests:
               cpu: 25m
-              memory: 512Mi
+              memory: 96Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -2431,7 +2431,7 @@ spec:
             - name: GOMAXPROCS
               value: "5"
             - name: GOMEMLIMIT
-              value: "536870912"
+              value: "100663296"
 ---
 # Source: mimir-distributed/charts/rollout_operator/templates/prepare-downscale-webhook.yaml
 apiVersion: admissionregistration.k8s.io/v1

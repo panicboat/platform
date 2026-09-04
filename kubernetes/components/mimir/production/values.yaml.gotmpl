@@ -109,6 +109,14 @@ overrides_exporter:
 # cpu request は実測平均 (avg over 6h) に対して余裕を持たせた right-size 値。
 # chart default の 100m は各 component の実使用 (概ね 0-25m) に対し過大で
 # Karpenter の bin-packing を圧迫していた。
+#
+# memory request は 2026-09-04 recreate 直後 (= 実トラフィックほぼ無いアイドル
+# 状態) の実測値に対して headroom を持たせた right-size 値。chart default 由来
+# の 256Mi-512Mi は各 component の実使用 (概ね 12-30Mi) に対し過大だった。
+# ingester のみ実測 (605Mi) が旧 request (512Mi) を超えていたため増量。
+# 実トラフィック投入後に再計測して見直すこと。chunks-cache は memcached の
+# `allocatedMemory: 512` (= キャッシュ本体の割当サイズ) に合わせているため
+# 対象外 (キャッシュが埋まるまでは実測値が低いだけで過大ではない)。
 
 # gateway: chart の HTTP API entry point (nginx-based reverse proxy)
 gateway:
@@ -117,7 +125,7 @@ gateway:
   resources:
     requests:
       cpu: 25m
-      memory: 128Mi
+      memory: 64Mi
     limits:
       cpu: 200m
       memory: 256Mi
@@ -127,7 +135,7 @@ distributor:
   resources:
     requests:
       cpu: 50m
-      memory: 256Mi
+      memory: 128Mi
     limits:
       cpu: 500m
       memory: 1Gi
@@ -141,7 +149,7 @@ ingester:
   resources:
     requests:
       cpu: 75m
-      memory: 512Mi
+      memory: 768Mi
     limits:
       cpu: 1
       memory: 2Gi
@@ -155,7 +163,7 @@ querier:
   resources:
     requests:
       cpu: 25m
-      memory: 256Mi
+      memory: 96Mi
     limits:
       cpu: 500m
       memory: 1Gi
@@ -165,7 +173,7 @@ query_frontend:
   resources:
     requests:
       cpu: 25m
-      memory: 256Mi
+      memory: 64Mi
     limits:
       cpu: 500m
       memory: 512Mi
@@ -179,7 +187,7 @@ store_gateway:
   resources:
     requests:
       cpu: 25m
-      memory: 512Mi
+      memory: 96Mi
     limits:
       cpu: 500m
       memory: 2Gi
@@ -193,7 +201,7 @@ compactor:
   resources:
     requests:
       cpu: 25m
-      memory: 512Mi
+      memory: 96Mi
     limits:
       cpu: 500m
       memory: 2Gi
@@ -203,6 +211,8 @@ compactor:
     size: 10Gi
 
 # memcached (chunks-cache) — querier の S3 query 高速化
+# NOTE: request/limit は allocatedMemory (= memcached -m フラグ) に合わせて
+# あるため他 component と異なり right-size 対象外 (上記 NOTE 参照)。
 chunks-cache:
   enabled: true
   replicas: 1
@@ -224,10 +234,10 @@ query_scheduler:
   resources:
     requests:
       cpu: 25m
-      memory: 128Mi
+      memory: 32Mi
 
 rollout_operator:
   resources:
     requests:
       cpu: 25m
-      memory: 100Mi
+      memory: 32Mi

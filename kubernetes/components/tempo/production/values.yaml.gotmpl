@@ -13,10 +13,12 @@ tempo:
   # -------------------------------------------------------------------------
   # cpu: 実測平均 2m に対し 200m は過大。trace ingest burst 用に headroom は
   # 残しつつ right-size。
+  # memory: 2026-09-04 recreate 直後 (アイドル状態) の実測 47Mi に対し 512Mi は
+  # 過大。実トラフィック投入後に再計測して見直すこと。
   resources:
     requests:
       cpu: 50m
-      memory: 512Mi
+      memory: 128Mi
     limits:
       cpu: 1
       memory: 2Gi

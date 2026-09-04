@@ -12097,11 +12097,11 @@ spec:
             readOnly: true
           resources:
             limits:
-              cpu: 1
-              memory: 1000Mi
+              cpu: 500m
+              memory: 256Mi
             requests:
-              cpu: 100m
-              memory: 100Mi
+              cpu: 15m
+              memory: 48Mi
       volumes:
       - name: certificates
         secret:
@@ -12230,11 +12230,11 @@ spec:
             readOnly: true
           resources:
             limits:
-              cpu: 1
-              memory: 1000Mi
+              cpu: 500m
+              memory: 256Mi
             requests:
-              cpu: 100m
-              memory: 100Mi
+              cpu: 15m
+              memory: 48Mi
       volumes:
       - name: certificates
         secret:
@@ -12345,11 +12345,11 @@ spec:
             readOnly: true
           resources:
             limits:
-              cpu: 1
-              memory: 1000Mi
+              cpu: 200m
+              memory: 128Mi
             requests:
-              cpu: 100m
-              memory: 100Mi
+              cpu: 10m
+              memory: 24Mi
       volumes:
       - name: certificates
         secret:
