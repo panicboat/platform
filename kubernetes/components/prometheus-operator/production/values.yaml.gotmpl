@@ -361,6 +361,22 @@ kube-state-metrics:
       memory: 512Mi
 
 # =============================================================================
+# EKS control plane component monitoring (disabled)
+# =============================================================================
+# kube-scheduler / kube-controller-manager は EKS の managed control plane 上で
+# 動作し、worker node には Pod として存在しないため scrape 不可能 (= chart
+# default の enabled: true のままだと ServiceMonitor が endpoint 0 件のまま
+# 残り、KubeSchedulerDown / KubeControllerManagerDown が恒常的に発火する)。
+# kube-proxy は本 cluster では Cilium (kube-proxy-less mode) が代替しており
+# DaemonSet 自体が存在しないため同様に無効化 (= KubeProxyDown も恒常発火)。
+kubeScheduler:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+# =============================================================================
 # Prometheus Operator
 # =============================================================================
 # NOTE: production では admissionWebhooks を再有効化 (= local で disable していた
