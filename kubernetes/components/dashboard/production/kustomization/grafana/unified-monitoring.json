@@ -8,7 +8,7 @@
           "uid": "-- Grafana --"
         },
         "enable": true,
-        "hide": true,
+        "hide": false,
         "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
         "type": "dashboard"
@@ -37,6 +37,7 @@
         "type": "prometheus",
         "uid": "mimir"
       },
+      "description": "Includes Succeeded (completed Job) pods.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -56,7 +57,7 @@
         }
       },
       "gridPos": {
-        "h": 3,
+        "h": 4,
         "w": 4,
         "x": 0,
         "y": 1
@@ -64,7 +65,7 @@
       "id": 2,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -94,6 +95,7 @@
         "type": "prometheus",
         "uid": "mimir"
       },
+      "description": "Counts pods by phase only. A pod stuck in CrashLoopBackOff or ImagePullBackOff still reports phase=Running and will NOT be counted here.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -117,7 +119,7 @@
         }
       },
       "gridPos": {
-        "h": 3,
+        "h": 4,
         "w": 4,
         "x": 4,
         "y": 1
@@ -125,7 +127,7 @@
       "id": 3,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -174,7 +176,7 @@
         }
       },
       "gridPos": {
-        "h": 3,
+        "h": 4,
         "w": 4,
         "x": 8,
         "y": 1
@@ -182,7 +184,7 @@
       "id": 4,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -200,7 +202,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\"}[5m]))",
+          "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval]))",
           "refId": "A"
         }
       ],
@@ -212,6 +214,7 @@
         "type": "prometheus",
         "uid": "mimir"
       },
+      "description": "Current p95 latency (last data point), not an average over the selected time range.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -239,7 +242,7 @@
         }
       },
       "gridPos": {
-        "h": 3,
+        "h": 4,
         "w": 4,
         "x": 12,
         "y": 1
@@ -247,12 +250,12 @@
       "id": 5,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "mean"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
@@ -265,7 +268,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval])) by (le))",
           "refId": "A"
         }
       ],
@@ -277,6 +280,7 @@
         "type": "prometheus",
         "uid": "mimir"
       },
+      "description": "Container restarts in the last 15m (not lifetime cumulative count).",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -300,7 +304,7 @@
         }
       },
       "gridPos": {
-        "h": 3,
+        "h": 4,
         "w": 4,
         "x": 16,
         "y": 1
@@ -308,7 +312,7 @@
       "id": 6,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -326,11 +330,11 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "expr": "sum(kube_pod_container_status_restarts_total{namespace=~\"$namespace\", pod=~\"$pod\"})",
+          "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=~\"$namespace\", pod=~\"$pod\"}[15m]))",
           "refId": "A"
         }
       ],
-      "title": "Restarts",
+      "title": "Restarts (15m)",
       "type": "stat"
     },
     {
@@ -357,7 +361,7 @@
         }
       },
       "gridPos": {
-        "h": 3,
+        "h": 4,
         "w": 4,
         "x": 20,
         "y": 1
@@ -365,7 +369,7 @@
       "id": 7,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -395,7 +399,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 4
+        "y": 16
       },
       "id": 8,
       "title": "Traces",
@@ -416,6 +420,13 @@
             },
             "inspect": false
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Trace",
+              "url": "/d/unified-monitoring/unified-monitoring?var-traceId=${__data.fields.traceID}&${__url_time_range}"
+            }
+          ],
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -425,14 +436,7 @@
                 "value": null
               }
             ]
-          },
-          "links": [
-            {
-              "title": "View Trace",
-              "url": "/d/unified-monitoring/unified-monitoring?var-traceId=${__data.fields.traceID}&${__url_time_range}",
-              "targetBlank": false
-            }
-          ]
+          }
         },
         "overrides": [
           {
@@ -469,7 +473,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 5
+        "y": 17
       },
       "id": 9,
       "options": {
@@ -497,8 +501,8 @@
             "uid": "tempo"
           },
           "limit": 20,
-          "queryType": "traceql",
           "query": "{resource.service.name =~ \"${service:regex}\" && resource.k8s.namespace.name =~ \"${namespace:regex}\"}",
+          "queryType": "traceql",
           "refId": "A",
           "tableType": "traces"
         }
@@ -516,7 +520,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 25
       },
       "id": 21,
       "options": {},
@@ -539,20 +543,20 @@
         "type": "tempo",
         "uid": "tempo"
       },
-      "description": "Service dependencies based on trace data",
+      "description": "Cluster-wide service map for the selected time range. The Namespace/Service variables above do not filter this panel.",
       "gridPos": {
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 25
+        "y": 37
       },
       "id": 22,
       "options": {
-        "nodes": {
-          "mainStatUnit": "ms"
-        },
         "edges": {
           "mainStatUnit": "r/sec"
+        },
+        "nodes": {
+          "mainStatUnit": "ms"
         }
       },
       "targets": [
@@ -573,7 +577,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 37
+        "y": 49
       },
       "id": 10,
       "title": "Application Metrics",
@@ -638,7 +642,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 38
+        "y": 50
       },
       "id": 11,
       "options": {
@@ -659,7 +663,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\"}[1m])) by (http_route)",
+          "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval])) by (http_route)",
           "legendFormat": "{{http_route}}",
           "refId": "A"
         }
@@ -726,7 +730,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 38
+        "y": 50
       },
       "id": 12,
       "options": {
@@ -747,7 +751,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\"}[1m])) by (le, http_route))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval])) by (le, http_route))",
           "legendFormat": "{{http_route}}",
           "refId": "A"
         }
@@ -760,7 +764,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 56
       },
       "id": 13,
       "title": "Resource Usage",
@@ -825,7 +829,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 45
+        "y": 57
       },
       "id": 14,
       "options": {
@@ -913,7 +917,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 45
+        "y": 57
       },
       "id": 15,
       "options": {
@@ -947,7 +951,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 51
+        "y": 63
       },
       "id": 16,
       "title": "Network",
@@ -1012,7 +1016,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 52
+        "y": 64
       },
       "id": 17,
       "options": {
@@ -1055,6 +1059,7 @@
         "type": "prometheus",
         "uid": "mimir"
       },
+      "description": "Egress (source_namespace) and inbound (destination_namespace) drops shown separately.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1109,7 +1114,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 52
+        "y": 64
       },
       "id": 18,
       "options": {
@@ -1131,8 +1136,17 @@
             "uid": "mimir"
           },
           "expr": "sum(rate(hubble_drop_total{source_namespace=~\"$namespace\"}[5m])) by (reason)",
-          "legendFormat": "{{reason}}",
+          "legendFormat": "egress {{reason}}",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "sum(rate(hubble_drop_total{destination_namespace=~\"$namespace\"}[5m])) by (reason)",
+          "legendFormat": "inbound {{reason}}",
+          "refId": "B"
         }
       ],
       "title": "Network Drops (Hubble)",
@@ -1143,7 +1157,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 58
+        "y": 70
       },
       "id": 19,
       "title": "Logs",
@@ -1158,15 +1172,15 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 59
+        "y": 71
       },
       "id": 20,
       "options": {
         "dedupStrategy": "none",
         "enableLogDetails": true,
         "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": false,
+        "showCommonLabels": true,
+        "showLabels": true,
         "showTime": true,
         "sortOrder": "Descending",
         "wrapLogMessage": false
@@ -1183,8 +1197,157 @@
       ],
       "title": "Application Logs",
       "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "description": "Verify the http_response_status_code label exists on http_server_request_duration_seconds_count in Mimir before relying on this (checked against live traffic pending; monolith/frontend are currently scaled to 0).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 5
+      },
+      "id": 23,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "100 * sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\", http_response_status_code=~\"5..\"}[$__rate_interval])) / clamp_min(sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval])), 0.001)",
+          "refId": "A"
+        }
+      ],
+      "title": "5xx Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "description": "Node count over time \u2014 catches fast Karpenter scale-out/in events an instant stat cannot. See Infrastructure Monitoring for Karpenter event logs.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "id": 24,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"} == 1)",
+          "legendFormat": "Ready",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=~\"false|unknown\"} == 1)",
+          "legendFormat": "Not Ready",
+          "refId": "B"
+        }
+      ],
+      "title": "Node Ready State",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 25,
+      "panels": [],
+      "title": "Node Health",
+      "type": "row"
     }
   ],
+  "refresh": "30s",
   "schemaVersion": 39,
   "tags": [
     "unified",
@@ -1194,6 +1357,7 @@
   "templating": {
     "list": [
       {
+        "allValue": ".+",
         "current": {
           "selected": false,
           "text": "All",
@@ -1207,7 +1371,7 @@
         "hide": 0,
         "includeAll": true,
         "label": "Namespace",
-        "multi": false,
+        "multi": true,
         "name": "namespace",
         "options": [],
         "query": {
@@ -1219,10 +1383,10 @@
         "regex": "",
         "skipUrlSync": false,
         "sort": 1,
-        "type": "query",
-        "allValue": ".+"
+        "type": "query"
       },
       {
+        "allValue": ".+",
         "current": {
           "selected": false,
           "text": "All",
@@ -1232,26 +1396,26 @@
           "type": "prometheus",
           "uid": "mimir"
         },
-        "definition": "label_values(http_server_request_duration_seconds_count, service_name)",
+        "definition": "label_values(http_server_request_duration_seconds_count{k8s_namespace_name=~\"$namespace\"}, service_name)",
         "hide": 0,
         "includeAll": true,
         "label": "Service",
-        "multi": false,
+        "multi": true,
         "name": "service",
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(http_server_request_duration_seconds_count, service_name)",
+          "query": "label_values(http_server_request_duration_seconds_count{k8s_namespace_name=~\"$namespace\"}, service_name)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
         "sort": 1,
-        "type": "query",
-        "allValue": ".+"
+        "type": "query"
       },
       {
+        "allValue": ".+",
         "current": {
           "selected": false,
           "text": "All",
@@ -1265,7 +1429,7 @@
         "hide": 0,
         "includeAll": true,
         "label": "Pod",
-        "multi": false,
+        "multi": true,
         "name": "pod",
         "options": [],
         "query": {
@@ -1278,8 +1442,7 @@
         "regex": "",
         "skipUrlSync": false,
         "sort": 1,
-        "type": "query",
-        "allValue": ".+"
+        "type": "query"
       },
       {
         "current": {
@@ -1328,7 +1491,14 @@
     "from": "now-1h",
     "to": "now"
   },
-  "timepicker": {},
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m"
+    ]
+  },
   "timezone": "browser",
   "title": "Unified Monitoring",
   "uid": "unified-monitoring",

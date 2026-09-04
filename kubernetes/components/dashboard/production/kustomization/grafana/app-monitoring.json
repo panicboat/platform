@@ -8,7 +8,7 @@
           "uid": "-- Grafana --"
         },
         "enable": true,
-        "hide": true,
+        "hide": false,
         "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
         "type": "dashboard"
@@ -37,6 +37,7 @@
         "type": "prometheus",
         "uid": "mimir"
       },
+      "description": "Includes Succeeded (completed Job) pods, so this will not equal Running + Unhealthy below.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -57,7 +58,7 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 6,
+        "w": 4,
         "x": 0,
         "y": 1
       },
@@ -94,6 +95,7 @@
         "type": "prometheus",
         "uid": "mimir"
       },
+      "description": "Counts pods by phase only. A pod stuck in CrashLoopBackOff or ImagePullBackOff still reports phase=Running and will NOT be counted here.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -118,8 +120,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 6,
+        "w": 4,
+        "x": 4,
         "y": 1
       },
       "id": 3,
@@ -175,8 +177,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 12,
+        "w": 4,
+        "x": 8,
         "y": 1
       },
       "id": 4,
@@ -200,7 +202,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\"}[5m]))",
+          "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval]))",
           "refId": "A"
         }
       ],
@@ -212,6 +214,7 @@
         "type": "prometheus",
         "uid": "mimir"
       },
+      "description": "Current p95 latency (last data point), not an average over the selected time range.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -240,8 +243,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 18,
+        "w": 4,
+        "x": 12,
         "y": 1
       },
       "id": 5,
@@ -252,7 +255,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "mean"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
@@ -265,7 +268,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval])) by (le))",
           "refId": "A"
         }
       ],
@@ -298,6 +301,13 @@
             },
             "inspect": false
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Trace",
+              "url": "/d/app-monitoring/application-monitoring?var-traceId=${__data.fields.traceID}&${__url_time_range}"
+            }
+          ],
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -307,14 +317,7 @@
                 "value": null
               }
             ]
-          },
-          "links": [
-            {
-              "title": "View Trace",
-              "url": "/d/app-monitoring/application-monitoring?var-traceId=${__data.fields.traceID}&${__url_time_range}",
-              "targetBlank": false
-            }
-          ]
+          }
         },
         "overrides": [
           {
@@ -351,7 +354,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 6
+        "y": 12
       },
       "id": 7,
       "options": {
@@ -379,8 +382,8 @@
             "uid": "tempo"
           },
           "limit": 20,
-          "queryType": "traceql",
           "query": "{resource.service.name =~ \"${service:regex}\" && resource.k8s.namespace.name =~ \"${namespace:regex}\"}",
+          "queryType": "traceql",
           "refId": "A",
           "tableType": "traces"
         }
@@ -398,7 +401,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 20
       },
       "id": 13,
       "options": {},
@@ -421,20 +424,20 @@
         "type": "tempo",
         "uid": "tempo"
       },
-      "description": "Service dependencies based on trace data",
+      "description": "Cluster-wide service map for the selected time range. The Namespace/Service variables above do not filter this panel.",
       "gridPos": {
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 32
       },
       "id": 14,
       "options": {
-        "nodes": {
-          "mainStatUnit": "ms"
-        },
         "edges": {
           "mainStatUnit": "r/sec"
+        },
+        "nodes": {
+          "mainStatUnit": "ms"
         }
       },
       "targets": [
@@ -455,7 +458,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 38
+        "y": 44
       },
       "id": 8,
       "title": "Logs",
@@ -470,15 +473,15 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 39
+        "y": 45
       },
       "id": 9,
       "options": {
         "dedupStrategy": "none",
         "enableLogDetails": true,
         "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": false,
+        "showCommonLabels": true,
+        "showLabels": true,
         "showTime": true,
         "sortOrder": "Descending",
         "wrapLogMessage": false
@@ -501,7 +504,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 49
+        "y": 55
       },
       "id": 10,
       "title": "Metrics",
@@ -566,7 +569,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 50
+        "y": 56
       },
       "id": 11,
       "options": {
@@ -587,7 +590,7 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\"}[1m])) by (http_route)",
+          "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval])) by (http_route)",
           "legendFormat": "{{http_route}}",
           "refId": "A"
         }
@@ -654,7 +657,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 50
+        "y": 56
       },
       "id": 12,
       "options": {
@@ -675,15 +678,116 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\"}[1m])) by (le, http_route))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval])) by (le, http_route))",
           "legendFormat": "{{http_route}}",
           "refId": "A"
         }
       ],
       "title": "P95 Latency by Route",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "description": "Verify the http_response_status_code label exists on http_server_request_duration_seconds_count in Mimir before relying on this (checked against live traffic pending; monolith/frontend are currently scaled to 0).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 1
+      },
+      "id": 15,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "100 * sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\", http_response_status_code=~\"5..\"}[$__rate_interval])) / clamp_min(sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval])), 0.001)",
+          "refId": "A"
+        }
+      ],
+      "title": "5xx Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "description": "Failed traces for the selected namespace/service \u2014 narrower than the general Trace Search Results below.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "id": 16,
+      "options": {},
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "limit": 50,
+          "query": "{ resource.service.name =~ \"${service:regex}\" && resource.k8s.namespace.name =~ \"${namespace:regex}\" && status = error }",
+          "queryType": "traceql",
+          "refId": "A",
+          "tableType": "traces"
+        }
+      ],
+      "title": "Error Traces",
+      "type": "table"
     }
   ],
+  "refresh": "30s",
   "schemaVersion": 39,
   "tags": [
     "application",
@@ -692,6 +796,7 @@
   "templating": {
     "list": [
       {
+        "allValue": ".+",
         "current": {
           "selected": false,
           "text": "All",
@@ -705,7 +810,7 @@
         "hide": 0,
         "includeAll": true,
         "label": "Namespace",
-        "multi": false,
+        "multi": true,
         "name": "namespace",
         "options": [],
         "query": {
@@ -717,10 +822,10 @@
         "regex": "",
         "skipUrlSync": false,
         "sort": 1,
-        "type": "query",
-        "allValue": ".+"
+        "type": "query"
       },
       {
+        "allValue": ".+",
         "current": {
           "selected": false,
           "text": "All",
@@ -730,26 +835,26 @@
           "type": "prometheus",
           "uid": "mimir"
         },
-        "definition": "label_values(http_server_request_duration_seconds_count, service_name)",
+        "definition": "label_values(http_server_request_duration_seconds_count{k8s_namespace_name=~\"$namespace\"}, service_name)",
         "hide": 0,
         "includeAll": true,
         "label": "Service",
-        "multi": false,
+        "multi": true,
         "name": "service",
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(http_server_request_duration_seconds_count, service_name)",
+          "query": "label_values(http_server_request_duration_seconds_count{k8s_namespace_name=~\"$namespace\"}, service_name)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
         "sort": 1,
-        "type": "query",
-        "allValue": ".+"
+        "type": "query"
       },
       {
+        "allValue": ".+",
         "current": {
           "selected": false,
           "text": "All",
@@ -763,7 +868,7 @@
         "hide": 0,
         "includeAll": true,
         "label": "Pod",
-        "multi": false,
+        "multi": true,
         "name": "pod",
         "options": [],
         "query": {
@@ -776,8 +881,7 @@
         "regex": "",
         "skipUrlSync": false,
         "sort": 1,
-        "type": "query",
-        "allValue": ".+"
+        "type": "query"
       },
       {
         "current": {
@@ -826,7 +930,14 @@
     "from": "now-1h",
     "to": "now"
   },
-  "timepicker": {},
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m"
+    ]
+  },
   "timezone": "browser",
   "title": "Application Monitoring",
   "uid": "app-monitoring",
