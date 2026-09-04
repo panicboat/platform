@@ -32,6 +32,7 @@ releases:
   - name: karpenter
     namespace: karpenter
     chart: oci://public.ecr.aws/karpenter/karpenter
-    version: "1.6.5"
+    # renovate: datasource=docker depName=public.ecr.aws/karpenter/karpenter
+    version: "1.14.0"
     values:
       - values.yaml.gotmpl
