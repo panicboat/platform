@@ -1,0 +1,15 @@
+{
+  "aws/alb": "0.1.0",
+  "aws/eks": "0.1.0",
+  "aws/eks-holmesgpt": "0.1.0",
+  "aws/eks-karpenter": "0.1.0",
+  "aws/eks-logs": "0.1.0",
+  "aws/eks-metrics": "0.1.0",
+  "aws/eks-secrets": "0.1.0",
+  "aws/eks-traces": "0.1.0",
+  "aws/github-oidc-auth": "0.1.0",
+  "aws/iam-service-linked-roles": "0.1.0",
+  "aws/secrets-manager": "0.1.0",
+  "aws/vpc": "0.1.0",
+  "kubernetes": "0.1.0"
+}
