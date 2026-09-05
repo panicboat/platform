@@ -50,6 +50,7 @@ jobs:
           pr-number: ${{ steps.pr-info.outputs.number }}
           github-token: ${{ steps.app-token.outputs.token }}
           config-path: 'workflow-config.yaml'
+          environments: 'master'
 
   kubernetes-targets-group:
     name: 'Group Kubernetes Targets by Environment'
