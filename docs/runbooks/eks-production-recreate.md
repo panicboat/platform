@@ -24,6 +24,7 @@ EKS cluster cold-start は cilium native CNI ENI mode (= PR #393) との chicken
 - VPC stack も destroy 済
 - `make eks-teardown ENV=production` 完走 + `make eks-teardown-verify ENV=production` で `No orphan resources detected` 確認済
 - `aws/iam-service-linked-roles` (`AWSServiceRoleForEC2Spot` 等、 account 単位 singleton) は本 runbook の destroy/recreate cycle 対象外。 account 初回 bootstrap 時に一度 apply されていれば以降は不要 (`aws iam get-role --role-name AWSServiceRoleForEC2Spot` で存在確認可能)
+- `aws/secrets-manager` (`aws_secretsmanager_secret` container、 GitHub App private key 等) も本 runbook の destroy/recreate cycle 対象外 (Phase 7 の stack list にも含めないこと)。 AWS 側で再生成できない secret を扱うため、 cluster の destroy/recreate に巻き込むと復旧不能なデータ消失になりうる
 
 ### 2.2 Operator environment
 
