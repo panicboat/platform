@@ -61,6 +61,8 @@ Phase 1([2026-05-16-release-please-rollout-design.md](2026-05-16-release-please-
 
 実装時は `aws/*/production/` の実在チェックで対象を再確認し、上記スナップショットとの差分があれば実態を優先する。
 
+**実装時の追記:** 実装時点で `aws/secrets-manager/production/` が新規に存在していた(このスナップショット作成後にマージされた PR #885 由来)。実測に合わせて `secrets-manager` を component に追加し、対象は 12 service になった。
+
 各 component:
 
 ```json
@@ -103,6 +105,7 @@ root は `kubernetes/` 配下全体(`kubernetes/components/`、`kubernetes/clust
     "aws/eks-traces": { "release-type": "simple", "component": "eks-traces", "include-component-in-tag": true },
     "aws/github-oidc-auth": { "release-type": "simple", "component": "github-oidc-auth", "include-component-in-tag": true },
     "aws/iam-service-linked-roles": { "release-type": "simple", "component": "iam-service-linked-roles", "include-component-in-tag": true },
+    "aws/secrets-manager": { "release-type": "simple", "component": "secrets-manager", "include-component-in-tag": true },
     "aws/vpc": { "release-type": "simple", "component": "vpc", "include-component-in-tag": true },
     "kubernetes": { "release-type": "simple", "component": "kubernetes", "include-component-in-tag": true }
   }
@@ -123,6 +126,7 @@ root は `kubernetes/` 配下全体(`kubernetes/components/`、`kubernetes/clust
   "aws/eks-traces": "0.1.0",
   "aws/github-oidc-auth": "0.1.0",
   "aws/iam-service-linked-roles": "0.1.0",
+  "aws/secrets-manager": "0.1.0",
   "aws/vpc": "0.1.0",
   "kubernetes": "0.1.0"
 }

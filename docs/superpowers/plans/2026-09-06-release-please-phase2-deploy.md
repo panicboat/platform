@@ -4,7 +4,7 @@
 
 **Goal:** production への deploy を release-please の `release: published` イベント起点に切り替える(aws は component ごとの terragrunt apply、kubernetes は Flux の追従先タグ切り替え)。あわせて #884 以降ライブになっている production 誤爆リスクを止める。
 
-**Architecture:** `release-please-config.json` を manifest mode に切り替え、`aws/{service}` 11 component + `kubernetes` 1 component を管理する。新規 workflow `release-deploy.yml`(`on: release: types: [published]`)が tag 名から component を特定し、aws component は label-resolver を経由せず直接 `reusable--terragrunt-executor.yaml` を呼び出し、kubernetes component は `kubernetes-production` タグを force-update して Flux の追従先を進める。既存の自動 push トリガー(`auto-label--deploy-trigger.yaml`)は `environments: master` を明示して production を対象外にする。
+**Architecture:** `release-please-config.json` を manifest mode に切り替え、`aws/{service}` 12 component + `kubernetes` 1 component を管理する。新規 workflow `release-deploy.yml`(`on: release: types: [published]`)が tag 名から component を特定し、aws component は label-resolver を経由せず直接 `reusable--terragrunt-executor.yaml` を呼び出し、kubernetes component は `kubernetes-production` タグを force-update して Flux の追従先を進める。既存の自動 push トリガー(`auto-label--deploy-trigger.yaml`)は `environments: master` を明示して production を対象外にする。
 
 **Tech Stack:**
 - `googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7` (v5、既存 pin を継続使用)
@@ -34,7 +34,7 @@
 |---|---|---|
 | `.github/workflows/auto-label--deploy-trigger.yaml` | Modify | Label Resolver 呼び出しに `environments: master` を明示し、production を対象外にする |
 | `aqua.yaml` | Modify | `mikefarah/yq` を追加(workflow-config.yaml の値取得に使う) |
-| `release-please-config.json` | Create | manifest mode の component 定義(aws 11 + kubernetes 1) |
+| `release-please-config.json` | Create | manifest mode の component 定義(aws 12 + kubernetes 1、secrets-manager は Task 3 実行時に実測で追加) |
 | `.release-please-manifest.json` | Create | 各 component の現在バージョン state |
 | `.github/workflows/release.yml` | Modify | non-manifest(`release-type: simple`)から manifest mode 呼び出しに変更 |
 | `.github/workflows/release-deploy.yml` | Create | `release: published` 起点で aws component は terragrunt apply、kubernetes component は追従タグを force-update |
@@ -203,7 +203,7 @@ Expected: 1 file changed
 - Create: `.release-please-manifest.json`
 
 **Interfaces:**
-- Produces: 12 個の release-please component(`aws/alb` ... `aws/vpc`、`kubernetes`)。tag 形式は `{component}-vX.Y.Z`
+- Produces: 13 個の release-please component(`aws/alb` ... `aws/vpc`, `aws/secrets-manager`、`kubernetes`)。tag 形式は `{component}-vX.Y.Z`
 
 ### Implementation
 
@@ -309,7 +309,7 @@ git add release-please-config.json .release-please-manifest.json
 git commit -s -m "$(cat <<'EOF'
 feat(ci): switch release-please to manifest mode
 
-aws/{service}(production ディレクトリを持つ11 service)と kubernetes を
+aws/{service}(production ディレクトリを持つ12 service)と kubernetes を
 それぞれ独立 component として管理する。tag は {component}-vX.Y.Z 形式
 (include-component-in-tag: true)。bootstrap-sha は本ブランチの分岐元
 main HEAD に固定し、既存 CHANGELOG.md の履歴とは独立した起点にする。
@@ -468,7 +468,7 @@ jobs:
           fi
           echo "component=$component" >> "$GITHUB_OUTPUT"
           case "$component" in
-            alb|eks|eks-holmesgpt|eks-karpenter|eks-logs|eks-metrics|eks-secrets|eks-traces|github-oidc-auth|iam-service-linked-roles|vpc)
+            alb|eks|eks-holmesgpt|eks-karpenter|eks-logs|eks-metrics|eks-secrets|eks-traces|github-oidc-auth|iam-service-linked-roles|secrets-manager|vpc)
               echo "is-aws=true" >> "$GITHUB_OUTPUT"
               echo "is-kubernetes=false" >> "$GITHUB_OUTPUT"
               ;;
@@ -734,7 +734,7 @@ gh pr create --draft --title "feat(ci): release-please phase 2 — production de
 ## Summary
 
 - `auto-label--deploy-trigger.yaml` を `environments: master` に固定し、#884 以降ライブになっていた production 誤爆リスクを解消
-- release-please を manifest mode に切り替え、aws 11 component + kubernetes 1 component を管理
+- release-please を manifest mode に切り替え、aws 12 component + kubernetes 1 component を管理
 - `release-deploy.yml` を新規追加。release published イベントで aws component は terragrunt apply、kubernetes component は `kubernetes-production` タグを force-update
 - `gotk-sync.yaml` の Flux 追従先を `main` ブランチから `kubernetes-production` タグに変更
 
@@ -746,7 +746,7 @@ gh pr create --draft --title "feat(ci): release-please phase 2 — production de
 
 - [ ] CI(lint-actions / semantic-pull-request)が通る
 - [ ] マージ後、旧 release PR #422 が close 済みであることを確認
-- [ ] 11 component + kubernetes の release PR が個別に生成される
+- [ ] 13 component(aws 12 + kubernetes 1)の release PR が個別に生成される
 - [ ] いずれかの aws component の release PR をマージすると、その component だけ production に terragrunt apply される(他 component・master には影響しない)
 - [ ] kubernetes component の release PR をマージすると `kubernetes-production` タグが移動し、Flux が新しい manifest を反映する
 EOF
