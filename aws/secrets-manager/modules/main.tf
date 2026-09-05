@@ -5,7 +5,11 @@
 # 運用のままにする (tfstate/git に平文 secret を持ち込まないため)。
 #
 # 新しい secret が必要になったら、この module 内の local.secrets に entry を
-# 追加する (stack を分けない。理由は ../README.md 参照)。
+# 追加する (1 secret ごとに stack を割ると管理コストだけが増えるため分けない)。
+#
+# 本 stack は docs/runbooks/eks-production-recreate.md の destroy/recreate
+# cycle 対象外 (GitHub App private key 等 AWS 側で再生成できない secret を
+# 扱うため)。
 
 locals {
   secrets = {
