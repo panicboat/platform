@@ -16,12 +16,6 @@ configMapGenerator:
     options:
       labels:
         grafana_dashboard: "1"
-  - name: grafana-dashboard-unified-monitoring
-    files:
-      - grafana/unified-monitoring.json
-    options:
-      labels:
-        grafana_dashboard: "1"
 
 generatorOptions:
   disableNameSuffixHash: true
