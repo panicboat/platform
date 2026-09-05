@@ -161,16 +161,20 @@ git push origin kubernetes-production --force
 
 3. hydrate/build(`reusable--kubernetes-hydrator.yaml` / `reusable--kubernetes-builder.yaml`)は無変更。これらは PR マージ時点で `kubernetes/manifests/production/` を確定させる工程であり、Flux が「いつ」その状態を読むかとは独立している。release tag が指すコミットの時点で、hydrate は release を待たずに既に完了している
 
-## 既存自動パイプラインとの分離
+## 既存自動パイプラインとの分離(緊急度高)
 
-`auto-label--deploy-trigger.yaml` の Label Resolver ステップは、現在 `environments:` を指定しておらず `workflow-config.yaml` の `environments` 全キーがデフォルトになる(`label-resolver/bin/resolver` の `parse_environments(nil)` 参照)。本設計で `production` を `workflow-config.yaml` に追加すると、このデフォルト動作により自動パイプラインが production も対象にしてしまう(意図しない誤爆)。
+`workflow-config.yaml` の `production` は本 spec 検討中に #884(`chore(workflow-config): enable production for CI-driven deploy automation`)で**既に有効化済み**。しかし `auto-label--deploy-trigger.yaml` の Label Resolver ステップは `environments:` を指定しておらず `workflow-config.yaml` の `environments` 全キーがデフォルトになる(`label-resolver/bin/resolver` の `parse_environments(nil)` 参照)。そのため #884 以降、**既存の自動パイプライン(push トリガー・PR ラベルベース)が production も対象にしてしまっている**。
 
-これを防ぐため、`auto-label--deploy-trigger.yaml` の Label Resolver 呼び出しに `environments: master` を明示的に指定する。これにより:
+`master` と `production` を両方定義しているのは現時点で `github-oidc-auth` のみ(他 service は production か master の一方のみ定義)。`deploy:{service}` ラベルは environment を区別しないため、`aws/github-oidc-auth/master/` だけを変更した PR でも resolver は `master`・`production` 両方をターゲットに含めてしまい、**変更していない production にも terragrunt apply が実行されている可能性がある**。`github-oidc-auth` は直近6ヶ月で47コミットと変更頻度が高く、影響は無視できない。
 
-- 自動パイプライン(push トリガー・PR ラベルベース)は `master` のみを対象にし続ける
-- production は本設計の release-published トリガーのみが唯一の deploy 経路になる
+このため `auto-label--deploy-trigger.yaml` の Label Resolver 呼び出しに `environments: master` を明示的に指定する修正は、**本設計の実装の中で最優先(他のタスクより先)に対応する**。これにより:
 
-## workflow-config.yaml の変更
+- 自動パイプライン(push トリガー・PR ラベルベース)は `master` のみを対象にし続ける(#884 以前の意図された挙動に戻す)
+- production は本設計の release-published トリガーのみが唯一の deploy 経路になる(継続的パイプラインと release-gated パイプラインが同じ production を二重に扱う状態を解消する)
+
+## workflow-config.yaml
+
+`production` エントリは #884 で既に有効化済み(本設計側での追加作業は不要)。IAM role / region はこの値を新規 workflow(`release-deploy.yml`)が参照する。
 
 ```yaml
 environments:
@@ -204,10 +208,9 @@ Phase 1 と同じ(`actions/create-github-app-token`、`googleapis/release-please
 
 ## Verification
 
+- [ ] **(最優先)** `auto-label--deploy-trigger.yaml` の Label Resolver 呼び出しに `environments: master` が明示され、#884 以降の production 誤爆リスク(`github-oidc-auth` 等)が解消されている
 - [ ] `release-please-config.json` / `.release-please-manifest.json` が manifest mode で追加され、対象 component(aws 11 + kubernetes 1)が定義されている
 - [ ] 既存の release PR #422 が close されている(manifest mode 移行に伴い）
-- [ ] `workflow-config.yaml` に `production` 環境が正しい IAM role で追加されている
-- [ ] `auto-label--deploy-trigger.yaml` の Label Resolver 呼び出しに `environments: master` が明示されている
 - [ ] `aws/{service}` の release PR をマージ・release published すると、対応する service だけ production に terragrunt apply される(他 service・他 environment に影響しない)
 - [ ] `kubernetes` の release PR をマージ・release published すると、`kubernetes-production` タグが移動し、Flux が新しい manifest を反映する
 - [ ] `gotk-sync.yaml` の `ref` が `tag: kubernetes-production` に切り替わっている
