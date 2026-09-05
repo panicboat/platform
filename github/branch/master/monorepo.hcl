@@ -12,10 +12,9 @@ locals {
             "Validate PR title",
             "Ensure actions are pinned to SHAs",
           ]
-          # panicboat App (1371999) bypasses the pull_request rule for direct
-          # push from Flux ImageUpdateAutomation (= release-driven image bump
-          # commits to overlays/production/deployment.yaml).
-          bypass_app_ids = [1371999]
+          # 1371999 = panicboat-github-workflow-bot (general CI, e.g. release-please)
+          # 4671042 = panicboat-fluxcd-bot (Flux ImageUpdateAutomation direct push)
+          bypass_app_ids = [1371999, 4671042]
         }
       )
     }
