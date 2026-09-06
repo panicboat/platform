@@ -64,7 +64,7 @@ jobs:
           ref: ${{ github.event.release.tag_name }}
 
       - name: Setup aqua
-        uses: aquaproj/aqua-installer@96a9bc20066c5bf5e275b41019cfc165b25f4e2e # v2.48.2
+        uses: aquaproj/aqua-installer@96a9bc20066c5bf5e275b41019cfc165b25f4e2e # v4.0.5
         with:
           aqua_version: v2.48.2
 
@@ -114,8 +114,6 @@ jobs:
           fetch-depth: 0
 
       - name: Force-update kubernetes-production tag
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           set -euo pipefail
           git tag -f kubernetes-production "${{ github.event.release.tag_name }}"

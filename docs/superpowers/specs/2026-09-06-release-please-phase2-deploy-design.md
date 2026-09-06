@@ -213,7 +213,7 @@ Phase 1 と同じ(`actions/create-github-app-token`、`googleapis/release-please
 ## Verification
 
 - [ ] **(最優先)** `auto-label--deploy-trigger.yaml` の Label Resolver 呼び出しに `environments: master` が明示され、#884 以降の production 誤爆リスク(`github-oidc-auth` 等)が解消されている
-- [ ] `release-please-config.json` / `.release-please-manifest.json` が manifest mode で追加され、対象 component(aws 11 + kubernetes 1)が定義されている
+- [ ] `release-please-config.json` / `.release-please-manifest.json` が manifest mode で追加され、対象 component(aws 12 + kubernetes 1)が定義されている
 - [ ] 既存の release PR #422 が close されている(manifest mode 移行に伴い）
 - [ ] `aws/{service}` の release PR をマージ・release published すると、対応する service だけ production に terragrunt apply される(他 service・他 environment に影響しない)
 - [ ] `kubernetes` の release PR をマージ・release published すると、`kubernetes-production` タグが移動し、Flux が新しい manifest を反映する
