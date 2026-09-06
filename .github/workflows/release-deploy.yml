@@ -17,6 +17,11 @@ jobs:
       is-aws: ${{ steps.parse.outputs.is-aws }}
       is-kubernetes: ${{ steps.parse.outputs.is-kubernetes }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
       - name: Parse component from tag
         id: parse
         env:
@@ -33,21 +38,21 @@ jobs:
             exit 0
           fi
           echo "component=$component" >> "$GITHUB_OUTPUT"
-          case "$component" in
-            alb|eks|eks-holmesgpt|eks-karpenter|eks-logs|eks-metrics|eks-secrets|eks-traces|github-oidc-auth|iam-service-linked-roles|secrets-manager|vpc)
-              echo "is-aws=true" >> "$GITHUB_OUTPUT"
-              echo "is-kubernetes=false" >> "$GITHUB_OUTPUT"
-              ;;
-            kubernetes)
-              echo "is-aws=false" >> "$GITHUB_OUTPUT"
-              echo "is-kubernetes=true" >> "$GITHUB_OUTPUT"
-              ;;
-            *)
-              echo "Unknown component '$component', skipping"
-              echo "is-aws=false" >> "$GITHUB_OUTPUT"
-              echo "is-kubernetes=false" >> "$GITHUB_OUTPUT"
-              ;;
-          esac
+
+          # component 名を hardcode した allowlist は、新しい aws/{service} が
+          # 増えるたびに手で追記が要る(実際に secrets-manager 追加時に踏んだ)。
+          # tag から得た component 名で実ディレクトリの有無を直接確認する。
+          if [ "$component" = "kubernetes" ]; then
+            echo "is-aws=false" >> "$GITHUB_OUTPUT"
+            echo "is-kubernetes=true" >> "$GITHUB_OUTPUT"
+          elif [ -d "aws/$component/production" ]; then
+            echo "is-aws=true" >> "$GITHUB_OUTPUT"
+            echo "is-kubernetes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unknown component '$component', skipping"
+            echo "is-aws=false" >> "$GITHUB_OUTPUT"
+            echo "is-kubernetes=false" >> "$GITHUB_OUTPUT"
+          fi
 
   resolve-aws-config:
     name: 'Resolve Production AWS Config'
