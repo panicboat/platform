@@ -11,5 +11,5 @@
   "aws/iam-service-linked-roles": "0.1.0",
   "aws/secrets-manager": "0.1.0",
   "aws/vpc": "0.1.0",
-  "kubernetes": "0.1.0"
+  "kubernetes": "0.2.0"
 }
