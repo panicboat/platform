@@ -22,4 +22,3 @@ jobs:
         id: release
         with:
           token: ${{ steps.app-token.outputs.token }}
-          release-type: simple

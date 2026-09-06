@@ -1,0 +1,120 @@
+name: Release Deploy
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  parse-tag:
+    name: 'Parse Release Tag'
+    runs-on: ubuntu-latest
+    outputs:
+      component: ${{ steps.parse.outputs.component }}
+      is-aws: ${{ steps.parse.outputs.is-aws }}
+      is-kubernetes: ${{ steps.parse.outputs.is-kubernetes }}
+    steps:
+      - name: Parse component from tag
+        id: parse
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$TAG_NAME" =~ ^([a-z0-9-]+)-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            component="${BASH_REMATCH[1]}"
+          else
+            echo "Tag '$TAG_NAME' does not match <component>-vX.Y.Z, skipping"
+            echo "component=" >> "$GITHUB_OUTPUT"
+            echo "is-aws=false" >> "$GITHUB_OUTPUT"
+            echo "is-kubernetes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "component=$component" >> "$GITHUB_OUTPUT"
+          case "$component" in
+            alb|eks|eks-holmesgpt|eks-karpenter|eks-logs|eks-metrics|eks-secrets|eks-traces|github-oidc-auth|iam-service-linked-roles|secrets-manager|vpc)
+              echo "is-aws=true" >> "$GITHUB_OUTPUT"
+              echo "is-kubernetes=false" >> "$GITHUB_OUTPUT"
+              ;;
+            kubernetes)
+              echo "is-aws=false" >> "$GITHUB_OUTPUT"
+              echo "is-kubernetes=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unknown component '$component', skipping"
+              echo "is-aws=false" >> "$GITHUB_OUTPUT"
+              echo "is-kubernetes=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+  resolve-aws-config:
+    name: 'Resolve Production AWS Config'
+    needs: parse-tag
+    if: needs.parse-tag.outputs.is-aws == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      aws-region: ${{ steps.config.outputs.aws-region }}
+      iam-role-apply: ${{ steps.config.outputs.iam-role-apply }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Setup aqua
+        uses: aquaproj/aqua-installer@96a9bc20066c5bf5e275b41019cfc165b25f4e2e # v4.0.5
+        with:
+          aqua_version: v2.48.2
+
+      - name: Resolve production config
+        id: config
+        run: |
+          set -euo pipefail
+          aws_region=$(yq '.environments[] | select(.environment == "production") | .stacks.terragrunt.aws_region' workflow-config.yaml)
+          iam_role_apply=$(yq '.environments[] | select(.environment == "production") | .stacks.terragrunt.iam_role_apply' workflow-config.yaml)
+          echo "aws-region=$aws_region" >> "$GITHUB_OUTPUT"
+          echo "iam-role-apply=$iam_role_apply" >> "$GITHUB_OUTPUT"
+
+  deploy-aws:
+    name: 'Deploy AWS (${{ needs.parse-tag.outputs.component }})'
+    needs: [parse-tag, resolve-aws-config]
+    uses: ./.github/workflows/reusable--terragrunt-executor.yaml
+    with:
+      service-name: ${{ needs.parse-tag.outputs.component }}
+      environment: production
+      action-type: apply
+      iam-role: ${{ needs.resolve-aws-config.outputs.iam-role-apply }}
+      aws-region: ${{ needs.resolve-aws-config.outputs.aws-region }}
+      working-directory: aws/${{ needs.parse-tag.outputs.component }}/production
+      app-id: ${{ vars.APP_ID }}
+    secrets:
+      private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+  deploy-kubernetes:
+    name: 'Advance Flux Production Tag'
+    needs: parse-tag
+    if: needs.parse-tag.outputs.is-kubernetes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Force-update kubernetes-production tag
+        run: |
+          set -euo pipefail
+          git tag -f kubernetes-production "${{ github.event.release.tag_name }}"
+          git push origin kubernetes-production --force

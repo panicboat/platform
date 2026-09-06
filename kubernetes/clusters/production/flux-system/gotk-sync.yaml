@@ -13,7 +13,7 @@ spec:
   interval: 1m
   url: https://github.com/panicboat/platform.git
   ref:
-    branch: main
+    tag: kubernetes-production
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
