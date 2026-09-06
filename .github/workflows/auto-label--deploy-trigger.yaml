@@ -23,8 +23,8 @@ jobs:
     name: 'Deployment Trigger'
     runs-on: ubuntu-latest
     outputs:
-      targets: ${{ steps.resolver.outputs.targets }}
-      has-targets: ${{ steps.resolver.outputs.has-targets }}
+      targets: ${{ steps.filter.outputs.targets }}
+      has-targets: ${{ steps.filter.outputs.has-targets }}
     steps:
       - name: Generate GitHub App token
         id: app-token
@@ -50,7 +50,20 @@ jobs:
           pr-number: ${{ steps.pr-info.outputs.number }}
           github-token: ${{ steps.app-token.outputs.token }}
           config-path: 'workflow-config.yaml'
-          environments: 'master'
+
+      - name: Filter out production targets
+        id: filter
+        env:
+          TARGETS: ${{ steps.resolver.outputs.targets }}
+        run: |
+          set -euo pipefail
+          filtered=$(echo "$TARGETS" | jq -c '[.[] | select(.environment != "production")]')
+          if [ "$(echo "$filtered" | jq 'length')" -gt 0 ]; then
+            echo "has-targets=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-targets=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "targets=$filtered" >> "$GITHUB_OUTPUT"
 
   kubernetes-targets-group:
     name: 'Group Kubernetes Targets by Environment'
