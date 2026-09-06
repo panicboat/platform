@@ -18,4 +18,3 @@ packages:
   - name: rhysd/actionlint@v1.7.7
   - name: opentofu/opentofu@v1.12.0
   - name: gruntwork-io/terragrunt@v1.0.2
-  - name: mikefarah/yq@v4.44.3
