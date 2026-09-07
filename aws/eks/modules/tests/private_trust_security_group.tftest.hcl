@@ -90,6 +90,21 @@ variables {
   }
 }
 
-run "plans_private_trust_as_additional_control_plane_security_group" {
+run "uses_private_trust_for_cluster_and_node_security_groups" {
   command = plan
+
+  assert {
+    condition     = module.eks.cluster_security_group_id == null
+    error_message = "The EKS module must not create a cluster security group."
+  }
+
+  assert {
+    condition     = module.eks.node_security_group_id == null
+    error_message = "The EKS module must not create a node security group."
+  }
+
+  assert {
+    condition     = aws_security_group.cluster.name_prefix == "eks-production-cluster-" && aws_security_group.cluster.description == "EKS cluster security group" && aws_security_group.cluster.vpc_id == "vpc-test"
+    error_message = "The retained cluster security group must preserve its physical identity configuration."
+  }
 }

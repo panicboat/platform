@@ -49,9 +49,7 @@ override_module {
       certificate_authority_data        = "Y2E="
       service_cidr                      = "10.100.0.0/16"
       ip_family                         = "ipv4"
-      cluster_security_group_id         = "sg-primary"
       cluster_primary_security_group_id = "sg-primary"
-      node_security_group_id            = "sg-module-node"
     }
   }
 }

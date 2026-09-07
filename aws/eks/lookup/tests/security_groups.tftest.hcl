@@ -35,13 +35,6 @@ override_data {
 }
 
 override_data {
-  target = data.aws_security_group.node
-  values = {
-    id = "sg-module-node"
-  }
-}
-
-override_data {
   target = data.aws_caller_identity.current
   values = {
     account_id = "337169763788"
@@ -60,13 +53,4 @@ run "exposes_cluster_primary_security_group_id" {
     error_message = "The lookup must identify the EKS-owned primary security group explicitly."
   }
 
-  assert {
-    condition     = output.cluster.cluster_security_group_id == output.cluster.cluster_primary_security_group_id
-    error_message = "The compatibility field must keep its current value until consumers migrate."
-  }
-
-  assert {
-    condition     = output.cluster.node_security_group_id == "sg-module-node"
-    error_message = "The module node security group lookup must remain during the attachment phase."
-  }
 }

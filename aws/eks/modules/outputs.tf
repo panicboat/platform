@@ -26,19 +26,9 @@ output "cluster_certificate_authority_data" {
   sensitive   = true
 }
 
-output "cluster_security_group_id" {
-  description = "Cluster security group created by EKS"
-  value       = module.eks.cluster_security_group_id
-}
-
 output "cluster_primary_security_group_id" {
   description = "EKS-owned primary cluster security group ID"
   value       = module.eks.cluster_primary_security_group_id
-}
-
-output "node_security_group_id" {
-  description = "Node security group"
-  value       = module.eks.node_security_group_id
 }
 
 output "oidc_provider_arn" {

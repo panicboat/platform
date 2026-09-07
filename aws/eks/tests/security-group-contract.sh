@@ -3,6 +3,26 @@ set -euo pipefail
 
 repository_root="$(git rev-parse --show-toplevel)"
 module_dir="$repository_root/aws/eks/modules"
+module_source="$module_dir/main.tf"
+
+required_configuration=(
+  '  create_security_group      = false'
+  '  security_group_id          = module.vpc.security_groups.private_trust.id'
+  '  create_node_security_group = false'
+  '  node_security_group_id     = module.vpc.security_groups.private_trust.id'
+)
+
+for expected_line in "${required_configuration[@]}"; do
+  if ! grep -Fxq "$expected_line" "$module_source"; then
+    printf 'missing EKS security group configuration: %s\n' "$expected_line" >&2
+    exit 1
+  fi
+done
+
+if grep -Eq '^[[:space:]]*additional_security_group_ids[[:space:]]*=' "$module_source"; then
+  echo 'additional_security_group_ids must not be configured.' >&2
+  exit 1
+fi
 
 plan_output="$(
   cd "$module_dir"
@@ -14,9 +34,10 @@ plan_output="$(
 
 control_plane_security_groups="$(
   awk '
-    /resource "aws_eks_cluster" "this"/ { in_cluster = 1 }
+    /^  # module\.eks\.aws_eks_cluster\.this/ { in_cluster = 1; next }
+    /^  # / { in_cluster = 0; capture = 0; next }
     in_cluster && /^[[:space:]]+[+~]?[[:space:]]*security_group_ids[[:space:]]*=[[:space:]]*\[/ { capture = 1; next }
-    capture && /]/ { exit }
+    capture && /^[[:space:]]+\]/ { exit }
     capture {
       gsub(/[+~ \",]/, "")
       if (length > 0) print
@@ -24,7 +45,8 @@ control_plane_security_groups="$(
   ' <<<"$plan_output"
 )"
 
-if ! grep -Fxq sg-private-trust <<<"$control_plane_security_groups"; then
+expected_security_groups="sg-private-trust"
+if test "$control_plane_security_groups" != "$expected_security_groups"; then
   printf 'planned control plane security groups:\n%s\n' "$control_plane_security_groups" >&2
   exit 1
 fi

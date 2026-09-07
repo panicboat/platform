@@ -6,14 +6,7 @@ output "cluster" {
     name                              = data.aws_eks_cluster.this.name
     arn                               = data.aws_eks_cluster.this.arn
     endpoint                          = data.aws_eks_cluster.this.endpoint
-    cluster_security_group_id         = data.aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
     cluster_primary_security_group_id = data.aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
-
-    # Node security group (created by terraform-aws-modules/eks parent module).
-    # Required by standalone `eks-managed-node-group` submodule for node-to-node
-    # pod-network traffic (cluster_primary_security_group_id alone allows only
-    # control plane → node, not node-to-node).
-    node_security_group_id = data.aws_security_group.node.id
 
     # Cluster info needed by the standalone `eks-managed-node-group` submodule's
     # AL2023 user data generator (auto-wired when MNGs live inside `module "eks"`,
