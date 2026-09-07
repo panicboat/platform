@@ -14,8 +14,10 @@ plan_output="$(
 
 actual_security_groups="$(
   awk '
-    /^[[:space:]]+[+~]?[[:space:]]*vpc_security_group_ids[[:space:]]*=[[:space:]]*\[/ { capture = 1; next }
-    capture && /]/ { exit }
+    /^  # module\.system_critical\.aws_launch_template\.this\[0\] / { target = 1; next }
+    /^  # .* will be / { target = 0; capture = 0; next }
+    target && /^[[:space:]]+[+~]?[[:space:]]*vpc_security_group_ids[[:space:]]*=[[:space:]]*\[/ { capture = 1; next }
+    capture && /^[[:space:]]+\]/ { capture = 0; target = 0; next }
     capture {
       gsub(/[+~ ",]/, "")
       if (length > 0) print
