@@ -80,6 +80,6 @@ variables {
   }
 }
 
-run "plans_three_security_groups_for_system_nodes" {
+run "plans_primary_and_private_trust_security_groups_for_system_nodes" {
   command = plan
 }

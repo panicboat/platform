@@ -27,7 +27,6 @@ actual_security_groups="$(
 
 expected_security_groups="$(
   printf '%s\n' \
-    sg-module-node \
     sg-primary \
     sg-private-trust \
     | sort

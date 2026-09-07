@@ -91,14 +91,10 @@ module "system_critical" {
 
   subnet_ids = module.vpc.subnets.private.ids
 
-  # The standalone module does not inherit cluster SG attachments, so every migration SG remains explicit during rollout.
+  # The standalone module does not inherit cluster SG attachments, so both final SGs remain explicit.
   cluster_primary_security_group_id = module.eks.cluster.cluster_primary_security_group_id
 
-  // TODO: Remove the module node SG after every system-critical node carries the private trust SG.
-  vpc_security_group_ids = [
-    module.eks.cluster.node_security_group_id,
-    module.vpc.security_groups.private_trust.id,
-  ]
+  vpc_security_group_ids = [module.vpc.security_groups.private_trust.id]
 
   ami_type       = "AL2023_ARM_64_STANDARD"
   instance_types = var.system_critical_instance_types
