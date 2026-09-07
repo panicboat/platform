@@ -48,6 +48,8 @@ data:
       - k8s_deployment_name: monolith
       instrument:
       - k8s_namespace: default
+      - k8s_namespace: dystopia
+      - k8s_namespace: system-components
     filter:
       network:
         k8s_dst_owner_name:
@@ -158,7 +160,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: f8c9d53f070247ba91e5492b8da3c95b975e8693257f6e8931bccdcf1fb1d814
+        checksum/config: 98083d164f429657410576306091c68ab75c265c4a7fa175b29dacb48b9ab2b3
       labels:
         helm.sh/chart: beyla-1.16.11
         app.kubernetes.io/name: beyla
