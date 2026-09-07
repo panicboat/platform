@@ -91,16 +91,14 @@ module "system_critical" {
 
   subnet_ids = module.vpc.subnets.private.ids
 
-  # Cluster primary SG must be attached to nodes for cluster API access
-  cluster_primary_security_group_id = module.eks.cluster.cluster_security_group_id
+  # The standalone module does not inherit cluster SG attachments, so every migration SG remains explicit during rollout.
+  cluster_primary_security_group_id = module.eks.cluster.cluster_primary_security_group_id
 
-  # Node SG (from parent module "eks") required for node-to-node pod-network
-  # traffic. Standalone eks-managed-node-group submodule does NOT attach this
-  # automatically (unlike when MNGs live inside `module "eks"`), causing
-  # cross-node pod traffic (e.g., bootstrap-host pod → CoreDNS on the same
-  # MNG) to be silently dropped. Sourced from aws/eks/lookup via tag-based
-  # discovery.
-  vpc_security_group_ids = [module.eks.cluster.node_security_group_id]
+  // TODO: Remove the module node SG after every system-critical node carries the private trust SG.
+  vpc_security_group_ids = [
+    module.eks.cluster.node_security_group_id,
+    module.vpc.security_groups.private_trust.id,
+  ]
 
   ami_type       = "AL2023_ARM_64_STANDARD"
   instance_types = var.system_critical_instance_types
@@ -158,19 +156,9 @@ module "system_critical" {
   # 必要はない。
   iam_role_attach_cni_policy = false
 
-  # Use fixed IAM role name (not name_prefix) because the auto-generated
-  # name_prefix would exceed the AWS IAM name_prefix 38-chars limit when
-  # combined with the MNG name. With use_name_prefix=false, the sub-module
-  # assigns a deterministic role name `eks-${var.environment}-system-critical-eks-node-group`
-  # (within the 64-chars IAM role name limit).
-  #
-  # The AWS physical name `eks-${var.environment}-system-critical` is fixed
-  # by external contract (eks-login script / dashboard references), so a
-  # deterministic role name is used.
-  #
-  # Side effect: a fixed IAM role name is immutable, so a future rename of
-  # this MNG would make create_before_destroy fail with a role-name conflict.
-  # If renamed, destroy the old role first, then apply (a 2-step operation).
+  # The MNG base name is an external contract. `use_name_prefix` remains at
+  # the module default to avoid replacing the existing MNG, so runtime tooling
+  # resolves the generated physical name by its stable prefix.
   iam_role_use_name_prefix = false
 
   tags = var.common_tags
