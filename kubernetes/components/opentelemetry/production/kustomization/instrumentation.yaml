@@ -1,18 +1,19 @@
 # =============================================================================
 # OpenTelemetry Instrumentation CR (= L2 auto-injection)
 # =============================================================================
-# namespace default に 1 つ deploy で全 application Pod (= monolith / frontend)
-# が instrumentation.opentelemetry.io/inject-{ruby,nodejs} annotation で
-# auto-injection を受ける。
+# namespace default に 1 つ deploy で application Pod が
+# instrumentation.opentelemetry.io/inject-nodejs annotation で auto-injection
+# を受ける。 ruby は chart 0.156.0 でも未 support (= CR に ruby block を持たない)
+# ため monolith は対象外、 monolith 自身の OTel SDK 設定 (dystopia/monolith 側)
+# で計装している。
 #
 # Operator が Pod の init container で OTel SDK auto-instrumentation library
 # を inject、 application container の env vars (= OTEL_EXPORTER_OTLP_ENDPOINT
-# 等) を設定。 L1 (= application code 側 OpenTelemetry::SDK.configure /
-# NodeSDK) がそれらを detect + use する pattern。
+# 等) を設定。 L1 (= application code 側の NodeSDK) がそれらを detect + use する
+# pattern。
 #
 # auto-instrumentation image version は chart 同梱の binary verify で固定、
 # specific version (= nodejs 0.62.0) を pin (= :latest 不採用)。
-# ruby は chart 0.112.1 で未 support。
 # =============================================================================
 apiVersion: opentelemetry.io/v1alpha1
 kind: Instrumentation
@@ -21,7 +22,16 @@ metadata:
   namespace: default
 spec:
   exporter:
-    endpoint: http://opentelemetry-collector.monitoring.svc.cluster.local:4317
+    # Node.js の auto-instrumentation は OTEL_EXPORTER_OTLP_PROTOCOL 未指定時
+    # http/protobuf を既定にする (= gRPC ではない)。 gRPC 専用の 4317 を指すと
+    # SDK は plain HTTP/1.1 で接続し、 collector は HTTP/2 の SETTINGS frame で
+    # 応答するため "Parse Error: Expected HTTP/, RTSP/ or ICE/" で export が
+    # 毎回失敗する。 診断ロガー既定 (OTEL_LOG_LEVEL 未設定) は no-op のため
+    # このエラーはどこにもログされず、SDK 起動・計装・span 生成は正常に見える。
+    # collector 側は 4317/4318 とも同じ otlp receiver → 同一 pipeline のため
+    # port 以外の差分は無い (kubernetes/components/opentelemetry-collector/
+    # production/values.yaml.gotmpl の receivers.otlp 参照)。
+    endpoint: http://opentelemetry-collector.monitoring.svc.cluster.local:4318
   propagators:
     - tracecontext
     - baggage
