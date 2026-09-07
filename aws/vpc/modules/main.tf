@@ -60,3 +60,27 @@ resource "aws_vpc_endpoint" "s3" {
     Name = "vpce-s3-${var.environment}"
   })
 }
+
+resource "aws_security_group" "private_trust" {
+  name        = "private-trust-${var.environment}"
+  description = "Private trust boundary for VPC resources"
+  vpc_id      = module.vpc.vpc_id
+
+  tags = merge(var.common_tags, {
+    Name = "private-trust-${var.environment}"
+  })
+}
+
+resource "aws_vpc_security_group_ingress_rule" "private_trust_self" {
+  security_group_id            = aws_security_group.private_trust.id
+  referenced_security_group_id = aws_security_group.private_trust.id
+  ip_protocol                  = "-1"
+  description                  = "Allow traffic within the private trust boundary"
+}
+
+resource "aws_vpc_security_group_egress_rule" "private_trust_ipv4" {
+  security_group_id = aws_security_group.private_trust.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+  description       = "Allow all IPv4 egress"
+}

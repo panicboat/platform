@@ -18,3 +18,10 @@ output "db_subnet_group" {
   description = "DB subnet group data source (pass-through). See AWS provider docs for aws_db_subnet_group."
   value       = data.aws_db_subnet_group.this
 }
+
+output "security_groups" {
+  description = "Security groups owned by the VPC stack."
+  value = {
+    private_trust = data.aws_security_group.private_trust
+  }
+}

@@ -54,3 +54,8 @@ output "availability_zones" {
   description = "Availability zones used by the VPC"
   value       = module.vpc.azs
 }
+
+output "private_trust_security_group_id" {
+  description = "ID of the private trust security group"
+  value       = aws_security_group.private_trust.id
+}

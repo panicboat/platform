@@ -33,3 +33,11 @@ data "aws_subnets" "database" {
 data "aws_db_subnet_group" "this" {
   name = "vpc-${var.environment}"
 }
+
+data "aws_security_group" "private_trust" {
+  vpc_id = data.aws_vpc.this.id
+
+  tags = {
+    Name = "private-trust-${var.environment}"
+  }
+}
