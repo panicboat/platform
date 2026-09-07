@@ -2902,6 +2902,8 @@ spec:
   securityGroupSelectorTerms:
   - tags:
       aws:eks:cluster-name: eks-production
+  - tags:
+      Name: private-trust-production
   subnetSelectorTerms:
   - tags:
       Tier: private
