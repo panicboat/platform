@@ -1,5 +1,5 @@
 # Beyla eBPF Auto-Instrumentation Configuration for production
-# default namespace の application Pod を eBPF auto-instrumentation で観測、
+# application namespace の Pod を eBPF auto-instrumentation で観測、
 # traces を OTel Collector 経由 Tempo に、metrics を /metrics + ServiceMonitor
 # 経由 Prometheus → Mimir に送る。
 
@@ -40,10 +40,10 @@ config:
       path: /metrics
 
     # -------------------------------------------------------------------------
-    # Service Discovery (= default namespace の application Pod、open_ports 省略で
+    # Service Discovery (= application namespace の Pod、open_ports 省略で
     # 全 listening port auto-discover)
     # -------------------------------------------------------------------------
-    # NOTE: open_ports は明示的に省略。default namespace は application 専用想定
+    # NOTE: open_ports は明示的に省略。列挙した namespace は application 専用
     # (= infra Pod 不在)、全 listening port auto-discover で運用 friction 最小。
     # microservice 追加時に Beyla config 更新不要 (= 新 service の任意 port が
     # 自動 trace 対象)。
@@ -59,6 +59,8 @@ config:
     discovery:
       instrument:
         - k8s_namespace: default
+        - k8s_namespace: dystopia
+        - k8s_namespace: system-components
       exclude_instrument:
         - k8s_deployment_name: monolith
 
