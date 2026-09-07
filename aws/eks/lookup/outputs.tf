@@ -3,10 +3,11 @@
 output "cluster" {
   description = "EKS cluster information (pass-through of aws_eks_cluster data source)."
   value = {
-    name                      = data.aws_eks_cluster.this.name
-    arn                       = data.aws_eks_cluster.this.arn
-    endpoint                  = data.aws_eks_cluster.this.endpoint
-    cluster_security_group_id = data.aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+    name                              = data.aws_eks_cluster.this.name
+    arn                               = data.aws_eks_cluster.this.arn
+    endpoint                          = data.aws_eks_cluster.this.endpoint
+    cluster_security_group_id         = data.aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+    cluster_primary_security_group_id = data.aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
 
     # Node security group (created by terraform-aws-modules/eks parent module).
     # Required by standalone `eks-managed-node-group` submodule for node-to-node

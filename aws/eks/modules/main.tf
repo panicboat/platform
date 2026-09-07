@@ -49,6 +49,9 @@ module "eks" {
   access_entries = local.access_entries
   addons         = local.cluster_addons
 
+  // TODO: Replace the module cluster SG with the private trust SG after every consumer carries the private trust SG.
+  additional_security_group_ids = [module.vpc.security_groups.private_trust.id]
+
   tags = var.common_tags
 }
 
