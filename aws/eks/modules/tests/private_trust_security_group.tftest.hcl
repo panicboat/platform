@@ -103,8 +103,4 @@ run "uses_private_trust_for_cluster_and_node_security_groups" {
     error_message = "The EKS module must not create a node security group."
   }
 
-  assert {
-    condition     = aws_security_group.cluster.name_prefix == "eks-production-cluster-" && aws_security_group.cluster.description == "EKS cluster security group" && aws_security_group.cluster.vpc_id == "vpc-test"
-    error_message = "The retained cluster security group must preserve its physical identity configuration."
-  }
 }

@@ -56,24 +56,3 @@ module "eks" {
 
   tags = var.common_tags
 }
-
-// TODO: Remove after EKS uses only the private trust security group and this SG has no ENI attachments.
-resource "aws_security_group" "cluster" {
-  name_prefix = "eks-${var.environment}-cluster-"
-  description = "EKS cluster security group"
-  vpc_id      = module.vpc.vpc.id
-
-  tags = merge(
-    var.common_tags,
-    { Name = "eks-${var.environment}-cluster" },
-  )
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-moved {
-  from = module.eks.aws_security_group.cluster[0]
-  to   = aws_security_group.cluster
-}
