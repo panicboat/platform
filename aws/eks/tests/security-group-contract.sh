@@ -5,6 +5,32 @@ repository_root="$(git rev-parse --show-toplevel)"
 module_dir="$repository_root/aws/eks/modules"
 module_source="$module_dir/main.tf"
 
+for module_file in "$module_dir"/*.tf; do
+  if grep -Eq '^[[:space:]]*resource[[:space:]]+"aws_security_group"[[:space:]]+"cluster"' "$module_file"; then
+    printf 'root cluster security group resource must not be configured: %s\n' "$module_file" >&2
+    exit 1
+  fi
+done
+
+module_eks_configuration="$(
+  awk '
+    /^module "eks" \{/ {
+      in_module = 1
+    }
+    in_module {
+      print
+    }
+    in_module && /^}/ {
+      exit
+    }
+  ' "$module_source"
+)"
+
+if test -z "$module_eks_configuration"; then
+  echo 'module "eks" block must be configured.' >&2
+  exit 1
+fi
+
 required_configuration=(
   '  create_security_group      = false'
   '  security_group_id          = module.vpc.security_groups.private_trust.id'
@@ -13,7 +39,7 @@ required_configuration=(
 )
 
 for expected_line in "${required_configuration[@]}"; do
-  if ! grep -Fxq "$expected_line" "$module_source"; then
+  if ! grep -Fxq "$expected_line" <<<"$module_eks_configuration"; then
     printf 'missing EKS security group configuration: %s\n' "$expected_line" >&2
     exit 1
   fi
