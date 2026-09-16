@@ -49,3 +49,9 @@ variable "system_critical_disk_size" {
   type        = number
   default     = 20
 }
+
+variable "compute_availability_zone" {
+  description = "Single AZ that the system_critical MNG is pinned to. Must match the topology.kubernetes.io/zone value in kubernetes/components/karpenter/production/kustomization/nodepool.yaml — see docs/superpowers/plans/2026-09-16-eks-cross-az-cost.md for why both are pinned to the same AZ."
+  type        = string
+  default     = "ap-northeast-1a"
+}
