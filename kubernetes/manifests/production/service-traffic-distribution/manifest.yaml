@@ -1,0 +1,39 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingAdmissionPolicy
+metadata:
+  name: default-traffic-distribution
+spec:
+  failurePolicy: Ignore
+  matchConditions:
+  - expression: object.spec.clusterIP != 'None'
+    name: not-headless
+  - expression: object.spec.type != 'ExternalName'
+    name: not-external-name
+  matchConstraints:
+    resourceRules:
+    - apiGroups:
+      - ""
+      apiVersions:
+      - v1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - services
+  mutations:
+  - applyConfiguration:
+      expression: |
+        Object{
+          spec: Object.spec{
+            trafficDistribution: has(object.spec.trafficDistribution) ? object.spec.trafficDistribution : "PreferClose"
+          }
+        }
+    patchType: ApplyConfiguration
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingAdmissionPolicyBinding
+metadata:
+  name: default-traffic-distribution-binding
+spec:
+  policyName: default-traffic-distribution

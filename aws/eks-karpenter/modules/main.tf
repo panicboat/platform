@@ -73,6 +73,22 @@ module "karpenter" {
 # 役割で持つため、karpenter stack 側に置く (= Karpenter MNG と同じ stack で
 # lifecycle を共有させ、recreate 時の手数を減らす)。
 
+# module.vpc.subnets.private はTier=privateの3AZ分をまとめて返し、順序もAZ順を
+# 保証しないため、AZ filterで1AZ分だけ取り出す (docs/superpowers/plans/2026-09-16-eks-cross-az-cost.md)。
+data "aws_subnets" "system_critical_az" {
+  filter {
+    name   = "vpc-id"
+    values = [module.vpc.vpc.id]
+  }
+  filter {
+    name   = "availability-zone"
+    values = [var.compute_availability_zone]
+  }
+  tags = {
+    Tier = "private"
+  }
+}
+
 module "system_critical" {
   source  = "terraform-aws-modules/eks/aws//modules/eks-managed-node-group"
   version = "21.25.0"
@@ -89,7 +105,7 @@ module "system_critical" {
   cluster_service_cidr = module.eks.cluster.service_cidr
   cluster_ip_family    = module.eks.cluster.ip_family
 
-  subnet_ids = module.vpc.subnets.private.ids
+  subnet_ids = data.aws_subnets.system_critical_az.ids
 
   # The standalone module does not inherit cluster SG attachments, so both final SGs remain explicit.
   cluster_primary_security_group_id = module.eks.cluster.cluster_primary_security_group_id

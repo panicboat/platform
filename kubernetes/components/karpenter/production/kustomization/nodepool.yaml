@@ -56,6 +56,11 @@ spec:
         - key: karpenter.k8s.aws/instance-size
           operator: In
           values: ["large", "xlarge", "2xlarge", "4xlarge"]
+        # Cross-AZ traffic cost対策 (docs/superpowers/plans/2026-09-16-eks-cross-az-cost.md)。
+        # aws/eks-karpenter/modules/variables.tf の compute_availability_zone と同じ値にすること。
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values: ["ap-northeast-1a"]
       expireAfter: 720h  # 30 days
   disruption:
     # Karpenter v1+ valid values: WhenEmpty | WhenEmptyOrUnderutilized
