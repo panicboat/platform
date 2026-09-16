@@ -153,6 +153,18 @@ config:
         - key: cluster.name
           value: eks-production
           action: upsert
+    transform/workload:
+      error_mode: ignore
+      resource_statements:
+        - context: resource
+          statements:
+            # owner kind ごとの name を workload に集約 (Mimir の namespace_workload_pod:kube_pod_owner:relabel と同じ役割)
+            - set(attributes["workload"], attributes["k8s.deployment.name"]) where attributes["k8s.deployment.name"] != nil
+            - set(attributes["workload"], attributes["k8s.statefulset.name"]) where attributes["k8s.statefulset.name"] != nil
+            - set(attributes["workload"], attributes["k8s.daemonset.name"]) where attributes["k8s.daemonset.name"] != nil
+            - set(attributes["workload"], attributes["k8s.job.name"]) where attributes["k8s.job.name"] != nil
+            # CronJob 配下は k8s.job.name (実行毎に変わる) より後に評価し、安定した CronJob 名で上書きする
+            - set(attributes["workload"], attributes["k8s.cronjob.name"]) where attributes["k8s.cronjob.name"] != nil
 
   exporters:
     # Tempo exporter: traces を gRPC で push
@@ -171,12 +183,12 @@ config:
     pipelines:
       traces:
         receivers: [otlp]
-        processors: [memory_limiter, k8sattributes, resource, batch]
+        processors: [memory_limiter, k8sattributes, resource, transform/workload, batch]
         exporters: [otlp_grpc/tempo]
       logs:
         # filelog のみ。fluent-bit が撤去されたため OTLP receiver 経由の log push は不要。
         receivers: [filelog]
-        processors: [memory_limiter, k8sattributes, resource, batch]
+        processors: [memory_limiter, k8sattributes, resource, transform/workload, batch]
         exporters: [otlp_http/loki]
       # production では metrics pipeline 未接続 (Beyla は /metrics 直接 expose)。
       # chart default の debug exporter pipeline を残す意義がないため明示削除。

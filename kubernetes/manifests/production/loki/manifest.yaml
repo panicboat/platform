@@ -91,6 +91,12 @@ data:
       ingestion_burst_size_mb: 6
       ingestion_rate_mb: 4
       max_cache_freshness_per_query: 10m
+      otlp_config:
+        resource_attributes:
+          attributes_config:
+          - action: index_label
+            attributes:
+            - workload
       query_timeout: 300s
       reject_old_samples: true
       reject_old_samples_max_age: 168h
@@ -981,7 +987,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 0fadeb09d795d0fb7c84d0d595a04fb2e3d51d10621dabb0251798b0e5b98928
+        checksum/config: ba5926f27b3350f39e50c148ec417b6cbc9ebc98aeff0274b21b602c93b1e07a
         storage/size: 10Gi
         kubectl.kubernetes.io/default-container: "loki"
       labels:

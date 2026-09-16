@@ -83,6 +83,13 @@ loki:
     # 1 stream あたりのログ entry rate 制限 (= burst protection)
     ingestion_rate_mb: 4
     ingestion_burst_size_mb: 6
+    otlp_config:
+      resource_attributes:
+        attributes_config:
+          # OTel Collector の transform/workload processor が合成する独自属性、Loki default の昇格対象外なので明示指定
+          - action: index_label
+            attributes:
+              - workload
 
   # -------------------------------------------------------------------------
   # Compactor (retention 機能は disable、S3 lifecycle で代替)

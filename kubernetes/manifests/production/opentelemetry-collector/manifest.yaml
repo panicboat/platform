@@ -95,6 +95,21 @@ data:
         - action: upsert
           key: cluster.name
           value: eks-production
+      transform/workload:
+        error_mode: ignore
+        resource_statements:
+        - context: resource
+          statements:
+          - set(attributes["workload"], attributes["k8s.deployment.name"]) where attributes["k8s.deployment.name"]
+            != nil
+          - set(attributes["workload"], attributes["k8s.statefulset.name"]) where attributes["k8s.statefulset.name"]
+            != nil
+          - set(attributes["workload"], attributes["k8s.daemonset.name"]) where attributes["k8s.daemonset.name"]
+            != nil
+          - set(attributes["workload"], attributes["k8s.job.name"]) where attributes["k8s.job.name"]
+            != nil
+          - set(attributes["workload"], attributes["k8s.cronjob.name"]) where attributes["k8s.cronjob.name"]
+            != nil
     receivers:
       filelog:
         exclude:
@@ -137,6 +152,7 @@ data:
           - memory_limiter
           - k8s_attributes
           - resource
+          - transform/workload
           - batch
           receivers:
           - filelog
@@ -147,6 +163,7 @@ data:
           - memory_limiter
           - k8s_attributes
           - resource
+          - transform/workload
           - batch
           receivers:
           - otlp
@@ -276,7 +293,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 5305e60b55f2f1ce741c90dcedc1ebfe164d582d6a25298ea1bec92262d2c36c
+        checksum/config: b99dc61173695260197df09cf00124f45a8d404adba49c11c9201f39b9bb40cf
         
       labels:
         app.kubernetes.io/name: opentelemetry-collector
