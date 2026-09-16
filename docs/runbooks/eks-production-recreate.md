@@ -353,6 +353,11 @@ done
 # → 3 addon 全 ACTIVE
 
 # trafficDistribution admission policy (2026-09-16 追加、docs/superpowers/plans/2026-09-16-eks-cross-az-cost.md)
+# NOTE: cert-manager-webhook の Service は Phase 9.3a (bootstrap-webhooks) で
+# policy 本体 (Phase 9.3b 以降) より先に作られるため、Phase 9.4 の reconcile
+# force-trigger 前に確認すると空を返すことがある (= admission policy は
+# CREATE/UPDATE 時のみ発火し既存objectへ遡及しないため)。空だったら
+# `flux reconcile kustomization flux-system` を実行してから再確認する。
 kubectl api-resources | grep -i mutatingadmissionpolicy
 # → 存在すること。存在しない場合は §5 Failure handling の該当行を参照
 
