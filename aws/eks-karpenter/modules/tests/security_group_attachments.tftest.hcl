@@ -57,6 +57,9 @@ override_module {
 override_module {
   target = module.vpc
   outputs = {
+    vpc = {
+      id = "vpc-test"
+    }
     subnets = {
       private = {
         ids = ["subnet-a", "subnet-b"]
