@@ -26,7 +26,7 @@ spec:
       expression: |
         Object{
           spec: Object.spec{
-            trafficDistribution: has(object.spec.trafficDistribution) ? object.spec.trafficDistribution : "PreferClose"
+            trafficDistribution: has(object.spec.trafficDistribution) ? object.spec.trafficDistribution : "PreferSameZone"
           }
         }
     patchType: ApplyConfiguration
