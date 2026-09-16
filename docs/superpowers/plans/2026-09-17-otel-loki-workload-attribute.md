@@ -4,7 +4,7 @@
 
 **Goal:** OTel Collector の logs/traces pipeline に、Kubernetes workload（Deployment/StatefulSet/DaemonSet/CronJob の安定した名前）を表す resource attribute `workload` を付与し、Loki 側でそれを index label に昇格させる。
 
-**Architecture:** `k8sattributes` processor の `extract.metadata` を拡張して owner kind ごとの name (`k8s.deployment.name` 等5種) を取得し、新規 `transform/workload` processor (OTTL) でそれらを単一の `workload` attribute に合成する。Loki 側は `limits_config.otlp_config.resource_attributes.attributes_config` で `workload` を index label として明示的に昇格する。Tempo 側は追加設定不要。
+**Architecture:** 既存の `k8sattributes` processor (chart preset) が owner kind ごとの name (`k8s.deployment.name` 等) を既に extract 済みであることを利用し、新規 `transform/workload` processor (OTTL) でそれらを単一の `workload` attribute に合成する。Loki 側は `limits_config.otlp_config.resource_attributes.attributes_config` で `workload` を index label として明示的に昇格する。Tempo 側は追加設定不要。
 
 **Tech Stack:** OpenTelemetry Collector (chart `opentelemetry/opentelemetry-collector` v0.166.0) / Loki (chart `grafana-community/loki` v18.11.7) / helmfile / OTTL (transform processor)
 
@@ -28,7 +28,7 @@
 
 | Path | Responsibility |
 |---|---|
-| `kubernetes/components/opentelemetry-collector/production/values.yaml.gotmpl` | `k8sattributes.extract.metadata` 拡張、`transform/workload` processor 追加、logs/traces pipeline への組み込み |
+| `kubernetes/components/opentelemetry-collector/production/values.yaml.gotmpl` | `transform/workload` processor 追加、logs/traces pipeline への組み込み |
 | `kubernetes/components/loki/production/values.yaml.gotmpl` | `limits_config.otlp_config.resource_attributes.attributes_config` で `workload` を index_label に昇格 |
 
 ### Generated (hydrate script が自動生成、commit 対象)
@@ -360,11 +360,10 @@ git add kubernetes/components/opentelemetry-collector/production/values.yaml.got
 
 git commit -s -m "feat(kubernetes): add workload resource attribute to logs/traces
 
-k8sattributes processor の default extract は Deployment 以外の owner kind
-をカバーしておらず、CronJob 配下の pod は実行毎に変わる Job 名しか取れな
-かった。extract.metadata を拡張し、新規 transform/workload processor
-(OTTL) で owner kind ごとの name を単一の workload attribute に合成する
-(Mimir の namespace_workload_pod:kube_pod_owner:relabel と同じ役割)。
+既存の k8sattributes processor (chart preset) が owner kind ごとの name を
+既に extract 済みであることを利用し、新規 transform/workload processor
+(OTTL) で単一の workload attribute に合成する (Mimir の
+namespace_workload_pod:kube_pod_owner:relabel と同じ役割)。
 
 Loki 側は limits_config.otlp_config で workload を index label に明示
 昇格 (Loki の default 昇格リストは標準 semconv キーのみ対象のため)。
@@ -402,11 +401,11 @@ git push -u origin HEAD
 ```bash
 gh pr create --draft --title "feat(kubernetes): add workload resource attribute to logs/traces" --body "$(cat <<'EOF'
 ## Summary
-- k8sattributes processor の extract.metadata を拡張し、Deployment 以外
-  (StatefulSet/DaemonSet/Job/CronJob) の owner name も extract する。
-- 新規 transform/workload processor (OTTL) で owner kind ごとの name を
-  単一の resource attribute `workload` に合成する。CronJob 配下の Job は
-  実行毎に変わる Job 名ではなく、安定した CronJob 名を優先する。
+- 既存の k8sattributes processor (chart preset) が Deployment/StatefulSet/
+  DaemonSet/Job/CronJob の owner name を既に extract 済みであることを
+  利用し、新規 transform/workload processor (OTTL) で owner kind ごとの
+  name を単一の resource attribute `workload` に合成する。CronJob 配下の
+  Job は実行毎に変わる Job 名ではなく、安定した CronJob 名を優先する。
 - Loki 側で `workload` を index label に昇格 (limits_config.otlp_config)。
   Tempo は追加設定不要、resource attribute としてそのまま TraceQL で
   検索可能。
