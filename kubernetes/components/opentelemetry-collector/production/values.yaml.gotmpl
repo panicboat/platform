@@ -155,7 +155,8 @@ config:
           action: upsert
     transform/workload:
       error_mode: ignore
-      resource_statements:
+      # transformprocessor に signal 横断の resource_statements key は無いため trace/log で重複させる
+      trace_statements:
         - context: resource
           statements:
             # owner kind ごとの name を workload に集約 (Mimir の namespace_workload_pod:kube_pod_owner:relabel と同じ役割)
@@ -164,6 +165,14 @@ config:
             - set(attributes["workload"], attributes["k8s.daemonset.name"]) where attributes["k8s.daemonset.name"] != nil
             - set(attributes["workload"], attributes["k8s.job.name"]) where attributes["k8s.job.name"] != nil
             # CronJob 配下は k8s.job.name (実行毎に変わる) より後に評価し、安定した CronJob 名で上書きする
+            - set(attributes["workload"], attributes["k8s.cronjob.name"]) where attributes["k8s.cronjob.name"] != nil
+      log_statements:
+        - context: resource
+          statements:
+            - set(attributes["workload"], attributes["k8s.deployment.name"]) where attributes["k8s.deployment.name"] != nil
+            - set(attributes["workload"], attributes["k8s.statefulset.name"]) where attributes["k8s.statefulset.name"] != nil
+            - set(attributes["workload"], attributes["k8s.daemonset.name"]) where attributes["k8s.daemonset.name"] != nil
+            - set(attributes["workload"], attributes["k8s.job.name"]) where attributes["k8s.job.name"] != nil
             - set(attributes["workload"], attributes["k8s.cronjob.name"]) where attributes["k8s.cronjob.name"] != nil
 
   exporters:
