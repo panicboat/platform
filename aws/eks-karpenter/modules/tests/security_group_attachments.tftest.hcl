@@ -23,6 +23,11 @@ mock_provider "aws" {
       json = "{}"
     }
   }
+  mock_data "aws_subnets" {
+    defaults = {
+      ids = ["subnet-system-critical-az"]
+    }
+  }
   mock_resource "aws_launch_template" {
     defaults = {
       id = "lt-test"
