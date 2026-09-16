@@ -17,6 +17,7 @@ spec:
     - name: not-external-name
       expression: "object.spec.type != 'ExternalName'"
   failurePolicy: Ignore
+  reinvocationPolicy: Never
   mutations:
     - patchType: ApplyConfiguration
       applyConfiguration:
