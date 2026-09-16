@@ -12,7 +12,7 @@
 - この案は「pod 一覧の根拠」が「実際にログを出した pod」から「Kubernetes API 上に存在した pod」に変わってしまい、ログを一度も出していない pod まで候補に出る regression があると指摘を受けた
 - 調査の結果、Loki は OTLP ingest 時に `k8s.deployment.name` / `k8s.statefulset.name` / `k8s.daemonset.name` / `k8s.cronjob.name` / `k8s.job.name` を index label へ昇格するデフォルト設定を既に持っている（VERIFIED、Grafana 公式ドキュメント）
 - **訂正 (レビューで判明)**: `k8sattributes` processor の `extract.metadata` は upstream README 記載の raw default (6項目) ではなく、この chart の `presets.kubernetesAttributes.enabled: true` が生成する preset 自体が既に23項目 (owner kind 全種の name/uid、container image、service.* 等) を extract 済み (`kubernetes/manifests/production/opentelemetry-collector/manifest.yaml` の現行 (変更前) 内容で VERIFIED)。Deployment 以外の owner kind も既に extract されており、`extract.metadata` の拡張は不要どころか、明示的な override は preset の23項目リストを狭い10項目で**上書き**して既存の `service.name` 等13項目を失わせる regression になる
-- 現行 ClusterRole (`helm template` で実際に render して確認、VERIFIED) は `pods` / `namespaces` (core) と `replicasets` (apps/extensions) の `get,watch,list` のみ。この RBAC のまま preset は StatefulSet/DaemonSet/Job/CronJob の owner name も extract できている (= Pod 自身の `ownerReferences` から解決しており追加 API watch が要らない)
+- 現行 ClusterRole (`helm template` で実際に render して確認、VERIFIED) は `pods` / `namespaces` (core) と `replicasets` (apps/extensions) の `get,watch,list` のみ。この RBAC のまま preset は StatefulSet/DaemonSet/Job/CronJob の owner name も extract 対象に含めて render されている (= 設定上は Pod 自身の `ownerReferences` から解決する想定で追加 API watch を要求していない)。実際に値が populate されるかは別問題で、CronJob 分は Risks/Open Questions で未確認として扱う
 
 ### なぜ単純な label 追加だけでは足りないか
 
