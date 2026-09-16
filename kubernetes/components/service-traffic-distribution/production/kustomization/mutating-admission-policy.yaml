@@ -1,14 +1,8 @@
-# Service trafficDistributionのデフォルト注入。per-component opt-inだと将来の
-# replica増加やmonorepo側Serviceで設定漏れが起きるため cluster-wide化
-# (docs/superpowers/plans/2026-09-16-eks-cross-az-cost.md、namespaceSelector
-# は意図的に未設定)。
+# 個別Helm chartへのtrafficDistribution設定は設定漏れリスクがあるため
+# cluster-wideに一括注入する (docs/superpowers/plans/2026-09-16-eks-cross-az-cost.md)。
 #
-# 値は "PreferClose" 固定。Cilium 1.19.4は "PreferSameZone" を認識せず
-# "PreferClose" のみ対応 (cilium/cilium PR #44771 はv1.20系のみ反映、
-# kubernetes/kubernetes API上は同義のdeprecated alias)。
-#
-# headless/ExternalName Serviceは対象外。failurePolicy: Ignore はCEL評価
-# 失敗でService作成をblockしないための選択。
+# 値は "PreferSameZone" ではなく "PreferClose" 固定: Cilium 1.19.4はこちらの
+# deprecated aliasしか認識しない。
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingAdmissionPolicy
 metadata:
