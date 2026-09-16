@@ -1,0 +1,44 @@
+# Service trafficDistributionのデフォルト注入。per-component opt-inだと将来の
+# replica増加やmonorepo側Serviceで設定漏れが起きるため cluster-wide化
+# (docs/superpowers/plans/2026-09-16-eks-cross-az-cost.md、namespaceSelector
+# は意図的に未設定)。
+#
+# 値は "PreferClose" 固定。Cilium 1.19.4は "PreferSameZone" を認識せず
+# "PreferClose" のみ対応 (cilium/cilium PR #44771 はv1.20系のみ反映、
+# kubernetes/kubernetes API上は同義のdeprecated alias)。
+#
+# headless/ExternalName Serviceは対象外。failurePolicy: Ignore はCEL評価
+# 失敗でService作成をblockしないための選択。
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingAdmissionPolicy
+metadata:
+  name: default-traffic-distribution
+spec:
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["services"]
+  matchConditions:
+    - name: not-headless
+      expression: "object.spec.clusterIP != 'None'"
+    - name: not-external-name
+      expression: "object.spec.type != 'ExternalName'"
+  failurePolicy: Ignore
+  mutations:
+    - patchType: ApplyConfiguration
+      applyConfiguration:
+        expression: |
+          Object{
+            spec: Object.spec{
+              trafficDistribution: has(object.spec.trafficDistribution) ? object.spec.trafficDistribution : "PreferClose"
+            }
+          }
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingAdmissionPolicyBinding
+metadata:
+  name: default-traffic-distribution-binding
+spec:
+  policyName: default-traffic-distribution
