@@ -46,7 +46,9 @@
 
 ---
 
-## Task 1: OTel Collector - k8sattributes 拡張 + transform/workload processor 追加
+## Task 1: OTel Collector - transform/workload processor 追加
+
+> **訂正 (2026-09-17, task review で判明)**: 当初この Task は `k8sattributes` processor の `extract.metadata` も拡張する内容だった。実際には `presets.kubernetesAttributes.enabled: true` が生成する既存 preset が、Deployment を含む全 owner kind の name/uid と `service.*` 等23項目を**既に** extract 済みで（`kubernetes/manifests/production/opentelemetry-collector/manifest.yaml` の変更前内容で VERIFIED）、`extract.metadata` を明示指定すると Helm の値マージが list を置換し、この23項目を10項目に narrow化して13項目を失う regression になることが task review で発覚した。`k8sattributes` は無修正とし、`transform/workload` processor の追加のみを行う。詳細: spec の Context 節「訂正 (レビューで判明)」。
 
 **Files:**
 - Modify: `kubernetes/components/opentelemetry-collector/production/values.yaml.gotmpl`
@@ -72,27 +74,12 @@ grep -n "processors:" -A 10 kubernetes/components/opentelemetry-collector/produc
           action: upsert
 ```
 
-- [ ] **Step 2: `k8sattributes` processor と `transform/workload` processor を追加**
+- [ ] **Step 2: `transform/workload` processor を追加**
 
-`processors:` セクションを以下の内容に置き換える (既存の `resource` processor は維持しつつ、前後に新規 processor を追加):
+**`k8sattributes` には触れない**（既存 preset の23項目 extract.metadata を上書きしてしまうため）。`processors:` セクションに `transform/workload` のみを追加する（既存の `resource` processor はそのまま）:
 
 ```yaml
   processors:
-    k8sattributes:
-      extract:
-        metadata:
-          # chart preset default の 6 項目 (Deployment のみ owner 名を extract)
-          - k8s.namespace.name
-          - k8s.pod.name
-          - k8s.pod.uid
-          - k8s.pod.start_time
-          - k8s.deployment.name
-          - k8s.node.name
-          # StatefulSet/DaemonSet/Job/CronJob も pod owner 名を extract、transform/workload で workload に合成
-          - k8s.statefulset.name
-          - k8s.daemonset.name
-          - k8s.job.name
-          - k8s.cronjob.name
     resource:
       attributes:
         # cluster identification (Beyla 等の他 source と横断クエリ可能にする)
@@ -151,7 +138,7 @@ for d in docs:
     if d and d.get('kind') == 'ConfigMap' and d['metadata']['name'] == 'opentelemetry-collector-agent':
         cfg = yaml.safe_load(d['data']['relay'])
         print('processors:', sorted(cfg['processors'].keys()))
-        print('k8s_attributes.extract.metadata:', cfg['processors']['k8s_attributes']['extract']['metadata'])
+        print('k8s_attributes.extract.metadata count:', len(cfg['processors']['k8s_attributes']['extract']['metadata']))
         print('transform/workload statements:', len(cfg['processors']['transform/workload']['resource_statements'][0]['statements']))
         print('traces pipeline processors:', cfg['service']['pipelines']['traces']['processors'])
         print('logs pipeline processors:', cfg['service']['pipelines']['logs']['processors'])
@@ -161,13 +148,15 @@ for d in docs:
 期待出力:
 ```
 processors: ['batch', 'k8s_attributes', 'memory_limiter', 'resource', 'transform/workload']
-k8s_attributes.extract.metadata: ['k8s.namespace.name', 'k8s.pod.name', 'k8s.pod.uid', 'k8s.pod.start_time', 'k8s.deployment.name', 'k8s.node.name', 'k8s.statefulset.name', 'k8s.daemonset.name', 'k8s.job.name', 'k8s.cronjob.name']
+k8s_attributes.extract.metadata count: 23
 transform/workload statements: 5
 traces pipeline processors: ['memory_limiter', 'k8s_attributes', 'resource', 'transform/workload', 'batch']
 logs pipeline processors: ['memory_limiter', 'k8s_attributes', 'resource', 'transform/workload', 'batch']
 ```
 
-NOTE: values.yaml では processor 名を `k8sattributes` (underscore なし) と書くが、chart preset が内部的に `k8s_attributes` (underscore あり) というキーで管理しており、render 結果はそちらに正しくマージされる。これは chart 側の既存の挙動で、今回の変更で作り出したものではない。
+`k8s_attributes.extract.metadata count` が **23**（既存 preset のまま、Task 1 で一切変更していないことの確認）であること。10 や別の数字になっていたら `k8sattributes:` ブロックを誤って追加してしまっている — Step 2 を見直す。
+
+NOTE: values.yaml で processor 名を書く場合は `k8sattributes` (underscore なし、このリポジトリでは pipeline の processors 配列にのみ出現) だが、chart preset が内部的に `k8s_attributes` (underscore あり) というキーで管理しており、render 結果はそちらに出現する。これは chart 側の既存の挙動。
 
 - [ ] **Step 6: ClusterRole が変化していないこと (= 現行 RBAC のまま) を確認**
 
