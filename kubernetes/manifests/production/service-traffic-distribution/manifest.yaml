@@ -30,6 +30,7 @@ spec:
           }
         }
     patchType: ApplyConfiguration
+  reinvocationPolicy: Never
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingAdmissionPolicyBinding
