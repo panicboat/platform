@@ -155,9 +155,7 @@ config:
           action: upsert
     transform/workload:
       error_mode: ignore
-      # transformprocessor に resource_statements という横断 key は無い (signal 別の
-      # trace_statements/log_statements にそれぞれ context: resource で書く必要がある)。
-      # 両方とも同じ statements になるため重複する。
+      # transformprocessor に signal 横断の resource_statements key は無いため trace/log で重複させる
       trace_statements:
         - context: resource
           statements:
