@@ -87,7 +87,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "count(\n  kube_pod_info{namespace=~\"$namespace\"}\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n)",
+              "expr": "count(kube_pod_info{namespace=~\"$namespace\"} * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"})",
               "refId": "A"
             }
           ],
@@ -149,7 +149,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "count(\n  (kube_pod_status_phase{namespace=~\"$namespace\", phase!=\"Running\", phase!=\"Succeeded\"} == 1)\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n)",
+              "expr": "count((kube_pod_status_phase{namespace=~\"$namespace\", phase!=\"Running\", phase!=\"Succeeded\"} == 1) * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"})",
               "refId": "A"
             }
           ],
@@ -206,7 +206,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "sum(\n  label_replace(\n    label_replace(\n      rate(http_server_request_duration_seconds_count{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval]),\n      \"namespace\", \"$1\", \"k8s_namespace_name\", \"(.*)\"\n    ),\n    \"pod\", \"$1\", \"k8s_pod_name\", \"(.*)\"\n  )\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n)",
+              "expr": "sum(label_replace(label_replace(rate(http_server_request_duration_seconds_count{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval]), \"namespace\", \"$1\", \"k8s_namespace_name\", \"(.*)\"), \"pod\", \"$1\", \"k8s_pod_name\", \"(.*)\") * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"})",
               "refId": "A"
             }
           ],
@@ -272,7 +272,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "histogram_quantile(0.95, sum(\n  label_replace(\n    label_replace(\n      rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval]),\n      \"namespace\", \"$1\", \"k8s_namespace_name\", \"(.*)\"\n    ),\n    \"pod\", \"$1\", \"k8s_pod_name\", \"(.*)\"\n  )\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) by (le))",
+              "expr": "histogram_quantile(0.95, sum(label_replace(label_replace(rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval]), \"namespace\", \"$1\", \"k8s_namespace_name\", \"(.*)\"), \"pod\", \"$1\", \"k8s_pod_name\", \"(.*)\") * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) by (le))",
               "refId": "A"
             }
           ],
@@ -338,7 +338,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "100 * sum(\n  label_replace(\n    label_replace(\n      rate(http_server_request_duration_seconds_count{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\", http_response_status_code=~\"5..\"}[$__rate_interval]),\n      \"namespace\", \"$1\", \"k8s_namespace_name\", \"(.*)\"\n    ),\n    \"pod\", \"$1\", \"k8s_pod_name\", \"(.*)\"\n  )\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) / clamp_min(sum(\n  label_replace(\n    label_replace(\n      rate(http_server_request_duration_seconds_count{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval]),\n      \"namespace\", \"$1\", \"k8s_namespace_name\", \"(.*)\"\n    ),\n    \"pod\", \"$1\", \"k8s_pod_name\", \"(.*)\"\n  )\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n), 0.001)",
+              "expr": "100 * sum(label_replace(label_replace(rate(http_server_request_duration_seconds_count{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\", http_response_status_code=~\"5..\"}[$__rate_interval]), \"namespace\", \"$1\", \"k8s_namespace_name\", \"(.*)\"), \"pod\", \"$1\", \"k8s_pod_name\", \"(.*)\") * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) / clamp_min(sum(label_replace(label_replace(rate(http_server_request_duration_seconds_count{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval]), \"namespace\", \"$1\", \"k8s_namespace_name\", \"(.*)\"), \"pod\", \"$1\", \"k8s_pod_name\", \"(.*)\") * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}), 0.001)",
               "refId": "A"
             }
           ],
@@ -400,7 +400,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "sum(\n  increase(kube_pod_container_status_restarts_total{namespace=~\"$namespace\", pod=~\"$pod\"}[15m])\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n)",
+              "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=~\"$namespace\", pod=~\"$pod\"}[15m]) * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"})",
               "refId": "A"
             }
           ],
@@ -710,7 +710,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "sum(\n  label_replace(\n    label_replace(\n      rate(http_server_request_duration_seconds_count{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval]),\n      \"namespace\", \"$1\", \"k8s_namespace_name\", \"(.*)\"\n    ),\n    \"pod\", \"$1\", \"k8s_pod_name\", \"(.*)\"\n  )\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) by (http_route)",
+              "expr": "sum(label_replace(label_replace(rate(http_server_request_duration_seconds_count{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval]), \"namespace\", \"$1\", \"k8s_namespace_name\", \"(.*)\"), \"pod\", \"$1\", \"k8s_pod_name\", \"(.*)\") * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) by (http_route)",
               "legendFormat": "{{http_route}}",
               "refId": "A"
             }
@@ -798,7 +798,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "histogram_quantile(0.95, sum(\n  label_replace(\n    label_replace(\n      rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval]),\n      \"namespace\", \"$1\", \"k8s_namespace_name\", \"(.*)\"\n    ),\n    \"pod\", \"$1\", \"k8s_pod_name\", \"(.*)\"\n  )\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) by (le, http_route))",
+              "expr": "histogram_quantile(0.95, sum(label_replace(label_replace(rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\", k8s_namespace_name=~\"$namespace\"}[$__rate_interval]), \"namespace\", \"$1\", \"k8s_namespace_name\", \"(.*)\"), \"pod\", \"$1\", \"k8s_pod_name\", \"(.*)\") * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) by (le, http_route))",
               "legendFormat": "{{http_route}}",
               "refId": "A"
             }
@@ -897,7 +897,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "100 * sum(\n  rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}[5m])\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) by (pod) / sum(\n  kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"cpu\"}\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) by (pod)",
+              "expr": "100 * sum(rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}[5m]) * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) by (pod) / sum(kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"cpu\"} * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) by (pod)",
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
@@ -985,7 +985,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "100 * sum(\n  container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) by (pod) / sum(\n  kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"memory\"}\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) by (pod)",
+              "expr": "100 * sum(container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"} * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) by (pod) / sum(kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"memory\"} * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) by (pod)",
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
@@ -1084,7 +1084,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "sum(\n  rate(container_network_receive_bytes_total{namespace=~\"$namespace\", pod=~\"$pod\"}[5m])\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) by (pod)",
+              "expr": "sum(rate(container_network_receive_bytes_total{namespace=~\"$namespace\", pod=~\"$pod\"}[5m]) * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) by (pod)",
               "legendFormat": "{{pod}} rx",
               "refId": "A"
             },
@@ -1093,7 +1093,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "sum(\n  rate(container_network_transmit_bytes_total{namespace=~\"$namespace\", pod=~\"$pod\"}[5m])\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) by (pod)",
+              "expr": "sum(rate(container_network_transmit_bytes_total{namespace=~\"$namespace\", pod=~\"$pod\"}[5m]) * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) by (pod)",
               "legendFormat": "{{pod}} tx",
               "refId": "B"
             }
@@ -1641,7 +1641,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "count(\n  kube_pod_info{namespace=~\"$namespace\"}\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n)",
+              "expr": "count(kube_pod_info{namespace=~\"$namespace\"} * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"})",
               "refId": "A"
             }
           ],
@@ -1698,7 +1698,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "count(\n  (kube_pod_status_phase{namespace=~\"$namespace\", phase=\"Running\"} == 1)\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n)",
+              "expr": "count((kube_pod_status_phase{namespace=~\"$namespace\", phase=\"Running\"} == 1) * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"})",
               "refId": "A"
             }
           ],
@@ -1760,7 +1760,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "count(\n  (kube_pod_status_phase{namespace=~\"$namespace\", phase!=\"Running\", phase!=\"Succeeded\"} == 1)\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n)",
+              "expr": "count((kube_pod_status_phase{namespace=~\"$namespace\", phase!=\"Running\", phase!=\"Succeeded\"} == 1) * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"})",
               "refId": "A"
             }
           ],
@@ -1822,7 +1822,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "sum(\n  increase(kube_pod_container_status_restarts_total{namespace=~\"$namespace\", pod=~\"$pod\"}[15m])\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n)",
+              "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=~\"$namespace\", pod=~\"$pod\"}[15m]) * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"})",
               "refId": "A"
             }
           ],
@@ -1920,7 +1920,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "100 * sum(\n  rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}[5m])\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) by (pod) / sum(\n  kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"cpu\"}\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) by (pod)",
+              "expr": "100 * sum(rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}[5m]) * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) by (pod) / sum(kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"cpu\"} * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) by (pod)",
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
@@ -2008,7 +2008,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "100 * sum(\n  container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) by (pod) / sum(\n  kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"memory\"}\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) by (pod)",
+              "expr": "100 * sum(container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"} * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) by (pod) / sum(kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"memory\"} * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) by (pod)",
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
@@ -2107,7 +2107,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "sum(\n  rate(container_network_receive_bytes_total{namespace=~\"$namespace\", pod=~\"$pod\"}[5m])\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) by (pod)",
+              "expr": "sum(rate(container_network_receive_bytes_total{namespace=~\"$namespace\", pod=~\"$pod\"}[5m]) * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) by (pod)",
               "legendFormat": "{{pod}} rx",
               "refId": "A"
             },
@@ -2116,7 +2116,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "sum(\n  rate(container_network_transmit_bytes_total{namespace=~\"$namespace\", pod=~\"$pod\"}[5m])\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) by (pod)",
+              "expr": "sum(rate(container_network_transmit_bytes_total{namespace=~\"$namespace\", pod=~\"$pod\"}[5m]) * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) by (pod)",
               "legendFormat": "{{pod}} tx",
               "refId": "B"
             }
@@ -2319,7 +2319,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "kube_pod_status_ready{namespace=~\"$namespace\", pod=~\"$pod\", condition=\"true\"}\n* on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}",
+              "expr": "kube_pod_status_ready{namespace=~\"$namespace\", pod=~\"$pod\", condition=\"true\"} * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}",
               "format": "table",
               "instant": true,
               "refId": "A"
@@ -2423,7 +2423,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "sum by (namespace,pod,container) (\n  increase(kube_pod_container_status_restarts_total{namespace=~\"$namespace\", pod=~\"$pod\"}[15m])\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) > 0",
+              "expr": "sum by (namespace,pod,container) (increase(kube_pod_container_status_restarts_total{namespace=~\"$namespace\", pod=~\"$pod\"}[15m]) * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) > 0",
               "format": "table",
               "instant": true,
               "refId": "A"
@@ -2459,7 +2459,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "sum by (namespace,pod) (\n  kube_pod_info{namespace=~\"$namespace\",pod=~\"$pod\"}\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n) unless on (namespace,pod) (sum by (namespace,pod) (kube_pod_container_resource_requests{namespace=~\"$namespace\",pod=~\"$pod\",resource=\"cpu\"}) > 0)",
+              "expr": "sum by (namespace,pod) (kube_pod_info{namespace=~\"$namespace\",pod=~\"$pod\"} * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}) unless on (namespace,pod) (sum by (namespace,pod) (kube_pod_container_resource_requests{namespace=~\"$namespace\",pod=~\"$pod\",resource=\"cpu\"}) > 0)",
               "format": "table",
               "instant": true,
               "refId": "A"
@@ -2495,7 +2495,7 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "sum by (namespace,pod,container,reason) (\n  (kube_pod_container_status_waiting_reason{namespace=~\"$namespace\",pod=~\"$pod\"} == 1)\n  * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"}\n)",
+              "expr": "sum by (namespace,pod,container,reason) ((kube_pod_container_status_waiting_reason{namespace=~\"$namespace\",pod=~\"$pod\"} == 1) * on(namespace, pod) group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{workload=~\"$workload\"})",
               "format": "table",
               "instant": true,
               "refId": "A"
