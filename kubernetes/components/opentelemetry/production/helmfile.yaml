@@ -19,6 +19,6 @@ releases:
   - name: opentelemetry-operator
     namespace: opentelemetry-operator-system
     chart: opentelemetry/opentelemetry-operator
-    version: "0.120.3"
+    version: "0.123.0"
     values:
       - values.yaml.gotmpl
