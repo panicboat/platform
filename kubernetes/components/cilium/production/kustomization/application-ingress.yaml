@@ -9,8 +9,8 @@
 # 自動 attach (= Ingress.host が SAN match)。explicit certificate-arn annotation
 # 不要。
 #
-# external-dns annotation: hostname を Route53 record として auto-create
-# (= aws-load-balancer-controller / external-dns 連携)。
+# dystopia.city の Route53 apex は aws/alb stack の Terraform (Global Accelerator 経由) で静的管理する。
+# そのため external-dns hostname annotation はここには付けない。
 # =============================================================================
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -36,7 +36,6 @@ metadata:
     alb.ingress.kubernetes.io/healthcheck-port: traffic-port
     alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
     alb.ingress.kubernetes.io/ssl-redirect: "443"
-    external-dns.alpha.kubernetes.io/hostname: dystopia.city
 spec:
   ingressClassName: alb
   rules:
