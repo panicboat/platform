@@ -6,10 +6,10 @@ metadata:
   name: tempo
   namespace: monitoring
   labels:
-    helm.sh/chart: tempo-2.2.3
+    helm.sh/chart: tempo-2.4.0
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
-    app.kubernetes.io/version: "2.10.7"
+    app.kubernetes.io/version: "2.10.8"
     app.kubernetes.io/managed-by: Helm
 automountServiceAccountToken: true
 ---
@@ -20,10 +20,10 @@ metadata:
   name: tempo
   namespace: monitoring
   labels:
-    helm.sh/chart: tempo-2.2.3
+    helm.sh/chart: tempo-2.4.0
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
-    app.kubernetes.io/version: "2.10.7"
+    app.kubernetes.io/version: "2.10.8"
     app.kubernetes.io/managed-by: Helm
 data:
   overrides.yaml: |
@@ -100,6 +100,68 @@ data:
       traces_storage:
         path: "/tmp/traces"
 ---
+# Source: tempo/templates/service-headless.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tempo-headless
+  namespace: monitoring
+  labels:
+    helm.sh/chart: tempo-2.4.0
+    app.kubernetes.io/name: tempo
+    app.kubernetes.io/instance: tempo
+    app.kubernetes.io/version: "2.10.8"
+    app.kubernetes.io/managed-by: Helm
+    prometheus.io/service-monitor: "false"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:  
+  - name: tempo-jaeger-thrift-compact
+    port: 6831
+    protocol: UDP
+    targetPort: 6831
+  - name: tempo-jaeger-thrift-binary
+    port: 6832
+    protocol: UDP
+    targetPort: 6832  
+  - name: tempo-prom-metrics
+    port: 3200
+    protocol: TCP
+    targetPort: 3200
+  - name: tempo-jaeger-thrift-http
+    port: 14268
+    protocol: TCP
+    targetPort: 14268
+  - name: grpc-tempo-jaeger
+    port: 14250
+    protocol: TCP
+    targetPort: 14250
+  - name: tempo-zipkin
+    port: 9411
+    protocol: TCP
+    targetPort: 9411
+  - name: tempo-otlp-legacy
+    port: 55680
+    protocol: TCP
+    targetPort: 55680
+  - name: tempo-otlp-http-legacy
+    port: 55681
+    protocol: TCP
+    targetPort: 55681
+  - name: grpc-tempo-otlp
+    port: 4317
+    protocol: TCP
+    targetPort: 4317
+  - name: tempo-otlp-http
+    port: 4318
+    protocol: TCP
+    targetPort: 4318
+  selector:
+    app.kubernetes.io/name: tempo
+    app.kubernetes.io/instance: tempo
+---
 # Source: tempo/templates/service.yaml
 apiVersion: v1
 kind: Service
@@ -107,10 +169,10 @@ metadata:
   name: tempo
   namespace: monitoring
   labels:
-    helm.sh/chart: tempo-2.2.3
+    helm.sh/chart: tempo-2.4.0
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
-    app.kubernetes.io/version: "2.10.7"
+    app.kubernetes.io/version: "2.10.8"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -166,10 +228,10 @@ metadata:
   name: tempo
   namespace: monitoring
   labels:
-    helm.sh/chart: tempo-2.2.3
+    helm.sh/chart: tempo-2.4.0
     app.kubernetes.io/name: tempo
     app.kubernetes.io/instance: tempo
-    app.kubernetes.io/version: "2.10.7"
+    app.kubernetes.io/version: "2.10.8"
     app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
@@ -184,7 +246,7 @@ spec:
         app.kubernetes.io/name: tempo
         app.kubernetes.io/instance: tempo
       annotations:
-        checksum/config: f9cf417c830eba251f09e45293df8c92ac0a113873a3087c03388cc096d56d49
+        checksum/config: 1a9d69fa1e4b5fe0e4a5bb5bac76f5b0e1778bd8780186462a55dae7cc17d29d
     spec:
       serviceAccountName: tempo
       automountServiceAccountToken: true
@@ -192,7 +254,7 @@ spec:
       - args:
         - -config.file=/conf/tempo.yaml
         - -mem-ballast-size-mbs=1024
-        image: docker.io/grafana/tempo:2.10.7
+        image: docker.io/grafana/tempo:2.10.8
         imagePullPolicy: IfNotPresent
         name: tempo
         ports:
@@ -288,17 +350,22 @@ metadata:
   namespace: monitoring
   labels:
     app: tempo
-    chart: tempo-2.2.3
+    chart: tempo-2.4.0
     heritage: Helm
     release: kube-prometheus-stack
 spec:
   selector:
     matchLabels:
-      helm.sh/chart: tempo-2.2.3
+      helm.sh/chart: tempo-2.4.0
       app.kubernetes.io/name: tempo
       app.kubernetes.io/instance: tempo
-      app.kubernetes.io/version: "2.10.7"
+      app.kubernetes.io/version: "2.10.8"
       app.kubernetes.io/managed-by: Helm
+    matchExpressions:
+      - key: prometheus.io/service-monitor
+        operator: NotIn
+        values:
+          - "false"
   namespaceSelector:
     matchNames:
       - "monitoring"
