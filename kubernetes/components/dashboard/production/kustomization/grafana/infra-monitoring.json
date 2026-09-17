@@ -893,6 +893,7 @@
               "job": true,
               "prometheus": true,
               "prometheus_replica": true,
+              "service": true,
               "uid": true
             },
             "indexByName": {},
