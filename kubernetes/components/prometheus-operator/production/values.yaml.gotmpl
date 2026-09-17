@@ -96,6 +96,8 @@ grafana:
           jsonData:
             httpMethod: POST
             timeInterval: 30s
+            # Mimir ruler は disable 済のため ruler API 不在 (有効だと probe が 502 になる)
+            manageAlerts: false
         - name: Prometheus (local)
           uid: prometheus-local
           type: prometheus

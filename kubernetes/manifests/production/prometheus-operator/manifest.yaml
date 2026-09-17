@@ -75421,6 +75421,7 @@ data:
       isDefault: true
       jsonData:
         httpMethod: POST
+        manageAlerts: false
         timeInterval: 30s
       name: Mimir
       type: prometheus
@@ -76933,7 +76934,7 @@ spec:
         app.kubernetes.io/instance: kube-prometheus-stack
         app.kubernetes.io/version: "13.2.0"
       annotations:
-        checksum/config: 5352db82024e5d0c22b0d4a71f43de80d1c18268d94c19a0c367d7a179887cf1
+        checksum/config: 0788ff7b0d6e063dbf5b0374edd6e5cd141b46bba75f7bd55a4405d156df3f20
         checksum/sc-dashboard-provider-config: e70bf6a851099d385178a76de9757bb0bef8299da6d8443602590e44f05fdf24
         kubectl.kubernetes.io/default-container: grafana
     spec:
