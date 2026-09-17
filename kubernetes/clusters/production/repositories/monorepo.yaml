@@ -32,7 +32,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: monorepo
-  suspend: true
+  suspend: false
 ---
 # =============================================================================
 # ExternalSecret: Sync GitHub App credentials from AWS Secrets Manager
