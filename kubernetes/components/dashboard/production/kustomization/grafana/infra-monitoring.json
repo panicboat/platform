@@ -891,6 +891,8 @@
               "condition": true,
               "instance": true,
               "job": true,
+              "prometheus": true,
+              "prometheus_replica": true,
               "uid": true
             },
             "indexByName": {},
