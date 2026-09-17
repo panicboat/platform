@@ -23,6 +23,6 @@ releases:
   - name: external-dns
     namespace: external-dns
     chart: external-dns/external-dns
-    version: "1.21.1"
+    version: "1.22.0"
     values:
       - values.yaml.gotmpl
