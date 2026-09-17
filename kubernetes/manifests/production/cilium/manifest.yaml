@@ -2690,7 +2690,6 @@ metadata:
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     alb.ingress.kubernetes.io/success-codes: 200-499
     alb.ingress.kubernetes.io/target-type: ip
-    external-dns.alpha.kubernetes.io/hostname: dystopia.city
   name: application
   namespace: kube-system
 spec:
