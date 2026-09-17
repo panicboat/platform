@@ -265,7 +265,7 @@
         "type": "prometheus",
         "uid": "mimir"
       },
-      "description": "Counts pods by phase only. A pod stuck in CrashLoopBackOff or ImagePullBackOff still reports phase=Running and will NOT be counted here \u2014 see \"Pods Waiting by Reason\" below.",
+      "description": "Counts pods by phase only. A pod stuck in CrashLoopBackOff or ImagePullBackOff still reports phase=Running and will NOT be counted here — see \"Pods Waiting by Reason\" below.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -389,7 +389,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 5
       },
       "id": 8,
       "title": "Resource Usage",
@@ -454,7 +454,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 15
+        "y": 6
       },
       "id": 9,
       "options": {
@@ -542,7 +542,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 15
+        "y": 6
       },
       "id": 10,
       "options": {
@@ -576,7 +576,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 29
+        "y": 20
       },
       "id": 11,
       "title": "Network",
@@ -641,7 +641,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 30
+        "y": 21
       },
       "id": 12,
       "options": {
@@ -684,7 +684,7 @@
         "type": "prometheus",
         "uid": "mimir"
       },
-      "description": "Egress (source_namespace) and inbound (destination_namespace) drops shown separately \u2014 previously only egress was visible.",
+      "description": "Egress (source_namespace) and inbound (destination_namespace) drops shown separately — previously only egress was visible.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -739,7 +739,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 30
+        "y": 21
       },
       "id": 13,
       "options": {
@@ -782,7 +782,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 38
+        "y": 29
       },
       "id": 14,
       "title": "Pod Status",
@@ -853,7 +853,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 39
+        "y": 30
       },
       "id": 15,
       "options": {
@@ -907,7 +907,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 55
+        "y": 46
       },
       "id": 16,
       "title": "Events & Logs",
@@ -922,7 +922,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 56
+        "y": 47
       },
       "id": 17,
       "options": {
@@ -953,124 +953,6 @@
         "type": "prometheus",
         "uid": "mimir"
       },
-      "description": "Node count over time \u2014 catches fast Karpenter scale-out/in events that an instant stat cannot.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "lineWidth": 1,
-            "pointSize": 5,
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            }
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 6
-      },
-      "id": 18,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "mimir"
-          },
-          "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"} == 1)",
-          "legendFormat": "Ready",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "mimir"
-          },
-          "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=~\"false|unknown\"} == 1)",
-          "legendFormat": "Not Ready",
-          "refId": "B"
-        }
-      ],
-      "title": "Node Ready State",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "loki"
-      },
-      "description": "Karpenter controller log lines mentioning node lifecycle actions \u2014 read alongside Node Ready State during a churn event.",
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 6
-      },
-      "id": 19,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": true,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "expr": "{k8s_namespace_name=\"karpenter\"} |~ \"(?i)(nodeclaim|nodepool|launch|disrupt|consolidat|drain|terminat)\"",
-          "refId": "A"
-        }
-      ],
-      "title": "Karpenter Events",
-      "type": "logs"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 5
-      },
-      "id": 23,
-      "panels": [],
-      "title": "Node Lifecycle",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "mimir"
-      },
       "description": "Which container is restarting right now, not just the aggregate count.",
       "fieldConfig": {
         "defaults": {},
@@ -1080,7 +962,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 23
+        "y": 14
       },
       "id": 20,
       "options": {
@@ -1116,7 +998,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 23
+        "y": 14
       },
       "id": 21,
       "options": {
@@ -1143,7 +1025,7 @@
         "type": "prometheus",
         "uid": "mimir"
       },
-      "description": "Containers currently waiting (CrashLoopBackOff, ImagePullBackOff, etc.) \u2014 the blind spot in the Unhealthy Pods stat above.",
+      "description": "Containers currently waiting (CrashLoopBackOff, ImagePullBackOff, etc.) — the blind spot in the Unhealthy Pods stat above.",
       "fieldConfig": {
         "defaults": {},
         "overrides": []
@@ -1152,7 +1034,7 @@
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 49
+        "y": 40
       },
       "id": 22,
       "options": {
