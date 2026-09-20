@@ -31,7 +31,7 @@
 
 module "karpenter" {
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"
-  version = "21.25.0"
+  version = "21.25.1"
 
   cluster_name = module.eks.cluster.name
 
@@ -91,7 +91,7 @@ data "aws_subnets" "system_critical_az" {
 
 module "system_critical" {
   source  = "terraform-aws-modules/eks/aws//modules/eks-managed-node-group"
-  version = "21.25.0"
+  version = "21.25.1"
 
   name         = "eks-${var.environment}-system-critical"
   cluster_name = module.eks.cluster.name
