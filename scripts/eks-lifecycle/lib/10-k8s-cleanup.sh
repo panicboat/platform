@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-# 10-k8s-cleanup.sh - Pre-teardown k8s resource cleanup.
-#
-# Deletes Ingress / LoadBalancer Service / PVC / Karpenter NodePool to
-# release AWS resources (target groups / ENIs / EBS volumes / EC2
-# instances / external-dns Route53 records) BEFORE we run terragrunt
-# destroy on the EKS cluster itself. Skipped if cluster is not reachable,
-# except for the AWS-API fallbacks which run regardless to mop up
-# resources whose owning controller is already gone.
 
 LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
@@ -30,22 +22,15 @@ if [ "${CLUSTER_EXISTS:-}" = "true" ]; then
   run kubectl delete svc -A --field-selector spec.type=LoadBalancer --timeout=600s || warn "LB service deletion incomplete (= will rely on AWS-tag fallback in Step 10.4)"
 
   info "Step 10.3: Deleting all PVCs (= ebs-csi-driver volume reclaim via reclaimPolicy=Delete; finalizer 完了まで最大 600s 待機)"
-  # StatefulSet delete (= helmfile destroy 等) は PVC を残す default 仕様。
-  # ここで明示削除しないと NodePool drain 後に EBS が 'available' で残り、
-  # 後段 terragrunt eks destroy で IAM/CSI controller が消えると orphan 化する。
-  # cluster + ebs-csi-driver pod が alive なうちに reclaim を走らせる必要がある (= Step 10.5 NodePool delete より前)。
+  # Explicitly delete PVCs to trigger volume reclaim before the CSI driver and nodes terminate.
   run kubectl delete pvc --all -A --timeout=600s || warn "PVC deletion incomplete (= will rely on AWS-tag fallback in Step 10.7)"
 fi
 
 info "Step 10.4: AWS-tag fallback — delete leftover ALB / NLB tagged for this cluster"
-# AWS Load Balancer Controller は ALB / NLB に tag:elbv2.k8s.aws/cluster=<name>
-# を付与する。 Step 10.1 / 10.2 で finalizer が完了せず ALB / NLB が残った場合、
-# 後段の Karpenter NodePool delete で ALB controller pod が巻き込まれて
-# 残 finalizer が永久 stuck → terragrunt alb destroy が
-# ACM cert in-use で fail する pattern (= 過去事故 patterns) を防ぐ。
+# FALLBACK: sweep tagged LBs directly to avoid orphan resources if controller finalizers hung.
 if [ "${DRY_RUN:-0}" != "1" ]; then
   REGION="$(resolve_aws_region)"
-  use_apply_creds  # = need elbv2 / tag API permissions (= operator's chain)
+  use_apply_creds
   LEFTOVER_LB_ARNS=$(aws resourcegroupstaggingapi get-resources --region "$REGION" \
     --resource-type-filters "elasticloadbalancing:loadbalancer" \
     --tag-filters "Key=elbv2.k8s.aws/cluster,Values=eks-${ENV}" \
@@ -66,16 +51,13 @@ if [ "${DRY_RUN:-0}" != "1" ]; then
     info "No leftover load balancers found."
   fi
   if [ "${CLUSTER_EXISTS:-}" = "true" ]; then
-    use_admin_creds  # = back to kubectl creds
+    use_admin_creds
   fi
 fi
 
 if [ "${CLUSTER_EXISTS:-}" = "true" ]; then
   info "Step 10.5: Deleting Karpenter NodePools (= synchronous EC2 drain + terminate via --cascade=foreground)"
-  # --cascade=foreground waits for owned NodeClaims (= and their EC2 instances)
-  # to be deleted before returning. This avoids the historical failure mode where
-  # NodePool delete returned immediately while leaving EC2 alive, eventually
-  # stranded after eks-karpenter stack destroy (= controller gone, no terminate path).
+  # Foreground cascade ensures instances terminate before the controller itself is destroyed.
   if kubectl get nodepools.karpenter.sh >/dev/null 2>&1; then
     run kubectl delete nodepools.karpenter.sh --all --cascade=foreground --timeout=600s || \
       warn "NodePool foreground deletion incomplete (= will rely on AWS-tag fallback below)"
@@ -85,7 +67,7 @@ fi
 info "Step 10.6: AWS-tag fallback — terminate any leftover Karpenter EC2 (= NodePool already gone but instances still alive)"
 if [ "${DRY_RUN:-0}" != "1" ]; then
   REGION="$(resolve_aws_region)"
-  use_apply_creds  # = need EC2 permissions (= operator's chain), not eks-admin (kubectl-only)
+  use_apply_creds
   LEFTOVER_IDS=$(aws ec2 describe-instances --region "$REGION" \
     --filters "Name=tag:karpenter.sh/nodepool,Values=*" \
               "Name=instance-state-name,Values=pending,running,shutting-down,stopping,stopped" \
@@ -103,12 +85,10 @@ if [ "${DRY_RUN:-0}" != "1" ]; then
 fi
 
 info "Step 10.7: AWS-tag fallback — delete leftover EBS volumes tagged for this cluster"
-# StatefulSet delete が PVC を残した場合、 Step 10.3 で kubectl が届かない (= cluster 既消失)
-# 経路でも EBS は 'available' で生存する。 ebs-csi-driver は dynamic PVC volume に
-# tag:KubernetesCluster=<name> を付与するため、 controller 不在でも tag 経由で回収できる。
+# FALLBACK: sweep tagged available EBS volumes directly if PVC cleanup was unreachable.
 if [ "${DRY_RUN:-0}" != "1" ]; then
   REGION="$(resolve_aws_region)"
-  use_apply_creds  # = need EC2 permissions (= operator's chain)
+  use_apply_creds
   LEFTOVER_VOL_IDS=$(aws ec2 describe-volumes --region "$REGION" \
     --filters "Name=tag:KubernetesCluster,Values=eks-${ENV}" "Name=status,Values=available" \
     --query 'Volumes[].VolumeId' --output text)
@@ -124,19 +104,13 @@ if [ "${DRY_RUN:-0}" != "1" ]; then
 fi
 
 info "Step 10.8: AWS-API fallback — delete leftover external-dns Route53 records owned by this cluster"
-# external-dns は cluster 内で動作し A/AAAA/CNAME 削除を Ingress finalizer 経由で実行する。
-# Ingress 削除 (= Step 10.1) 時点で external-dns pod が未稼働 (= 既 destroy / pending) だった
-# 場合、 Route53 上に owner=eks-${ENV} marker の TXT registry record + 対応 A/AAAA/CNAME が
-# 残る。 cluster destroy 後は external-dns 経路で消せないので、 ownership marker tag を頼りに
-# AWS API で直接削除する。
+# FALLBACK: delete Route53 records directly if external-dns pods were inactive during Ingress deletion.
 if [ "${DRY_RUN:-0}" != "1" ]; then
-  use_route53_creds  # = panicboat.net zone lives in master, not production
+  use_route53_creds
   HOSTED_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
     --dns-name panicboat.net --query 'HostedZones[0].Id' --output text 2>/dev/null | sed 's|/hostedzone/||')
   if [ -n "$HOSTED_ZONE_ID" ] && [ "$HOSTED_ZONE_ID" != "None" ]; then
-    # external-dns の TXT registry name format は "<rtype>-<host>" (= txtPrefix 未設定時の default)。
-    # ownership marker (= heritage=external-dns,external-dns/owner=eks-<env>) を持つ TXT を起点に、
-    # 関連 A/AAAA/CNAME (= prefix 除去で導出した host name) を集めて一括 DELETE する。
+    # Derives associated records from TXT registry markers for atomic batch deletion.
     OWNED_BATCH=$(aws route53 list-resource-record-sets --hosted-zone-id "$HOSTED_ZONE_ID" --output json | \
       jq -c --arg owner "eks-${ENV}" '
         .ResourceRecordSets as $all
@@ -161,7 +135,7 @@ if [ "${DRY_RUN:-0}" != "1" ]; then
 fi
 
 if [ "${CLUSTER_EXISTS:-}" = "true" ]; then
-  use_admin_creds  # = back to kubectl creds for sanity check
+  use_admin_creds
   info "Step 10.9: Sanity check - listing remaining pods"
   run kubectl get pods -A -o wide || true
 fi

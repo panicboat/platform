@@ -1,13 +1,4 @@
 #!/usr/bin/env bash
-# 30-destroy-stacks.sh - Destroy 9 EKS-related stacks in fixed order.
-#
-# Order:
-#   eks-karpenter -> eks-holmesgpt -> eks-secrets -> eks-logs -> eks-metrics
-#   -> eks-traces -> eks -> alb -> vpc
-#
-# Each stack runs `terragrunt destroy -auto-approve`. On failure, fail
-# fast with a diagnostic. 30s sleep between stacks for AWS API
-# eventual consistency.
 
 LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
@@ -20,21 +11,13 @@ require_cmd terragrunt tofu
 
 REGION="$(resolve_aws_region)"
 
-# Step 10.4 (10-k8s-cleanup.sh) sweeps ALB/NLB tagged elbv2.k8s.aws/cluster
-# once, early in the pipeline. When multiple Ingresses share one ALB via
-# IngressGroup, `kubectl delete ingress --all` deleting them one-by-one can
-# race the controller into recreating the shared ALB (+ its auto-created
-# security groups) after that sweep already ran, leaving it orphaned once
-# the controller itself is gone. The recreate window closes for good once
-# the `eks` stack is destroyed (no controller left to reconcile), so that
-# is the last safe point to sweep before it blocks `alb`/`vpc` destroy with
-# IGW-detach / subnet-delete DependencyViolation errors.
+# Sweeps ALB controller leftovers post-cluster destroy to unblock VPC deletion.
 sweep_lb_controller_orphans() {
   if [ "${DRY_RUN:-0}" = "1" ]; then
     return 0
   fi
 
-  use_apply_creds  # = need elbv2 / ec2 API permissions (= operator's chain)
+  use_apply_creds
 
   local lb_arns sg_ids
   lb_arns=$(aws resourcegroupstaggingapi get-resources --region "$REGION" \
@@ -54,9 +37,7 @@ sweep_lb_controller_orphans() {
     ok "Leftover load balancers deleted."
   fi
 
-  # AWS Load Balancer Controller tags its auto-created security groups
-  # (frontend + backend/traffic) with the same elbv2.k8s.aws/cluster key;
-  # these are not terraform-managed so `terragrunt destroy` never sees them.
+  # Controller-managed security groups are untracked by Terraform and must be deleted explicitly.
   sg_ids=$(aws ec2 describe-security-groups --region "$REGION" \
     --filters "Name=tag:elbv2.k8s.aws/cluster,Values=eks-${ENV}" \
     --query 'SecurityGroups[].GroupId' --output text)
@@ -69,10 +50,7 @@ sweep_lb_controller_orphans() {
   fi
 }
 
-# eks-holmesgpt は eks より前に置く必要がある。同 stack の module "eks" が
-# `data "aws_eks_cluster"` で cluster を名前引きしており、cluster 削除後に
-# destroy すると plan 生成時点で "couldn't find resource" になって落ちる
-# (= 順序を誤ると `-refresh=false` を付けた手動 destroy が必要になる)。
+# eks-holmesgpt must precede eks because data.aws_eks_cluster requires an active cluster during plan.
 STACKS=(
   "eks-karpenter"
   "eks-holmesgpt"
@@ -90,7 +68,6 @@ confirm "About to DESTROY 9 stacks for ENV=${ENV}. Continue?"
 for stack in "${STACKS[@]}"; do
   info "Step 30.${stack}: terragrunt destroy aws/${stack}/${ENV}"
 
-  # Refresh credentials if expiring soon
   if creds_expiring_soon; then
     info "Credentials expiring soon, re-assuming..."
     # shellcheck source=lib/00-auth.sh

@@ -1,31 +1,5 @@
 #!/usr/bin/env bash
-# =============================================================================
-# Pod Identity Injection Detection (= 引き継ぎ事項 #15)
-# =============================================================================
-# Probe AWS EKS Pod Identity webhook が AWS_CONTAINER_CREDENTIALS_FULL_URI を
-# 対象 Pod に inject しているか確認。 webhook timing race で env 不在のまま Pod
-# が起動した場合 (= ESO / cilium-operator 等で observed) を検出する。
-#
-# Spec: docs/superpowers/specs/2026-05-17-pod-identity-injection-detection-design.md
-#
-# Usage:
-#   eks-login           # = eks-admin role assume + AWS_ env vars export
-#   bash check-pod-identity-injection.sh [cluster_name]
-#
-# 認証要件:
-# - aws cli は eks:ListPodIdentityAssociations 権限が必要だが eks-admin role
-#   には現在付与されていない (= 別 phase で role policy 修正検討)。 本 script は
-#   `unset AWS_*` で IAM user creds に fallback して aws cli call、 kubectl は
-#   eks-admin role env vars を保持した sub-shell で実行する mixed approach。
-# - IAM user 側に AdministratorAccess (= AssumeRole + EKS describe 含む) が必要。
-#
-# Requires: aws cli / kubectl / jq
-#
-# Exit codes:
-# - 0: 全 Pod injection OK
-# - 1: 1 つ以上の Pod で env 不在 (= injection 失敗)
-# - 2: tool 不在 / AWS API error
-# =============================================================================
+# Probes whether Pod Identity webhook injected AWS_CONTAINER_CREDENTIALS_FULL_URI into matching pods.
 
 set -euo pipefail
 
@@ -42,12 +16,12 @@ done
 echo "Probing Pod Identity injection on cluster=$cluster_name region=$region"
 echo ""
 
-# eks-admin role env vars を保存 (= kubectl exec plugin で復元)
+# Saved credentials allow restoring eks-admin context after unsetting AWS env vars.
 saved_key="${AWS_ACCESS_KEY_ID:-}"
 saved_secret="${AWS_SECRET_ACCESS_KEY:-}"
 saved_token="${AWS_SESSION_TOKEN:-}"
 
-# 1. AWS から Pod Identity Association list 取得 (= IAM user creds 経由)
+# Unset role credentials to query EKS associations using caller IAM credentials.
 assocs=$(
   unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
   aws eks list-pod-identity-associations \
@@ -56,7 +30,7 @@ assocs=$(
     --query 'associations[].{ns:namespace,sa:serviceAccount}' \
     --output json
 ) || {
-  echo "ERROR: aws eks list-pod-identity-associations failed (= IAM user creds で eks:ListPodIdentityAssociations 必要)" >&2
+  echo "ERROR: aws eks list-pod-identity-associations failed" >&2
   exit 2
 }
 
@@ -64,11 +38,10 @@ assoc_count=$(echo "$assocs" | jq 'length')
 echo "Found $assoc_count Pod Identity Association(s)"
 echo ""
 
-# subshell scope 問題回避のため fail list を temp file に蓄積
+# Accumulate failures across subshell loop in temp file.
 fail_list=$(mktemp)
 trap 'rm -f "$fail_list"' EXIT
 
-# kubectl call は eks-admin role env vars で (= 上記 saved 値 が現在 env に残存)
 echo "$assocs" | jq -c '.[]' | while read -r assoc; do
   ns=$(echo "$assoc" | jq -r '.ns')
   sa=$(echo "$assoc" | jq -r '.sa')
