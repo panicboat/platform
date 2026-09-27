@@ -1,25 +1,10 @@
-# Metrics Server values for production
-
-# =============================================================================
-# defaultArgs override
-# =============================================================================
-# chart の defaultArgs を上書きして --kubelet-preferred-address-types を
-# InternalIP のみに narrow する。EKS の kubelet は InternalIP で待ち受けるため
-# preference list を 1 つに絞ることで明示的な制約を表す。
-# defaultArgs を上書きすることで chart の args ロジック（defaultArgs に args を
-# append する仕様）による flag 重複を避ける。
+# Overrides defaultArgs to narrow kubelet preferred address types to InternalIP on EKS.
 defaultArgs:
   - --cert-dir=/tmp
   - --kubelet-preferred-address-types=InternalIP
   - --kubelet-use-node-status-port
   - --metric-resolution=15s
 
-# =============================================================================
-# Resources
-# =============================================================================
-# cpu request: 実測平均 4m に対し 100m は過大。right-size。
-# memory: 2026-09-04 recreate 直後 (アイドル状態) の実測 25Mi に対し 200Mi は
-# 過大。実トラフィック投入後に再計測して見直すこと。
 resources:
   requests:
     cpu: 25m
@@ -28,9 +13,4 @@ resources:
     cpu: 1000m
     memory: 1Gi
 
-# =============================================================================
-# Replicas
-# =============================================================================
-# single replica。Metrics Server は state を持たないので軽微な再起動 gap を許容する。
-# HA 化は trade-off を再評価した上で Future Specs。
 replicas: 1

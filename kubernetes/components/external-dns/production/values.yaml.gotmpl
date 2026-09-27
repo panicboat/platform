@@ -1,8 +1,3 @@
-# ExternalDNS values for production
-
-# =============================================================================
-# Provider / Sources
-# =============================================================================
 provider:
   name: aws
 
@@ -11,49 +6,20 @@ sources:
   - ingress
   - gateway-httproute
 
-# =============================================================================
-# Domain filtering
-# =============================================================================
-# Restrict ExternalDNS to manage records in panicboat.net + dystopia.city zones
-# only. panicboat.net: 非公開 monitoring UIs / 個人利用 hosts。 dystopia.city: 公開
-# application apex。
 domainFilters:
   - panicboat.net
   - dystopia.city
 
-# =============================================================================
-# Sync policy
-# =============================================================================
-# sync = Service/Ingress 削除で record も自動削除（spec ALB アクセス制御の方針
-# セクション参照）。GitOps 経由の変更のみ運用ルールにより、誤削除リスクは
-# README の GitOps 原則で緩和。
 policy: sync
 
-# =============================================================================
-# Ownership marker
-# =============================================================================
-# 同 zone を複数 cluster で共有する場合の所有権マーカー。本 cluster のみで
-# panicboat.net を管理する想定なので cluster name を採用。
 txtOwnerId: eks-production
 
-# =============================================================================
-# Cross-account Route53 access
-# =============================================================================
-# hosted zone は管理アカウントにあるため、IRSA ロールは sts:AssumeRole のみを
-# 持ち (= aws/eks/modules/addons.tf)、実操作は assume 先の権限で行う。
+# Assumes cross-account role to manage hosted zones in the management account.
 extraArgs:
   - --aws-assume-role=arn:aws:iam::559744160976:role/route53-zone-access
 
-# =============================================================================
-# ServiceAccount with IRSA
-# =============================================================================
 serviceAccount:
   create: true
   name: external-dns
   annotations:
     eks.amazonaws.com/role-arn: {{ .Values.cluster.externalDnsRoleArn }}
-
-# =============================================================================
-# Replicas / Resources
-# =============================================================================
-# chart デフォルト採用。

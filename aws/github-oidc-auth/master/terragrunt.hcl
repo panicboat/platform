@@ -1,24 +1,18 @@
-# terragrunt.hcl - Master environment Terragrunt configuration
-
-# Include root configuration
 include "root" {
   path = find_in_parent_folders("root.hcl")
 }
 
-# Include environment-specific configuration
 include "env" {
   path   = "env.hcl"
   expose = true
 }
 
-# Reference to Terraform modules
 terraform {
   source = "../modules"
 }
 
 # Environment-specific inputs
 inputs = {
-  # Core configuration from env.hcl
   aws_region              = include.env.locals.aws_region
   github_org              = include.env.locals.github_org
   github_repos            = include.env.locals.github_repos
@@ -28,7 +22,6 @@ inputs = {
   oidc_provider_arn       = include.env.locals.oidc_provider_arn
   max_session_duration    = include.env.locals.max_session_duration
 
-  # Merge environment-specific tags with common tags
   common_tags = merge(
     {
       Environment = include.env.locals.environment

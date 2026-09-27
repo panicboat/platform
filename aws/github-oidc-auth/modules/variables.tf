@@ -1,5 +1,3 @@
-# variables.tf - Input variables for GitHub OIDC Auth module
-
 variable "project_name" {
   description = "Name of the project"
   type        = string

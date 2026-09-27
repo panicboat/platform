@@ -1,5 +1,3 @@
-# outputs.tf - Pass-through outputs of the underlying data sources.
-
 output "vpc" {
   description = "VPC data source (pass-through). See AWS provider docs for aws_vpc."
   value       = data.aws_vpc.this

@@ -1,17 +1,6 @@
-# =============================================================================
-# Cilium Helmfile for production
-# =============================================================================
-# Cilium 1.19.x を native CNI (ENI mode、 Cilium が IPAM + datapath を全担当)
-# で deploy する。 cilium-operator が EC2 ENI / secondary IP を動的に管理し、
-# Pod IP は VPC subnet secondary IP として allocate される。 KPR / Gateway
-# Controller / 独立 Envoy DaemonSet / Hubble を有効化。 k8sServiceHost は
-# .Values.cluster.eksApiEndpoint で動的に差し込む。
-# =============================================================================
 environments:
   production:
-    # NOTE: helmfile v1.4 は親 helmfile.yaml.gotmpl の environments values を
-    # 子 helmfile に auto-inherit しないため、ここで再定義する。RECREATE marker
-    # convention は kubernetes/helmfile.yaml.gotmpl 参照。値は親 helmfile と同期。
+    # Parent values are not auto-inherited by child helmfiles in helmfile v1.4, requiring explicit redefinition.
     values:
       - cluster:
           # RECREATE: cd aws/eks/production && TG_TF_PATH=tofu terragrunt output -raw cluster_endpoint_hostname

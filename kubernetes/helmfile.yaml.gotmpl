@@ -1,37 +1,6 @@
-# =============================================================================
-# Helmfile Configuration
-# =============================================================================
-# This is the main entry point for Helmfile.
-# It defines environments and includes component-specific helmfiles.
-#
-# Usage:
-#   helmfile -e production list         # List all releases
-#   helmfile -e production template     # Generate manifests
-#   helmfile -e production apply        # Deploy to cluster
-#
-# =============================================================================
-
 environments:
   production:
-    # =====================================================================
-    # RECREATE marker convention
-    # =====================================================================
-    # `# RECREATE: <command>` directly above a value means: when the cluster
-    # / VPC / underlying AWS resources are destroyed and recreated, run the
-    # given command and replace the next line's value with the command's
-    # stdout. Only `eksApiEndpoint` and `vpcId` are subject to recreate
-    # (= cluster ID and VPC ID change every creation).
-    #
-    # `# STABLE: <reason>` means the value is deterministic by design and
-    # does NOT need updating on recreate (= IRSA / Karpenter naming was
-    # made deterministic by design; bucket names are account-id keyed).
-    #
-    # Operator が runbook `docs/runbooks/eks-production-recreate.md` Phase 4
-    # で `grep -n 'RECREATE:'` して各 marker 行の next-line 値を手動更新する
-    # (Plan A in the spec Errata)。 sed 自動置換ではなく目視 edit を選んだ
-    # 理由は PR #326 incident の audit pass 漏れ反省 (= 1 件ずつ目視確認の
-    # 方が confidence 高い)。
-    # =====================================================================
+    # RECREATE markers specify commands to retrieve new values when recreating cluster resources.
     values:
       - cluster:
           name: eks-production
@@ -39,41 +8,29 @@ environments:
           eksApiEndpoint: 1A030C76F9D24F7E4A50FEFAB02BCC5B.gr7.ap-northeast-1.eks.amazonaws.com
           # RECREATE: cd aws/vpc/production && TG_TF_PATH=tofu terragrunt output -raw vpc_id
           vpcId: vpc-0407902fa994e8750
-          # STABLE: aws/eks/modules/addons.tf で use_name_prefix = false に設定済、timestamp suffix なしの deterministic 名
+          # STABLE: deterministic role name configured without prefix or timestamp suffix in aws/eks/modules/addons.tf.
           albControllerRoleArn: arn:aws:iam::337169763788:role/eks-production-alb-controller
-          # STABLE: 同上
+          # STABLE: deterministic role name configured without prefix or timestamp suffix in aws/eks/modules/addons.tf.
           externalDnsRoleArn: arn:aws:iam::337169763788:role/eks-production-external-dns
         karpenter:
-          # STABLE: aws/karpenter/modules/main.tf で node_iam_role_name + node_iam_role_use_name_prefix = false に設定済
+          # STABLE: deterministic node role name configured in aws/eks-karpenter/modules/main.tf.
           nodeRoleName: Karpenter-eks-production
-          # STABLE: Karpenter sub-module が cluster_name から決定論的に生成
+          # STABLE: interruption queue name derived deterministically from cluster_name.
           interruptionQueueName: Karpenter-eks-production
         mimir:
-          # Source: aws/eks-metrics/production terragrunt output
-          # S3 backend / Pod Identity role を mimir-distributed chart が consume。
-          # helmfile v1.4 は親→子 の auto-inherit をしないため、
-          # kubernetes/components/mimir/production/helmfile.yaml の
-          # environments.production.values にも同値を再定義済 (cilium / karpenter 同パターン)。
+          # Parent values are not auto-inherited by child helmfiles, requiring explicit redefinition in component helmfile.
           bucketName: mimir-337169763788
           bucketPathPrefix: production
-          # verification 用 (helmfile values としては unused、Pod Identity Association は
-          # aws/eks-metrics/ 側で provision 済)。
+          # Kept for operator verification; pod identity association is provisioned by aws/eks-metrics.
           podIdentityRoleName: eks-production-mimir
         loki:
-          # Source: aws/eks-logs/production terragrunt output
           bucketName: loki-337169763788
           bucketPathPrefix: production
           podIdentityRoleName: eks-production-loki
         tempo:
-          # Source: aws/eks-traces/production terragrunt output
           bucketName: tempo-337169763788
           bucketPathPrefix: production
           podIdentityRoleName: eks-production-tempo
-  # staging:
-  #   values:
-  #     - cluster:
-  #         name: eks-staging
 
-# Include all component helmfiles for the current environment
 helmfiles:
   - components/*/{{ .Environment.Name }}/helmfile.yaml

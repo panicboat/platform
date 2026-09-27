@@ -1,9 +1,3 @@
-# =============================================================================
-# Selfsigned ClusterIssuer
-# =============================================================================
-# cluster 内 webhook + Hubble TLS 用の internal CA (= self-signed)。
-# ESO + Cilium Hubble TLS が参照。external trust 不要。
-# =============================================================================
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:

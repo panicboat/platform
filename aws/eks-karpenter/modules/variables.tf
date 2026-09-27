@@ -1,5 +1,3 @@
-# variables.tf - Inputs for the karpenter module.
-
 variable "environment" {
   description = "Environment name (e.g., production)"
   type        = string
@@ -14,11 +12,6 @@ variable "common_tags" {
   description = "Common tags applied to all resources"
   type        = map(string)
 }
-
-# system_critical MNG variables.
-# Bootstrap-critical workloads (Karpenter controller, cilium-operator, CoreDNS)
-# run on this MNG. Application workloads (Flux, observability stack, app pods 等)
-# run on Karpenter-managed instances (system-components NodePool).
 
 variable "system_critical_instance_types" {
   description = "Instance types for the system_critical managed node group (hosts Karpenter controller / cilium-operator / CoreDNS)"

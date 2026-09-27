@@ -1,5 +1,3 @@
-# outputs.tf - Outputs for the EKS cluster module.
-
 output "cluster_name" {
   description = "EKS cluster name"
   value       = module.eks.cluster_name
@@ -67,7 +65,7 @@ output "external_dns_role_arn" {
 }
 
 output "cilium_operator_role_arn" {
-  description = "Pod Identity Association role ARN for Cilium operator (ENI mode IPAM、EC2 API での ENI / IP 操作)"
+  description = "Pod Identity Association role ARN for Cilium operator (ENI mode IPAM and EC2 API operations)"
   value       = aws_iam_role.cilium_operator.arn
 }
 

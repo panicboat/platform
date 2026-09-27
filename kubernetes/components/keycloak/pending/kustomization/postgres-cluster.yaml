@@ -1,11 +1,3 @@
-# =============================================================================
-# CloudNativePG Cluster: keycloak-db
-# =============================================================================
-# Keycloak 専用の単一インスタンス Postgres。HA / バックアップは Phase 1 の
-# スコープ外 (docs/superpowers/specs/2026-08-07-keycloak-phase1-infra-design.md
-# §2, §3.3)。`-app` Secret (keycloak-db-app) と `-rw` Service
-# (keycloak-db-rw.keycloak.svc.cluster.local) を operator が自動生成する。
-# =============================================================================
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:

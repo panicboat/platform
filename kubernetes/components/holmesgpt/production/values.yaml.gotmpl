@@ -1,31 +1,11 @@
-# =============================================================================
-# HolmesGPT Configuration for production
-# =============================================================================
-
-# -----------------------------------------------------------------------------
-# ServiceAccount
-# -----------------------------------------------------------------------------
-# chart 既定の SA 名は release 名から導出されて変わりうる (= release holmesgpt
-# なら holmesgpt-holmes-service-account)。Pod Identity Association は
-# namespace:serviceaccount を固定で参照するため、名前を固定する。
+# Fixed name required by Pod Identity Association mapping.
 createServiceAccount: true
 customServiceAccountName: holmesgpt
 
-# k8sRBAC は「RBAC を自前で用意する」という意味で、true にすると chart 側の
-# ClusterRole が丸ごと無効になり、SA も automountServiceAccountToken: false の
-# 素のものだけになる (= Kubernetes API を叩けなくなる)。
-#   holmesgpt-service-account.yaml:      if and createServiceAccount (not k8sRBAC)
-#   holmesgpt-rbac-service-account.yaml: if and createServiceAccount k8sRBAC
-# chart の read-only ClusterRole をそのまま使うため既定の false を明示する。
+# k8sRBAC false retains the chart read-only ClusterRole.
 k8sRBAC: false
 
-# -----------------------------------------------------------------------------
-# LLM (Amazon Bedrock)
-# -----------------------------------------------------------------------------
-# model ID は LiteLLM 形式の `bedrock/` 接頭辞 + inference profile ID。
-# us. profile は us-east-1 / us-east-2 / us-west-2 へルーティングする。
-#
-# 追加時は aws/eks-holmesgpt/modules/main.tf の `bedrock_models` も同時に更新する。
+# Keep bedrock models in sync with aws/eks-holmesgpt/modules/main.tf.
 additionalEnvVars:
   - name: AWS_REGION_NAME
     value: us-east-1
@@ -35,43 +15,26 @@ modelList:
     model: bedrock/us.anthropic.claude-sonnet-4-6
     temperature: 0
 
-# -----------------------------------------------------------------------------
-# Toolsets
-# -----------------------------------------------------------------------------
 toolsets:
   kubernetes/core:
     enabled: true
   kubernetes/logs:
     enabled: true
 
-  # Mimir が default datasource であり長期保存を持つ。Prometheus 互換 endpoint
-  # をそのまま向ける。Mimir は X-Scope-OrgID を要求しない (= Loki のみ
-  # anonymous 固定で要求する) ため追加ヘッダーは不要。
+  # Points to Mimir Prometheus-compatible endpoint without additional headers.
   prometheus/metrics:
     enabled: true
     config:
       prometheus_url: http://mimir-distributed-gateway.monitoring.svc.cluster.local/prometheus
 
-  # エラーメッセージや docs の参照に使う。製品価値の一部であり、落とすと機能を
-  # 削った状態で評価することになる。
   internet:
     enabled: true
 
-  # Robusta SaaS 連携。使わないのに外部通信が発生するため無効化する。
+  # Robusta SaaS integration disabled to avoid unneeded external traffic.
   robusta:
     enabled: false
 
-  # Chart default is "extended". The 11 extra commands (cat / base64 / ls /
-  # find / stat / du / df / tar -tf / gzip -l / zcat / zgrep) originally
-  # targeted HolmesGPT's own container filesystem, not the cluster under
-  # investigation, so this was narrowed to "core". Only cat and find are
-  # added individually via allow for source-code investigation (reading
-  # files after git clone) — the rest of "extended" (ls / stat / du / df /
-  # tar family) isn't needed. Write-capable git subcommands (push / commit /
-  # config, etc.) are deliberately excluded from allow — prefixes that
-  # don't match are automatically rejected by HolmesGPT's own bash toolset.
-  # Targets: panicboat/monorepo and panicboat/platform (both public, no
-  # auth needed for read-only clone).
+  # Narrowed to core with read-only git/cat/find commands allowed for investigation.
   bash:
     enabled: true
     config:
@@ -87,21 +50,13 @@ toolsets:
         - "cat"
         - "find"
 
-# -----------------------------------------------------------------------------
-# CRD permissions
-# -----------------------------------------------------------------------------
-# このクラスタが実際に使うものだけを有効化する。
+# Enables only CRDs actively deployed in this cluster.
 crdPermissions:
   flux: true
   gatewayApi: true
   keda: true
   externalSecrets: true
 
-# -----------------------------------------------------------------------------
-# Security context
-# -----------------------------------------------------------------------------
-# chart 既定は空。readOnlyRootFilesystem は chart が常に true にするため
-# ここでは指定しない。
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 10001
@@ -116,9 +71,6 @@ containerSecurityContext:
     drop:
       - ALL
 
-# -----------------------------------------------------------------------------
-# Resources
-# -----------------------------------------------------------------------------
 resources:
   requests:
     cpu: 50m

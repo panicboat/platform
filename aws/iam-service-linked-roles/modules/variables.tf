@@ -1,5 +1,3 @@
-# variables.tf - Input variables for iam-service-linked-roles module
-
 variable "environment" {
   description = "Environment name"
   type        = string

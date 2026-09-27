@@ -1,11 +1,5 @@
 ---
-# aqua - Declarative CLI Version Manager
-# https://aquaproj.github.io/
-#
-# repository root に置く。aqua は設定ファイルを cwd から root 方向にしか探さないため、
-# .github/ 配下だと AQUA_CONFIG を明示した実行 (= CI) でしか pin が効かず、ローカル実行は
-# global に入れた版に落ちる。この非対称が原因で hydrate 出力が CI とずれ、hydrator が
-# 空行だけの差分 commit を積む事象が起きた。CI とローカルに同じ発見機構を使わせる配置。
+# Kept at repo root so aqua resolves identically in local shells and CI without AQUA_CONFIG.
 registries:
   - type: standard
     ref: v4.311.0 # renovate: github_release aquaproj/aqua-registry

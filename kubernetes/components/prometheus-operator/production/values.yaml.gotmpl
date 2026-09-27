@@ -1,38 +1,20 @@
-# Kube-Prometheus-Stack Configuration for production
-# Production-grade configuration with Mimir remote write, env-scoped resources.
-
-# =============================================================================
-# Grafana Configuration
-# =============================================================================
 grafana:
   enabled: true
-  # chart's helm-test pod is not used in CI; disabled to avoid a dangling
-  # Pod that would require manual cleanup after `helm test`.
+  # Test framework disabled to avoid dangling pods in CI.
   testFramework:
     enabled: false
 
-  # admin password は ESO + AWS Secrets Manager 経由 (= ExternalSecret
-  # grafana-admin-external-secret.yaml で K8s Secret grafana-admin に sync)。
-  # adminPassword hardcode は廃止、existingSecret で Secret 参照。
+  # Admin credentials sourced from AWS Secrets Manager via ExternalSecret.
   admin:
     existingSecret: grafana-admin
     userKey: admin-user
     passwordKey: admin-password
 
-  # Reloader watch annotation。
-  # Secret grafana-admin (= ExternalSecret 由来) の変更を検知して auto-rollout、
-  # AWS Secrets Manager 側の admin-password rotation で Grafana を再起動する。
-  # NOTE: grafana subchart 12.3.0 では Deployment metadata.annotations は
-  # `annotations` key で inject される (= `deploymentAnnotations` という値は無視される)。
+  # Reloader restarts Grafana when admin credentials Secret changes.
   annotations:
     reloader.stakater.com/auto: "true"
 
-  # -------------------------------------------------------------------------
-  # Authentication: auth.proxy mode (= oauth2-proxy 連携)
-  # -------------------------------------------------------------------------
-  # oauth2-proxy が X-Forwarded-User header に email を inject、Grafana が
-  # 同 header から user を auto-create + role mapping する。direct admin login
-  # (= existingSecret password) は緊急時の fallback として並走。
+  # Configures oauth2-proxy header authentication alongside fallback admin login.
   grafana.ini:
     auth.proxy:
       enabled: true
@@ -44,9 +26,6 @@ grafana:
       auto_assign_org: true
       auto_assign_org_role: Admin
 
-  # request は実測平均 (avg over 6h、kubectl top / Prometheus) に対して余裕を
-  # 持たせた値。cpu 100m は実測 7m に対し過大で Karpenter の bin-packing を
-  # 圧迫していたため right-size。
   resources:
     requests:
       cpu: 25m
@@ -60,29 +39,19 @@ grafana:
     size: 5Gi
     storageClassName: gp3
 
-  # ReadWriteOnce な EBS PVC を使うため、RollingUpdate (= 古い Pod 保持中に新 Pod 起動)
-  # だと Multi-Attach error で新 Pod が PVC を取れない。Recreate (= 古い Pod 停止 →
-  # 新 Pod 起動) でダウンタイム数十秒を許容しつつ rollout を確実にする。
+  # Recreate strategy prevents multi-attach errors on ReadWriteOnce EBS volumes during pod rolling updates.
   deploymentStrategy:
     type: Recreate
 
-  # -------------------------------------------------------------------------
-  # Sidecar for Dashboard / Data source Discovery
-  # -------------------------------------------------------------------------
   sidecar:
     dashboards:
       enabled: true
       label: grafana_dashboard
       searchNamespace: ALL
     datasources:
-      # chart 自動生成の `kube-prometheus-stack-grafana-datasource` ConfigMap
-      # (= Prometheus を default に登録する) を disable。下の `datasources` で
-      # Mimir を default として明示するため、両者の `isDefault: true` 衝突を回避。
+      # Disabled so Mimir is declared as the single primary datasource below.
       defaultDatasourceEnabled: false
 
-  # -------------------------------------------------------------------------
-  # Data Sources (Mimir primary、Prometheus local secondary、Loki logs、Tempo traces)
-  # -------------------------------------------------------------------------
   datasources:
     datasources.yaml:
       apiVersion: 1
@@ -96,7 +65,7 @@ grafana:
           jsonData:
             httpMethod: POST
             timeInterval: 30s
-            # Mimir ruler は disable 済のため ruler API 不在 (有効だと probe が 502 になる)
+            # manageAlerts disabled because Mimir ruler is not enabled.
             manageAlerts: false
         - name: Prometheus (local)
           uid: prometheus-local
@@ -107,7 +76,6 @@ grafana:
           jsonData:
             httpMethod: POST
             timeInterval: 30s
-        # Logs stack
         - name: Loki
           uid: loki
           type: loki
@@ -115,11 +83,9 @@ grafana:
           access: proxy
           isDefault: false
           jsonData:
-            # 1 tenant 運用のため X-Scope-OrgID を anonymous 固定
             httpHeaderName1: X-Scope-OrgID
           secureJsonData:
             httpHeaderValue1: anonymous
-        # Traces stack
         - name: Tempo
           uid: tempo
           type: tempo
@@ -127,40 +93,20 @@ grafana:
           access: proxy
           isDefault: false
           jsonData:
-            # 1 tenant 運用 (= multitenancy OFF)
             httpMethod: GET
             tracesToLogsV2:
               datasourceUid: loki
             tracesToMetrics:
               datasourceUid: mimir
-            # Service Graph panel: Tempo metrics-generator が remote_write した
-            # traces_service_graph_* metrics を Mimir 経由で query する
+            # Queries Tempo service graph metrics remote-written to Mimir.
             serviceMap:
               datasourceUid: mimir
 
-# =============================================================================
-# Prometheus Configuration
-# =============================================================================
 prometheus:
   prometheusSpec:
-    # -------------------------------------------------------------------------
-    # Metric / Label Name Validation
-    # -------------------------------------------------------------------------
-    # Prometheus 3.x default は UTF-8 metric/label name 保持 (= dotted name pass-through)、
-    # 下流 Mimir distributor は Prometheus 2.x 互換 strict validator (= ^[a-zA-Z_][a-zA-Z0-9_]*$)
-    # で reject。OTel Collector v0.120.0+ が self-monitoring metrics に semconv 由来の
-    # dotted label (= server.address / host.name / k8s.pod.name 等) を expose する仕様に
-    # 切り替わっており、Prometheus 入口で legacy validation を強制して Mimir downstream の
-    # 能力に uniform 整合させる。Mimir が UTF-8 label 対応するまでの bridging。
-    # https://prometheus.io/docs/guides/utf8/
-    # NOTE: chart 84.5.0 は nameEscapingScheme 未対応 (= template 上 nameValidationScheme
-    # のみ pass-through)。legacy validation 単独で UTF-8 source への scrape は
-    # Prometheus default escaping (= underscores) で自動 escape される挙動を期待。
+    # Enforces legacy validation so dotted UTF-8 metric labels from OTel Collector are accepted downstream by Mimir.
     nameValidationScheme: Legacy
 
-    # -------------------------------------------------------------------------
-    # ServiceMonitor / PodMonitor Discovery
-    # -------------------------------------------------------------------------
     serviceMonitorSelectorNilUsesHelmValues: false
     serviceMonitorSelector: {}
     serviceMonitorNamespaceSelector: {}
@@ -168,23 +114,13 @@ prometheus:
     podMonitorSelector: {}
     podMonitorNamespaceSelector: {}
 
-    # -------------------------------------------------------------------------
-    # Retention (短期、long-term は Mimir に remote write)
-    # -------------------------------------------------------------------------
     retention: 24h
 
-    # -------------------------------------------------------------------------
-    # Remote Write to Mimir
-    # -------------------------------------------------------------------------
     remoteWrite:
       - url: http://mimir-distributed-gateway.monitoring.svc.cluster.local/api/v1/push
-        # Mimir の tenant header (= 本 sub-project は 1 tenant、`anonymous` で OK)
         headers:
           X-Scope-OrgID: anonymous
-        # apiserver の high-cardinality histogram bucket を Mimir 送信前に drop。
-        # small cluster で本 metrics 群が total cardinality の ~57% を占める
-        # (= 85K series of 150K limit)、観測価値が低く drop で 70K+ series 削減。
-        # `_sum` / `_count` / `_total` は維持して histogram の総量は観測可能。
+        # Drops high-cardinality apiserver buckets before remote write to stay within Mimir limits.
         writeRelabelConfigs:
           - sourceLabels: [__name__]
             regex: "apiserver_(request|response|watch_list|watch_cache_read_wait|storage_list|watch_events|request_body_size|request_sli|request_slo)_.+_bucket"
@@ -193,14 +129,6 @@ prometheus:
             regex: "etcd_request_duration_seconds_bucket"
             action: drop
 
-    # -------------------------------------------------------------------------
-    # Resource Limits
-    # -------------------------------------------------------------------------
-    # cpu: 実測平均 77m に対し 200m は過大、25m 余裕を持たせて 150m 程度に
-    # right-size。
-    # memory: 実測平均 1084Mi が旧 request 512Mi を上回っていた (= 常時
-    # request 超過、node 圧迫時に真っ先に evict される risk)。実測に headroom
-    # を足して 1.5Gi に引き上げる。
     resources:
       requests:
         cpu: 150m
@@ -209,9 +137,6 @@ prometheus:
         cpu: 1
         memory: 2Gi
 
-    # -------------------------------------------------------------------------
-    # Storage
-    # -------------------------------------------------------------------------
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -220,23 +145,9 @@ prometheus:
             requests:
               storage: 20Gi
 
-# =============================================================================
-# Alertmanager Configuration
-# =============================================================================
-# severity: critical alerts fire two independent things: a native Slack
-# notification (slack_configs, own Incoming Webhook/app — stays up even if
-# holmes is down) and a webhook to holmes (panicboat/monorepo,
-# system-components/holmes), which posts HolmesGPT's investigation result
-# threaded under whichever Slack message holmes finds by fingerprint match
-# (see design doc). The severity label is already applied by
-# kube-prometheus-stack's default rules, so no new labeling work is needed
-# (verified 2026-08-14: 3 of 6 firing alerts were critical). Alertmanager
-# evaluates sibling routes top-to-bottom on first match, so the existing
-# Watchdog->null route is kept ahead of the new one.
 alertmanager:
   enabled: true
   alertmanagerSpec:
-    # cpu: 実測平均 0m (ほぼ idle) に対し 100m は過大。right-size。
     resources:
       requests:
         cpu: 25m
@@ -251,10 +162,7 @@ alertmanager:
           resources:
             requests:
               storage: 2Gi
-    # holmes's Alertmanager shared token, file-mounted. alertmanagerSpec.secrets
-    # can only reference a Secret in the same namespace as Alertmanager, so
-    # this ExternalSecret is separate from system-components/holmes's own
-    # (same AWS secret, two independent sync targets).
+    # Alertmanager namespace requires its own Secret instance for the shared token.
     secrets:
       - holmes-alertmanager
       - alertmanager-slack-notify
@@ -282,6 +190,7 @@ alertmanager:
           - 'severity = info'
         equal:
           - 'namespace'
+          - 'alertname'
       - target_matchers:
           - 'alertname = InfoInhibitor'
     route:
@@ -291,6 +200,7 @@ alertmanager:
       repeat_interval: 12h
       receiver: 'null'
       routes:
+        # Watchdog null route must precede critical alert routes in Alertmanager first-match routing.
         - receiver: 'null'
           matchers:
             - alertname = "Watchdog"
@@ -311,11 +221,7 @@ alertmanager:
               fingerprint: `{{ "{{" }} .Fingerprint }}`
               {{ "{{" }} end }}
         webhook_configs:
-          # channel is a Slack conversation ID, not a name: conversations.history
-          # (used by holmes to find the native notification by fingerprint)
-          # requires an ID and returns channel_not_found for a bare name, even
-          # though chat.postMessage tolerates either (verified live 2026-08-16 —
-          # every search attempt failed until this was fixed).
+          # Slack channel must be a conversation ID because conversations.history API rejects names.
           - url: 'https://holmes.panicboat.net/alertmanager/webhook?channel=C0BQE7KHUCE'
             send_resolved: false
             http_config:
@@ -324,19 +230,12 @@ alertmanager:
     templates:
       - '/etc/alertmanager/config/*.tmpl'
 
-# =============================================================================
-# Prometheus Node Exporter
-# =============================================================================
 prometheus-node-exporter:
-  # Cluster 全 node の metrics 収集は observability の前提条件であり、DaemonSet
-  # 完全性 (= 各 node に 1 pod 必須) を保証する。EKS / Cilium / EBS CSI 等の他
-  # system DaemonSets と同 priority に揃える。
+  # Priority class ensures DaemonSet pod scheduling integrity on every node.
   priorityClassName: system-node-critical
   hostRootFsMount:
     enabled: true
     mountPropagation: HostToContainer
-  # cpu: 実測平均 1m に対し 100m は過大。DaemonSet で全 node に乗るため
-  # 積み上げ影響が大きく、right-size の効果も大きい。
   resources:
     requests:
       cpu: 25m
@@ -345,15 +244,11 @@ prometheus-node-exporter:
       cpu: 200m
       memory: 128Mi
 
-# =============================================================================
-# Kube-State-Metrics
-# =============================================================================
 kube-state-metrics:
   metricLabelsAllowlist:
     - pods=[*]
     - deployments=[*]
     - statefulsets=[*]
-  # cpu: 実測平均 2m に対し 100m は過大。right-size。
   resources:
     requests:
       cpu: 25m
@@ -362,15 +257,7 @@ kube-state-metrics:
       cpu: 500m
       memory: 512Mi
 
-# =============================================================================
-# EKS control plane component monitoring (disabled)
-# =============================================================================
-# kube-scheduler / kube-controller-manager は EKS の managed control plane 上で
-# 動作し、worker node には Pod として存在しないため scrape 不可能 (= chart
-# default の enabled: true のままだと ServiceMonitor が endpoint 0 件のまま
-# 残り、KubeSchedulerDown / KubeControllerManagerDown が恒常的に発火する)。
-# kube-proxy は本 cluster では Cilium (kube-proxy-less mode) が代替しており
-# DaemonSet 自体が存在しないため同様に無効化 (= KubeProxyDown も恒常発火)。
+# EKS managed control plane components and Cilium-replaced kube-proxy are unreachable for scraping.
 kubeScheduler:
   enabled: false
 kubeControllerManager:
@@ -378,11 +265,6 @@ kubeControllerManager:
 kubeProxy:
   enabled: false
 
-# =============================================================================
-# Prometheus Operator
-# =============================================================================
-# NOTE: production では admissionWebhooks を再有効化 (= local で disable していた
-# のは chart v82.x の RBAC bug 回避のため、v84.x で fix されているため OK)
 prometheusOperator:
   admissionWebhooks:
     enabled: true
@@ -390,7 +272,6 @@ prometheusOperator:
       enabled: true
   tls:
     enabled: true
-  # cpu: 実測平均 2m に対し 100m は過大。right-size。
   resources:
     requests:
       cpu: 25m

@@ -1,10 +1,5 @@
 locals {
-  # Branch protection tuned for solo development:
-  # - PR-required (no direct push to main) to guarantee CI runs
-  # - required_reviews = 0 to allow self-merge (GitHub disallows self-approval)
-  # - Review-related toggles disabled since there is no second reviewer
-  # - Admin bypass disabled to prevent accidental direct pushes
-  # - Signed commits not required; revisit once SSH/GPG signing is set up locally
+  # required_reviews = 0 allows solo self-merge because GitHub disallows approving own pull requests.
   branch_protection = {
     main = {
       name                            = null

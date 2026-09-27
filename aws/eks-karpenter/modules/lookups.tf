@@ -1,5 +1,3 @@
-# lookups.tf - External stack lookups.
-
 # EKS cluster info (for Karpenter sub-module + controller_host MNG)
 module "eks" {
   source      = "../../eks/lookup"

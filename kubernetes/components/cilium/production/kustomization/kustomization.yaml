@@ -1,16 +1,3 @@
-# =============================================================================
-# Cilium Kustomization Overlay for production
-# =============================================================================
-# This kustomization adds production-specific resources to the Cilium Helm
-# release output:
-#   - GatewayClass: registers Cilium as the gateway-api controller
-#   - Gateway "cilium-gateway" (= namespace default): shared east-west L7
-#     routing entry point for applications.
-#
-# Note: north-south traffic goes through the ALB Controller; east-west goes
-# through cilium-gateway. The current 1-application footprint does not
-# justify per-service Gateways (YAGNI), so a single shared Gateway is used.
-# =============================================================================
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 

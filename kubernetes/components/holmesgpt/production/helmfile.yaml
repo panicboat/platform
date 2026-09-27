@@ -1,13 +1,3 @@
-# =============================================================================
-# holmesgpt Helmfile for production
-# =============================================================================
-# HolmesGPT (CNCF Sandbox) の deploy。chart が read-only ClusterRole と
-# ServiceAccount を自前で作るため、RBAC をこちらで定義しない。
-#
-# Authentication: Pod Identity (provisioned by aws/eks-holmesgpt/ stack の
-# Pod Identity Association)。Helm chart の serviceAccount.annotations は
-# 不要 (Pod Identity Association が SA-to-role mapping を直接管理)。
-# =============================================================================
 environments:
   production:
 ---

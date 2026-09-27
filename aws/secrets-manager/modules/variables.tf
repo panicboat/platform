@@ -1,5 +1,3 @@
-# variables.tf - Input variables for secrets-manager module
-
 variable "environment" {
   description = "Environment name"
   type        = string

@@ -30,42 +30,22 @@ variable "repositories" {
   type = map(object({
     name = string
     branch_protection = map(object({
-      # Ruleset name. Defaults to "<repo_key>-<rule_key>" when null.
-      name = optional(string)
-
-      # Branch selection. GitHub fileset syntax (fnmatch).
-      # Use ["~DEFAULT_BRANCH"] to target the default branch only.
-      include_refs = list(string)
-      exclude_refs = optional(list(string), [])
-
-      # Pull request requirements
+      name                            = optional(string)
+      include_refs                    = list(string)
+      exclude_refs                    = optional(list(string), [])
       required_reviews                = number
       dismiss_stale_reviews           = bool
       require_code_owner_reviews      = bool
       require_last_push_approval      = bool
       require_conversation_resolution = bool
-
-      # Status checks
-      required_status_checks        = list(string)
-      strict_required_status_checks = bool
-
-      # Commit/history requirements
-      required_linear_history = bool
-      require_signed_commits  = bool
-
-      # Push/delete controls
-      allow_force_pushes = bool
-      allow_deletions    = bool
-
-      # When true, organization admins can bypass this ruleset.
-      # Set false to enforce rules for everyone (legacy enforce_admins=true equivalent).
-      admin_bypass = bool
-
-      # GitHub App (Integration) IDs that bypass this ruleset for direct pushes.
-      # Required for automation that must commit/push to the protected branch
-      # without going through a pull request (e.g., Flux ImageUpdateAutomation).
-      # Empty list = no GitHub App bypass.
-      bypass_app_ids = optional(list(number), [])
+      required_status_checks          = list(string)
+      strict_required_status_checks   = bool
+      required_linear_history         = bool
+      require_signed_commits          = bool
+      allow_force_pushes              = bool
+      allow_deletions                 = bool
+      admin_bypass                    = bool
+      bypass_app_ids                  = optional(list(number), [])
     }))
   }))
 }

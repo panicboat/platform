@@ -1,27 +1,17 @@
-# terragrunt.hcl - Terragrunt configuration for production environment
-
-# Include root configuration
 include "root" {
   path = find_in_parent_folders("root.hcl")
 }
 
-# Include environment-specific configuration
 include "env" {
   path   = "env.hcl"
   expose = true
 }
 
-# Reference to Terraform modules.
-# Use go-getter `//` subdir notation so the entire `aws/` tree is copied to
-# the Terragrunt cache. This lets `module "vpc"` in modules/lookups.tf
-# resolve `../../vpc/lookup` from within the cache (each producer stack
-# exposes a `lookup/` submodule that downstream stacks reference for
-# cross-stack data, replacing terraform_remote_state with a typed contract).
+# Double-slash includes the parent directory in Terragrunt cache for relative module lookups.
 terraform {
   source = "../..//eks/modules"
 }
 
-# Input variables for the module
 inputs = {
   environment     = include.env.locals.environment
   aws_region      = include.env.locals.aws_region

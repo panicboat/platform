@@ -1,5 +1,3 @@
-# main.tf - VPC composition via terraform-aws-modules/vpc/aws
-
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 6.7"
@@ -34,9 +32,7 @@ module "vpc" {
   }
   database_subnet_tags = { Tier = "database" }
 
-  # Adopt the VPC default SG into Terraform state and lock it down (= ingress
-  # / egress fully cleared) so that no resource accidentally inherits AWS's
-  # default permissive rules. CIS Benchmark / AWS Well-Architected recommendation.
+  # Locks down default security group with cleared rules per CIS AWS benchmark.
   manage_default_security_group  = true
   default_security_group_ingress = []
   default_security_group_egress  = []
@@ -45,11 +41,7 @@ module "vpc" {
   tags = var.common_tags
 }
 
-# S3 Gateway VPC Endpoint
-# Why: Mimir / Loki / Tempo の ingester / compactor および ECR image layer の S3 取得経路を
-# NAT Gateway 経由から Gateway Endpoint 経由に切替え、NAT data processing 料金 ($0.062/GB) を回避する。
-# Gateway Endpoint は時間料金もデータ処理料金も発生しない (= 完全無料)。
-# 関連付け対象は private route table のみ。public は IGW 直結、database は S3 通信源ではないため除外。
+# Gateway endpoint routes S3 traffic directly to avoid NAT gateway data processing charges.
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = module.vpc.vpc_id
   service_name      = "com.amazonaws.${var.aws_region}.s3"

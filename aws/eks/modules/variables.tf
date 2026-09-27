@@ -1,5 +1,3 @@
-# variables.tf - Variables for EKS module
-
 variable "environment" {
   description = "Environment name (e.g., production)"
   type        = string

@@ -1,19 +1,4 @@
-# =============================================================================
-# StorageClasses for production cluster
-# =============================================================================
-# EKS が cluster create 時に作る default は gp2 (= kubernetes.io/aws-ebs
-# in-tree provisioner)。 platform で使う stateful component (= mimir / loki
-# / tempo / grafana / prometheus 等) は gp3 を要求するため、 ebs.csi.aws.com
-# provisioner で gp3 SC を明示的に provision する。
-#
-# default class は gp3 のみ。 EKS auto-create の gp2 は本 file の patch で
-# `is-default-class: false` に上書き、 2 default 競合 (= kubectl warning +
-# 新規 PVC の SC 選択不確実) を回避。
-#
-# WaitForFirstConsumer: pod schedule 先 zone が決まってから volume を
-# allocate するため、 multi-AZ Karpenter NodePool での schedule 不整合を
-# 回避する。
-# =============================================================================
+# Stateful components require gp3 provisioned via ebs.csi.aws.com instead of in-tree gp2.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -28,11 +13,7 @@ volumeBindingMode: WaitForFirstConsumer
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 ---
-# EKS auto-create gp2 SC を non-default 化。 server-side apply で field
-# manager (= kustomize-controller) が is-default-class annotation の
-# 所有権を取得、 EKS が次に gp2 を再 register しても false を維持する。
-# parameters / provisioner / volumeBindingMode / reclaimPolicy は EKS
-# default と同値 (= 上書きで挙動変えない)。
+# Mark EKS auto-created gp2 as non-default to prevent dual-default StorageClass conflicts.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:

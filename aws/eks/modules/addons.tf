@@ -1,19 +1,3 @@
-# addons.tf - AWS-managed EKS add-ons and their IRSA roles.
-#
-# IRSA roles for aws-ebs-csi-driver / cilium-operator / aws-load-balancer-controller
-# / external-dns are created via the terraform-aws-modules/iam
-# iam-role-for-service-accounts submodule. coredns / pod-identity-agent do
-# not need IRSA. kube-proxy is intentionally omitted because Cilium is
-# configured with kubeProxyReplacement=true (see
-# kubernetes/components/cilium/production/values.yaml.gotmpl). vpc-cni is
-# also omitted because Cilium runs in native CNI mode (ENI IPAM、Cilium が
-# Pod IP allocation + datapath を全担当)、aws-node DaemonSet は不要。
-#
-# Note on submodule naming: v5 of the IAM module shipped a dedicated
-# `iam-role-for-service-accounts-eks` submodule. v6.0 renamed it to
-# `iam-role-for-service-accounts` and changed the role-ARN output from
-# `iam_role_arn` to `arn`. We pin `~> 6.0` and use the v6 names.
-
 module "ebs_csi_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "~> 6.8"
@@ -49,9 +33,7 @@ module "alb_controller_irsa" {
   tags = var.common_tags
 }
 
-# Hosted zone は管理アカウントにあるため、Pod は Route53 を直接叩かず
-# route53-zone-access を assume する (= external-dns の --aws-assume-role、
-# kubernetes/components/external-dns/production/values.yaml.gotmpl)。
+# Assumes cross-account role to update hosted zones residing in management account.
 data "aws_iam_policy_document" "external_dns_assume_zone_access" {
   statement {
     actions   = ["sts:AssumeRole"]
@@ -78,30 +60,7 @@ module "external_dns_irsa" {
   tags = var.common_tags
 }
 
-# Cilium operator IAM role (= EKS Pod Identity Association).
-#
-# Cilium native CNI mode = ENI IPAM では cilium-operator が EC2 API 経由で:
-# - ENI を node に attach / detach (CreateNetworkInterface / Attach... 等)
-# - secondary IP を ENI に割当 / 解放 (Assign... / Unassign...)
-# - tags 経由で ENI lifecycle 管理 (CreateTags / DeleteTags)
-# を実行する。 必要 permission は Cilium 公式 ENI mode docs に準拠:
-# https://docs.cilium.io/en/v1.19/network/concepts/ipam/eni/
-#
-# EKS Pod Identity Association (= eks-pod-identity-agent addon 経由) で
-# `kube-system:cilium-operator` SA を本 role に紐付ける。
-#
-# Pod Identity 採用理由 (= 2026-05-16 cold-start bootstrap incident):
-# IRSA path (= SA token → sts:AssumeRoleWithWebIdentity → cache → EC2 call) は
-# 初回 STS round-trip + AWS SDK 内 retry で cilium-operator の 5 秒 hardcoded
-# "initial EC2 API limits update" timeout を時に超過し crashloop となる
-# (= IPAM init failure → 全 Pod IP allocate 不能 → cluster bootstrap 詰む)。
-# Pod Identity は local eks-pod-identity-agent (= hostNetwork DS、 CNI 不要で
-# bootstrap 後すぐ Ready) を介して credential 取得するため STS round-trip 不要、
-# 5 秒 timeout 内に余裕で完了する。 karpenter sub-module も同 path を採用済。
-#
-# terraform-aws-modules/iam v6.6 の iam-role-for-service-accounts module は
-# Pod Identity 未対応 (= oidc_providers 専用) のため、 raw aws_iam_role +
-# aws_eks_pod_identity_association resource で構成。
+# Pod Identity avoids STS round-trips exceeding cilium-operator 5-second startup timeout.
 data "aws_iam_policy_document" "cilium_operator_assume" {
   statement {
     actions = ["sts:AssumeRole", "sts:TagSession"]
@@ -179,15 +138,7 @@ locals {
       most_recent                 = true
       resolve_conflicts_on_create = "OVERWRITE"
       resolve_conflicts_on_update = "OVERWRITE"
-      # CoreDNS Pod を system_critical MNG (= karpenter stack の bootstrap
-      # MNG) に pin する。 nodeSelector + tolerations の双方が必須:
-      #   - tolerations: taint `dedicated=system-critical:NoSchedule` 回避
-      #     (= 同 MNG への schedule を可能にする)
-      #   - nodeSelector: label `node-role/system-critical=true` で配置先を
-      #     system_critical MNG に限定 (= toleration 単独では default node
-      #     や Karpenter-provisioned spot にも流れうる)
-      # cluster bootstrap で必須な DNS resolution を control-plane-adjacent な
-      # MNG に閉じ込め、 Karpenter-provisioned node の Ready 化に依存させない。
+      # Pins CoreDNS to system_critical nodes so DNS resolution does not depend on dynamic Karpenter nodes.
       configuration_values = jsonencode({
         nodeSelector = {
           "node-role/system-critical" = "true"
@@ -208,15 +159,7 @@ locals {
       resolve_conflicts_on_update = "OVERWRITE"
       service_account_role_arn    = module.ebs_csi_irsa.arn
 
-      # Tag dynamically provisioned EBS volumes (= PVC-driven) with the
-      # controller's provenance label so they match the unified ManagedBy
-      # schema. Per spec section 4-2-c.
-      #
-      # sidecars.snapshotter.forceEnable: addon default is true、 VolumeSnapshot
-      # を使わない本 cluster では snapshot.storage.k8s.io CRD (= 別途
-      # external-snapshotter install が必要、未導入) が無いため csi-snapshotter
-      # container が "failed to list *v1.VolumeSnapshotClass" を出し続ける。
-      # VolumeSnapshot 機能を使う予定がないため sidecar 自体を無効化する。
+      # Disables snapshotter sidecar because VolumeSnapshot CRDs are uninstalled.
       configuration_values = jsonencode({
         controller = {
           extraVolumeTags = {

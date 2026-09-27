@@ -1,10 +1,3 @@
-# =============================================================================
-# cert-manager Helmfile for production
-# =============================================================================
-# cert-manager (= jetstack/cert-manager) の production helmfile。
-# CRDs は chart 経由で install (= crds.enabled: true)、ClusterIssuer は
-# kustomization で別途 deploy (= chart 範囲外)。
-# =============================================================================
 environments:
   production:
 ---

@@ -1,9 +1,3 @@
-# =============================================================================
-# FluxCD GitOps Sync Configuration for production
-# =============================================================================
-# Production cluster eks-production は platform repo の main ブランチを
-# 1 分間隔で取得し、./kubernetes/clusters/production を 10 分間隔で apply する。
-# =============================================================================
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
 metadata:

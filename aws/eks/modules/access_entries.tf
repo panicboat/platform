@@ -1,20 +1,4 @@
-# access_entries.tf - EKS Access Entries (Kubernetes RBAC mapping for IAM principals).
-#
-# We keep this minimal: the human kubectl admin role and the IAM Identity
-# Center AdministratorAccess role (AWS Console EKS "Resources" tab needs an
-# access entry independent of the IAM-level AWS API permissions) are
-# granted RBAC. The CI apply role (github-oidc-auth-production-github-actions-role)
-# operates on AWS APIs only and never touches Kubernetes API; under the
-# GitOps model, all Kubernetes-side changes flow through Flux CD.
-#
-# Note on policy_arn format: EKS Access Policies use a dedicated ARN
-# scheme `arn:aws:eks::aws:cluster-access-policy/<NAME>`, NOT the IAM
-# managed policy form `arn:aws:iam::aws:policy/<NAME>`. Passing the IAM
-# form to AssociateAccessPolicy yields InvalidParameterException (400).
-
-# IAM Identity Center provisions the SSO permission-set role name with a
-# random hash suffix (AWSReservedSSO_<PermissionSetName>_<hash>) that isn't
-# knowable in advance, so it's looked up by name_regex instead of hardcoded.
+# SSO role name contains random hash suffixes requiring regex lookup instead of static naming.
 data "aws_iam_roles" "sso_admin" {
   name_regex  = "AWSReservedSSO_AdministratorAccess_.*"
   path_prefix = "/aws-reserved/sso.amazonaws.com/"
@@ -27,6 +11,7 @@ locals {
 
       policy_associations = {
         cluster_admin = {
+          # EKS access policy ARNs use arn:aws:eks::aws:cluster-access-policy/* instead of standard IAM scheme.
           policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
           access_scope = {
             type = "cluster"

@@ -1,73 +1,26 @@
-# Cilium CNI Configuration for production (eks-production)
-
-# =============================================================================
-# IPAM: ENI mode (= Cilium が AWS ENI を直接管理、Pod IP は VPC subnet
-# secondary IP として allocate される。 kube-proxy 不在 + VPC native routing
-# で Pod-to-Pod traffic は ENI 間で直接 forwarding される)
-# =============================================================================
 ipam:
   mode: eni
 
-# =============================================================================
-# AWS ENI 設定 (= cilium-operator が EC2 API 経由で ENI 作成 / IP 割当を実行、
-# IRSA role 経由で IAM permission 取得)
-# =============================================================================
 eni:
   enabled: true
 
-# =============================================================================
-# Service Accounts: cilium-operator は EKS Pod Identity Association で
-# `eks-production-cilium-operator` role に紐付け (= EC2 ENI 操作権限)。
-# aws/eks/modules/addons.tf の cilium_operator module の pod_identity_associations
-# が紐付けを provision し、 eks-pod-identity-agent (= EKS managed addon、
-# hostNetwork DS で CNI 不要) が pod の AWS_CONTAINER_CREDENTIALS_FULL_URI env
-# 経由で credential を提供する。 SA annotation `eks.amazonaws.com/role-arn`
-# (= IRSA marker) は本構成では不要、 chart default の cilium-operator SA を採用。
-# =============================================================================
-
-# =============================================================================
-# Routing & Masquerade
-# =============================================================================
 routingMode: native
 endpointRoutes:
   enabled: true
-# Cilium native CNI ENI mode では Pod IP が VPC subnet secondary IP として
-# allocate され ENI 経由で VPC routable になる。 masquerade すると VPC routing
-# が機能しなくなる (= source IP が node primary IP に置き換わり ENI 直接 routing
-# 不能) ため、 cluster 内 traffic に対する masquerade は disable。
+# Masquerade is disabled so pod-to-pod traffic retains direct VPC secondary IP routing.
 enableIPv4Masquerade: false
-# EKS cluster is IPv4-only (no IPv6 CIDR allocated to the VPC or node groups).
 ipv6:
   enabled: false
 
-# =============================================================================
-# Kube Proxy Replacement: 完全置換
-# =============================================================================
-# kube-proxy addon is removed at the terragrunt layer (Cilium KPR replaces it)
 kubeProxyReplacement: true
 k8sServiceHost: {{ .Values.cluster.eksApiEndpoint }}
 k8sServicePort: 443
 
-# =============================================================================
-# Tolerations: cilium-agent / envoy DaemonSet を全 node に schedule
-# =============================================================================
-# system_critical MNG の taint `dedicated=system-critical:NoSchedule` を含め、
-# 全 taint を tolerate する。 cilium-agent が node に存在しないと CNI plugin が
-# /opt/cni/bin に置かれず node NotReady のままになるため、 全 node 上で動作させる
-# 必要がある (= 公式 BYOCNI 要件)。
+# Tolerates all taints so the CNI plugin is placed on every node including system-critical.
 tolerations:
   - operator: Exists
 
-# =============================================================================
-# Operator: HA + system_critical MNG への pin
-# =============================================================================
-# operator は EC2 API を呼ぶ cluster の brain、 Karpenter-provisioned node が
-# Ready になるためにも先に動いている必要があるため system_critical MNG に固定。
-# nodeSelector + tolerations の双方が必須: toleration 単独だと taint を回避
-# できる "schedule 可" を満たすだけで application node にも流れうる。 label
-# `node-role/system-critical=true` で配置先を system_critical MNG に絞り、 同
-# MNG が縮退中の場合に Pending で stay させる (= Karpenter-provisioned spot に
-# drift して EC2 ENI 制御 loop を失う事故を防ぐ)。
+# Operator is pinned to system-critical MNG to prevent Karpenter drift and lost EC2 ENI loops.
 operator:
   replicas: 2
   rollOutPods: true
@@ -82,50 +35,27 @@ operator:
     enabled: true
     serviceMonitor:
       enabled: true
-      trustCRDsExist: true  # offline helmfile template (hydrate) で CRD 未登録時のエラーを回避
+      # Prevents offline helmfile template failures before CRDs are registered.
+      trustCRDsExist: true
       labels:
         release: kube-prometheus-stack
 
-# =============================================================================
-# L7 Proxy: 独立 DaemonSet
-# =============================================================================
 envoy:
   enabled: true
 
-# =============================================================================
-# Gateway API（北南: ALB Controller 経由で hostNetwork mode の Cilium Gateway を expose、
-# 東西: 同 Cilium Gateway で internal routing。 北南統一で reverse-proxy 不要、
-# 全 ingress traffic が Cilium Gateway (= Envoy) を経由するため CiliumEnvoyConfig
-# CR + Envoy jwt_authn filter で Gateway 層 JWT 検証を実装可能な architecture）
-# =============================================================================
-# hostNetwork.enabled: true は LoadBalancer Service auto-create を disable
-# (= 公式 mutual exclusive)、 cilium-gateway-cilium-gateway Service が ClusterIP に。
-# eks-pod-identity-agent が hostNetwork で port 80 占有のため Gateway listener は
-# port 8080 (= cilium-gateway.yaml)、 1024 未満特権 port 回避で NET_BIND_SERVICE
-# capability 不要。
-# https://docs.cilium.io/en/v1.19/network/servicemesh/gateway-api/host-network-mode/
+# Host network mode runs Envoy on node ports without creating LoadBalancer services.
 gatewayAPI:
   enabled: true
   hostNetwork:
     enabled: true
 
-# =============================================================================
-# Socket-level LB（Beyla / hostNetwork Pod が ClusterIP に到達するため）
-# =============================================================================
+# Enables ClusterIP routing for hostNetwork pods.
 socketLB:
   enabled: true
 
-# =============================================================================
-# Hubble（UI は port-forward only）
-# =============================================================================
 hubble:
   enabled: true
-  # TLS certs は cert-manager で管理 (= Cilium 公式 production-recommended path)。
-  # cilium-hubble-ca-issuer (= CA-based ClusterIssuer、cert-manager component の
-  # cilium-hubble-ca Certificate 由来 root CA を参照) で hubble-server-certs と
-  # hubble-relay-client-certs を同一 CA で署名、mTLS 成立。
-  # NOTE: selfsigned-cluster-issuer (= SelfSigned type) を直接使うと各 cert が
-  # 自己署名 (= subject == issuer) で発行され mTLS 不可、CA-based issuer が必須。
+  # CA-based issuer is required for mTLS across hubble components instead of SelfSigned.
   tls:
     auto:
       method: certmanager
@@ -135,14 +65,7 @@ hubble:
         group: cert-manager.io
   relay:
     enabled: true
-    # chart default は podAffinity を requiredDuringScheduling で指定するが、
-    # Karpenter が新 node を provision した直後はまだ cilium DaemonSet pod が
-    # 存在しないため hubble-relay を配置できず、Karpenter が「capacity 不足」と
-    # 誤認して node を作り続けるループに入る (= spot 入れ替え時に発生、
-    # 1h で 8 launch / 5 delete の churn を観測)。
-    # cilium は全 node に DaemonSet で入るため preferred で実害はない。
-    # NOTE: chart default の requiredDuringScheduling は Helm の map deep merge
-    # で残るため、null で明示的に打ち消す必要がある。
+    # Nullifies chart requiredDuringScheduling to prevent Karpenter capacity churn during spot churn.
     affinity:
       podAffinity:
         requiredDuringSchedulingIgnoredDuringExecution: null
@@ -165,23 +88,20 @@ hubble:
       - http
     serviceMonitor:
       enabled: true
-      trustCRDsExist: true  # offline helmfile template (hydrate) で CRD 未登録時のエラーを回避
+      # Prevents offline helmfile template failures before CRDs are registered.
+      trustCRDsExist: true
       labels:
-        release: kube-prometheus-stack    # kube-prometheus-stack の serviceMonitorSelector match
+        release: kube-prometheus-stack
 
-# =============================================================================
-# DNS Proxy（hostNetwork Pod の DNS resolution に必要）
-# =============================================================================
+# Required for DNS resolution in hostNetwork pods.
 dnsProxy:
   enabled: true
 
-# =============================================================================
-# Prometheus Metrics
-# =============================================================================
 prometheus:
   enabled: true
   serviceMonitor:
     enabled: true
-    trustCRDsExist: true  # offline helmfile template (hydrate) で CRD 未登録時のエラーを回避
+    # Prevents offline helmfile template failures before CRDs are registered.
+    trustCRDsExist: true
     labels:
       release: kube-prometheus-stack

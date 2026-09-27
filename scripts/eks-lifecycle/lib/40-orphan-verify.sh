@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# 40-orphan-verify.sh - Detect orphan AWS resources after teardown.
-#
-# Reports (does NOT delete) any resources tagged with the production EKS
-# environment that survived terragrunt destroy. Exits non-zero if any
-# orphan is found, with example deletion commands for the operator.
 
 LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
@@ -57,15 +52,11 @@ if [ -n "$SG_IDS" ]; then
 fi
 
 info "Step 40.5: Route53 stale external-dns records"
-use_route53_creds  # = panicboat.net zone lives in master, not production
+use_route53_creds
 HOSTED_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
   --dns-name panicboat.net --query 'HostedZones[0].Id' --output text 2>/dev/null | sed 's|/hostedzone/||')
 if [ -n "$HOSTED_ZONE_ID" ] && [ "$HOSTED_ZONE_ID" != "None" ]; then
-  # external-dns は TXT registry record (= name format "<rtype>-<host>") に
-  # ownership marker (= heritage=external-dns,external-dns/owner=eks-<env>) を書く。
-  # この marker を起点に関連 A/AAAA/CNAME (= prefix 除去で導出した host name) を
-  # 集計する。 旧実装は "_external-dns." prefix と A record のみを参照しており、
-  # 実 deployment の prefix-less / "<rtype>-" registry format と AAAA / CNAME を取りこぼしていた。
+  # Derives associated DNS records from TXT registry markers matching external-dns format.
   STALE_RECORDS=$(aws route53 list-resource-record-sets --hosted-zone-id "$HOSTED_ZONE_ID" --output json | \
     jq -r --arg owner "eks-${ENV}" '
       .ResourceRecordSets as $all
@@ -82,7 +73,7 @@ if [ -n "$HOSTED_ZONE_ID" ] && [ "$HOSTED_ZONE_ID" != "None" ]; then
   fi
 fi
 
-use_apply_creds  # = back to production account creds (Step 40.5 switched to master for Route53)
+use_apply_creds
 
 info "Step 40.6: CloudWatch log groups"
 LG_NAMES=$(aws logs describe-log-groups --region "$REGION" \

@@ -1,14 +1,9 @@
-# main.tf - GitHub OIDC Auth IAM Role and Provider
-
-# Get current AWS account information
 data "aws_caller_identity" "current" {}
 
-# Get GitHub's OIDC thumbprint
 data "tls_certificate" "github" {
   url = "https://token.actions.githubusercontent.com"
 }
 
-# Create GitHub OIDC Identity Provider (if requested)
 resource "aws_iam_openid_connect_provider" "github" {
   count = var.create_oidc_provider ? 1 : 0
 
@@ -27,12 +22,10 @@ resource "aws_iam_openid_connect_provider" "github" {
   })
 }
 
-# Local value for OIDC provider ARN
 locals {
   oidc_provider_arn = var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : var.oidc_provider_arn
 }
 
-# Build trust policy conditions for GitHub Actions
 locals {
   # plan-role: allow PR triggers and main-branch plan runs
   plan_conditions = flatten([
@@ -52,7 +45,6 @@ locals {
   ])
 }
 
-# Plan role: read-only AWS access + Terragrunt state lock RW
 resource "aws_iam_role" "plan" {
   name                 = "${var.project_name}-${var.environment}-github-actions-plan-role"
   max_session_duration = var.max_session_duration
@@ -89,13 +81,7 @@ resource "aws_iam_role_policy_attachment" "plan_read_only" {
   policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
 }
 
-# DynamoDB lock table is shared across all environments and is always in
-# ap-northeast-1 — that is fixed in aws/github-oidc-auth/root.hcl
-# (remote_state.dynamodb_table region). It is intentionally NOT derived from
-# var.aws_region: the develop env uses us-east-1 as its primary region, but
-# the lock table lives in ap-northeast-1 regardless. If the lock table is
-# ever relocated, both this region and the value in root.hcl must change
-# together.
+# Lock table region is fixed to ap-northeast-1 across all environments per root.hcl remote_state.
 resource "aws_iam_policy" "terragrunt_state_lock" {
   name        = "${var.project_name}-${var.environment}-terragrunt-state-lock"
   description = "DynamoDB lock table RW for Terragrunt state operations"
@@ -123,8 +109,7 @@ resource "aws_iam_role_policy_attachment" "plan_state_lock" {
   policy_arn = aws_iam_policy.terragrunt_state_lock.arn
 }
 
-# ReadOnlyAccess does not include sts:AssumeRole, so cross-account data sources
-# need it granted explicitly. The apply role gets it from AdministratorAccess.
+# ReadOnlyAccess excludes sts:AssumeRole required for cross-account lookups.
 resource "aws_iam_role_policy" "plan_assume_role" {
   count = length(var.assume_role_arns) > 0 ? 1 : 0
 
@@ -143,7 +128,6 @@ resource "aws_iam_role_policy" "plan_assume_role" {
   })
 }
 
-# Apply role: AdministratorAccess gated by main push or environment
 resource "aws_iam_role" "apply" {
   name                 = "${var.project_name}-${var.environment}-github-actions-apply-role"
   max_session_duration = var.max_session_duration

@@ -1,42 +1,11 @@
-# Falco Runtime Security Configuration for production
-# node の syscall を modern eBPF で観測し、検知イベントを JSON で stdout に出力。
-# 既存の OTel Collector (filelog receiver) が /var/log/pods を tail して Loki へ
-# 送るため、Falco 側に配送コンポーネント (falcosidekick) を持たない。
-
-# =============================================================================
-# Driver (= modern eBPF CO-RE)
-# =============================================================================
-# NOTE: chart default は kind: auto。auto のままだと driver-loader init container
-# が残り、node 起動のたびに kernel module の build / download 経路に依存する。
-# Karpenter が node を頻繁に入れ替える構成では外部依存を減らしたいため
-# modern_ebpf を明示する (= chart の driverLoader helper が false を返し init
-# container が生成されなくなる)。
-# 前提: node は AL2023 (kernel 6.1 + BTF)、image は arm64 対応済。
+# Uses modern_ebpf to avoid init containers and kernel module build dependencies.
 driver:
   kind: modern_ebpf
   modernEbpf:
-    # privileged: true を避け capabilities {BPF, SYS_RESOURCE, PERFMON,
-    # SYS_PTRACE} のみで動かす。security tool 自身を production で常時特権 Pod
-    # として走らせない。失敗時は BPF program の load エラーで CrashLoop するため
-    # 静かに壊れることはない。
+    # Restricts capabilities to required subset instead of running privileged.
     leastPrivileged: true
 
-# =============================================================================
-# Rules (= OCI artifact、exact version に pin)
-# =============================================================================
-# Falco 0.36 以降ルールセットは image に同梱されず OCI artifact で配布される。
-# NOTE: キーパスが 2 系統に分かれる。falcoctl.artifact.*.enabled は container の
-# 有無を制御し、pin 対象の refs は falcoctl.config.artifact.install.refs 配下。
-# falcoctl.artifact.install.refs は存在せず、書いても無視される。
-# follow を無効化する理由: chart default は 168h ごとに rules を自動更新する。
-# ルールが Git の外で変わると、manifests/ に render した YAML をレビューしてから
-# 適用する hydration pattern の前提が崩れる。
-# install の ref を exact version にする理由: chart default の falco-rules:5 は
-# floating tag で、Pod 再起動のたびに major 5 系の最新を引く (= 同じ manifest
-# から異なる挙動が出る)。
-# NOTE: follow.refs は falco-rules:5 のまま render されるが、follow container が
-# 存在しないため consume されず無害。
-# Renovate の helmfile manager は OCI artifact を追えないため更新は手動。
+# Follow container disabled and install refs pinned to avoid untracked out-of-band rule changes.
 falcoctl:
   artifact:
     install:
@@ -47,57 +16,28 @@ falcoctl:
     artifact:
       install:
         refs:
-          # NOTE: falcoctl は index 経由の短縮名で解決するため ref に registry を
-          # 書かない。Renovate は短縮名から artifact を特定できないので、下の
-          # renovate コメントで完全な OCI 参照を depName として与える。
           # renovate: datasource=docker depName=ghcr.io/falcosecurity/rules/falco-rules
           - falco-rules:5.1.0
-      # NOTE: follow container は無効なのでこの値は誰も consume しない。それでも
-      # chart default の floating tag (falco-rules:5) を残さないのは、将来 follow を
-      # 有効化した人が floating 参照を引き継ぎ、「ルールが Git 外で変わらない」という
-      # 本 component の前提を無言で壊すのを防ぐため。
       follow:
         refs:
           - falco-rules:5.1.0
 
-# =============================================================================
-# Falco config
-# =============================================================================
 falco:
-  # chart default false。OTel Collector が拾った本文を Loki 側で `| json` で
-  # パースするために必須。
+  # Outputs JSON to stdout for OTel Collector and Loki parsing.
   json_output: true
-  # chart default true。container 内に syslog daemon が存在せず出力先がないため
-  # 明示的に潰す。
+  # Disables syslog output as container has no syslog daemon.
   syslog_output:
     enabled: false
 
-# =============================================================================
-# Scheduling (= 全 node をカバー)
-# =============================================================================
-# NOTE: chart default の tolerations は master / control-plane taint のみ。
-# そのままでは system_critical MNG (= taint dedicated=system-critical:NoSchedule)
-# に schedule されず、Karpenter controller / cilium-operator / CoreDNS が載る
-# node が監視の死角になる。OTel Collector と同じ全許容に上書きする。
+# Tolerates all taints including system-critical to monitor every node.
 tolerations:
   - effect: NoSchedule
     operator: Exists
   - effect: NoExecute
     operator: Exists
 
-# NOTE: chart 固有の key 名は podPriorityClassName (= priorityClassName ではない)。
-# 値は OTel Collector と同じ。schedule されなかった瞬間の syscall イベントは
-# 後から取り直せないため、node レベル agent と同格に置く。
 podPriorityClassName: system-node-critical
 
-# =============================================================================
-# Metrics (= event drop の可視化)
-# =============================================================================
-# eBPF ring buffer が溢れると Falco は検知イベントを黙って落とす。監査ログの
-# 網羅性を主張するには drop 率の可視化が前提条件になる。
-# NOTE: chart 固有の key 名に注意。serviceMonitor.create (= enabled ではない)、
-# serviceMonitor.labels (= Beyla の additionalLabels / OTel Collector の
-# extraLabels とも異なる)。他 component からのコピーで誤りやすい。
 metrics:
   enabled: true
 serviceMonitor:
@@ -105,32 +45,13 @@ serviceMonitor:
   labels:
     release: kube-prometheus-stack
 
-# =============================================================================
-# Resources (= requests のみ下げる)
-# =============================================================================
-# deploy 後の実測は cpu 7-13m / memory 54-78Mi で、chart default の requests
-# (cpu 100m / memory 512Mi) は過大。Karpenter は requests を見て instance を
-# 選ぶため、使わない予約が node サイズと台数に直結する。
-# NOTE: limits は chart default (cpu 1000m / memory 1024Mi) のまま据え置く。
-# helm の deep merge で requests だけ上書きしても limits は残る (= 実際に render
-# して確認済)。security agent を CPU throttling や OOM に晒すと検知を取り逃すため、
-# 削るのは予約 (requests) だけにして上限は広く保つ。
-# eBPF ring buffer は kernel 側の確保で container の memory limit に計上されない。
+# Requests right-sized from actual usage while retaining chart default limits.
 resources:
   requests:
     cpu: 50m
     memory: 128Mi
 
-# =============================================================================
-# Custom rules (= 既知の正常動作を除外)
-# =============================================================================
-# Beyla は eBPF で network を捕捉するため AF_PACKET socket を開く。これは正常
-# 動作だが `Packet socket created in container` に該当し続ける。恒常的な誤検知は
-# 「このルールは無視するもの」という運用習慣を作り、本物の ARP spoofing /
-# CVE-2020-14386 を見逃す下地になるため除外する。
-# NOTE: 除外機構は macro ではなく list (= ルール本文が
-# `not proc.name in (user_known_packet_socket_binaries)` で参照)。
-# override.items: append で上流のリストに追記する (= 上流が要素を足しても衝突しない)。
+# Appends Beyla to known packet socket binaries to silence false positive alerts.
 customRules:
   beyla-packet-socket.yaml: |-
     - list: user_known_packet_socket_binaries

@@ -1,6 +1,4 @@
-# terraform.tf - OpenTofu and provider configuration
-# Cost Optimization Hub and Compute Optimizer APIs are only available in us-east-1.
-# Region is pinned here so the service does not depend on env aws_region.
+# Region is pinned to us-east-1 because Cost Optimization Hub and Compute Optimizer APIs only exist there.
 
 terraform {
   required_version = "1.12.6"

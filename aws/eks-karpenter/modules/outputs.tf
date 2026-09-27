@@ -1,5 +1,3 @@
-# outputs.tf - Outputs for the karpenter module.
-
 output "node_role_name" {
   description = "Node IAM role name for EC2 instances launched by Karpenter (referenced by EC2NodeClass.spec.role)"
   value       = module.karpenter.node_iam_role_name

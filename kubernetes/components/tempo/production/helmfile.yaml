@@ -1,28 +1,6 @@
-# =============================================================================
-# Tempo Helmfile for production
-# =============================================================================
-# Traces stack の Tempo 本体。Monolithic mode (chart 内蔵の single binary
-# deploy、distributor + ingester + querier + compactor を 1 process に統合、
-# Tempo 公式が small production OK とする position に準拠)。tempo-distributed
-# への切替は HA / scale 要件が顕在化した時点で再評価する。
-# chart は grafana-community/helm-charts から取る。旧 grafana/helm-charts の
-# tempo chart は Chart.yaml に deprecated: true を持ち、repository 自体の
-# サポートが 2026-01-30 に終了している。移管先でも single binary mode の
-# 提供は継続する。renovate は参照中の repository index しか見ないため、
-# repository ごと移管される変更は検知できない。
-# S3 backend は `tempo-337169763788` を Pod Identity 経由でアクセス、IAM role
-# は bucket-wide (3 stack 同型) + application-level prefix env scope
-# (`s3.prefix: production`) で隔離。
-# multitenancy は OFF (1 tenant 運用、Mimir / Loki と対称)。retention は
-# application 側 OFF (chart default)、S3 lifecycle 7d で担保。
-# PVC 10Gi gp3 は WAL + 短期 compactor cache 用。
-# =============================================================================
 environments:
   production:
-    # NOTE: helmfile v1.4 は親 helmfile.yaml.gotmpl の environments values を
-    # 子 helmfile に auto-inherit しないため、ここで再定義する。
-    # 値は kubernetes/helmfile.yaml.gotmpl の production env block と
-    # 同期すること (tempo.bucketName / tempo.bucketPathPrefix)。
+    # Parent values are not auto-inherited by child helmfiles in helmfile v1.4, requiring explicit redefinition.
     values:
       - tempo:
           bucketName: tempo-337169763788

@@ -1,5 +1,3 @@
-# terragrunt.hcl - Terragrunt configuration for production environment
-
 include "root" {
   path = find_in_parent_folders("root.hcl")
 }
@@ -10,9 +8,6 @@ include "env" {
 }
 
 # Reference to Terraform modules.
-# Use go-getter `//` subdir notation so the entire `aws/` tree is copied to
-# the Terragrunt cache. This lets `module "eks"` in modules/lookups.tf
-# resolve `../../eks/lookup` from within the cache.
 terraform {
   source = "../..//eks-metrics/modules"
 }

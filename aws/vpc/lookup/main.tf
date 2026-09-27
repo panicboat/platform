@@ -1,5 +1,3 @@
-# main.tf - Tag-based discovery of VPC, subnets, and DB subnet group.
-
 data "aws_vpc" "this" {
   tags = {
     Name = "vpc-${var.environment}"

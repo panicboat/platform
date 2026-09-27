@@ -1,19 +1,6 @@
-# =============================================================================
-# Loki Helmfile for production
-# =============================================================================
-# Logs stack の Loki 本体。SingleBinary mode (chart 内蔵の Monolithic deploy、
-# 9 Pod Microservices ではなく 1-2 Pod 構成、Loki 公式が small production OK
-# とする position に準拠)。Microservices mode への upgrade path は chart の
-# `deploymentMode` 切替で確保。
-# S3 backend は `loki-337169763788` を Pod Identity 経由でアクセス。
-# tenancy は anonymous + auth_enabled=false で Mimir / Tempo と対称運用。
-# =============================================================================
 environments:
   production:
-    # NOTE: helmfile v1.4 は親 helmfile.yaml.gotmpl の environments values を
-    # 子 helmfile に auto-inherit しないため、ここで再定義する。
-    # 値は kubernetes/helmfile.yaml.gotmpl の production env block と
-    # 同期すること (loki.bucketName / loki.bucketPathPrefix)。
+    # Parent values are not auto-inherited by child helmfiles in helmfile v1.4, requiring explicit redefinition.
     values:
       - loki:
           bucketName: loki-337169763788
