@@ -1,16 +1,3 @@
-# Makefile (repo root) - EKS production teardown entry points
-#
-# Usage:
-#   make eks-teardown ENV=production           # full teardown
-#   make eks-teardown-k8s ENV=production       # k8s cleanup only
-#   make eks-teardown-aws ENV=production       # terragrunt destroy only
-#   make eks-teardown-verify ENV=production    # orphan verify only
-#
-#   DRY_RUN=1 make eks-teardown ENV=production # echo commands without exec
-#
-# Recreate (= cluster bootstrap) は manual runbook で実行する:
-#   docs/runbooks/eks-production-recreate.md
-
 ENV ?=
 
 .PHONY: help eks-teardown eks-teardown-k8s eks-teardown-aws eks-teardown-verify
