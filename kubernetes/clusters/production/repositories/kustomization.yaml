@@ -1,9 +1,3 @@
-# =============================================================================
-# External Repositories Kustomization for production
-# =============================================================================
-# Aggregates Flux GitRepository + Kustomization for repositories outside the
-# platform (currently: panicboat monorepo).
-# =============================================================================
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
