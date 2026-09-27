@@ -1,10 +1,4 @@
 ---
-# =============================================================================
-# cert-manager Namespace
-# =============================================================================
-# cert-manager controller / cainjector / webhook の専用 namespace。
-# admission webhook cert の自動発行基盤として ESO + Cilium Hubble TLS の cert 発行に使用。
-# =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -12,12 +6,6 @@ metadata:
   labels:
     app.kubernetes.io/name: cert-manager
 ---
-# =============================================================================
-# ExternalDNS Namespace
-# =============================================================================
-# This namespace contains the ExternalDNS controller. Chart default name is
-# also `external-dns`; we follow that convention.
-# =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -25,12 +13,6 @@ metadata:
   labels:
     app.kubernetes.io/name: external-dns
 ---
-# =============================================================================
-# external-secrets Namespace
-# =============================================================================
-# External Secrets Operator (controller / cert-controller / webhook) の専用 namespace。
-# AWS Secrets Manager から K8s Secret への sync 基盤。
-# =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -38,16 +20,6 @@ metadata:
   labels:
     app.kubernetes.io/name: external-secrets
 ---
-# =============================================================================
-# Falco Namespace
-# =============================================================================
-# Falco DaemonSet の専用 namespace。monitoring に相乗りさせない理由は 2 つ。
-# 1. Falco は detective security control であり、signal を集めて貯める
-#    monitoring namespace とは責務が異なる
-# 2. Falco Pod は eBPF attach のため昇格した capability を持つ。将来 namespace
-#    単位で PodSecurity / NetworkPolicy を締めるとき、権限の高い Pod が
-#    monitoring 全体の設定を引きずるのを避ける
-# =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -55,13 +27,6 @@ metadata:
   labels:
     app.kubernetes.io/name: falco
 ---
-# =============================================================================
-# holmesgpt Namespace
-# =============================================================================
-# HolmesGPT (CNCF Sandbox) の評価用 namespace。chart 提供の read-only
-# ClusterRole で cluster を調査し、Bedrock へは IRSA で接続する。
-# 採点が終わったら component ごと削除する。
-# =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -69,12 +34,6 @@ metadata:
   labels:
     app.kubernetes.io/name: holmesgpt
 ---
-# =============================================================================
-# Karpenter Namespace
-# =============================================================================
-# This namespace contains the Karpenter controller. Chart default name is
-# also `karpenter`; we follow that convention.
-# =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -82,13 +41,6 @@ metadata:
   labels:
     app.kubernetes.io/name: karpenter
 ---
-# =============================================================================
-# KEDA Namespace
-# =============================================================================
-# This namespace contains:
-#   - keda-operator (controller for ScaledObject / ScaledJob / TriggerAuthentication)
-#   - keda-operator-metrics-apiserver (external metrics API server)
-# =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -96,15 +48,6 @@ metadata:
   labels:
     app.kubernetes.io/name: keda
 ---
-# =============================================================================
-# oauth2-proxy Namespace
-# =============================================================================
-# oauth2-proxy (= Google OAuth gate + reverse-proxy) の専用 namespace。
-# 4 monitoring UIs (= Grafana / Hubble UI / Alertmanager / Prometheus) を
-# 共通認証ゲート経由で外部公開する。ALB Ingress (IngressGroup monitoring-uis)
-# も本 namespace に配置 (= Ingress.spec.backend は同 namespace の Service のみ
-# 参照可能なため)。
-# =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -112,9 +55,6 @@ metadata:
   labels:
     app.kubernetes.io/name: oauth2-proxy
 ---
-# =============================================================================
-# OpenTelemetry Operator Namespace
-# =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -122,18 +62,6 @@ metadata:
   labels:
     app.kubernetes.io/name: opentelemetry-operator
 ---
-# =============================================================================
-# Monitoring Namespace
-# =============================================================================
-# This namespace contains the full observability stack:
-#   - Prometheus (metrics)
-#   - Grafana (visualization)
-#   - Alertmanager (alerting)
-#   - Loki (logs)
-#   - Tempo (traces)
-#   - Beyla (eBPF instrumentation)
-#   - Fluent-bit (log collection)
-# =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -141,12 +69,6 @@ metadata:
   labels:
     app.kubernetes.io/name: monitoring
 ---
-# =============================================================================
-# reloader Namespace
-# =============================================================================
-# Stakater Reloader (= reloader-controller) の専用 namespace。
-# Secret / ConfigMap 変更時に annotation 付きの Deployment / StatefulSet を auto-rollout する。
-# =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
