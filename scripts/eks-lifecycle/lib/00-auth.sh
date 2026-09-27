@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 # Runs terragrunt via OrganizationAccountAccessRole because OIDC role trust policy rejects IAM users.
 
 LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

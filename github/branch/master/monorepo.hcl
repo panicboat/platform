@@ -12,8 +12,7 @@ locals {
             "Validate PR title",
             "Ensure actions are pinned to SHAs",
           ]
-          # 1371999 = panicboat-github-workflow-bot (general CI, e.g. release-please)
-          # 4671042 = panicboat-fluxcd-bot (Flux ImageUpdateAutomation direct push)
+          # Allows release and image update bots to push directly without failing status checks.
           bypass_app_ids = [1371999, 4671042]
         }
       )

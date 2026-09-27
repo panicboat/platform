@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 # Probes whether Pod Identity webhook injected AWS_CONTAINER_CREDENTIALS_FULL_URI into matching pods.
 
 set -euo pipefail

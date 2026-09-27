@@ -45,8 +45,7 @@ resource "github_repository_ruleset" "branches" {
     }
   }
 
-  # Admin bypass: when true, organization admins can bypass the ruleset.
-  # Leave bypass_actors empty to enforce rules for everyone (legacy enforce_admins=true equivalent).
+  # Empty bypass_actors enforces rules on organization admins to prevent accidental direct pushes.
   dynamic "bypass_actors" {
     for_each = each.value.admin_bypass ? [1] : []
     content {
@@ -56,9 +55,7 @@ resource "github_repository_ruleset" "branches" {
     }
   }
 
-  # GitHub App bypass: each App ID in bypass_app_ids generates a bypass_actor.
-  # Used for automation that must direct-push to the protected branch
-  # (e.g., Flux ImageUpdateAutomation bumping image tags).
+  # Grants direct push bypass to designated automation apps while enforcing rules on interactive users.
   dynamic "bypass_actors" {
     for_each = each.value.bypass_app_ids
     iterator = app_id
@@ -70,8 +67,7 @@ resource "github_repository_ruleset" "branches" {
   }
 
   rules {
-    # Requiring a PR effectively blocks direct pushes to the branch,
-    # replacing the legacy restrict_pushes setting.
+    # Pull request requirement blocks direct pushes without needing legacy push restrictions.
     pull_request {
       required_approving_review_count   = each.value.required_reviews
       dismiss_stale_reviews_on_push     = each.value.dismiss_stale_reviews

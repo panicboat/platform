@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 # Sub-scripts run as separate processes and source 00-auth.sh individually.
 
 set -euo pipefail
