@@ -70,6 +70,7 @@ data:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
+    # prefer_email_to_user sets email in X-Forwarded-User for human-readable usernames in Grafana auth.proxy.
     prefer_email_to_user = true
 ---
 # Source: oauth2-proxy/templates/service.yaml
@@ -131,7 +132,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 9ae8ded8d9c01822a431788234a76e6256ecfcb19d53a2606aab54d2b21d6db1
+        checksum/config: 73cc5091ab3b604600ecba4bf52ca59e85082ecb5a64e7923764c07291b07d93
         checksum/secret: 9eb46bbdefd5cf844a2c4965b1241a7177addaa7c07789e7873ccda6b0104111
         checksum/google-secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
         checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
@@ -329,6 +330,7 @@ data:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
+    # prefer_email_to_user sets email in X-Forwarded-User for human-readable usernames in Grafana auth.proxy.
     prefer_email_to_user = true
 ---
 # Source: oauth2-proxy/templates/service.yaml
@@ -390,7 +392,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 496340958431cc033a4be129f33e2cb2638b8e8c65da639cf614f82a91f63617
+        checksum/config: bb5b783b0bcfa677aefeb1b76f03f69fbb6c8b7f2a41d782b13615eec09d504c
         checksum/secret: 9eb46bbdefd5cf844a2c4965b1241a7177addaa7c07789e7873ccda6b0104111
         checksum/google-secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
         checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
@@ -588,6 +590,7 @@ data:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
+    # prefer_email_to_user sets email in X-Forwarded-User for human-readable usernames in Grafana auth.proxy.
     prefer_email_to_user = true
 ---
 # Source: oauth2-proxy/templates/service.yaml
@@ -649,7 +652,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 15a0e0ae0791bd002ad8779ff6f54ccc919981511ac5af09f88adbde2e6df17b
+        checksum/config: 5e4c794b207ca258ccc44b8bfb121ea17ca00422965a3c00c01e3cbed8919ef8
         checksum/secret: 9eb46bbdefd5cf844a2c4965b1241a7177addaa7c07789e7873ccda6b0104111
         checksum/google-secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
         checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
@@ -847,6 +850,7 @@ data:
     set_xauthrequest = true
     skip_provider_button = true
     reverse_proxy = true
+    # prefer_email_to_user sets email in X-Forwarded-User for human-readable usernames in Grafana auth.proxy.
     prefer_email_to_user = true
 ---
 # Source: oauth2-proxy/templates/service.yaml
@@ -908,7 +912,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: c527d7411b9580deb62a748b03142678929cdc5a392f3850052916a471139b7e
+        checksum/config: b7c55324479df3725c539d643d10cacb845bfec227535643e4da7bdf07c7b53c
         checksum/secret: 9eb46bbdefd5cf844a2c4965b1241a7177addaa7c07789e7873ccda6b0104111
         checksum/google-secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
         checksum/redis-secret: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b

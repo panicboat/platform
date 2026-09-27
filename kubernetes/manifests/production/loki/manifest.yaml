@@ -74,7 +74,9 @@ data:
           region: ap-northeast-1
           s3forcepathstyle: false
     compactor:
+      delete_request_store: s3
       retention_enabled: false
+      working_directory: /var/loki/compactor
     frontend:
       scheduler_address: ""
       tail_proxy_url: ""
@@ -84,19 +86,16 @@ data:
       mode: simple
     ingester:
       chunk_idle_period: 2m
-      max_chunk_age: 5m
+      chunk_target_size: 1536000
+      max_chunk_age: 1h
       wal:
         flush_on_shutdown: true
     limits_config:
-      ingestion_burst_size_mb: 6
-      ingestion_rate_mb: 4
+      ingestion_burst_size_mb: 20
+      ingestion_rate_mb: 10
       max_cache_freshness_per_query: 10m
-      otlp_config:
-        resource_attributes:
-          attributes_config:
-          - action: index_label
-            attributes:
-            - workload
+      max_entries_limit_per_query: 5000
+      max_line_size: 256KB
       query_timeout: 300s
       reject_old_samples: true
       reject_old_samples_max_age: 168h
@@ -134,7 +133,7 @@ data:
       - from: "2024-01-01"
         index:
           period: 24h
-          prefix: production_index_
+          prefix: loki_index_
         object_store: s3
         schema: v13
         store: tsdb
@@ -166,6 +165,8 @@ data:
         max_per_second: 20
         up_to: 3
       tsdb_shipper:
+        active_index_directory: /var/loki/tsdb-index
+        cache_location: /var/loki/tsdb-cache
         index_gateway_client:
           server_address: ""
       use_thanos_objstore: false
@@ -987,7 +988,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: ba5926f27b3350f39e50c148ec417b6cbc9ebc98aeff0274b21b602c93b1e07a
+        checksum/config: a9b7f092491d2d944aa9c97b7a6e99da8ff2781032c39eb060aa40f495aaabf7
         storage/size: 10Gi
         kubectl.kubernetes.io/default-container: "loki"
       labels:

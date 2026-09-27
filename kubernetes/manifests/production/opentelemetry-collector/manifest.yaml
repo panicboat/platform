@@ -455,6 +455,5 @@ spec:
       app.kubernetes.io/instance: opentelemetry-collector
       component: agent-collector
   endpoints:
-    - interval: 15s
-      port: metrics
+    - port: metrics
 
