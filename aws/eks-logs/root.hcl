@@ -1,6 +1,3 @@
-# root.hcl - Root Terragrunt configuration for EKS Logs
-# This file contains common settings shared across all environments
-
 locals {
   project_name = "eks-logs"
 

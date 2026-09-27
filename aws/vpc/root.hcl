@@ -1,16 +1,9 @@
-# root.hcl - Root Terragrunt configuration for VPC
-# This file contains common settings shared across all environments
-
 locals {
-  # Project metadata
   project_name = "vpc"
 
-  # Parse environment from the directory path
-  # The environment is the last path segment (e.g. .../production)
   path_parts  = split("/", path_relative_to_include())
   environment = element(local.path_parts, length(local.path_parts) - 1)
 
-  # Common tags applied to all resources
   common_tags = {
     Project     = local.project_name
     Environment = local.environment
@@ -21,7 +14,6 @@ locals {
   }
 }
 
-# Remote state configuration using shared S3 bucket
 remote_state {
   backend = "s3"
   generate = {
@@ -29,22 +21,17 @@ remote_state {
     if_exists = "overwrite_terragrunt"
   }
   config = {
-    # Shared bucket for all monorepo services
     bucket = "terragrunt-state-${get_aws_account_id()}"
 
-    # Service-specific path: vpc/<environment>/terraform.tfstate
     key    = "platform/vpc/${local.environment}/terraform.tfstate"
     region = "ap-northeast-1"
 
-    # Shared DynamoDB table for state locking across all services
     dynamodb_table = "terragrunt-state-locks"
 
-    # Enable server-side encryption
     encrypt = true
   }
 }
 
-# Common inputs passed to all Terraform modules
 # project_name is intentionally omitted; this service encodes "vpc" directly in resource names.
 inputs = {
   environment = local.environment

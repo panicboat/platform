@@ -1,5 +1,3 @@
-# terragrunt.hcl - Terragrunt configuration for production environment
-
 include "root" {
   path = find_in_parent_folders("root.hcl")
 }
@@ -9,11 +7,7 @@ include "env" {
   expose = true
 }
 
-# Reference to Terraform modules.
-# Use go-getter `//` subdir notation so the entire `aws/` tree is copied to
-# the Terragrunt cache. This lets `module "eks"` and `module "vpc"` in
-# modules/lookups.tf resolve `../../eks/lookup` and `../../vpc/lookup` from
-# within the cache.
+# Double-slash includes the parent directory in Terragrunt cache for relative module lookups.
 terraform {
   source = "../..//eks-karpenter/modules"
 }

@@ -1,5 +1,3 @@
-# terraform.tf - OpenTofu and provider configuration
-
 terraform {
   required_version = "1.12.6"
 
@@ -19,8 +17,7 @@ provider "aws" {
   }
 }
 
-# Hosted zone は管理アカウントに残しているため、zone の読み取りと ACM DNS
-# validation レコードの書き込みはこの alias 経由で行う。
+# Cross-account provider alias manages validation records in management account hosted zones.
 provider "aws" {
   alias  = "route53"
   region = var.aws_region

@@ -1,5 +1,3 @@
-# variables.tf - Inputs for the route53 module.
-
 variable "environment" {
   description = "Environment name (e.g., master)"
   type        = string

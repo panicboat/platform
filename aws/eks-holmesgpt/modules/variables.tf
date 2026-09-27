@@ -1,5 +1,3 @@
-# variables.tf - Inputs for the eks-holmesgpt module
-
 variable "environment" {
   description = "Environment name (e.g., production). Used in IAM role name."
   type        = string

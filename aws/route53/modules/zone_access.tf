@@ -1,13 +1,4 @@
-# zone_access.tf - Cross-account role letting the production account manage
-# records in the hosted zones this (management) account owns.
-#
-# Trusting the account root rather than individual role ARNs: IAM rejects a
-# trust policy naming a role that does not exist yet, and
-# `eks-production-external-dns` is not created until the EKS stack applies.
-#
-# Read and write share one role because Terraform provider aliases are static —
-# plan and apply cannot point at different assume-role targets under the
-# current setup. `terragrunt plan` never calls ChangeResourceRecordSets.
+# Trusts account root because downstream roles do not exist prior to stack creation.
 
 data "aws_iam_policy_document" "zone_access_assume" {
   statement {

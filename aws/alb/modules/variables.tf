@@ -1,5 +1,3 @@
-# variables.tf - Inputs for the alb module.
-
 variable "environment" {
   description = "Environment name (e.g., production)"
   type        = string

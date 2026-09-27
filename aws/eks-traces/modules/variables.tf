@@ -1,5 +1,3 @@
-# variables.tf - Inputs for the eks-traces module
-
 variable "environment" {
   description = "Environment name (e.g., production). Used as bucket path prefix for env isolation."
   type        = string

@@ -1,5 +1,3 @@
-# outputs.tf - Output values for GitHub OIDC Auth module
-
 output "oidc_provider_arn" {
   description = "ARN of the GitHub OIDC provider"
   value       = local.oidc_provider_arn

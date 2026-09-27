@@ -1,5 +1,3 @@
-# terraform.tf - Terraform configuration for GitHub OIDC Auth
-
 terraform {
   required_version = "1.12.6"
 
@@ -15,7 +13,6 @@ terraform {
   }
 }
 
-# AWS Provider configuration
 provider "aws" {
   region = var.aws_region
 

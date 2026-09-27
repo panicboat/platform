@@ -1,26 +1,9 @@
-# main.tf - HolmesGPT AWS-side infrastructure (IAM role + Pod Identity for Bedrock invoke).
-#
-# HolmesGPT runs in-cluster and reads the cluster through the Kubernetes API.
-# That access comes from the chart's own read-only ClusterRole, not from this
-# role — this role exists solely so the agent can call Bedrock without a
-# long-lived API key anywhere.
-#
-# Bedrock resources are enumerated rather than wildcarded because per-model
-# pricing differs by an order of magnitude (Opus 5 is $5/$25 per MTok against
-# Haiku 4.5 at $1.10/$5.50); a misconfigured model fails at IAM instead of on
-# the invoice.
-#
-# `us.` inference profiles route to three regions. Listing only the profile ARN
-# is not enough — the call fails on whichever region the profile picks.
-
 data "aws_caller_identity" "current" {}
 
 locals {
-  service_name = "holmesgpt" # K8s ServiceAccount name
+  service_name = "holmesgpt"
 
-  # Must match `modelList` in
-  # kubernetes/components/holmesgpt/production/values.yaml.gotmpl; a model there
-  # but not here fails at runtime with AccessDenied.
+  # Keep in sync with modelList in holmesgpt values to avoid runtime AccessDenied.
   bedrock_models = [
     "anthropic.claude-sonnet-4-6",
   ]
@@ -28,6 +11,7 @@ locals {
   # Routing targets of the `us.` profiles, per `aws bedrock get-inference-profile`.
   bedrock_profile_regions = ["us-east-1", "us-east-2", "us-west-2"]
 
+  # Regional foundation model ARNs are required alongside inference profiles to avoid access errors.
   bedrock_invoke_resources = concat(
     [
       for m in local.bedrock_models :
@@ -79,7 +63,6 @@ resource "aws_iam_role_policy" "bedrock_invoke" {
   })
 }
 
-# Pod Identity Association binding K8s SA → IAM role
 resource "aws_eks_pod_identity_association" "this" {
   cluster_name    = module.eks.cluster.name
   namespace       = local.service_name

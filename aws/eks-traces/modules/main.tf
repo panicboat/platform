@@ -1,31 +1,11 @@
-# main.tf - EKS Traces AWS-side infrastructure (S3 backend for Tempo).
-#
-# Provides:
-# 1. S3 bucket `tempo-<account-id>` for Tempo trace data storage
-#    (Tempo distributor / ingester が write、Tempo querier が read)。
-#    - Lifecycle: 7 日 expiration on `${var.environment}/` prefix only
-#    - Encryption: SSE-S3 (AES256)
-#    - Public access block: 4 settings all true
-#    - Versioning: Disabled (immutable write pattern, cost minimization)
-# 2. IAM role bound by Pod Identity Association to K8s SA `monitoring:tempo`
-#    - S3 access scoped to `${var.environment}/*` path only (minimum permission)
-#    - DeleteObject 含む (Tempo block deletion で必要)
-# 3. Pod Identity Association binding `monitoring:tempo` SA → IAM role
-#    - cluster_name は aws/eks/lookup module の output から取得
-#
-# env 分離は bucket 内 prefix `${var.environment}/` で行う。
-# 本 stack の outputs は terragrunt output 経由で取得し、
-# kubernetes/components/tempo/ helmfile values に渡す。
-
 data "aws_caller_identity" "current" {}
 
 locals {
   bucket_name    = "tempo-${data.aws_caller_identity.current.account_id}"
-  service_name   = "tempo" # K8s ServiceAccount name
-  retention_days = 7       # Tempo trace data retention (high-volume, short retention)
+  service_name   = "tempo"
+  retention_days = 7
 }
 
-# S3 bucket for Tempo trace data
 module "s3" {
   source  = "terraform-aws-modules/s3-bucket/aws"
   version = "5.16.1"
@@ -67,7 +47,6 @@ module "s3" {
   tags = var.common_tags
 }
 
-# IAM role for Pod Identity Association
 resource "aws_iam_role" "pod_identity" {
   name = "eks-${var.environment}-${local.service_name}"
 
@@ -85,14 +64,7 @@ resource "aws_iam_role" "pod_identity" {
   tags = var.common_tags
 }
 
-# IAM policy for S3 access (bucket-wide, application-level prefix で env scope 担保)
-# 3 statement: BucketLevelListing / BucketLocation / ObjectLevelOperations
-# NOTE: env-scoped IAM (= ${bucket}/${env}/*) ではなく bucket-wide にしている理由:
-# Loki 3.x compactor の delete request store が bucket root の固定 path (index/delete_requests/)
-# を使うため env-scoped Resource では不整合が生じる。公式 docs (Loki / Tempo / Mimir
-# community discussion) でも `${bucket}` + `${bucket}/*` 形式が推奨。env 分離は各 stack
-# の application-level prefix (= mimir.blocks_storage.storage_prefix /
-# tempo.storage.trace.s3.prefix) で担保し、3 sibling stack の IAM template は同形を維持。
+# Bucket-wide access required because compactor writes delete requests to fixed root paths.
 resource "aws_iam_role_policy" "s3_access" {
   name = "s3-access"
   role = aws_iam_role.pod_identity.id
@@ -127,7 +99,6 @@ resource "aws_iam_role_policy" "s3_access" {
   })
 }
 
-# Pod Identity Association binding K8s SA → IAM role
 resource "aws_eks_pod_identity_association" "this" {
   cluster_name    = module.eks.cluster.name
   namespace       = "monitoring"
