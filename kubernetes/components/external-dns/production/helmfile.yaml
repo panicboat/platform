@@ -1,18 +1,9 @@
-# =============================================================================
-# ExternalDNS Helmfile for production
-# =============================================================================
-# Synchronizes Route53 records from Kubernetes Service / Ingress hostname
-# annotations. Restricted to the panicboat.net zone via domainFilters and
-# IRSA hosted_zone_arns scope.
-# =============================================================================
 environments:
   production:
-    # NOTE: helmfile v1.4 は親 helmfile.yaml.gotmpl の environments values を
-    # 子 helmfile に auto-inherit しないため、ここで再定義する。RECREATE marker
-    # convention は kubernetes/helmfile.yaml.gotmpl 参照。値は親 helmfile と同期。
+    # Parent values are not auto-inherited by child helmfiles in helmfile v1.4, requiring explicit redefinition.
     values:
       - cluster:
-          # STABLE: aws/eks/modules/addons.tf で deterministic 化済
+          # STABLE: deterministic role name configured in aws/eks/modules/addons.tf.
           externalDnsRoleArn: arn:aws:iam::337169763788:role/eks-production-external-dns
 ---
 repositories:

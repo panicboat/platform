@@ -1,31 +1,13 @@
-# AWS Load Balancer Controller values for production
-
-# =============================================================================
-# Cluster identification
-# =============================================================================
 clusterName: eks-production
 region: ap-northeast-1
 vpcId: {{ .Values.cluster.vpcId }}
 
-# =============================================================================
-# ServiceAccount with IRSA
-# =============================================================================
 serviceAccount:
   create: true
   name: aws-load-balancer-controller
   annotations:
     eks.amazonaws.com/role-arn: {{ .Values.cluster.albControllerRoleArn }}
 
-# =============================================================================
-# Replicas / Resources
-# =============================================================================
-# chart デフォルト (replicaCount: 2) を採用。HA 化済み。
-
-# =============================================================================
-# Default tags applied to all AWS resources created by the controller
-# =============================================================================
-# Why: LB Controller が auto-create する SG / ALB / Target Group に対し IaC 管理
-# ではないことを `ManagedBy` で明示。inventory doc から AWS console に飛んだ
-# 際に provenance 即判別。
+# Distinguishes controller-generated AWS resources from IaC-managed ones in AWS Console.
 defaultTags:
   ManagedBy: aws-load-balancer-controller

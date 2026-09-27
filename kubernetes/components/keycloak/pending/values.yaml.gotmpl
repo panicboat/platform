@@ -1,31 +1,16 @@
-# Keycloak Configuration for production (Phase 1: infra deploy のみ)
-#
-# Postgres backend は CloudNativePG が管理する Cluster keycloak-db
-# (kustomization/postgres-cluster.yaml) の -app Secret を直接参照する。
-# admin bootstrap credentials は kustomization/external-secret.yaml が
-# 同期する Secret keycloak-admin を参照する。
-
 fullnameOverride: keycloak
 
 replicas: 1
 
-# chart はデフォルトで command/args を空にする (= イメージの ENTRYPOINT
-# kc.sh を引数なしで実行し、usage を表示して終了するだけになる)。
-# 明示的に start する。
+# Explicit start argument is required because the chart default leaves entrypoint arguments empty.
 args:
   - start
 
-# chart default の relativePath "/auth" は旧 WildFly 版 Keycloak からの
-# 移行互換用。今回は新規導入なので現行 Keycloak の標準である "/" に上書き。
+# Overrides legacy /auth path default to current root path standard.
 http:
   relativePath: "/"
 
-# chart default の proxy.mode "forwarded" は RFC7239 Forwarded ヘッダーを
-# 期待するが、ALB は X-Forwarded-For/Proto/Port しか送らない (Keycloak 公式
-# ドキュメントも ALB 配下では xforwarded を使うよう明記)。ミスマッチのまま
-# だと Keycloak が元リクエストの scheme (https) を認識できず issuer URL が
-# http:// になり、Admin Console の 3rd-party cookie check iframe がタイム
-# アウトする不具合を確認したため上書きする。
+# ALB sends X-Forwarded headers requiring xforwarded mode rather than RFC7239 forwarded.
 proxy:
   mode: xforwarded
 
@@ -52,9 +37,6 @@ extraEnv: |
         name: keycloak-admin
         key: password
 
-# start (非 optimized) は起動の都度 build ステップを挟むため、
-# 起動時に一時的な CPU/メモリ負荷が上がる。まずは動かすことを優先し、
-# 安全側の初期値を設定。実測を見て right-size する。
 resources:
   requests:
     cpu: 500m

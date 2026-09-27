@@ -1,26 +1,9 @@
-# =============================================================================
-# Grafana Mimir Distributed Helmfile for production
-# =============================================================================
-# This chart installs Mimir in Microservices mode with the following components:
-#   - gateway (nginx-based): Mimir API HTTP entry point (chart key: `gateway`)
-#   - distributor: receive remote write from Prometheus, distribute to ingester
-#   - ingester: WAL + recent metrics + S3 batch flush
-#   - querier: unified query (ingester + store-gateway)
-#   - query-frontend: query optimization + cache
-#   - store-gateway: S3 metrics provider
-#   - compactor: S3 metric compaction
-#   - chunks-cache (memcached): query cache
-# =============================================================================
 environments:
   production:
-    # NOTE: helmfile v1.x は親 helmfile.yaml.gotmpl の values を child に
-    # auto-inherit しないため、ここで再定義 (cilium / karpenter 同パターン)。
-    # 値は kubernetes/helmfile.yaml.gotmpl の production env block と同期。
+    # Parent values are not auto-inherited by child helmfiles in helmfile v1.4, requiring explicit redefinition.
     values:
       - mimir:
-          # Source: aws/eks-metrics/production terragrunt output bucket_name
           bucketName: mimir-337169763788
-          # Source: aws/eks-metrics/production terragrunt output bucket_path_prefix
           bucketPathPrefix: production
 ---
 repositories:

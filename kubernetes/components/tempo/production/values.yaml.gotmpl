@@ -1,20 +1,6 @@
-# Tempo Configuration for production
-# Monolithic mode + S3 backend + Pod Identity (tempo SA)
-
-# =============================================================================
-# Tempo Core Configuration
-# =============================================================================
 tempo:
-  # 1 tenant 運用 (panicboat) のため multitenancy OFF
   multitenancyEnabled: false
 
-  # -------------------------------------------------------------------------
-  # Resources (small production)
-  # -------------------------------------------------------------------------
-  # cpu: 実測平均 2m に対し 200m は過大。trace ingest burst 用に headroom は
-  # 残しつつ right-size。
-  # memory: 2026-09-04 recreate 直後 (アイドル状態) の実測 47Mi に対し 512Mi は
-  # 過大。実トラフィック投入後に再計測して見直すこと。
   resources:
     requests:
       cpu: 50m
@@ -23,9 +9,6 @@ tempo:
       cpu: 1
       memory: 2Gi
 
-  # -------------------------------------------------------------------------
-  # Storage Config (S3 backend)
-  # -------------------------------------------------------------------------
   storage:
     trace:
       backend: s3
@@ -33,19 +16,9 @@ tempo:
         bucket: {{ .Values.tempo.bucketName }}
         endpoint: s3.ap-northeast-1.amazonaws.com
         region: ap-northeast-1
-        # application-level env scope (IAM bucket-wide と整合)
         prefix: {{ .Values.tempo.bucketPathPrefix }}
-        # AWS S3 native (HTTPS) = insecure: false (default)
-        # Pod Identity 経由のため access_key / secret_key 不要
 
-  # -------------------------------------------------------------------------
-  # Receivers (= OTel Collector からの OTLP 受信用)
-  # -------------------------------------------------------------------------
-  # chart default の receivers に jaeger が含まれ、values の map は deep-merge
-  # されるため otlp だけ書いても jaeger の 4 protocol は開いたままになる。
-  # `jaeger: null` では消せない: chart の _ports.tpl が
-  # .Values.tempo.receivers.jaeger.protocols.thrift_compact を無条件に参照して
-  # おり、キーを削除すると Service の描画が nil pointer で失敗する。
+  # Jaeger protocol keys cannot be set to null due to nil pointer errors in chart port template.
   receivers:
     otlp:
       protocols:
@@ -54,26 +27,7 @@ tempo:
         http:
           endpoint: 0.0.0.0:4318
 
-  # -------------------------------------------------------------------------
-  # Retention 機能は OFF (= chart default に任せる)
-  # -------------------------------------------------------------------------
-  # NOTE: 3 stack で application retention は OFF + S3 lifecycle で uniform 担保
-  # の panicboat pattern。Tempo 内 retention 機能は
-  # per-tenant rules 等の advanced feature 用、panicboat の uniform 7d retention
-  # は aws/eks-traces/ S3 lifecycle で担保。
-
-  # -------------------------------------------------------------------------
-  # Metrics generator
-  # -------------------------------------------------------------------------
-  # service_graphs processor のみ enable し、生成される traces_service_graph_*
-  # を Mimir に remote_write する。Beyla が既に http_server_* で RED metrics を
-  # 出しているため span_metrics は併走させない (cardinality 二重持ち回避)。
-  # tenant header (X-Scope-OrgID: anonymous) は既存 Prometheus remote_write と同値。
-  # external_labels.cluster は multi-cluster 集約時の expectation に備えて付与。
-  #
-  # NOTE: chart 2.2.3 は metricsGenerator.remoteWriteHeaders field を持たない。
-  # tenant header を渡すには storage.remote_write をフルリストで指定する
-  # (chart template が空でない時のみリストをそのまま使うため remoteWriteUrl は無視される)。
+  # Enables service_graphs processor while omitting span_metrics to avoid duplicate RED cardinality with Beyla.
   metricsGenerator:
     enabled: true
     registry:
@@ -90,32 +44,18 @@ tempo:
           headers:
             X-Scope-OrgID: anonymous
 
-  # -------------------------------------------------------------------------
-  # Overrides (multitenancy OFF でも processor を起動させるために必要)
-  # -------------------------------------------------------------------------
-  # Tempo の仕様: per-tenant `metrics_generator.processors` が空だと processor は
-  # 起動しない。multitenancy OFF (1 tenant anonymous) でも `defaults` 経由で明示
-  # 列挙が必要。
+  # Processors must be explicitly enumerated under defaults even with multitenancy disabled.
   overrides:
     defaults:
       metrics_generator:
         processors:
           - service-graphs
 
-# =============================================================================
-# ServiceAccount (Pod Identity for S3 access)
-# =============================================================================
 serviceAccount:
   create: true
-  # aws/eks-traces/ で provision 済の Pod Identity Association が
-  # monitoring/tempo SA を IAM role eks-production-tempo に紐付け済
   name: tempo
-  # Pod Identity は IRSA と異なり annotation 不要 (cluster-side で managed)
   annotations: {}
 
-# =============================================================================
-# Persistence (= WAL + 短期 compactor cache)
-# =============================================================================
 persistence:
   enabled: true
   storageClassName: gp3
@@ -123,28 +63,13 @@ persistence:
   accessModes:
     - ReadWriteOnce
 
-# =============================================================================
-# PodDisruptionBudget (1 replica 用に明示 disable)
-# =============================================================================
-# NOTE: chart default で PDB が enable の場合、replicas=1 で minAvailable=1 に
-# なり node drain 時に block する。Loki/production の SingleBinary podDisruptionBudget
-# と同じく明示 disable して node drain operations を安全に保つ。
-# (Tempo chart 2.2.3 は PDB テンプレートを持たないが、chart upgrade に
-# 備えて明示 disable で意図を文書化する)
+# PodDisruptionBudget disabled to prevent blocking node drains with single-replica pod.
 podDisruptionBudget:
   enabled: false
 
-# =============================================================================
-# Service Configuration
-# =============================================================================
 service:
   type: ClusterIP
 
-# =============================================================================
-# ServiceMonitor (Prometheus auto-scrape)
-# =============================================================================
-# NOTE: chart の serviceMonitor key 名は `additionalLabels` (Tempo chart 固有)。
-# OTel Collector chart の `extraLabels` とは別 key 名なので注意。
 serviceMonitor:
   enabled: true
   additionalLabels:

@@ -1,14 +1,3 @@
-# =============================================================================
-# Kube-Prometheus-Stack Helmfile for production
-# =============================================================================
-# This chart installs:
-#   - Prometheus (scrape agent + remote write to Mimir)
-#   - Alertmanager (alerting hub; receivers / wire-up は別 component で扱う)
-#   - Grafana (visualization、Mimir data source primary)
-#   - node-exporter (host metrics)
-#   - kube-state-metrics (K8s API metrics)
-#   - prometheus-operator (CRD 管理)
-# =============================================================================
 environments:
   production:
 ---

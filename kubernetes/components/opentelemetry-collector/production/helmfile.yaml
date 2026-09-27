@@ -1,12 +1,3 @@
-# =============================================================================
-# OpenTelemetry Collector Helmfile for production
-# =============================================================================
-# DaemonSet で per-node に deploy。Beyla からの traces (OTLP gRPC、Service DNS) と
-# container logs (chart preset logsCollection で filelog receiver) を受けて
-# Tempo / Loki に export する。fluent-bit は OTel-native 移行で撤去済 (= log 収集も
-# OTel に統合)。chart preset logsCollection + kubernetesAttributes が log pipeline
-# の中核 (filelog receiver + k8sattributes processor + RBAC を chart 自動構成)。
-# =============================================================================
 environments:
   production:
 ---

@@ -1,19 +1,3 @@
-# =============================================================================
-# Ingress: monitoring-uis (application IngressGroup)
-# =============================================================================
-# 4 Ingresses (= grafana / hubble / alertmanager / prometheus) が IngressGroup
-# `application` で application Ingress と同一 ALB を共有。各 Ingress の backend は
-# per-host の oauth2-proxy release Service (= `oauth2-proxy-{grafana,hubble,
-# alertmanager,prometheus}`、各々 1 upstream へ reverse-proxy)。ALB が host header
-# から Service を選択 → oauth2-proxy が Google OAuth 認証 + 単一 backend へ転送。
-#
-# ACM cert auto-discovery: ALB Controller は wildcard cert *.panicboat.net を
-# 自動的に attach する (= Ingress.host が SAN にマッチ)。explicit
-# certificate-arn annotation は不要。
-#
-# external-dns annotation: hostname を Route53 record として自動作成
-# (= aws-load-balancer-controller / external-dns 連携)。
-# =============================================================================
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

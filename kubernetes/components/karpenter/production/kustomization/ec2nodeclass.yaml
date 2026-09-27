@@ -1,16 +1,3 @@
-# =============================================================================
-# EC2NodeClass: system-components
-# =============================================================================
-# Karpenter が node を起動する際の AWS-side configuration:
-# - AMI: AL2023 ARM64 (latest)
-# - Subnet: VPC private subnets (Tier=private tag で discover)
-# - SecurityGroup: cluster SG (aws:eks:cluster-name tag) + private trust SG
-#   (discover by the Name=private-trust-production tag)
-# - Role: aws/eks-karpenter/ stack が provision した Node IAM role
-#   (aws/eks-karpenter/production terragrunt output `node_role_name` の値)
-# - EBS: gp3 30 GiB (Karpenter-managed node 用 sizing、Plan 1c-β L2 学び参照)
-# - Metadata: IMDSv2 token required (security best practice)
-# =============================================================================
 apiVersion: karpenter.k8s.aws/v1
 kind: EC2NodeClass
 metadata:
@@ -27,8 +14,7 @@ spec:
         "aws:eks:cluster-name": eks-production
     - tags:
         Name: private-trust-production
-  # STABLE: aws/eks-karpenter/modules/main.tf で node_iam_role_use_name_prefix = false +
-  # node_iam_role_name = "Karpenter-eks-${var.environment}" に固定済、recreate でも変化しない
+  # STABLE: deterministic node role name configured in aws/eks-karpenter/modules/main.tf.
   role: Karpenter-eks-production
   blockDeviceMappings:
     - deviceName: /dev/xvda
@@ -42,8 +28,6 @@ spec:
     httpProtocolIPv6: disabled
     httpPutResponseHopLimit: 2
     httpTokens: required
-  # Tag every aws resource Karpenter launches (= ec2 instance + ebs root volume
-  # + launch template + eni) with the controller's provenance label.
-  # Per spec section 4-2-b.
+  # Distinguishes Karpenter-launched AWS resources from IaC-managed ones in AWS Console.
   tags:
     ManagedBy: karpenter
