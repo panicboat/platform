@@ -6,10 +6,10 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-18.13.1
+    helm.sh/chart: loki-18.13.7
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.7.7"
+    app.kubernetes.io/version: "3.7.8"
     app.kubernetes.io/component: gateway
 automountServiceAccountToken: false
 ---
@@ -20,10 +20,10 @@ metadata:
   name: loki-memcached
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-18.13.1
+    helm.sh/chart: loki-18.13.7
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.7.7"
+    app.kubernetes.io/version: "3.7.8"
     app.kubernetes.io/component: memcached
 automountServiceAccountToken: false
 ---
@@ -34,10 +34,10 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-18.13.1
+    helm.sh/chart: loki-18.13.7
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.7.7"
+    app.kubernetes.io/version: "3.7.8"
 automountServiceAccountToken: true
 ---
 # Source: loki/templates/config.yaml
@@ -47,10 +47,10 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-18.13.1
+    helm.sh/chart: loki-18.13.7
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.7.7"
+    app.kubernetes.io/version: "3.7.8"
 data:
   config.yaml: |
     
@@ -180,10 +180,10 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-18.13.1
+    helm.sh/chart: loki-18.13.7
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.7.7"
+    app.kubernetes.io/version: "3.7.8"
     app.kubernetes.io/component: gateway
 data:
   nginx.conf: |
@@ -518,9 +518,6 @@ data:
             buckets: [ .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10 ]
             help: "The time spent on receiving and response the response to the client"
             valueIndex: 4
-            math:
-              enabled: true
-              div: 1000
             labels:
               - name: "host"
                 lineIndex: 0
@@ -541,9 +538,6 @@ data:
             buckets: [ .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10 ]
             help: "The time spent on establishing a connection with the upstream server"
             valueIndex: 8
-            math:
-              enabled: true
-              div: 1000
             upstream:
               enabled: true
               addrLineIndex: 7
@@ -568,9 +562,6 @@ data:
             help: "The time spent on receiving the response header from the upstream server"
             buckets: [ .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10 ]
             valueIndex: 9
-            math:
-              enabled: true
-              div: 1000
             upstream:
               enabled: true
               addrLineIndex: 7
@@ -595,9 +586,6 @@ data:
             help: "The time spent on receiving the response from the upstream server"
             buckets: [ .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10 ]
             valueIndex: 10
-            math:
-              enabled: true
-              div: 1000
             upstream:
               enabled: true
               addrLineIndex: 7
@@ -624,10 +612,10 @@ metadata:
   name: loki-runtime
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-18.13.1
+    helm.sh/chart: loki-18.13.7
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.7.7"
+    app.kubernetes.io/version: "3.7.8"
 data:
   runtime-config.yaml: |
     {}
@@ -637,10 +625,10 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   labels:
-    helm.sh/chart: loki-18.13.1
+    helm.sh/chart: loki-18.13.7
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.7.7"
+    app.kubernetes.io/version: "3.7.8"
   name: loki-clusterrole
 rules:
 - apiGroups: [""] # "" indicates the core API group
@@ -653,10 +641,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: loki-clusterrolebinding
   labels:
-    helm.sh/chart: loki-18.13.1
+    helm.sh/chart: loki-18.13.7
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.7.7"
+    app.kubernetes.io/version: "3.7.8"
 subjects:
   - kind: ServiceAccount
     name: loki
@@ -673,10 +661,10 @@ metadata:
   name: loki-gateway-exporter
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-18.13.1
+    helm.sh/chart: loki-18.13.7
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.7.7"
+    app.kubernetes.io/version: "3.7.8"
     app.kubernetes.io/component: gateway
   annotations:
 spec:
@@ -698,10 +686,10 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-18.13.1
+    helm.sh/chart: loki-18.13.7
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.7.7"
+    app.kubernetes.io/version: "3.7.8"
     app.kubernetes.io/component: gateway
     prometheus.io/service-monitor: "false"
   annotations:
@@ -724,10 +712,10 @@ metadata:
   name: "loki"
   namespace: "monitoring"
   labels:
-    helm.sh/chart: loki-18.13.1
+    helm.sh/chart: loki-18.13.7
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.7.7"
+    app.kubernetes.io/version: "3.7.8"
     app.kubernetes.io/component: "single-binary"
   annotations:
 spec:
@@ -759,10 +747,10 @@ metadata:
   name: "loki-headless"
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-18.13.1
+    helm.sh/chart: loki-18.13.7
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.7.7"
+    app.kubernetes.io/version: "3.7.8"
     app.kubernetes.io/component: "single-binary"
     prometheus.io/service-monitor: "false"
     variant: headless
@@ -797,10 +785,10 @@ metadata:
   name: loki-memberlist
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-18.13.1
+    helm.sh/chart: loki-18.13.7
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.7.7"
+    app.kubernetes.io/version: "3.7.8"
   annotations:
 spec:
   type: ClusterIP
@@ -822,10 +810,10 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-18.13.1
+    helm.sh/chart: loki-18.13.7
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.7.7"
+    app.kubernetes.io/version: "3.7.8"
     app.kubernetes.io/component: gateway
 spec:
   replicas: 1
@@ -840,7 +828,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 471169c21d031188ed64777b5da0f2ff569db867e615552374df77e2eec52949
+        checksum/config: 267f43c08ec80ca887c82c41b5a4224bf28fc71ba5e2c5028dee50298abb59a5
       labels:
         app.kubernetes.io/name: loki
         app.kubernetes.io/instance: loki
@@ -895,7 +883,7 @@ spec:
               cpu: 15m
               memory: 64Mi
         - name: exporter
-          image: ghcr.io/jkroepke/access-log-exporter:0.4.13
+          image: ghcr.io/jkroepke/access-log-exporter:0.4.21
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 4040
@@ -967,10 +955,10 @@ metadata:
   name: "loki"
   namespace: "monitoring"
   labels:
-    helm.sh/chart: loki-18.13.1
+    helm.sh/chart: loki-18.13.7
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.7.7"
+    app.kubernetes.io/version: "3.7.8"
     app.kubernetes.io/component: single-binary
 spec:
   replicas: 1
@@ -992,10 +980,10 @@ spec:
         storage/size: 10Gi
         kubectl.kubernetes.io/default-container: "loki"
       labels:
-        helm.sh/chart: loki-18.13.1
+        helm.sh/chart: loki-18.13.7
         app.kubernetes.io/name: loki
         app.kubernetes.io/instance: loki
-        app.kubernetes.io/version: "3.7.7"
+        app.kubernetes.io/version: "3.7.8"
         app.kubernetes.io/component: single-binary
         app.kubernetes.io/part-of: memberlist
     spec:
@@ -1038,7 +1026,7 @@ spec:
           emptyDir: {}
       containers:
         - name: loki
-          image: docker.io/grafana/loki:3.7.7
+          image: docker.io/grafana/loki:3.7.8
           imagePullPolicy: IfNotPresent
           args:
             - -config.file=/etc/loki/config/config.yaml
@@ -1182,10 +1170,10 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-18.13.1
+    helm.sh/chart: loki-18.13.7
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
-    app.kubernetes.io/version: "3.7.7"
+    app.kubernetes.io/version: "3.7.8"
     release: kube-prometheus-stack
 spec:
   selector:
