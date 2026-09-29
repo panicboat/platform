@@ -203,7 +203,7 @@ data:
       install:
         pluginsDir: /plugins
         refs:
-        - falco-rules:5.1.0
+        - falco-rules:5.2.0
         - ghcr.io/falcosecurity/plugins/plugin/container:0.7.1
         resolveDeps: true
         rulesfilesDir: /rulesfiles
