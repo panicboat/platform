@@ -62,9 +62,12 @@ git status --short
 
 teardown 時にコメントアウトした `workflow-config.yaml` の `production` environment ブロックを有効化する (= platform / `panicboat/monorepo` 両リポジトリ、 コメント解除して PR で merge。 Renovate PR の CI auto-apply が再び production stack を対象にするようになる)。
 
+- **platform**: `environments:` に `master` エントリが残っているため、`# - environment: production` 以下のコメントを解除するだけでよい
+- **panicboat/monorepo**: `production` のみが唯一の environment だったため teardown 時に `environments: []` へ変更済 (= コメントアウトのみだと `environments` の値が nil になり CI の config validator が `environments must be an Array` で fail する)。 有効化時は `environments: []` を `environments:` に戻したうえで `# - environment: production` 以下のコメントを解除する
+
 ```bash
-# platform / panicboat/monorepo それぞれで:
-# 1. workflow-config.yaml の `# - environment: production` 以下のコメントを解除
+# platform / panicboat/monorepo それぞれで (上記の相違点を反映した上で):
+# 1. workflow-config.yaml を編集
 # 2. git checkout -b chore/enable-production-workflow-after-recreate
 # 3. git add workflow-config.yaml && git commit -s -m "chore: re-enable production environment in workflow-config"
 # 4. git push -u origin HEAD && gh pr create --title "chore: re-enable production environment in workflow-config" --body "..."
