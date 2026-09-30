@@ -25,6 +25,7 @@ EKS cluster cold-start は cilium native CNI ENI mode (= PR #393) との chicken
 - `make eks-teardown ENV=production` 完走 + `make eks-teardown-verify ENV=production` で `No orphan resources detected` 確認済
 - `aws/iam-service-linked-roles` (`AWSServiceRoleForEC2Spot` 等、 account 単位 singleton) は本 runbook の destroy/recreate cycle 対象外。 account 初回 bootstrap 時に一度 apply されていれば以降は不要 (`aws iam get-role --role-name AWSServiceRoleForEC2Spot` で存在確認可能)
 - `aws/secrets-manager` (`aws_secretsmanager_secret` container、 GitHub App private key 等) も本 runbook の destroy/recreate cycle 対象外 (Phase 7 の stack list にも含めないこと)。 AWS 側で再生成できない secret を扱うため、 cluster の destroy/recreate に巻き込むと復旧不能なデータ消失になりうる
+- `workflow-config.yaml` (platform / `panicboat/monorepo` 両リポジトリ) の `production` environment ブロックが teardown 時にコメントアウト済 (= Renovate PR の CI auto-apply が destroy 済 stack へ再作成を試みるのを防止)。 Phase 0 で有効化する
 
 ### 2.2 Operator environment
 
@@ -57,6 +58,17 @@ aws sts get-caller-identity --query Account --output text
 # git working tree clean 確認
 git status --short
 # → 出力空であること
+```
+
+teardown 時にコメントアウトした `workflow-config.yaml` の `production` environment ブロックを有効化する (= platform / `panicboat/monorepo` 両リポジトリ、 コメント解除して PR で merge。 Renovate PR の CI auto-apply が再び production stack を対象にするようになる)。
+
+```bash
+# platform / panicboat/monorepo それぞれで:
+# 1. workflow-config.yaml の `# - environment: production` 以下のコメントを解除
+# 2. git checkout -b chore/enable-production-workflow-after-recreate
+# 3. git add workflow-config.yaml && git commit -s -m "chore: re-enable production environment in workflow-config"
+# 4. git push -u origin HEAD && gh pr create --title "chore: re-enable production environment in workflow-config" --body "..."
+# 5. review + merge (merge 完了を確認してから Phase 1 に進む)
 ```
 
 ### Phase 1: VPC + ALB stack (= Terminal A、 sequential)

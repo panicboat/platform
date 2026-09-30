@@ -61,6 +61,8 @@ make eks-teardown-aws ENV=production       # terragrunt destroy only
 make eks-teardown-verify ENV=production    # orphan verify only
 ```
 
+teardown 完了後、`workflow-config.yaml` (platform / `panicboat/monorepo` 両リポジトリ) の `production` environment ブロックをコメントアウトして PR で merge する (= Renovate PR の CI auto-apply が destroy 済 stack へ再作成を試みるのを防止)。recreate 時の再有効化手順は `docs/runbooks/eks-production-recreate.md` Phase 0 参照。
+
 ### Recreate
 
 `docs/runbooks/eks-production-recreate.md` を参照。 cilium native CNI との chicken-and-egg があり、 operator が 2 terminal 並行で sequentially bootstrap する manual runbook で実行する。
