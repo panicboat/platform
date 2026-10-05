@@ -61,14 +61,14 @@ jobs:
 
       - name: Build head manifests
         id: kustomize-head
-        uses: int128/kustomize-action@4dff2fdd8526459cd7425a75c65dbc6b459e14fc # v1.194.0
+        uses: int128/kustomize-action@4fbeca93d7072507f0c6d4529025d17a5d209551 # v1.195.0
         with:
           kustomization: kubernetes/manifests/${{ inputs.environment }}/${{ inputs.service-name }}/kustomization.yaml
           write-individual-files: true
 
       - name: Build base manifests
         id: kustomize-base
-        uses: int128/kustomize-action@4dff2fdd8526459cd7425a75c65dbc6b459e14fc # v1.194.0
+        uses: int128/kustomize-action@4fbeca93d7072507f0c6d4529025d17a5d209551 # v1.195.0
         with:
           base-directory: base
           kustomization: kubernetes/manifests/${{ inputs.environment }}/${{ inputs.service-name }}/kustomization.yaml
