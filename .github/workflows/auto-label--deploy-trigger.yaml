@@ -44,7 +44,7 @@ jobs:
 
       - name: Label Resolver
         id: resolver
-        uses: panicboat/deploy-actions/label-resolver@0f0a02d87678cf779217ca2056218e2315bc1c61 # refactor/infrastructure-layout (panicboat/deploy-actions#307) — re-point to the v1.3.0 release SHA before merge
+        uses: panicboat/deploy-actions/label-resolver@51b52407764d887f84513cd4909f195a1664388f # v2.0.0
         with:
           repository: ${{ github.repository }}
           pr-number: ${{ steps.pr-info.outputs.number }}

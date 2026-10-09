@@ -1,33 +1,14 @@
-environments:
-  - environment: master
-    stacks:
-      terragrunt:
+stacks:
+  - name: terragrunt
+    paths:
+      - "aws/{service}/{environment}"
+      - "github/{service}/{environment}"
+    environments:
+      master:
         aws_region: ap-northeast-1
         iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-master-github-actions-plan-role
         iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-master-github-actions-apply-role
 
-  # eks-production teardown中のため無効化 (Renovate PRのCI auto-applyでdestroy済stackへの再作成を防ぐ、docs/runbooks/eks-production-recreate.md 参照)
-  # - environment: production
-  #   stacks:
-  #     terragrunt:
-  #       aws_region: ap-northeast-1
-  #       iam_role_plan: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-plan-role
-  #       iam_role_apply: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-apply-role
-
-stack_conventions:
-  - root: "aws/{service}"
-    stacks:
-      - name: terragrunt
-        directory: "{environment}"
-        required_attributes: [aws_region, iam_role_plan, iam_role_apply]
-
-  - root: "github/{service}"
-    stacks:
-      - name: terragrunt
-        directory: "{environment}"
-        required_attributes: [aws_region, iam_role_plan, iam_role_apply]
-
-  - root: "kubernetes/components/{service}"
-    stacks:
-      - name: kubernetes
-        directory: "{environment}"
+  - name: kubernetes
+    paths:
+      - "kubernetes/components/{service}/{environment}"
