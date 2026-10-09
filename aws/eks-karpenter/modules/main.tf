@@ -1,7 +1,7 @@
 # EC2 Spot SLR is managed in iam-service-linked-roles as an account-level singleton.
 module "karpenter" {
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"
-  version = "21.26.0"
+  version = "21.29.0"
 
   cluster_name = module.eks.cluster.name
 
@@ -41,7 +41,7 @@ data "aws_subnets" "system_critical_az" {
 
 module "system_critical" {
   source  = "terraform-aws-modules/eks/aws//modules/eks-managed-node-group"
-  version = "21.26.0"
+  version = "21.29.0"
 
   name         = "eks-${var.environment}-system-critical"
   cluster_name = module.eks.cluster.name
