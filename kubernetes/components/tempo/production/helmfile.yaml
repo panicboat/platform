@@ -14,6 +14,6 @@ releases:
   - name: tempo
     namespace: monitoring
     chart: grafana-community/tempo
-    version: "2.4.0"
+    version: "3.0.0"
     values:
       - values.yaml.gotmpl
