@@ -1,4 +1,4 @@
-name: 'Terragrunt Run'
+name: 'Terragrunt Action'
 description: 'Execute terragrunt plan or apply with AWS OIDC'
 
 inputs:
