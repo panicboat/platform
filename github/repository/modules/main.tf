@@ -23,9 +23,9 @@ resource "github_repository" "repository" {
 }
 
 resource "github_repository_vulnerability_alerts" "repository" {
-  for_each = github_repository.repository
+  for_each = var.repositories
 
-  repository = each.value.name
+  repository = github_repository.repository[each.key].name
 }
 
 resource "github_workflow_repository_permissions" "repository" {
