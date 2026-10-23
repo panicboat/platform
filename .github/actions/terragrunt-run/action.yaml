@@ -1,10 +1,6 @@
 name: 'Terragrunt Run'
 description: 'Execute terragrunt plan or apply with AWS OIDC'
 
-branding:
-  icon: 'cloud'
-  color: 'orange'
-
 inputs:
   token:
     description: 'GitHub token with required permissions'
@@ -31,17 +27,6 @@ inputs:
     description: 'Pull request number for commenting'
     required: false
 
-outputs:
-  execution-status:
-    description: 'Execution status (success/failure)'
-    value: ${{ steps.parse-results.outputs.status }}
-  execution-output:
-    description: 'Execution output'
-    value: ${{ steps.parse-results.outputs.output }}
-  is-failed:
-    description: 'Whether execution failed'
-    value: ${{ steps.parse-results.outputs.is-failed }}
-
 runs:
   using: 'composite'
   steps:
@@ -49,14 +34,6 @@ runs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         token: ${{ inputs.token }}
-
-    - name: Validate working directory
-      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-      with:
-        script: |
-          const path = require('path');
-          const validateWorkingDirectory = require(path.join(process.env.GITHUB_ACTION_PATH, 'validate-working-directory.js'));
-          await validateWorkingDirectory({ core, inputs: ${{ toJSON(inputs) }} });
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
@@ -66,34 +43,11 @@ runs:
         role-session-name: GitHubActions-Terragrunt-${{ inputs.action-type }}-${{ inputs.environment }}
         audience: sts.amazonaws.com
 
-    - name: Verify AWS credentials
-      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-      with:
-        script: |
-          const path = require('path');
-          const verifyCredentials = require(path.join(process.env.GITHUB_ACTION_PATH, 'verify-aws-credentials.js'));
-          await verifyCredentials({ core, inputs: ${{ toJSON(inputs) }} });
-
-    # AQUA_CONFIG is deliberately unset so aqua discovers the config by walking
-    # up from the working directory. Pinning it to a path forces callers to keep
-    # the file exactly there, and callers place it at the repository root so that
-    # local runs resolve the same pins as CI.
+    # AQUA_CONFIG stays unset so aqua finds the caller's root aqua.yaml, the same one local shells use.
     - name: Setup aqua
       uses: aquaproj/aqua-installer@96a9bc20066c5bf5e275b41019cfc165b25f4e2e # v4.0.5
       with:
         aqua_version: v2.48.2
-
-    - name: Verify required binaries
-      shell: bash
-      run: |
-        set -euo pipefail
-        missing=()
-        command -v terragrunt >/dev/null || missing+=("gruntwork-io/terragrunt")
-        command -v tofu       >/dev/null || missing+=("opentofu/opentofu")
-        if [ ${#missing[@]} -gt 0 ]; then
-          echo "::error::Missing aqua packages: ${missing[*]}. Add them to the caller's aqua.yaml."
-          exit 1
-        fi
 
     - name: Execute Terragrunt
       id: terragrunt
@@ -102,73 +56,34 @@ runs:
       env:
         TF_INPUT: 'false'
         GITHUB_TOKEN: ${{ inputs.token }}
-        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
         ACTION_TYPE: ${{ inputs.action-type }}
       run: |
-        set -o pipefail
-        out="$RUNNER_TEMP/tg-out.log"
-        args=("$ACTION_TYPE" -no-color -input=false)
+        args=("$ACTION_TYPE" -no-color)
         [ "$ACTION_TYPE" = apply ] && args+=(-auto-approve)
-        terragrunt "${args[@]}" 2>&1 | tee "$out"
-        code=${PIPESTATUS[0]}
-        delim="__TGEOF_$(openssl rand -hex 8)__"
-        {
-          echo "tg_action_exit_code=$code"
-          echo "tg_action_output<<$delim"
-          head -c 200000 "$out"
-          echo
-          echo "$delim"
-        } >> "$GITHUB_OUTPUT"
+        # The step shell runs with -e, so the exit code must be captured inside the condition.
+        if terragrunt "${args[@]}" 2>&1 | tee "$RUNNER_TEMP/terragrunt.log"; then code=0; else code=$?; fi
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
         exit "$code"
 
-    - name: Parse execution results
-      if: always()
-      id: parse-results
-      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-      with:
-        github-token: ${{ inputs.token }}
-        script: |
-          const path = require('path');
-          const parseResults = require(path.join(process.env.GITHUB_ACTION_PATH, 'parse-results.js'));
-          await parseResults({
-            core,
-            github,
-            context,
-            inputs: ${{ toJSON(inputs) }},
-            steps: {
-              terragrunt: {
-                outputs: {
-                  tg_action_exit_code: '${{ steps.terragrunt.outputs.tg_action_exit_code }}',
-                  tg_action_output: `${{ steps.terragrunt.outputs.tg_action_output }}`
-                }
-              }
-            }
-          });
+    - name: Render the PR comment
+      if: always() && inputs.pr-number != ''
+      shell: bash
+      env:
+        ACTION_TYPE: ${{ inputs.action-type }}
+        SERVICE_NAME: ${{ inputs.service-name }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        EXIT_CODE: ${{ steps.terragrunt.outputs.exit-code }}
+      run: bash "$GITHUB_ACTION_PATH/render-comment.sh" "$RUNNER_TEMP/terragrunt.log" "$EXIT_CODE" > "$RUNNER_TEMP/terragrunt-comment.md"
 
     - name: Comment PR with Terragrunt results
       if: always() && inputs.pr-number != ''
       uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
       with:
-        message: |
-          ## 🏗️ Terragrunt ${{ inputs.action-type }} Results
-
-          **Service**: `${{ inputs.service-name }}`
-          **Environment**: `${{ inputs.environment }}`
-          **Status**: ${{ steps.parse-results.outputs.status }}
-          **Workflow Run**: [#${{ github.run_id }}](${{ steps.parse-results.outputs.job-url }})
-
-          <details>
-          <summary>📋 Terragrunt Output</summary>
-
-          ```hcl
-          ${{ steps.parse-results.outputs.output }}
-          ```
-          </details>
-
-          ${{ steps.parse-results.outputs.truncation-notice }}
+        file-path: ${{ runner.temp }}/terragrunt-comment.md
         comment-tag: "terragrunt-${{ inputs.service-name }}-${{ inputs.environment }}-${{ inputs.action-type }}"
         mode: upsert
         pr-number: ${{ inputs.pr-number }}
-        GITHUB_TOKEN: ${{ inputs.token }}
-        reactions: ${{ steps.parse-results.outputs.is-failed == 'true' && 'confused' || 'rocket' }}
+        github-token: ${{ inputs.token }}
+        reactions: ${{ steps.terragrunt.outputs.exit-code == '0' && 'rocket' || 'confused' }}
       continue-on-error: true
