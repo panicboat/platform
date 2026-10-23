@@ -9,8 +9,6 @@ resource "github_repository" "repository" {
   has_wiki     = each.value.features.wiki
   has_projects = each.value.features.projects
 
-  vulnerability_alerts = true
-
   allow_merge_commit     = false
   allow_squash_merge     = true
   allow_rebase_merge     = false
@@ -22,6 +20,12 @@ resource "github_repository" "repository" {
   squash_merge_commit_title   = "PR_TITLE"
 
   archived = false
+}
+
+resource "github_repository_vulnerability_alerts" "repository" {
+  for_each = var.repositories
+
+  repository = github_repository.repository[each.key].name
 }
 
 resource "github_workflow_repository_permissions" "repository" {
