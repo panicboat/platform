@@ -6,17 +6,19 @@
 
 A monorepo that manages three deployment surfaces from a single label-driven CI pipeline:
 
-- **AWS infrastructure** — Terragrunt + OpenTofu (`aws/`)
-- **GitHub configuration** — Terragrunt for repo / branch / ruleset settings (`github/`)
-- **Kubernetes platform** — Helmfile-rendered manifests applied by Flux CD (`kubernetes/`)
+- **AWS infrastructure** — Terragrunt + OpenTofu ([aws/](aws/))
+- **GitHub configuration** — Terragrunt for repo / branch / ruleset settings ([github/](github/))
+- **Kubernetes platform** — Helmfile-rendered manifests applied by Flux CD ([kubernetes/](kubernetes/))
 
-A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.yaml` to expand into concrete deploy targets, and the matching reusable workflow runs.
+A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.yaml](workflow-config.yaml) to expand into concrete deploy targets, and the matching reusable workflow runs.
 
 ## 📂 Structure
 
 ```
 .
-├── .github/workflows/   # Reusable executors, deploy trigger, hydrator/builder, etc.
+├── .github/
+│   ├── scripts/         # Scripts run by workflows (hydration, terragrunt release)
+│   └── workflows/       # Reusable executors, deploy trigger, hydrator/builder, etc.
 ├── aws/                 # Terragrunt stacks per service ({environment})
 ├── github/              # Terragrunt stacks for GitHub repo / branch settings
 ├── kubernetes/
@@ -24,7 +26,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.
 │   ├── components/      # Helmfile sources (per environment)
 │   └── manifests/       # Rendered output that Flux applies
 ├── docs/                # Runbooks and design notes
-├── scripts/             # EKS lifecycle / hydration helpers
+├── scripts/             # EKS lifecycle helpers
 ├── Makefile             # EKS teardown entry points
 └── workflow-config.yaml # Environments and stack conventions (source of truth)
 ```
@@ -33,35 +35,45 @@ A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.
 
 ### Trigger
 
-- `auto-label--deploy-trigger.yaml` runs on PR labels and on push to `main`.
-- `panicboat/deploy-actions/label-resolver` reads `workflow-config.yaml` to expand each label into one or more `{service}/{environment}` targets.
-- Terragrunt environments with `apply_trigger: merge` are applied on push to `main`.
-- Terragrunt environments with `apply_trigger: release` are applied by `auto-release--trigger.yaml` when the `aws/{service}` release is published.
-  - The release PR runs `terragrunt plan` through `auto-release--plan.yaml`; to re-plan, use "Re-run all jobs" on that `auto-release--plan` run.
-  - To re-apply a release, run `auto-release--trigger` with `workflow_dispatch` on the release tag ref and pass the same tag: `gh workflow run auto-release--trigger.yaml --ref {service}-vX.Y.Z -f tag={service}-vX.Y.Z`.
-- A `{service}/{environment}` pair matched by a rule in `exclude` of the `terragrunt` stack in `workflow-config.yaml` gets no target from `label-resolver` (PR plan, apply on push to `main`) and no release plan / apply.
-  - A rule matches a pair when every key (`service`, `environment`) equals the pair's value; a rule with only `environment` covers every service.
-  - The release PR is still created, but merging it applies nothing: `auto-release--plan.yaml` and `auto-release--trigger.yaml` skip `plan` / `apply` when `release-targets.sh` returns no target.
-- Changes to files outside environment directories under `aws/{service}/` (modules, `root.hcl`, ...) are detected through the `terragrunt-shared` stack and target every environment of that service.
-- A service with an `apply_trigger: release` environment directory needs `aws/{service}/release-please-config.json` and `release-please-manifest.json`; `check-release-configs.sh` fails CI otherwise.
-  - Commits that change only `apply_trigger: merge` environment directories are kept out of the release through `exclude-paths` in `release-please-config.json`.
-  - `check-release-configs.sh` compares `exclude-paths` with the `apply_trigger: merge` environments in `workflow-config.yaml`.
+| Event | Workflow | Terragrunt |
+|-------|----------|------------|
+| `deploy:{service}` label added to a PR | [auto-label--deploy-trigger.yaml](.github/workflows/auto-label--deploy-trigger.yaml) | plan every target |
+| Push to `main` | [auto-label--deploy-trigger.yaml](.github/workflows/auto-label--deploy-trigger.yaml) | apply targets with `apply_trigger: merge` |
+| Release PR opened / updated | [auto-release--plan.yaml](.github/workflows/auto-release--plan.yaml) | plan the service's `apply_trigger: release` environments |
+| Release published | [auto-release--trigger.yaml](.github/workflows/auto-release--trigger.yaml) | apply the service's `apply_trigger: release` environments |
+
+#### Targets
+
+- [auto-label--label-dispatcher.yaml](.github/workflows/auto-label--label-dispatcher.yaml) adds `deploy:{service}` to a PR when it is opened or updated; release-please branches get no label.
+  - Any change under `aws/{service}/`, including modules and `root.hcl`, adds the label.
+- `label-resolver` expands the label into every environment of that service using [workflow-config.yaml](workflow-config.yaml).
+- A `{service}/{environment}` pair matched by `exclude` of the `terragrunt` stack is never planned or applied, including by releases.
+  - A rule with only `environment` covers every service.
+
+#### Releases
+
+- Each `aws/{service}` with an `apply_trigger: release` environment has its own release-please config (`release-please-config.json` / `release-please-manifest.json`).
+  - [check-release-configs.sh](.github/scripts/terragrunt-release/check-release-configs.sh) fails CI when a config is missing.
+- Commits that touch only `apply_trigger: merge` environment directories do not create a release (`exclude-paths`).
+- While every `apply_trigger: release` environment is excluded, the release PR is still created, but nothing is planned or applied.
+- To re-plan, use "Re-run all jobs" on the `auto-release--plan` run.
+- To re-apply, run `gh workflow run auto-release--trigger.yaml --ref {service}-vX.Y.Z -f tag={service}-vX.Y.Z`.
 
 ### Stacks
 
 | Stack | Path convention | Tooling |
 |-------|-----------------|---------|
-| AWS infrastructure | `aws/{service}/{environment}` | Terragrunt + OpenTofu (`reusable--terragrunt-executor.yaml`) |
-| GitHub configuration | `github/{service}/{environment}` | Terragrunt + OpenTofu (`reusable--terragrunt-executor.yaml`) |
-| Kubernetes platform | `kubernetes/components/{service}/{environment}` | Helmfile → Kustomize hydration (`reusable--kubernetes-hydrator.yaml` / `reusable--kubernetes-builder.yaml`) → Flux CD |
+| AWS infrastructure | `aws/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-executor.yaml](.github/workflows/reusable--terragrunt-executor.yaml)) |
+| GitHub configuration | `github/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-executor.yaml](.github/workflows/reusable--terragrunt-executor.yaml)) |
+| Kubernetes platform | `kubernetes/components/{service}/{environment}` | Helmfile → Kustomize hydration ([reusable--kubernetes-hydrator.yaml](.github/workflows/reusable--kubernetes-hydrator.yaml) / [reusable--kubernetes-builder.yaml](.github/workflows/reusable--kubernetes-builder.yaml)) → Flux CD |
 
 ### Environments and authentication
 
-- Environments, AWS regions, and IAM roles are defined in `workflow-config.yaml`. Adding or removing an environment means editing that file.
-- `apply_trigger` in `workflow-config.yaml` decides when an environment is applied: `merge` applies on push to `main`, `release` applies when the service release is published.
-- Authentication uses GitHub OIDC. `aws/github-oidc-auth/` issues per-environment plan / apply roles that the executors assume.
-- The GitHub environment `production` of `platform` accepts deployments only from refs that match the tag pattern `*-v*`, and that of `monorepo` accepts deployments from no ref. The settings are managed in `github/repository/`.
-- Terragrunt remote state lives in S3 + DynamoDB; bucket and lock-table names are defined in each `aws/{service}/root.hcl` (and the equivalent under `github/`).
+- Environments, AWS regions, and IAM roles are defined in [workflow-config.yaml](workflow-config.yaml). Adding or removing an environment means editing that file.
+- `apply_trigger` in [workflow-config.yaml](workflow-config.yaml) decides when an environment is applied: `merge` applies on push to `main`, `release` applies when the service release is published.
+- Authentication uses GitHub OIDC. [aws/github-oidc-auth/](aws/github-oidc-auth/) issues per-environment plan / apply roles that the executors assume.
+- The GitHub environment `production` of `platform` accepts deployments only from refs that match the tag pattern `*-v*`, and that of `monorepo` accepts deployments from no ref. The settings are managed in [github/repository/](github/repository/).
+- Terragrunt remote state lives in S3 + DynamoDB; bucket and lock-table names are defined in each `aws/{service}/root.hcl` (and the equivalent under [github/](github/)).
 
 ### Pipeline Flow
 
@@ -127,15 +139,4 @@ flowchart LR
 
 - Flux bootstrap lives in `kubernetes/clusters/{cluster}/flux-system/`. The cluster's root Kustomization aggregates the rendered manifests under `kubernetes/manifests/{cluster}/` and any external `GitRepository` (currently the application monorepo).
 - Platform and application repositories are pulled independently and stay loosely coupled. Sync intervals and source URLs are configured in `kubernetes/clusters/{cluster}/` — treat those manifests as the source of truth.
-- When `kubernetes/components/` changes, CI runs `scripts/kubernetes-hydrate/`, commits the rendered output to `kubernetes/manifests/`, and posts the diff as a PR comment. Flux applies the change once merged.
-
-### EKS Lifecycle
-
-EKS teardown / recreate is operator-driven and runs outside the deploy pipeline.
-
-- `make eks-teardown ENV=<environment>` runs Kubernetes cleanup → Terragrunt destroy → orphan verify (`scripts/eks-lifecycle/`). `DRY_RUN=1` echoes commands without executing them.
-- Recreate is a manual procedure — see `docs/runbooks/eks-production-recreate.md`.
-
-### Claude Code Integration
-
-`@claude` comments trigger `.github/workflows/claude-code-action.yaml`, which assumes the `ai-assistant` IAM role to invoke Bedrock Claude. The role is defined under `aws/ai-assistant/`.
+- When [kubernetes/components/](kubernetes/components/) changes, CI runs [.github/scripts/kubernetes-hydrate/](.github/scripts/kubernetes-hydrate/), commits the rendered output to [kubernetes/manifests/](kubernetes/manifests/), and posts the diff as a PR comment. Flux applies the change once merged.

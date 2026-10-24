@@ -34,7 +34,7 @@ jobs:
 
       - name: Render manifest diff
         # HEAD is the PR merge commit, so its first parent is the base it merges into.
-        run: bash scripts/kubernetes-hydrate/render-diff.sh HEAD^1 "${RUNNER_TEMP}/render-diff"
+        run: bash .github/scripts/kubernetes-hydrate/render-diff.sh HEAD^1 "${RUNNER_TEMP}/render-diff"
 
       - name: Upload manifest diff
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -251,10 +251,10 @@ Karpenter が NodePool 観測 → Pending pod (= ebs-csi-controller / hubble-rel
 for comp in $(find kubernetes/components -mindepth 1 -maxdepth 1 -type d -exec basename {} \;); do
   if [ -d "kubernetes/components/${comp}/production" ]; then
     echo "Hydrating ${comp}..."
-    bash scripts/kubernetes-hydrate/hydrate-component.sh "$comp" production
+    bash .github/scripts/kubernetes-hydrate/hydrate-component.sh "$comp" production
   fi
 done
-bash scripts/kubernetes-hydrate/hydrate-index.sh production
+bash .github/scripts/kubernetes-hydrate/hydrate-index.sh production
 
 # commit + push (= main 直接 push は branch protection で blocked のため PR 経由)
 git checkout -b chore/hydrate-after-recreate-$(date +%Y%m%d)

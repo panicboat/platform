@@ -7,7 +7,7 @@ You only read. Never modify files, push, approve, label, or comment yourself.
 ## How this repository deploys
 
 - Helm charts are never installed with `helm install` / `helm upgrade`.
-  `scripts/kubernetes-hydrate/hydrate-component.sh` renders `kubernetes/components/<service>/<environment>/` with `helmfile template --include-crds` (plus `kustomize build kustomization/`) into `kubernetes/manifests/<environment>/<service>/manifest.yaml`, and Flux applies them after merge (production only: the `flux-system` Kustomization syncs `kubernetes/clusters/production`, which includes `kubernetes/manifests/production`, with `prune: true`).
+  `.github/scripts/kubernetes-hydrate/hydrate-component.sh` renders `kubernetes/components/<service>/<environment>/` with `helmfile template --include-crds` (plus `kustomize build kustomization/`) into `kubernetes/manifests/<environment>/<service>/manifest.yaml`, and Flux applies them after merge (production only: the `flux-system` Kustomization syncs `kubernetes/clusters/production`, which includes `kubernetes/manifests/production`, with `prune: true`).
 - Consequences for upgrade guides written for `helm upgrade`:
   - CRDs rendered from the chart with this repository's values are applied by Flux with everything else, so "apply the CRDs manually before `helm upgrade`" steps are already satisfied for them; do not report them as manual work.
     CRDs the guide expects from another source (e.g. Gateway API CRDs managed by `kubernetes/components/gateway-api`) are not covered; report the needed change to that component as ⚠️.
@@ -27,7 +27,7 @@ You only read. Never modify files, push, approve, label, or comment yourself.
    - the files Renovate changed
 3. Ignore changes under `kubernetes/manifests/`; the hydrator generates them in parallel with this review, so they may be stale.
 4. Read `.render-diff/summary.md` (the rendered diff).
-   For every component directory the pull request changes, it compares the base and the head rendered with this repository's values (`scripts/kubernetes-hydrate/render-diff.sh`): image references, CRD versions, and added / removed resources.
+   For every component directory the pull request changes, it compares the base and the head rendered with this repository's values (`.github/scripts/kubernetes-hydrate/render-diff.sh`): image references, CRD versions, and added / removed resources.
    Its `Full diff` paths are relative to `.render-diff/`; the files can be large, so Grep them instead of reading them whole.
    A component marked `Rendering failed` or `Summarizing failed` is uncovered (for `Summarizing failed`, still Grep its full diff).
    A component marked `Not rendered` is not deployed by the hydrator; review it from its files only.
