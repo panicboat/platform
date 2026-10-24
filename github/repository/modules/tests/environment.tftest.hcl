@@ -64,6 +64,16 @@ run "creates_tag_policy_for_declared_environment" {
     condition     = github_repository_environment_deployment_policy.repository["platform/production/*-v*"].tag_pattern == "*-v*"
     error_message = "The deployment policy must match tags, not branches."
   }
+
+  assert {
+    condition     = github_repository_environment_deployment_policy.repository["platform/production/*-v*"].environment == "production"
+    error_message = "The deployment policy must target the declared environment."
+  }
+
+  assert {
+    condition     = github_repository_environment_deployment_policy.repository["platform/production/*-v*"].repository == "platform"
+    error_message = "The deployment policy must target the declared repository."
+  }
 }
 
 run "creates_no_environment_by_default" {
