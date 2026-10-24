@@ -16,7 +16,9 @@
 
 ```
 .
-├── .github/workflows/   # reusable executor, deploy trigger, hydrator/builder など
+├── .github/
+│   ├── scripts/         # workflow が実行するスクリプト（hydration, terragrunt release）
+│   └── workflows/       # reusable executor, deploy trigger, hydrator/builder など
 ├── aws/                 # service ごとの Terragrunt stack ({environment})
 ├── github/              # GitHub repo / branch 設定の Terragrunt stack
 ├── kubernetes/
@@ -24,7 +26,7 @@
 │   ├── components/      # environment ごとの Helmfile source
 │   └── manifests/       # Flux が適用するレンダリング済みマニフェスト
 ├── docs/                # runbook と設計ノート
-├── scripts/             # EKS lifecycle / hydration 用 helper
+├── scripts/             # EKS lifecycle 用 helper
 ├── Makefile             # EKS teardown entry point
 └── workflow-config.yaml # environment と stack convention の source of truth
 ```
@@ -127,7 +129,7 @@ flowchart LR
 
 - Flux bootstrap は `kubernetes/clusters/{cluster}/flux-system/` に置く。cluster の root Kustomization が `kubernetes/manifests/{cluster}/` 配下のレンダリング済みマニフェストと外部 `GitRepository`（現状はアプリケーション monorepo）を集約する。
 - Platform と application の repository は別々に pull され、疎結合に保たれる。同期間隔や source URL は `kubernetes/clusters/{cluster}/` 配下のマニフェストが source of truth。
-- `kubernetes/components/` を変更する PR では CI が `scripts/kubernetes-hydrate/` を実行し、レンダリング結果を `kubernetes/manifests/` にコミット、差分を PR コメントに投稿する。マージ後に Flux が適用する。
+- `kubernetes/components/` を変更する PR では CI が `.github/scripts/kubernetes-hydrate/` を実行し、レンダリング結果を `kubernetes/manifests/` にコミット、差分を PR コメントに投稿する。マージ後に Flux が適用する。
 
 ### EKS Lifecycle
 

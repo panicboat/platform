@@ -31,8 +31,8 @@ YAML
 }
 
 repo="${work}/repo"
-mkdir -p "${repo}/scripts/kubernetes-hydrate" "${repo}/aws/eks/production"
-cp "${scripts}"/hydrate-component.sh "${scripts}"/render-diff.sh "${scripts}"/summarize-manifest-diff.sh "${repo}/scripts/kubernetes-hydrate/"
+mkdir -p "${repo}/.github/scripts/kubernetes-hydrate" "${repo}/aws/eks/production"
+cp "${scripts}"/hydrate-component.sh "${scripts}"/render-diff.sh "${scripts}"/summarize-manifest-diff.sh "${repo}/.github/scripts/kubernetes-hydrate/"
 printf 'locals {\n  cluster_version = "1.33"\n}\n' > "${repo}/aws/eks/production/env.hcl"
 write_deployment "${repo}/kubernetes/components/demo/production" demo nginx:1.0
 write_deployment "${repo}/kubernetes/components/gone/production" gone busybox:1.36
@@ -52,7 +52,7 @@ git -C "${repo}" -c user.name=test -c user.email=test@example.com add -A
 git -C "${repo}" -c user.name=test -c user.email=test@example.com commit -q -m head
 
 out="${work}/out"
-(cd "${repo}" && bash scripts/kubernetes-hydrate/render-diff.sh HEAD^ "${out}") > "${work}/stdout" 2>&1 || { fail "render-diff exits 0"; sed 's/^/# /' "${work}/stdout"; }
+(cd "${repo}" && bash .github/scripts/kubernetes-hydrate/render-diff.sh HEAD^ "${out}") > "${work}/stdout" 2>&1 || { fail "render-diff exits 0"; sed 's/^/# /' "${work}/stdout"; }
 summary="${out}/summary.md"
 
 expect_contains "lists a changed component" "## demo (production)" "${summary}"
@@ -76,13 +76,13 @@ failing_bin="${work}/failing-bin"
 mkdir -p "${failing_bin}"
 printf '#!/bin/sh\nexit 1\n' > "${failing_bin}/yq"
 chmod +x "${failing_bin}/yq"
-(cd "${repo}" && PATH="${failing_bin}:${PATH}" bash scripts/kubernetes-hydrate/render-diff.sh HEAD^ "${work}/out-failing") > /dev/null 2>&1 || fail "render-diff exits 0 when summarizing fails"
+(cd "${repo}" && PATH="${failing_bin}:${PATH}" bash .github/scripts/kubernetes-hydrate/render-diff.sh HEAD^ "${work}/out-failing") > /dev/null 2>&1 || fail "render-diff exits 0 when summarizing fails"
 expect_contains "reports a summarizing failure instead of aborting" "Summarizing failed" "${work}/out-failing/summary.md"
 
 echo "# changed" >> "${repo}/README.md"
 git -C "${repo}" -c user.name=test -c user.email=test@example.com add -A
 git -C "${repo}" -c user.name=test -c user.email=test@example.com commit -q -m docs
-(cd "${repo}" && bash scripts/kubernetes-hydrate/render-diff.sh HEAD^ "${work}/out-none") > /dev/null 2>&1 || fail "render-diff exits 0 without components"
+(cd "${repo}" && bash .github/scripts/kubernetes-hydrate/render-diff.sh HEAD^ "${work}/out-none") > /dev/null 2>&1 || fail "render-diff exits 0 without components"
 expect_contains "reports when no component changed" "No Kubernetes components changed." "${work}/out-none/summary.md"
 
 exit "${failures}"

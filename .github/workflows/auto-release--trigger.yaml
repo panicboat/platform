@@ -40,8 +40,8 @@ jobs:
         id: resolve
         run: |
           set -euo pipefail
-          service=$(bash scripts/terragrunt-release/release-service.sh --tag "$TAG")
-          targets=$(bash scripts/terragrunt-release/release-targets.sh "$service")
+          service=$(bash .github/scripts/terragrunt-release/release-service.sh --tag "$TAG")
+          targets=$(bash .github/scripts/terragrunt-release/release-targets.sh "$service")
           echo "targets=$targets" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 

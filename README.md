@@ -16,7 +16,9 @@ A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.
 
 ```
 .
-├── .github/workflows/   # Reusable executors, deploy trigger, hydrator/builder, etc.
+├── .github/
+│   ├── scripts/         # Scripts run by workflows (hydration, terragrunt release)
+│   └── workflows/       # Reusable executors, deploy trigger, hydrator/builder, etc.
 ├── aws/                 # Terragrunt stacks per service ({environment})
 ├── github/              # Terragrunt stacks for GitHub repo / branch settings
 ├── kubernetes/
@@ -24,7 +26,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.
 │   ├── components/      # Helmfile sources (per environment)
 │   └── manifests/       # Rendered output that Flux applies
 ├── docs/                # Runbooks and design notes
-├── scripts/             # EKS lifecycle / hydration helpers
+├── scripts/             # EKS lifecycle helpers
 ├── Makefile             # EKS teardown entry points
 └── workflow-config.yaml # Environments and stack conventions (source of truth)
 ```
@@ -127,7 +129,7 @@ flowchart LR
 
 - Flux bootstrap lives in `kubernetes/clusters/{cluster}/flux-system/`. The cluster's root Kustomization aggregates the rendered manifests under `kubernetes/manifests/{cluster}/` and any external `GitRepository` (currently the application monorepo).
 - Platform and application repositories are pulled independently and stay loosely coupled. Sync intervals and source URLs are configured in `kubernetes/clusters/{cluster}/` — treat those manifests as the source of truth.
-- When `kubernetes/components/` changes, CI runs `scripts/kubernetes-hydrate/`, commits the rendered output to `kubernetes/manifests/`, and posts the diff as a PR comment. Flux applies the change once merged.
+- When `kubernetes/components/` changes, CI runs `.github/scripts/kubernetes-hydrate/`, commits the rendered output to `kubernetes/manifests/`, and posts the diff as a PR comment. Flux applies the change once merged.
 
 ### EKS Lifecycle
 

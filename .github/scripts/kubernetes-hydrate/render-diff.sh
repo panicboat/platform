@@ -5,7 +5,7 @@ base_ref="${1:?base revision required}"
 out_dir="${2:?output directory required}"
 
 cd "$(git rev-parse --show-toplevel)"
-script_dir="$(pwd)/scripts/kubernetes-hydrate"
+script_dir="$(pwd)/.github/scripts/kubernetes-hydrate"
 mkdir -p "${out_dir}"
 out_dir="$(cd "${out_dir}" && pwd)"
 summary="${out_dir}/summary.md"

@@ -32,8 +32,8 @@ jobs:
           HEAD_REF: ${{ github.head_ref }}
         run: |
           set -euo pipefail
-          service=$(bash scripts/terragrunt-release/release-service.sh --branch "$HEAD_REF")
-          targets=$(bash scripts/terragrunt-release/release-targets.sh "$service")
+          service=$(bash .github/scripts/terragrunt-release/release-service.sh --branch "$HEAD_REF")
+          targets=$(bash .github/scripts/terragrunt-release/release-targets.sh "$service")
           echo "targets=$targets" >> "$GITHUB_OUTPUT"
 
   plan:
