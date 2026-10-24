@@ -67,6 +67,7 @@ Renovate PR (labels: 🤖 renovate, 📈 major-update, deploy:<svc>)
   - `auto-label--deploy-trigger.yaml` に job を足すと、同 workflow の `cancel-in-progress` で Claude が途中キャンセル・再起動され Bedrock 消費が無駄になるうえ、デプロイの中核 workflow に手が入る
 - **レビュー材料**: 次の3つを使う。Kustomize Diff コメントは使わない
   - upstream の一次情報（PR 本文のノートは参考扱い）
+    - Helm chart では chart 自体に加え、chart が載せるアプリケーション（sub-chart・operator を含む）の `appVersion` が変わる場合、そのアプリケーションの release notes / upgrade guide も読む。chart のノートはアプリ側の破壊的変更（設定項目の削除・storage 形式・CRD schema）をほとんど転記しないため
   - 対象 component の `helmfile.yaml`・`values.yaml.gotmpl`（または `values.yaml`）・`kustomization/` 配下
   - GitHub Actions 更新の場合は、その action を使っている workflow ファイル
   - Kustomize Diff は hydrate と並行実行のため取得できない。加えて #1018 では 7,636 行・120 ファイルの大半が CRD 差分で、材料としてはノイズが多い

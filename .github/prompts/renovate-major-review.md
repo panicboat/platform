@@ -21,13 +21,17 @@ You only read. Never modify files, push, approve, label, or comment yourself.
 2. Fetch every release after the current version up to and including the new version from the upstream source.
    - Prefer `gh api repos/<owner>/<repo>/releases` and `gh api repos/<owner>/<repo>/contents/<path>` for GitHub-hosted sources (filter by the package's tag prefix in monorepos).
    - Also look for upgrade guides: `UPGRADING.md`, `CHANGELOG.md`, chart `README.md` "Upgrading" sections, and docs pages linked from releases. Use WebFetch for non-GitHub pages.
-3. Record which version ranges you could not cover and why.
-4. Record whether the PR body notes were for a different package or skipped versions.
+3. Helm chart: compare `appVersion` (`helm show chart --version <current>` / `<new>`) of every application the chart deploys, including bundled sub-charts and operators.
+   When an application's version changes, also fetch that application's own release notes and upgrade guide for the whole application range from its upstream repository (e.g. `grafana/tempo` for the `tempo` chart, `prometheus-operator/prometheus-operator` for `kube-prometheus-stack`).
+   Chart release notes rarely repeat application-level breaking changes (removed config options, storage format changes, CRD schema changes).
+4. Record which version ranges you could not cover and why, for both the chart and each application.
+5. Record whether the PR body notes were for a different package or skipped versions.
 
 ## 3. Compare against this repository
 
 - Helm chart: the component directory `kubernetes/components/<service>/<environment>/` — `helmfile.yaml`, `values.yaml.gotmpl` or `values.yaml`, and everything under `kustomization/`.
   Resources under `kustomization/` often use CRDs installed by the chart (ExternalSecret, NodePool, Issuer, ...); check their `apiVersion` and fields against CRD changes.
+  Application settings passed through values (config blocks, overrides, CLI flags) must be checked against the application's breaking changes, not only the chart's.
   1. `helm repo add` the chart repository, then `helm show values <chart> --version <current>` and `--version <new>`; diff the defaults and check whether any changed default is relied upon (i.e. not overridden) by this repository.
   2. Only when a template-level change is suspected (StatefulSet selector, PVC / volumeClaimTemplates, Service names, resource renames), render both versions with `helm template` using this repository's values and compare the affected resources.
      `values.yaml.gotmpl` is a helmfile template; when it cannot be rendered directly, substitute obvious placeholders and say so.
@@ -49,7 +53,7 @@ Never give ✅ when any range is uncovered.
 Write the comment in Japanese, as GitHub-flavored Markdown, with these sections in this order:
 
 1. `## Renovate Major Update Review` followed by the verdict line.
-2. `### 対象範囲` — dependency, `current → new`, and the URL of every primary source used. State whether the PR body notes were for a different package or skipped versions.
+2. `### 対象範囲` — dependency, `current → new`, each bundled application's `current → new` when it changed, and the URL of every primary source used. State whether the PR body notes were for a different package or skipped versions.
 3. `### 影響のある変更` — only changes that affect this repository's definitions. Each item has:
    - the change and its source URL
    - the affected location as `path:line`
