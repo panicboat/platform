@@ -12,6 +12,7 @@ locals {
   deploy_actions = read_terragrunt_config("deploy-actions.hcl")
   ansible        = read_terragrunt_config("ansible.hcl")
   dotfiles       = read_terragrunt_config("dotfiles.hcl")
+  dot_github     = read_terragrunt_config("dot-github.hcl")
 }
 
 inputs = {
@@ -21,6 +22,7 @@ inputs = {
     deploy-actions = local.deploy_actions.locals.repository
     ansible        = local.ansible.locals.repository
     dotfiles       = local.dotfiles.locals.repository
+    dot-github     = local.dot_github.locals.repository
   }
   github_token = get_env("GITHUB_TOKEN")
 }
