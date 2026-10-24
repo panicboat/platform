@@ -172,6 +172,74 @@ test_release_targets_fails_without_targets() {
     assert_stderr_contains "no release targets for route53"
 }
 
+write_service_release_config() {
+    local service="$1" component="${2:-$1}"
+    mkdir -p "aws/${service}"
+    cat > "aws/${service}/release-please-config.json" <<JSON
+{"packages":{"aws/${service}":{"release-type":"simple","component":"${component}","include-component-in-tag":true}}}
+JSON
+    echo "{\"aws/${service}\":\"0.1.0\"}" > "aws/${service}/release-please-manifest.json"
+}
+
+test_check_configs_accepts_matching_set() {
+    write_release_config
+    mkdir -p aws/vpc/production aws/route53/master
+    write_service_release_config vpc
+    assert_eq "" "$(bash "${script_dir}/check-release-configs.sh" 2>&1)"
+}
+
+test_check_configs_rejects_missing_config() {
+    write_release_config
+    mkdir -p aws/eks/production
+    assert_fails bash "${script_dir}/check-release-configs.sh"
+    assert_stderr_contains "aws/eks/release-please-config.json"
+}
+
+test_check_configs_rejects_orphan_config() {
+    write_release_config
+    mkdir -p aws/route53/master
+    write_service_release_config route53
+    assert_fails bash "${script_dir}/check-release-configs.sh"
+    assert_stderr_contains "aws/route53/release-please-config.json"
+}
+
+test_check_configs_rejects_wrong_component() {
+    write_release_config
+    mkdir -p aws/vpc/production
+    write_service_release_config vpc eks
+    assert_fails bash "${script_dir}/check-release-configs.sh"
+    assert_stderr_contains "aws/vpc: component must be vpc (got 'eks')"
+}
+
+test_check_configs_rejects_manifest_without_package() {
+    write_release_config
+    mkdir -p aws/vpc/production
+    write_service_release_config vpc
+    echo '{}' > aws/vpc/release-please-manifest.json
+    assert_fails bash "${script_dir}/check-release-configs.sh"
+    assert_stderr_contains "aws/vpc/release-please-manifest.json"
+    rm aws/vpc/release-please-manifest.json
+    assert_fails bash "${script_dir}/check-release-configs.sh"
+    assert_stderr_contains "aws/vpc/release-please-manifest.json"
+}
+
+test_check_configs_rejects_incomplete_release_env() {
+    cat > workflow-config.yaml <<'YAML'
+stacks:
+  - name: terragrunt
+    environments:
+      production:
+        apply_trigger: release
+YAML
+    mkdir -p aws/vpc/production
+    write_service_release_config vpc
+    assert_fails bash "${script_dir}/check-release-configs.sh"
+    assert_stderr_contains "vpc/production"
+    assert_stderr_contains "aws_region"
+    assert_stderr_contains "iam_role_plan"
+    assert_stderr_contains "iam_role_apply"
+}
+
 failed=0
 for test_name in $(compgen -A function test_); do
     fixture="$(mktemp -d "${work_root}/fixture.XXXXXX")"
