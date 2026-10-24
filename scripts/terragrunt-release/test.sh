@@ -121,6 +121,12 @@ test_release_service_rejects_root_branch() {
     assert_stderr_contains "::error::"
 }
 
+test_release_service_error_is_single_line() {
+    assert_fails bash "${script_dir}/release-service.sh" --tag $'vpc-v1.2.3\n::warning::x'
+    assert_stderr_contains "::error::"
+    assert_eq "1" "$(printf '%s\n' "${last_stderr}" | wc -l | tr -d ' ')"
+}
+
 write_release_config() {
     cat > workflow-config.yaml <<'YAML'
 stacks:
@@ -238,6 +244,21 @@ YAML
     assert_stderr_contains "aws_region"
     assert_stderr_contains "iam_role_plan"
     assert_stderr_contains "iam_role_apply"
+}
+
+test_deploy_trigger_applies_only_merge_targets() {
+    local expected="\${{ matrix.target.stack == 'terragrunt' && (github.event_name == 'pull_request' && 'plan' || (matrix.target.apply_trigger == 'merge' && 'apply' || '')) || '' }}"
+    local actual
+    actual="$(yq '.jobs.deploy-terragrunt.with.action-type' "${repo_root}/.github/workflows/auto-label--deploy-trigger.yaml")"
+    assert_eq "${expected}" "${actual}"
+}
+
+test_deploy_trigger_excludes_shared_targets() {
+    local job stack
+    for job in deploy-terragrunt deploy-kubernetes; do
+        stack="$(yq ".jobs.${job}.strategy.matrix.exclude[] | select(.target.stack == \"terragrunt-shared\") | .target.stack" "${repo_root}/.github/workflows/auto-label--deploy-trigger.yaml")"
+        assert_eq "terragrunt-shared" "${stack}"
+    done
 }
 
 failed=0

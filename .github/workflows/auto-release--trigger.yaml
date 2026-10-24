@@ -23,6 +23,8 @@ jobs:
   resolve:
     name: 'Resolve Release Targets'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
     outputs:
@@ -46,6 +48,9 @@ jobs:
   apply:
     name: 'Apply Release (${{ matrix.target.service }}:${{ matrix.target.environment }})'
     needs: resolve
+    concurrency:
+      group: terragrunt-apply-${{ matrix.target.working_directory }}
+      cancel-in-progress: false
     strategy:
       matrix:
         target: ${{ fromJson(needs.resolve.outputs.targets) }}

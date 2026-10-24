@@ -20,7 +20,9 @@ case "${mode}" in
 esac
 
 if [[ ! "${value}" =~ ${pattern} ]]; then
-    echo "::error::'${value}' does not match ${expected}" >&2
+    shown="${value//$'\n'/ }"
+    shown="${shown//$'\r'/ }"
+    echo "::error::'${shown}' does not match ${expected}" >&2
     exit 1
 fi
 
