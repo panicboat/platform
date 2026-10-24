@@ -38,10 +38,15 @@ for component in ${components}; do
     svc="${component%/*}"
     env="${component#*/}"
     dir="${out_dir}/${env}/${svc}"
-    mkdir -p "${dir}"
     {
         echo "## ${svc} (${env})"
         echo
+        if [ ! -f "aws/eks/${env}/env.hcl" ]; then
+            echo "Not rendered: \`${env}\` has no \`aws/eks/${env}/env.hcl\`, so the hydrator never deploys it."
+            echo
+            continue
+        fi
+        mkdir -p "${dir}"
         failed=""
         render base "${svc}" "${env}" "${dir}" || failed="base"
         render head "${svc}" "${env}" "${dir}" || failed="${failed:+${failed} }head"
@@ -57,7 +62,15 @@ for component in ${components}; do
             diff -u "${dir}/base.yaml" "${dir}/head.yaml" > "${dir}/manifest.diff" || true # SILENT: diff exits 1 when the manifests differ
             echo "Full diff: \`${env}/${svc}/manifest.diff\`"
             echo
-            bash "${script_dir}/summarize-manifest-diff.sh" "${dir}/base.yaml" "${dir}/head.yaml"
+            if bash "${script_dir}/summarize-manifest-diff.sh" "${dir}/base.yaml" "${dir}/head.yaml" > "${dir}/summary.part" 2> "${dir}/summarize.log"; then
+                cat "${dir}/summary.part"
+            else
+                echo "Summarizing failed; use the full diff:"
+                echo
+                echo '```'
+                tail -n 20 "${dir}/summarize.log"
+                echo '```'
+            fi
         fi
         echo
     } >> "${summary}"

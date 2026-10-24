@@ -7,7 +7,10 @@ head="${2:?head manifest required}"
 export LC_ALL=C
 
 image_refs() {
-    yq -N '.. | select(tag == "!!map" and has("image")) | .image | select(tag == "!!str")' "$1" | sort -u
+    {
+        yq -N '.. | select(tag == "!!map" and has("image")) | .image | select(tag == "!!str")' "$1"
+        yq -N '.. | select(tag == "!!str") | select(test("^(--[A-Za-z0-9-]+=)?[a-z0-9.-]+(:[0-9]+)?/[a-z0-9./_-]+:[A-Za-z0-9._-]+(@sha256:[a-f0-9]+)?$")) | sub("^--[A-Za-z0-9-]+=", "")' "$1"
+    } | sort -u
 }
 
 split_image_refs() {
@@ -54,15 +57,25 @@ print_table() {
     printf '%s\n' "${rows}" | awk -F '\t' '{ print "| " $1 " | " $2 " | " $3 " |" }'
 }
 
-image_rows="$( { image_refs "${base}" | split_image_refs base; image_refs "${head}" | split_image_refs head; } | pair_rows)"
-crd_rows="$( { crd_versions "${base}" | awk -F '\t' '{ print $1 "\tbase\t" $2 }'; crd_versions "${head}" | awk -F '\t' '{ print $1 "\thead\t" $2 }'; } | pair_rows)"
-added="$(comm -13 <(resources "${base}") <(resources "${head}"))"
-removed="$(comm -23 <(resources "${base}") <(resources "${head}"))"
+tmp="$(mktemp -d)"
+trap 'rm -rf "${tmp}"' EXIT
+# Extracting into files first lets set -e catch yq failures that command substitutions and process substitutions would hide.
+for side in base head; do
+    if [ "${side}" = base ]; then manifest="${base}"; else manifest="${head}"; fi
+    image_refs "${manifest}" | split_image_refs "${side}" > "${tmp}/${side}.images"
+    crd_versions "${manifest}" | awk -F '\t' -v side="${side}" '{ print $1 "\t" side "\t" $2 }' > "${tmp}/${side}.crds"
+    resources "${manifest}" > "${tmp}/${side}.resources"
+done
+
+image_rows="$(cat "${tmp}/base.images" "${tmp}/head.images" | pair_rows)"
+crd_rows="$(cat "${tmp}/base.crds" "${tmp}/head.crds" | pair_rows)"
+added="$(comm -13 "${tmp}/base.resources" "${tmp}/head.resources")"
+removed="$(comm -23 "${tmp}/base.resources" "${tmp}/head.resources")"
 
 echo "### Images"
 echo
 if [ -n "${image_rows}" ]; then
-    echo '`image` fields only; versions passed through args or env appear in the full diff.'
+    echo 'Collected from `image` fields and from other string values shaped like `registry/repository:tag` (args, env).'
     echo
 fi
 print_table "Repository" "${image_rows}"

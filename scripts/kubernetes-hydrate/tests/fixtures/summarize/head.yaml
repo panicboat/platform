@@ -25,6 +25,14 @@ spec:
       containers:
         - name: app
           image: registry.example.com/app:2.0
+          args:
+            - --config-reloader=quay.io/example/reloader:v0.94.1
+            - --log-level=info
+          env:
+            - name: HELPER_IMAGE
+              value: ghcr.io/example/helper:2.0
+            - name: ENDPOINT
+              value: http://example.com/path:8080
         - name: sidecar
           image: localhost:5000/sidecar:0.1@sha256:abc
         - name: untagged

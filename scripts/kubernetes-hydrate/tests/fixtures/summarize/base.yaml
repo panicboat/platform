@@ -32,6 +32,14 @@ spec:
       containers:
         - name: app
           image: registry.example.com/app:1.0
+          args:
+            - --config-reloader=quay.io/example/reloader:v0.93.1
+            - --log-level=info
+          env:
+            - name: HELPER_IMAGE
+              value: ghcr.io/example/helper:2.0
+            - name: ENDPOINT
+              value: http://example.com/path:8080
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: Prometheus

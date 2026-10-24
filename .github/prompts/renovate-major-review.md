@@ -27,9 +27,10 @@ You only read. Never modify files, push, approve, label, or comment yourself.
    - the files Renovate changed
 3. Ignore changes under `kubernetes/manifests/`; the hydrator generates them in parallel with this review, so they may be stale.
 4. Read `.render-diff/summary.md` (the rendered diff).
-   For every component directory the pull request changes, it compares the base and the head rendered with this repository's values (`scripts/kubernetes-hydrate/render-diff.sh`): `image` fields, CRD versions, and added / removed resources.
+   For every component directory the pull request changes, it compares the base and the head rendered with this repository's values (`scripts/kubernetes-hydrate/render-diff.sh`): image references, CRD versions, and added / removed resources.
    Its `Full diff` paths are relative to `.render-diff/`; the files can be large, so Grep them instead of reading them whole.
-   A component marked `Rendering failed` is uncovered.
+   A component marked `Rendering failed` or `Summarizing failed` is uncovered (for `Summarizing failed`, still Grep its full diff).
+   A component marked `Not rendered` is not deployed by the hydrator; review it from its files only.
 
 ## 2. Collect primary sources
 
@@ -63,7 +64,7 @@ You only read. Never modify files, push, approve, label, or comment yourself.
 Pick exactly one:
 
 - `✅ そのままマージ可` — no breaking change, deprecation, or relied-upon default change affects this repository, and every version in the range was covered by primary sources.
-- `⚠️ 修正が必要` — this repository's definitions need changes before merging, any version range could not be covered by primary sources, or any component is marked `Rendering failed`.
+- `⚠️ 修正が必要` — this repository's definitions need changes before merging, any version range could not be covered by primary sources, or any component is marked `Rendering failed` or `Summarizing failed`.
 - `🛑 手動作業が必要` — merging requires manual operations outside this PR (CRD storage migration, data migration, ordered rollout, ...).
 
 Never give ✅ when any range is uncovered.

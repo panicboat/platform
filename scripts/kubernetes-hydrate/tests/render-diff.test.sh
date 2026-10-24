@@ -45,7 +45,9 @@ git -C "${repo}" -c user.name=test -c user.email=test@example.com commit -q -m b
 write_deployment "${repo}/kubernetes/components/demo/production" demo nginx:1.1
 echo "# changed" >> "${repo}/kubernetes/components/demo/namespace.yaml"
 git -C "${repo}" rm -q -r kubernetes/components/gone
-write_deployment "${repo}/kubernetes/components/broken/staging" broken busybox:1.36
+write_deployment "${repo}/kubernetes/components/pending-only/pending" pending-only busybox:1.36
+write_deployment "${repo}/kubernetes/components/broken/production" broken busybox:1.36
+printf 'resources:\n  - missing.yaml\n' > "${repo}/kubernetes/components/broken/production/kustomization/kustomization.yaml"
 git -C "${repo}" -c user.name=test -c user.email=test@example.com add -A
 git -C "${repo}" -c user.name=test -c user.email=test@example.com commit -q -m head
 
@@ -59,7 +61,9 @@ expect_contains "links the full diff" "production/demo/manifest.diff" "${summary
 expect_contains "writes the full diff" "+      - image: nginx:1.1" "${out}/production/demo/manifest.diff"
 expect_contains "lists a deleted component" "## gone (production)" "${summary}"
 expect_contains "reports resources of a deleted component as removed" "- Deployment gone" "${summary}"
-expect_contains "reports a render failure instead of aborting" "Rendering failed" "${summary}"
+expect_contains "reports a render failure instead of aborting" "Rendering failed (head)" "${summary}"
+expect_contains "skips directories that are not hydrated environments" "Not rendered:" "${summary}"
+if [ -d "${out}/pending" ]; then fail "does not render directories that are not hydrated environments"; else pass "does not render directories that are not hydrated environments"; fi
 expect_absent "skips components without changes" "untouched" "${summary}"
 if [ -z "$(git -C "${repo}" status --porcelain)" ] && [ "$(git -C "${repo}" worktree list | wc -l)" -eq 1 ]; then
     pass "leaves the checkout and worktree list clean"
@@ -67,6 +71,13 @@ else
     fail "leaves the checkout and worktree list clean"
     git -C "${repo}" status --porcelain | sed 's/^/# /'
 fi
+
+failing_bin="${work}/failing-bin"
+mkdir -p "${failing_bin}"
+printf '#!/bin/sh\nexit 1\n' > "${failing_bin}/yq"
+chmod +x "${failing_bin}/yq"
+(cd "${repo}" && PATH="${failing_bin}:${PATH}" bash scripts/kubernetes-hydrate/render-diff.sh HEAD^ "${work}/out-failing") > /dev/null 2>&1 || fail "render-diff exits 0 when summarizing fails"
+expect_contains "reports a summarizing failure instead of aborting" "Summarizing failed" "${work}/out-failing/summary.md"
 
 echo "# changed" >> "${repo}/README.md"
 git -C "${repo}" -c user.name=test -c user.email=test@example.com add -A

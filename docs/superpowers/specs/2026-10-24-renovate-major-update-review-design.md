@@ -87,11 +87,13 @@ Renovate PR (labels: 🤖 renovate, 📈 major-update, deploy:<svc>)
   - hydrate のコミット後は Renovate が自動 rebase を止める（"Edited/Blocked Notification"）ため、PR が自動で更新されることがほぼない
   - 再レビューは `📈 major-update` ラベルを付け直して起動する（`workflow_dispatch` は sub が変わり Bedrock role の信頼条件に合わないため使わない）
 - **描画差分**: review の前に、PR が変更した `kubernetes/components/<svc>/<env>/` を base（merge commit の第1親）と head の両方で `hydrate-component.sh` により描画し、`scripts/kubernetes-hydrate/render-diff.sh` が差分の要約と全文 diff を作る
-  - 要約は chart や package の種類に依存しない3項目に限る: 文字列値を持つ `image` キー（Pod spec と custom resource の両方）、CRD の served / storage version、kind / namespace / name 単位で追加・削除されたリソース
+  - 要約は chart や package の種類に依存しない3項目に限る: image 参照、CRD の served / storage version、kind / namespace / name 単位で追加・削除されたリソース
+    - image 参照は、文字列値を持つ `image` キー（Pod spec と custom resource の両方）と、`registry/repository:tag` の形をしたその他の文字列値（`--prometheus-config-reloader=...` のような args や env）から集める。operator が args で受け取る既定 image を取りこぼさないため
+  - `aws/eks/<env>/env.hcl` が無いディレクトリ（`pending` など）は hydrate されないため描画せず、`Not rendered` と記録する
   - chart の default values を検索する方式は、chart ごとの書き方とリポジトリ側の上書きに左右され、`Prometheus` CR の `spec.image` のようにテンプレートで組み立てる値を拾えないため採らない。prompt の指示だけでは、#1018 で上書きしていない default image（Prometheus）を2回続けて取りこぼした
   - hydrate の commit を待って manifest を比べる方式は、ラベル付与で即発火し hydrate と並行実行する前提を崩すため採らない
   - 描画は `contents: read` だけを持つ別 job で行い、artifact で review job に渡す。helmfile のテンプレートは `exec` でコマンドを実行でき、PR の内容を描画する処理を `id-token: write` と review environment を持つ job に置かないため
-  - 描画に失敗した component は要約に `Rendering failed` と記録し、レビューは続ける。その component は未確認扱いとし、判定を ⚠️ にする
+  - 描画や要約に失敗した component は `Rendering failed` / `Summarizing failed` と記録し、レビューは続ける。その component は未確認扱いとし、判定を ⚠️ にする
 - **書き込み権限の分離**: Claude を動かす step には GitHub への書き込み権限を持つ token を渡さない
   - upstream のリリースノートは外部入力で prompt injection の経路になるため
   - Claude はコメント本文をファイルに出力するだけにする。投稿は後続の別 step が `pull-requests: write` だけを持つ token で行う

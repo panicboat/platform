@@ -1,11 +1,12 @@
 ### Images
 
-`image` fields only; versions passed through args or env appear in the full diff.
+Collected from `image` fields and from other string values shaped like `registry/repository:tag` (args, env).
 
 | Repository | Base | Head |
 |---|---|---|
 | localhost:5000/sidecar | - | 0.1@sha256:abc |
 | nginx | - | (untagged) |
+| quay.io/example/reloader | v0.93.1 | v0.94.1 |
 | quay.io/prometheus/prometheus | v3.14.0 | v3.15.0 |
 | registry.example.com/app | 1.0 | 2.0 |
 

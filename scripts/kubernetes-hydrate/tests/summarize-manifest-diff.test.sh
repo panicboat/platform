@@ -22,4 +22,14 @@ check "reports image, CRD and resource changes" \
 check "reports no changes for identical manifests" \
     "${fixtures}/identical/manifest.yaml" "${fixtures}/identical/manifest.yaml" "${fixtures}/identical/expected.md"
 
+for side in base head; do
+    if [ "${side}" = base ]; then args=("${fixtures}/invalid/manifest.yaml" "${fixtures}/identical/manifest.yaml"); else args=("${fixtures}/identical/manifest.yaml" "${fixtures}/invalid/manifest.yaml"); fi
+    if bash "${summarize}" "${args[@]}" > /dev/null 2>&1; then
+        echo "not ok - fails on an unparsable ${side} manifest"
+        failures=$((failures + 1))
+    else
+        echo "ok - fails on an unparsable ${side} manifest"
+    fi
+done
+
 exit "${failures}"
