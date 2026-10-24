@@ -522,3 +522,59 @@ Expected: どちらも成功
 git add scripts/terragrunt-release aws/*/release-please-config.json README.md README-ja.md
 git commit -s -m "ci: keep merge-only environment changes out of service releases"
 ```
+
+---
+
+### Task 10: production を除外環境にする
+
+**Files:**
+- Modify: `workflow-config.yaml`
+- Modify: `scripts/terragrunt-release/release-targets.sh`
+- Modify: `scripts/terragrunt-release/test.sh`
+- Modify: `.github/workflows/auto-release--plan.yaml`
+- Modify: `.github/workflows/auto-release--trigger.yaml`
+- Modify: `README.md`・`README-ja.md`（`## 🚢 Deployment` の `### Trigger`）
+
+**Interfaces:**
+- Consumes: Task 4 の `release-targets.sh`、Task 5・9 の `check-release-configs.sh`（変更しない）
+- Produces: `release-targets.sh <service> [config]` は、`name: terragrunt` の stack の `exclude` の各 rule（キーは `service` と `environment`。rule のキーがすべて一致したら除外。deploy-actions の `excluded?` と同じ意味）に一致する target を外す。`apply_trigger: release` の環境のディレクトリが 1 つもなければ今までどおり `::error::no release targets for <service>` で exit 1。ディレクトリはあるが全部除外されたら `[]` を出して exit 0。`exclude` がない stack は今までどおり
+
+- [ ] **Step 1: テストを書く**
+
+```bash
+test_release_targets_skips_excluded_envs()          # write_release_config に exclude [{environment: production}] を足し、aws/vpc/production と aws/vpc/staging → staging だけの配列
+test_release_targets_returns_empty_when_all_excluded()  # exclude [{environment: production}, {environment: staging}]、aws/vpc/production だけ → stdout が "[]"、exit 0
+test_release_targets_honors_service_scoped_exclude()    # exclude [{service: vpc, environment: production}]、aws/vpc/production と aws/eks/production → vpc は "[]"、eks は production の 1 件
+test_check_configs_requires_config_for_excluded_env()   # exclude [{environment: production}]、aws/eks/production があり config がない → exit 1、stderr に "aws/eks/release-please-config.json"。config を足すと出力なしで exit 0
+test_release_workflows_skip_empty_targets()          # auto-release--plan.yaml の jobs.plan.if と auto-release--trigger.yaml の jobs.apply.if が "needs.resolve.outputs.targets != '[]'"
+test_repository_config_excludes_production()        # リポジトリの workflow-config.yaml の terragrunt stack の exclude に {environment: production} がある
+```
+
+- [ ] **Step 2: テストが失敗することを確認する**
+
+Run: `bash scripts/terragrunt-release/test.sh`
+Expected: 追加したテストのうち、`test_check_configs_requires_config_for_excluded_env` 以外が FAIL
+
+- [ ] **Step 3: `release-targets.sh` に除外を足し、2 つの workflow の job に `if: needs.resolve.outputs.targets != '[]'` を付け、`workflow-config.yaml` の terragrunt stack の末尾に `exclude: [{environment: production}]` を足す**
+
+`workflow-config.yaml` の `exclude` は monorepo と同じ block style で書き、`production` の環境定義は残す（deploy-actions は `exclude` の環境が `environments` に宣言されていることを要求する）。
+
+Run: `bash scripts/terragrunt-release/test.sh && bash scripts/terragrunt-release/validate-apply-trigger.sh && bash scripts/terragrunt-release/check-release-configs.sh && actionlint`
+Expected: test・validate・check は成功。actionlint は既存の `target-environment` の 1 件だけ
+
+- [ ] **Step 4: deploy-actions の config 検証を通す**
+
+deploy-actions v2.0.1（`1ab520e5ef33b8d744982762ffc4e08009a34744`）の `WorkflowConfig` で、リポジトリの `workflow-config.yaml` が検証を通り、`excluded?` が `aws/vpc/production` を除外することを確かめる（`.git` がファイルの worktree では動かないので、platform の通常 clone か `git archive` で取り出した tree で実行する）。
+
+Expected: 検証エラーなし、production が excluded
+
+- [ ] **Step 5: README に動作を書く**
+
+`### Trigger` に、terragrunt stack の `exclude` に一致する環境は label 付与・PR の plan・main merge の apply・release の plan / apply のすべてから外れ、release PR はできるが merge しても apply しないことを書く。`README-ja.md` も同じ内容を日本語で書く。
+
+- [ ] **Step 6: commit する**
+
+```bash
+git add workflow-config.yaml scripts/terragrunt-release .github/workflows README.md README-ja.md
+git commit -s -m "ci: exclude production from platform terragrunt runs"
+```

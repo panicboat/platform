@@ -97,6 +97,10 @@
   - `production`：`337169763788`、role は `github-oidc-auth-production-github-actions-{plan,apply}-role`（#886 の spec と過去のコメントアウトから。実装時に実在を確認する）
   - `develop`：`270242382571`、role 名は同じ命名規則とし、実装時に実在を確認する。`aws/github-oidc-auth/develop/env.hcl` の `aws_region` は `us-east-1` なので、環境属性の `aws_region` をどうするかも実装時に確認する
 - `production` しかないサービス（`aws/eks` など）も同じ扱いにする。どんな変更も release PR を通る
+- 現時点の production は monorepo で管理しているので、terragrunt stack の `exclude` に `environment: production` を置き、platform からは plan も apply もしない（ユーザー決定。後で monorepo 側を破棄して platform で作り直すときに外す）
+  - deploy-actions は `exclude` の環境を label 付与と matrix から外す（VERIFIED：`shared/entities/workflow_config.rb` の `excluded?`）。`exclude` に書く環境は `environments` に宣言されている必要があるので、`production` の定義は残す
+  - `release-targets.sh` も同じ `exclude` を読み、除外された環境を target から外す。release 環境のディレクトリがあり全部除外された場合は `[]` を返して成功し、release PR の plan と release 公開の apply の job は skip する
+  - release-please の設定は残す（ユーザー決定）。除外中も release PR はでき、merge しても何も apply しない。`check-release-configs.sh` は除外された環境も release 環境として数え、設定を必須のままにする
 
 ### Change detection
 
