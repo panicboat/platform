@@ -1,0 +1,54 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: widgets.example.com
+spec:
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: gadgets.example.com
+spec:
+  versions:
+    - name: v1
+      served: true
+      storage: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: ns-a
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: init
+          image: busybox:1.36
+      containers:
+        - name: app
+          image: registry.example.com/app:1.0
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: main
+  namespace: ns-a
+spec:
+  image: quay.io/prometheus/prometheus:v3.14.0
+  version: v3.14.0
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: old
+  namespace: ns-a
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: reader
