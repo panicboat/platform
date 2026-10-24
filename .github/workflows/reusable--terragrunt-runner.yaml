@@ -1,5 +1,5 @@
 # Runs terragrunt plan or apply in one working directory and reports the result with tfcmt.
-name: 'Reusable - Terragrunt Executor'
+name: 'Reusable - Terragrunt Runner'
 
 on:
   workflow_call:
@@ -48,8 +48,8 @@ on:
         description: 'GitHub App private key for authentication'
 
 jobs:
-  execute-terragrunt:
-    name: 'Execute Terragrunt'
+  run-terragrunt:
+    name: 'Run Terragrunt'
     if: inputs.action-type != ''
     runs-on: ubuntu-latest
     environment: ${{ inputs.github-environment }}
@@ -80,7 +80,7 @@ jobs:
         with:
           aqua_version: v2.64.0
 
-      - name: Execute Terragrunt
+      - name: Run Terragrunt
         working-directory: ${{ inputs.working-directory }}
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}

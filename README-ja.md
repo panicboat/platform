@@ -63,8 +63,8 @@
 
 | Stack | Path convention | Tooling |
 |-------|-----------------|---------|
-| AWS infrastructure | `aws/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-executor.yaml](.github/workflows/reusable--terragrunt-executor.yaml)) |
-| GitHub configuration | `github/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-executor.yaml](.github/workflows/reusable--terragrunt-executor.yaml)) |
+| AWS infrastructure | `aws/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](.github/workflows/reusable--terragrunt-runner.yaml)) |
+| GitHub configuration | `github/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](.github/workflows/reusable--terragrunt-runner.yaml)) |
 | Kubernetes platform | `kubernetes/components/{service}/{environment}` | Helmfile → Kustomize hydration ([reusable--kubernetes-hydrator.yaml](.github/workflows/reusable--kubernetes-hydrator.yaml) / [reusable--kubernetes-builder.yaml](.github/workflows/reusable--kubernetes-builder.yaml)) → Flux CD |
 
 ### Environments and Authentication
@@ -102,7 +102,7 @@ flowchart LR
 
   subgraph Terragrunt
     ReleaseTrigger[release--deploy]
-    TG[reusable--terragrunt-executor]
+    TG[reusable--terragrunt-runner]
     Plan[terragrunt plan]
     Apply[terragrunt apply]
     PRComment[(PR comment)]
