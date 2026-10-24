@@ -12,9 +12,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  render:
+    name: 'Render'
+    if: github.event.label.name == '📈 major-update' && github.event.pull_request.user.login == 'renovate[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # helmfile templates can exec commands, so PR content is rendered in a job without id-token or the review environment.
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup aqua
+        uses: aquaproj/aqua-installer@82d0e83878a8657c4a6f2ff1755d3bfbfc67f329 # v4.1.0
+        with:
+          aqua_version: v2.64.0
+
+      - name: Render manifest diff
+        # HEAD is the PR merge commit, so its first parent is the base it merges into.
+        run: bash scripts/kubernetes-hydrate/render-diff.sh HEAD^1 "${RUNNER_TEMP}/render-diff"
+
+      - name: Upload manifest diff
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: render-diff
+          path: ${{ runner.temp }}/render-diff
+          retention-days: 1
+
   review:
     name: 'Review'
-    if: github.event.label.name == '📈 major-update' && github.event.pull_request.user.login == 'renovate[bot]'
+    needs: render
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Environment-scoped OIDC sub keeps a prompt-injected run from assuming the plan roles, which trust the pull_request sub.
@@ -31,6 +62,12 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Download manifest diff
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: render-diff
+          path: .render-diff
 
       - name: Setup aqua
         uses: aquaproj/aqua-installer@82d0e83878a8657c4a6f2ff1755d3bfbfc67f329 # v4.1.0
@@ -60,7 +97,7 @@ jobs:
           claude_args: |
             --model global.anthropic.claude-sonnet-4-6
             --json-schema '{"type":"object","properties":{"body":{"type":"string","minLength":1,"maxLength":60000}},"required":["body"]}'
-            --allowedTools "Read,Glob,Grep,WebFetch,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(helm repo add:*),Bash(helm repo update:*),Bash(helm pull:*),Bash(helm show:*),Bash(helm template:*)"
+            --allowedTools "Read,Glob,Grep,WebFetch,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(helm repo add:*),Bash(helm repo update:*),Bash(helm pull:*),Bash(helm show:*)"
 
   post:
     name: 'Post Review'
