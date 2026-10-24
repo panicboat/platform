@@ -115,6 +115,7 @@ Renovate PR (labels: 🤖 renovate, 📈 major-update, deploy:<svc>)
 ## Constraints
 
 - `auto-label--deploy-trigger.yaml` と hydrator は変更しない
+- このリポジトリは `helm upgrade` を使わず、hydrate（`helmfile template --include-crds`）した manifest を Flux が適用する。upgrade guide の「`helm upgrade` 前に CRD を手動適用」「hook の順序に依存する手順」はこの方式では前提が異なるため、prompt でデプロイ方式を明示して誤判定を防ぐ
 - hydrate は並行して PR ブランチにコミットする。レビューは起動時点の PR head を checkout し、hydrate 後の `kubernetes/manifests/` には依存しない
 - Renovate の PR は同一リポジトリの `renovate/` ブランチから作られるため、OIDC の `sub` は `repo:panicboat/platform:pull_request` になる
 - `claude-code-action` は Bot が起こしたイベントで動かない既定があるため、Renovate 起点で起動できる設定にする（実バージョンの入力名を確認する）
