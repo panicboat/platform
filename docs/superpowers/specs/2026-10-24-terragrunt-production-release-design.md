@@ -76,6 +76,7 @@
 - **release 公開時の apply に承認（required reviewers）を付けない**: release PR の merge がすでに人の判断なので、承認を二重にしない
 - **apply の契機は `workflow-config.yaml` の環境属性 `apply_trigger` で持つ**: 値は `merge` か `release`。deploy-actions を変更せずに済み、どの環境が release で apply されるかの情報が workflow に散らばらない
 - **対象は `aws/` だけ**: `github/` は `master` しかなく、kubernetes は経路が違う
+- **`apply_trigger: merge` の環境だけの変更では release PR を作らない**: production に変更がないのに no-op の apply が走るのを避ける。環境ディレクトリどうしは `modules/`・`root.hcl` を共有しているので、除外するのは merge 環境のディレクトリだけにする
 
 ---
 
@@ -122,6 +123,9 @@
   - 2026-10-24 時点の対象は `alb`・`eks`・`eks-holmesgpt`・`eks-karpenter`・`eks-logs`・`eks-metrics`・`eks-secrets`・`eks-traces`・`github-oidc-auth`・`iam-service-linked-roles`・`secrets-manager`・`vpc` の 12 サービス。実装時に `aws/*/production/` の存在で確認し直す
   - `separate-pull-requests: true`、`include-component-in-tag: true`、`component: <service>`。tag は `<service>-vX.Y.Z`
   - `changelog-sections` で `chore` と `refactor` を表示する。`feat` / `fix` / `perf` を上に、`refactor` と `chore` を下の別見出しに並べる
+  - `exclude-paths` に、`apply_trigger: merge` の全環境について `aws/<service>/<environment>` を並べる。ディレクトリがない環境も含める（後から環境を足したときに書き忘れないため）
+    - release-please v17.6.0 は commit のファイルパスを `exclude-paths` と前方一致で比べる（VERIFIED：`src/util/commit-exclude.ts`）。repo root からのパスで書かないと効かない
+    - commit が除外されるのは、そのサービス内で変えたファイルがすべて `exclude-paths` の下にあるときだけ。merge 環境と `modules/` を一緒に変えた commit は release に入る
 - `release.yml` を monorepo と同じ「設定ファイルを探して matrix で回す」形に置き換える。今のリポジトリ全体の release-please はやめる
 - release PR が開かれた・更新されたときに、そのサービスの `aws/<service>/production` だけで plan を出す
 - release PR の plan を merge の直前に出し直す手段を用意する（ラベル・コメントなど、方式は builder に任せる）。release PR を作った後に手動変更（drift）があると、plan に出ていない差分も apply されるため

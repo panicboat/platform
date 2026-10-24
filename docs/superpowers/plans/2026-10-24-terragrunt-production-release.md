@@ -464,3 +464,61 @@ Expected: すべて成功
 - 次に `aws/<service>/modules/` を変える PR で、ラベルの自動付与、全環境の plan、merge 後の `merge` 環境だけの apply、`aws/<service>` の release PR の作成、release PR への production の plan を順に確認する
 - release PR の merge で production だけが承認待ちなしに apply されること、`workflow_dispatch` に同じ tag を渡して再実行できることを確認する
 - aws と kubernetes を同時に変える PR で、`deploy-kubernetes` が `terragrunt-shared` の target を実行しないことを確認する
+- `aws/github-oidc-auth/develop/` だけを変える PR を merge しても、`github-oidc-auth` の release PR ができないことを確認する（Task 9）
+
+---
+
+### Task 9: merge 環境だけの変更を release から外す
+
+**Files:**
+- Modify: `scripts/terragrunt-release/check-release-configs.sh`
+- Modify: `scripts/terragrunt-release/test.sh`
+- Modify: `aws/<service>/release-please-config.json`（12 サービスすべて）
+- Modify: `README.md`・`README-ja.md`（`## 🚢 Deployment` の `### Trigger`）
+
+**Interfaces:**
+- Consumes: Task 5 の `check-release-configs.sh` と `write_service_release_config`（test.sh）
+- Produces: `check-release-configs.sh` は、release 環境を持つ各サービスについて、`packages["aws/<service>"]["exclude-paths"]` を順序を無視して期待値と比べる。期待値は、`workflow-config.yaml` で `name: terragrunt` の stack にある `apply_trigger: merge` の全環境の `aws/<service>/<environment>` で、ディレクトリの有無は問わない。一致しなければ `::error::aws/<service>: exclude-paths must be <expected> (got <actual>)` を出して exit 1。`<expected>` と `<actual>` は 1 行の JSON 配列で、`exclude-paths` がないときの `<actual>` は `null`
+
+- [ ] **Step 1: テストを書く**
+
+`write_service_release_config` は既定で `"exclude-paths":["aws/<service>/master"]` を書く（`write_release_config` の merge 環境が `master` だけなので）。既存のテストは変えずに通ること。
+
+```bash
+test_check_configs_rejects_missing_exclude_paths()   # exclude-paths を消した aws/vpc config → exit 1、stderr に 'aws/vpc: exclude-paths must be ["aws/vpc/master"] (got null)'
+test_check_configs_rejects_relative_exclude_paths()  # exclude-paths が ["master"] → exit 1、stderr に 'aws/vpc: exclude-paths must be ["aws/vpc/master"]'
+test_check_configs_accepts_exclude_paths_in_any_order()  # merge 環境が master と develop の config で、exclude-paths が ["aws/vpc/develop","aws/vpc/master"] → 出力なしで exit 0
+```
+
+- [ ] **Step 2: テストが失敗することを確認する**
+
+Run: `bash scripts/terragrunt-release/test.sh`
+Expected: 追加した 2 つの rejects テストが FAIL
+
+- [ ] **Step 3: `check-release-configs.sh` に検査を足し、テストを通す**
+
+Run: `bash scripts/terragrunt-release/test.sh`
+Expected: 全テスト PASS
+
+- [ ] **Step 4: リポジトリで検査が失敗することを確認する**
+
+Run: `bash scripts/terragrunt-release/check-release-configs.sh`
+Expected: exit 1。12 サービスすべてについて exclude-paths のエラーが出る
+
+- [ ] **Step 5: 12 サービスの config に `exclude-paths` を足す**
+
+各 `aws/<service>/release-please-config.json` の `packages["aws/<service>"]` に `"exclude-paths": ["aws/<service>/master", "aws/<service>/develop"]` を足す。既存のキーの順序と 2 スペースのインデントを保つ。
+
+Run: `bash scripts/terragrunt-release/check-release-configs.sh && bash scripts/terragrunt-release/test.sh`
+Expected: どちらも成功
+
+- [ ] **Step 6: README に動作を書く**
+
+`### Trigger` の release-please 設定の項目の下に、`apply_trigger: merge` の環境ディレクトリだけを変える commit は `exclude-paths` で release から外れること、`check-release-configs.sh` がその一覧を `workflow-config.yaml` と照合することを書く。`README-ja.md` も同じ内容を日本語で書く。
+
+- [ ] **Step 7: commit する**
+
+```bash
+git add scripts/terragrunt-release aws/*/release-please-config.json README.md README-ja.md
+git commit -s -m "ci: keep merge-only environment changes out of service releases"
+```
