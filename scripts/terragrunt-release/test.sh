@@ -2,6 +2,7 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(git -C "${script_dir}" rev-parse --show-toplevel)"
 work_root="$(mktemp -d)"
 trap 'rm -rf "${work_root}"' EXIT
 
@@ -85,6 +86,16 @@ stacks:
       - "kubernetes/components/{service}/{environment}"
 YAML
     bash "${script_dir}/validate-apply-trigger.sh"
+}
+
+test_repository_config_is_valid() {
+    bash "${script_dir}/validate-apply-trigger.sh" "${repo_root}/workflow-config.yaml"
+}
+
+test_repository_config_never_merges_production() {
+    local trigger
+    trigger="$(yq '.stacks[] | select(.name == "terragrunt") | .environments.production.apply_trigger' "${repo_root}/workflow-config.yaml")"
+    assert_eq "release" "${trigger}"
 }
 
 failed=0
