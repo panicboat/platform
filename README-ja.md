@@ -48,7 +48,7 @@
 
 - Environment、AWS region、IAM role は `workflow-config.yaml` で定義する。環境の追加・削除は同ファイルの編集で行う。
 - 認証は GitHub OIDC。`aws/github-oidc-auth/` が environment ごとの plan / apply role を発行し、executor がそれを引き受ける。
-- GitHub environment `production` は tag pattern `*-v*` に一致する ref からの deployment だけを受け付ける。この設定は `github/repository/` で管理する。
+- `platform` の GitHub environment `production` は tag pattern `*-v*` に一致する ref からの deployment だけを受け付け、`monorepo` の `production` はどの ref からの deployment も受け付けない。これらの設定は `github/repository/` で管理する。
 - Terragrunt の remote state は S3 + DynamoDB に保存される。bucket / lock table 名は各 `aws/{service}/root.hcl`（および `github/` 配下の同等ファイル）で定義される。
 
 ### Pipeline Flow
