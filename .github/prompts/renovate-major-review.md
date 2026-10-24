@@ -27,7 +27,7 @@ You only read. Never modify files, push, approve, label, or comment yourself.
    2. `helm show chart <chart> --version <current>` / `<new>`: `appVersion` and every `dependencies[]` entry (sub-chart name, repository, version; the repository may switch to `oci://`).
    3. For each sub-chart whose version changed: `helm show chart <repository>/<name> --version <v>` (or the `oci://` reference) for its `appVersion`, and treat the sub-chart itself as a chart in this whole section (its own release notes, upgrade guide, and defaults via `helm show values`).
    4. Images whose tags are set in the defaults rather than `appVersion` (`image.tag`, `*.image.tag`, `*Spec.image.tag`, ...): find them in `helm show values` for both versions.
-      The output can be large; read the saved output with Read / Grep instead of piping to other commands.
+      The output can be large and pipes to other commands are not allowed; run `helm pull <chart> --version <v> --untar --untardir /tmp/charts/<v>` and use Grep / Read on the extracted `values.yaml` files instead.
    5. For each application whose version changed (from `appVersion`, sub-charts, or image tags), fetch its own release notes and upgrade guide for the same semver range from its upstream repository (e.g. `grafana/tempo` for the `tempo` chart; `prometheus-operator/prometheus-operator` and `prometheus/prometheus` for `kube-prometheus-stack`).
 4. Record which version ranges you could not cover and why, for the chart, each sub-chart, and each application.
 5. Record whether the PR body notes were for a different package or skipped versions.
