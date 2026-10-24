@@ -15,6 +15,6 @@ releases:
     namespace: karpenter
     chart: oci://public.ecr.aws/karpenter/karpenter
     # renovate: datasource=docker depName=public.ecr.aws/karpenter/karpenter
-    version: "1.14.0"
+    version: "1.14.1"
     values:
       - values.yaml.gotmpl

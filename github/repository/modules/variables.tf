@@ -37,7 +37,6 @@ variable "repositories" {
     name                             = string
     description                      = string
     visibility                       = string
-    allow_forking                    = optional(bool, true)
     actions_default_permissions_read = optional(bool, false)
     features = object({
       issues   = bool
