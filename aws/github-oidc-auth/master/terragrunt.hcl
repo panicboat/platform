@@ -22,6 +22,7 @@ inputs = {
   oidc_provider_arn       = include.env.locals.oidc_provider_arn
   max_session_duration    = include.env.locals.max_session_duration
   bedrock_models          = include.env.locals.bedrock_models
+  bedrock_oidc_subjects   = include.env.locals.bedrock_oidc_subjects
 
   common_tags = merge(
     {
