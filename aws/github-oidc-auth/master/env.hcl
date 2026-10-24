@@ -12,6 +12,10 @@ locals {
   additional_iam_policies = []
 
   bedrock_models = ["anthropic.claude-sonnet-4-6"]
+  bedrock_oidc_subjects = [
+    "repo:panicboat/platform:environment:renovate-major-review",
+    "repo:panicboat/monorepo:environment:docs-sync-check",
+  ]
 
   # Manages account-level OIDC provider singleton for the management account.
   create_oidc_provider = true

@@ -38,6 +38,10 @@ run "creates_bedrock_role_for_listed_models" {
 
   variables {
     bedrock_models = ["anthropic.claude-sonnet-4-6"]
+    bedrock_oidc_subjects = [
+      "repo:panicboat/platform:environment:renovate-major-review",
+      "repo:panicboat/monorepo:environment:docs-sync-check",
+    ]
   }
 
   assert {
@@ -46,8 +50,8 @@ run "creates_bedrock_role_for_listed_models" {
   }
 
   assert {
-    condition     = jsondecode(aws_iam_role.bedrock[0].assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == ["repo:panicboat/platform:environment:renovate-major-review"]
-    error_message = "Only the renovate-major-review environment of panicboat/platform may assume the bedrock role."
+    condition     = jsondecode(aws_iam_role.bedrock[0].assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == var.bedrock_oidc_subjects
+    error_message = "The bedrock role must trust exactly the listed OIDC subjects."
   }
 
   assert {

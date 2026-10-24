@@ -75,3 +75,9 @@ variable "bedrock_models" {
   type        = list(string)
   default     = []
 }
+
+variable "bedrock_oidc_subjects" {
+  description = "GitHub OIDC subjects allowed to assume the Bedrock role"
+  type        = list(string)
+  default     = []
+}
