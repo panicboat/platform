@@ -24,7 +24,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.
 │   ├── components/      # Helmfile sources (per environment)
 │   └── manifests/       # Rendered output that Flux applies
 ├── docs/                # Runbooks and design notes
-├── scripts/             # EKS lifecycle / hydration / post-flight helpers
+├── scripts/             # EKS lifecycle / hydration helpers
 ├── Makefile             # EKS teardown entry points
 └── workflow-config.yaml # Environments and stack conventions (source of truth)
 ```

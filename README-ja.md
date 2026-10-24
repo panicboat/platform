@@ -24,7 +24,7 @@
 │   ├── components/      # environment ごとの Helmfile source
 │   └── manifests/       # Flux が適用するレンダリング済みマニフェスト
 ├── docs/                # runbook と設計ノート
-├── scripts/             # EKS lifecycle / hydration / post-flight 用 helper
+├── scripts/             # EKS lifecycle / hydration 用 helper
 ├── Makefile             # EKS teardown entry point
 └── workflow-config.yaml # environment と stack convention の source of truth
 ```
