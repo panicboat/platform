@@ -41,6 +41,8 @@ A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.
   - To re-apply a release, run `auto-release--trigger` with `workflow_dispatch` and pass the release tag (`{service}-vX.Y.Z`).
 - Changes to files outside environment directories under `aws/{service}/` (modules, `root.hcl`, ...) are detected through the `terragrunt-shared` stack and target every environment of that service.
 - A service with an `apply_trigger: release` environment directory needs `aws/{service}/release-please-config.json` and `release-please-manifest.json`; `check-release-configs.sh` fails CI otherwise.
+  - Commits that change only `apply_trigger: merge` environment directories are kept out of the release through `exclude-paths` in `release-please-config.json`.
+  - `check-release-configs.sh` compares `exclude-paths` with the `apply_trigger: merge` environments in `workflow-config.yaml`.
 
 ### Stacks
 

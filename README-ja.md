@@ -41,6 +41,8 @@
   - release の apply を再実行するときは `auto-release--trigger` を `workflow_dispatch` で起動し、release tag（`{service}-vX.Y.Z`）を渡す。
 - `aws/{service}/` 配下の environment ディレクトリ以外のファイル（module、`root.hcl` など）の変更は `terragrunt-shared` stack で検出され、その service の全 environment が対象になる。
 - `apply_trigger: release` の environment ディレクトリを持つ service には `aws/{service}/release-please-config.json` と `release-please-manifest.json` が必要。無い場合は `check-release-configs.sh` が CI を失敗させる。
+  - `apply_trigger: merge` の environment ディレクトリだけを変える commit は、`release-please-config.json` の `exclude-paths` で release から外れる。
+  - `check-release-configs.sh` は `exclude-paths` を `workflow-config.yaml` の `apply_trigger: merge` の environment と照合する。
 
 ### Stacks
 

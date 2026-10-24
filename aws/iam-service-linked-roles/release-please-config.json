@@ -20,7 +20,8 @@
     "aws/iam-service-linked-roles": {
       "release-type": "simple",
       "component": "iam-service-linked-roles",
-      "include-component-in-tag": true
+      "include-component-in-tag": true,
+      "exclude-paths": ["aws/iam-service-linked-roles/master", "aws/iam-service-linked-roles/develop"]
     }
   }
 }

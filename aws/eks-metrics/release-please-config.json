@@ -20,7 +20,8 @@
     "aws/eks-metrics": {
       "release-type": "simple",
       "component": "eks-metrics",
-      "include-component-in-tag": true
+      "include-component-in-tag": true,
+      "exclude-paths": ["aws/eks-metrics/master", "aws/eks-metrics/develop"]
     }
   }
 }

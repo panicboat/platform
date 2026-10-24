@@ -7,6 +7,10 @@ config_path="${1:-workflow-config.yaml}"
 # release-targets.sh stderr is hidden below, so an unreadable config would otherwise look like "no release services"
 yq '.' "${config_path}" >/dev/null
 
+merge_environments="$(yq -o=json '.' "${config_path}" | jq -c '
+    [.stacks[] | select(.name == "terragrunt") | .environments | to_entries[] | select(.value.apply_trigger == "merge") | .key]
+')"
+
 failed=0
 
 report() {
@@ -47,6 +51,14 @@ for service_dir in aws/*/; do
     component="$(jq -r --arg package "${package}" '.packages[$package].component // ""' "${config_file}")"
     if [ "${component}" != "${service}" ]; then
         report "${package}: component must be ${service} (got '${component}')"
+    fi
+
+    expected_exclude_paths="$(jq -c --arg package "${package}" 'map("\($package)/\(.)")' <<<"${merge_environments}")"
+    actual_exclude_paths="$(jq -c --arg package "${package}" '.packages[$package]["exclude-paths"]' "${config_file}")"
+    if ! jq -ne --argjson expected "${expected_exclude_paths}" --argjson actual "${actual_exclude_paths}" '
+        ($actual | type) == "array" and ($actual | sort) == ($expected | sort)
+    ' >/dev/null; then
+        report "${package}: exclude-paths must be ${expected_exclude_paths} (got ${actual_exclude_paths})"
     fi
 
     if [ ! -f "${manifest_file}" ] || ! jq -e --arg package "${package}" 'has($package)' "${manifest_file}" >/dev/null; then

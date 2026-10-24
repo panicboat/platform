@@ -179,10 +179,10 @@ test_release_targets_fails_without_targets() {
 }
 
 write_service_release_config() {
-    local service="$1" component="${2:-$1}"
+    local service="$1" component="${2:-$1}" exclude_paths="${3:-[\"aws/$1/master\"]}"
     mkdir -p "aws/${service}"
     cat > "aws/${service}/release-please-config.json" <<JSON
-{"packages":{"aws/${service}":{"release-type":"simple","component":"${component}","include-component-in-tag":true}}}
+{"packages":{"aws/${service}":{"release-type":"simple","component":"${component}","include-component-in-tag":true,"exclude-paths":${exclude_paths}}}}
 JSON
     echo "{\"aws/${service}\":\"0.1.0\"}" > "aws/${service}/release-please-manifest.json"
 }
@@ -244,6 +244,44 @@ YAML
     assert_stderr_contains "aws_region"
     assert_stderr_contains "iam_role_plan"
     assert_stderr_contains "iam_role_apply"
+}
+
+test_check_configs_rejects_missing_exclude_paths() {
+    write_release_config
+    mkdir -p aws/vpc/production
+    write_service_release_config vpc
+    jq -c 'del(.packages["aws/vpc"]["exclude-paths"])' aws/vpc/release-please-config.json > config.tmp
+    mv config.tmp aws/vpc/release-please-config.json
+    assert_fails bash "${script_dir}/check-release-configs.sh"
+    assert_stderr_contains 'aws/vpc: exclude-paths must be ["aws/vpc/master"] (got null)'
+}
+
+test_check_configs_rejects_relative_exclude_paths() {
+    write_release_config
+    mkdir -p aws/vpc/production
+    write_service_release_config vpc vpc '["master"]'
+    assert_fails bash "${script_dir}/check-release-configs.sh"
+    assert_stderr_contains 'aws/vpc: exclude-paths must be ["aws/vpc/master"]'
+}
+
+test_check_configs_accepts_exclude_paths_in_any_order() {
+    cat > workflow-config.yaml <<'YAML'
+stacks:
+  - name: terragrunt
+    environments:
+      master:
+        apply_trigger: merge
+      develop:
+        apply_trigger: merge
+      production:
+        aws_region: ap-northeast-1
+        iam_role_plan: arn:aws:iam::222222222222:role/production-plan
+        iam_role_apply: arn:aws:iam::222222222222:role/production-apply
+        apply_trigger: release
+YAML
+    mkdir -p aws/vpc/production
+    write_service_release_config vpc vpc '["aws/vpc/develop","aws/vpc/master"]'
+    assert_eq "" "$(bash "${script_dir}/check-release-configs.sh" 2>&1)"
 }
 
 test_deploy_trigger_applies_only_merge_targets() {

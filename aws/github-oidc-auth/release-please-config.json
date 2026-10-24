@@ -20,7 +20,8 @@
     "aws/github-oidc-auth": {
       "release-type": "simple",
       "component": "github-oidc-auth",
-      "include-component-in-tag": true
+      "include-component-in-tag": true,
+      "exclude-paths": ["aws/github-oidc-auth/master", "aws/github-oidc-auth/develop"]
     }
   }
 }

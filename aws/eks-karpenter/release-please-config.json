@@ -20,7 +20,8 @@
     "aws/eks-karpenter": {
       "release-type": "simple",
       "component": "eks-karpenter",
-      "include-component-in-tag": true
+      "include-component-in-tag": true,
+      "exclude-paths": ["aws/eks-karpenter/master", "aws/eks-karpenter/develop"]
     }
   }
 }
