@@ -39,8 +39,8 @@
 - `apply_trigger: release` の Terragrunt environment は `aws/{service}` の release 公開時に `auto-release--trigger.yaml` が apply する。
   - release PR では `auto-release--plan.yaml` が `terragrunt plan` を実行する。plan を出し直すときは該当する `auto-release--plan` の run で「Re-run all jobs」を使う。
   - release の apply を再実行するときは、`auto-release--trigger` を release tag の ref で `workflow_dispatch` 起動し、同じ tag を渡す：`gh workflow run auto-release--trigger.yaml --ref {service}-vX.Y.Z -f tag={service}-vX.Y.Z`。
-- `workflow-config.yaml` の `terragrunt` stack の `exclude` の rule に一致する environment は、label 付与・PR の plan・`main` への push の apply・release の plan / apply のすべてから外れる。
-  - rule のキー（`service`、`environment`）がすべて target の値と一致したとき、その rule に一致する。
+- `workflow-config.yaml` の `terragrunt` stack の `exclude` の rule に一致する `{service}/{environment}` の組は、`label-resolver` の target（PR の plan・`main` への push の apply）にならず、release の plan / apply も行われない。
+  - rule のキー（`service`、`environment`）がすべて組の値と一致したとき、その組に一致する。`environment` だけの rule はすべての service に効く。
   - release PR は作られるが、merge しても apply されない：`release-targets.sh` が target を返さないとき、`auto-release--plan.yaml` と `auto-release--trigger.yaml` は `plan` / `apply` を skip する。
 - `aws/{service}/` 配下の environment ディレクトリ以外のファイル（module、`root.hcl` など）の変更は `terragrunt-shared` stack で検出され、その service の全 environment が対象になる。
 - `apply_trigger: release` の environment ディレクトリを持つ service には `aws/{service}/release-please-config.json` と `release-please-manifest.json` が必要。無い場合は `check-release-configs.sh` が CI を失敗させる。
