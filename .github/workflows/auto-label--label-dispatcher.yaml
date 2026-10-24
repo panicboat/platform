@@ -14,6 +14,7 @@ permissions:
 jobs:
   dispatch-labels:
     name: 'Dispatch Labels'
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     runs-on: ubuntu-latest
     steps:
       - name: Generate GitHub App token

@@ -35,6 +35,17 @@ A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.
 
 - `auto-label--deploy-trigger.yaml` runs on PR labels and on push to `main`.
 - `panicboat/deploy-actions/label-resolver` reads `workflow-config.yaml` to expand each label into one or more `{service}/{environment}` targets.
+- Terragrunt environments with `apply_trigger: merge` are applied on push to `main`.
+- Terragrunt environments with `apply_trigger: release` are applied by `auto-release--trigger.yaml` when the `aws/{service}` release is published.
+  - The release PR runs `terragrunt plan` through `auto-release--plan.yaml`; to re-plan, use "Re-run all jobs" on that `auto-release--plan` run.
+  - To re-apply a release, run `auto-release--trigger` with `workflow_dispatch` on the release tag ref and pass the same tag: `gh workflow run auto-release--trigger.yaml --ref {service}-vX.Y.Z -f tag={service}-vX.Y.Z`.
+- A `{service}/{environment}` pair matched by a rule in `exclude` of the `terragrunt` stack in `workflow-config.yaml` gets no target from `label-resolver` (PR plan, apply on push to `main`) and no release plan / apply.
+  - A rule matches a pair when every key (`service`, `environment`) equals the pair's value; a rule with only `environment` covers every service.
+  - The release PR is still created, but merging it applies nothing: `auto-release--plan.yaml` and `auto-release--trigger.yaml` skip `plan` / `apply` when `release-targets.sh` returns no target.
+- Changes to files outside environment directories under `aws/{service}/` (modules, `root.hcl`, ...) are detected through the `terragrunt-shared` stack and target every environment of that service.
+- A service with an `apply_trigger: release` environment directory needs `aws/{service}/release-please-config.json` and `release-please-manifest.json`; `check-release-configs.sh` fails CI otherwise.
+  - Commits that change only `apply_trigger: merge` environment directories are kept out of the release through `exclude-paths` in `release-please-config.json`.
+  - `check-release-configs.sh` compares `exclude-paths` with the `apply_trigger: merge` environments in `workflow-config.yaml`.
 
 ### Stacks
 
@@ -47,6 +58,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.
 ### Environments and authentication
 
 - Environments, AWS regions, and IAM roles are defined in `workflow-config.yaml`. Adding or removing an environment means editing that file.
+- `apply_trigger` in `workflow-config.yaml` decides when an environment is applied: `merge` applies on push to `main`, `release` applies when the service release is published.
 - Authentication uses GitHub OIDC. `aws/github-oidc-auth/` issues per-environment plan / apply roles that the executors assume.
 - The GitHub environment `production` of `platform` accepts deployments only from refs that match the tag pattern `*-v*`, and that of `monorepo` accepts deployments from no ref. The settings are managed in `github/repository/`.
 - Terragrunt remote state lives in S3 + DynamoDB; bucket and lock-table names are defined in each `aws/{service}/root.hcl` (and the equivalent under `github/`).
@@ -58,6 +70,7 @@ flowchart LR
   subgraph Triggers
     PRevent[PR open/sync]
     Mainpush[push main]
+    Release[release published]
   end
 
   subgraph Labeling
@@ -76,6 +89,7 @@ flowchart LR
   end
 
   subgraph Terragrunt
+    ReleaseTrigger[auto-release--trigger]
     TG[reusable--terragrunt-executor]
     Plan[terragrunt plan]
     Apply[terragrunt apply]
@@ -92,8 +106,10 @@ flowchart LR
   Dispatcher --> Trigger
   Trigger --> Resolver
   Resolver -->|stack: terragrunt| TG
+  Release --> ReleaseTrigger
+  ReleaseTrigger --> TG
   TG -->|on pull_request| Plan
-  TG -->|on push main| Apply
+  TG -->|on push main or release published| Apply
   Plan --> PRComment
   Apply --> AWS
   Resolver -->|stack: kubernetes| Group
