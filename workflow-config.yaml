@@ -22,11 +22,6 @@ stacks:
     exclude:
       - environment: production
 
-  - name: terragrunt-shared
-    paths:
-      - "aws/{service}"
-    attributes: {}
-
   - name: kubernetes
     paths:
       - "kubernetes/components/{service}/{environment}"
