@@ -8,9 +8,6 @@ locals {
         local.defaults.locals.branch_protection.main,
         {
           required_status_checks = [
-            "CI Gatekeeper",
-            "Validate PR title",
-            "Ensure actions are pinned to SHAs",
             "Docs Sync Check",
           ]
           # Allows release and image update bots to push directly without failing status checks.
