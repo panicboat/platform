@@ -31,7 +31,7 @@ jobs:
     steps:
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           app-id: ${{ inputs.app-id }}
           private-key: ${{ secrets.private-key }}
@@ -61,14 +61,14 @@ jobs:
 
       - name: Build head manifests
         id: kustomize-head
-        uses: int128/kustomize-action@4dff2fdd8526459cd7425a75c65dbc6b459e14fc # v1.194.0
+        uses: int128/kustomize-action@4fbeca93d7072507f0c6d4529025d17a5d209551 # v1.195.0
         with:
           kustomization: kubernetes/manifests/${{ inputs.environment }}/${{ inputs.service-name }}/kustomization.yaml
           write-individual-files: true
 
       - name: Build base manifests
         id: kustomize-base
-        uses: int128/kustomize-action@4dff2fdd8526459cd7425a75c65dbc6b459e14fc # v1.194.0
+        uses: int128/kustomize-action@4fbeca93d7072507f0c6d4529025d17a5d209551 # v1.195.0
         with:
           base-directory: base
           kustomization: kubernetes/manifests/${{ inputs.environment }}/${{ inputs.service-name }}/kustomization.yaml
@@ -76,7 +76,7 @@ jobs:
 
       - name: Diff manifests
         id: diff
-        uses: int128/diff-action@c8988a2606d2c85af614a5675addf44b94c66989 # v2.40.0
+        uses: int128/diff-action@274034d712aef611adcbd41e5a647f43e4edd5a5 # v2.41.0
         with:
           base: ${{ steps.kustomize-base.outputs.directory }}
           head: ${{ steps.kustomize-head.outputs.directory }}
