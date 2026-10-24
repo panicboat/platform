@@ -35,19 +35,29 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 
 ### Trigger
 
-- [auto-label--deploy-trigger.yaml](.github/workflows/auto-label--deploy-trigger.yaml) runs on PR labels and on push to `main`.
-- `panicboat/deploy-actions/label-resolver` reads [workflow-config.yaml](workflow-config.yaml) to expand each label into one or more `{service}/{environment}` targets.
-- Terragrunt environments with `apply_trigger: merge` are applied on push to `main`.
-- Terragrunt environments with `apply_trigger: release` are applied by [auto-release--trigger.yaml](.github/workflows/auto-release--trigger.yaml) when the `aws/{service}` release is published.
-  - The release PR runs `terragrunt plan` through [auto-release--plan.yaml](.github/workflows/auto-release--plan.yaml); to re-plan, use "Re-run all jobs" on that `auto-release--plan` run.
-  - To re-apply a release, run `auto-release--trigger` with `workflow_dispatch` on the release tag ref and pass the same tag: `gh workflow run auto-release--trigger.yaml --ref {service}-vX.Y.Z -f tag={service}-vX.Y.Z`.
-- A `{service}/{environment}` pair matched by a rule in `exclude` of the `terragrunt` stack in [workflow-config.yaml](workflow-config.yaml) gets no target from `label-resolver` (PR plan, apply on push to `main`) and no release plan / apply.
-  - A rule matches a pair when every key (`service`, `environment`) equals the pair's value; a rule with only `environment` covers every service.
-  - The release PR is still created, but merging it applies nothing: [auto-release--plan.yaml](.github/workflows/auto-release--plan.yaml) and [auto-release--trigger.yaml](.github/workflows/auto-release--trigger.yaml) skip `plan` / `apply` when [release-targets.sh](.github/scripts/terragrunt-release/release-targets.sh) returns no target.
-- Changes to files outside environment directories under `aws/{service}/` (modules, `root.hcl`, ...) are detected through the `terragrunt-shared` stack and target every environment of that service.
-- A service with an `apply_trigger: release` environment directory needs `aws/{service}/release-please-config.json` and `release-please-manifest.json`; [check-release-configs.sh](.github/scripts/terragrunt-release/check-release-configs.sh) fails CI otherwise.
-  - Commits that change only `apply_trigger: merge` environment directories are kept out of the release through `exclude-paths` in `release-please-config.json`.
-  - [check-release-configs.sh](.github/scripts/terragrunt-release/check-release-configs.sh) compares `exclude-paths` with the `apply_trigger: merge` environments in [workflow-config.yaml](workflow-config.yaml).
+| Event | Workflow | Terragrunt |
+|-------|----------|------------|
+| `deploy:{service}` label added to a PR | [auto-label--deploy-trigger.yaml](.github/workflows/auto-label--deploy-trigger.yaml) | plan every target |
+| Push to `main` | [auto-label--deploy-trigger.yaml](.github/workflows/auto-label--deploy-trigger.yaml) | apply targets with `apply_trigger: merge` |
+| Release PR opened / updated | [auto-release--plan.yaml](.github/workflows/auto-release--plan.yaml) | plan the service's `apply_trigger: release` environments |
+| Release published | [auto-release--trigger.yaml](.github/workflows/auto-release--trigger.yaml) | apply the service's `apply_trigger: release` environments |
+
+#### Targets
+
+- [auto-label--label-dispatcher.yaml](.github/workflows/auto-label--label-dispatcher.yaml) adds `deploy:{service}` to a PR when it is opened or updated; release-please branches get no label.
+  - Any change under `aws/{service}/`, including modules and `root.hcl`, adds the label.
+- `label-resolver` expands the label into every environment of that service using [workflow-config.yaml](workflow-config.yaml).
+- A `{service}/{environment}` pair matched by `exclude` of the `terragrunt` stack is never planned or applied, including by releases.
+  - A rule with only `environment` covers every service.
+
+#### Releases
+
+- Each `aws/{service}` with an `apply_trigger: release` environment has its own release-please config (`release-please-config.json` / `release-please-manifest.json`).
+  - [check-release-configs.sh](.github/scripts/terragrunt-release/check-release-configs.sh) fails CI when a config is missing.
+- Commits that touch only `apply_trigger: merge` environment directories do not create a release (`exclude-paths`).
+- While every `apply_trigger: release` environment is excluded, the release PR is still created, but nothing is planned or applied.
+- To re-plan, use "Re-run all jobs" on the `auto-release--plan` run.
+- To re-apply, run `gh workflow run auto-release--trigger.yaml --ref {service}-vX.Y.Z -f tag={service}-vX.Y.Z`.
 
 ### Stacks
 
