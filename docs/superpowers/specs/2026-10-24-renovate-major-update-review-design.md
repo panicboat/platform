@@ -45,11 +45,12 @@ Renovate PR (labels: 🤖 renovate, 📈 major-update, deploy:<svc>)
   ├─ (既存・変更なし) auto-label--deploy-trigger.yaml → hydrate → Kustomize Diff コメント
   │
   └─ (新規・独立 workflow) `📈 major-update` ラベル付与で即発火し、hydrate と並行実行
-        1. AWS OIDC → master account の Bedrock 専用 role を assume
-        2. claude-code-action (Bedrock, sonnet-4-6) を起動
-        3. Claude が upstream のリリースノート / upgrade guide を取得
-        4. リポジトリの定義と突き合わせ
-        5. レビューコメントを1件 upsert
+        1. render job: 変更された component を base と head で描画し、差分の要約を artifact にする
+        2. AWS OIDC → master account の Bedrock 専用 role を assume
+        3. claude-code-action (Bedrock, sonnet-4-6) を起動
+        4. Claude が描画差分を読み、upstream のリリースノート / upgrade guide を取得
+        5. リポジトリの定義と突き合わせ
+        6. レビューコメントを1件 upsert
 ```
 
 ### Decided
@@ -65,9 +66,10 @@ Renovate PR (labels: 🤖 renovate, 📈 major-update, deploy:<svc>)
 - **起動タイミング**: `📈 major-update` ラベルが付与された `pull_request: labeled` イベントで即発火する独立 workflow とし、hydrate の完了は待たない
   - Renovate は PR 作成時にラベルを複数付け、ラベルごとに `labeled` が発火する。`github.event.label.name` で `📈 major-update` に絞れば1回だけ起動する
   - `auto-label--deploy-trigger.yaml` に job を足すと、同 workflow の `cancel-in-progress` で Claude が途中キャンセル・再起動され Bedrock 消費が無駄になるうえ、デプロイの中核 workflow に手が入る
-- **レビュー材料**: 次の3つを使う。Kustomize Diff コメントは使わない
+- **レビュー材料**: 次の4つを使う。Kustomize Diff コメントは使わない
+  - 描画差分（後述の Builder's Call）
   - upstream の一次情報（PR 本文のノートは参考扱い）
-    - Helm chart では chart 自体に加え、バージョンが変わった sub-chart（chart として同じ手順で読む）と、`appVersion`・sub-chart の `appVersion`・default values の image tag から特定したアプリケーションの release notes / upgrade guide も読む。chart のノートは同梱物側の破壊的変更（設定項目の削除・storage 形式・CRD schema・security context）をほとんど転記しないため
+    - chart 自体に加え、描画差分で tag が変わった image と、バージョンが変わった sub-chart（chart として同じ手順で読む）の release notes / upgrade guide も読む。chart のノートは同梱物側の破壊的変更（設定項目の削除・storage 形式・CRD schema・security context）をほとんど転記しないため
     - 範囲は semver で `current < v <= new` とする。複数の系列を並行リリースするプロジェクトがあるため、公開日順では取らない
   - 対象 component の `helmfile.yaml`・`values.yaml.gotmpl`（または `values.yaml`）・`kustomization/` 配下
   - GitHub Actions 更新の場合は、その action を使っている workflow ファイル
@@ -84,13 +86,19 @@ Renovate PR (labels: 🤖 renovate, 📈 major-update, deploy:<svc>)
 - **再レビュー**: Renovate による PR 更新を起点にした自動再レビューは作らない
   - hydrate のコミット後は Renovate が自動 rebase を止める（"Edited/Blocked Notification"）ため、PR が自動で更新されることがほぼない
   - 再レビューは `📈 major-update` ラベルを付け直して起動する（`workflow_dispatch` は sub が変わり Bedrock role の信頼条件に合わないため使わない）
-- **テンプレート側の変化の補完**: StatefulSet の selector 変更・PVC 再作成など、values に現れないテンプレートの変化が疑われる場合、Claude が新旧 chart を `helm template` で描画して該当リソースだけを比較する
-  - Kustomize Diff を使わない代わりの手段。常時実行するか、疑わしい場合だけ実行するかは実装時に決める
+- **描画差分**: review の前に、PR が変更した `kubernetes/components/<svc>/<env>/` を base（merge commit の第1親）と head の両方で `hydrate-component.sh` により描画し、`scripts/kubernetes-hydrate/render-diff.sh` が差分の要約と全文 diff を作る
+  - 要約は chart や package の種類に依存しない3項目に限る: image 参照、CRD の served / storage version、kind / namespace / name 単位で追加・削除されたリソース
+    - image 参照は、文字列値を持つ `image` キー（Pod spec と custom resource の両方）と、`registry/repository:tag` の形をしたその他の文字列値（`--prometheus-config-reloader=...` のような args や env）から集める。operator が args で受け取る既定 image を取りこぼさないため
+  - `aws/eks/<env>/env.hcl` が無いディレクトリ（`pending` など）は hydrate されないため描画せず、`Not rendered` と記録する
+  - chart の default values を検索する方式は、chart ごとの書き方とリポジトリ側の上書きに左右され、`Prometheus` CR の `spec.image` のようにテンプレートで組み立てる値を拾えないため採らない。prompt の指示だけでは、#1018 で上書きしていない default image（Prometheus）を2回続けて取りこぼした
+  - hydrate の commit を待って manifest を比べる方式は、ラベル付与で即発火し hydrate と並行実行する前提を崩すため採らない
+  - 描画は `contents: read` だけを持つ別 job で行い、artifact で review job に渡す。helmfile のテンプレートは `exec` でコマンドを実行でき、PR の内容を描画する処理を `id-token: write` と review environment を持つ job に置かないため
+  - 描画や要約に失敗した component は `Rendering failed` / `Summarizing failed` と記録し、レビューは続ける。その component は未確認扱いとし、判定を ⚠️ にする
 - **書き込み権限の分離**: Claude を動かす step には GitHub への書き込み権限を持つ token を渡さない
   - upstream のリリースノートは外部入力で prompt injection の経路になるため
   - Claude はコメント本文をファイルに出力するだけにする。投稿は後続の別 step が `pull-requests: write` だけを持つ token で行う
   - Claude に許可するツールは、リポジトリの読み取り、Web 取得、`gh`・`git`・`helm` の一部サブコマンドに限定する
-  - `helm template --post-renderer` や `gh api <外部 URL>` を経由した任意コマンド実行・外部送信は許可リストでは塞ぎきれない。そのため job が持つ AWS 認証情報と OIDC token の権限を Bedrock 呼び出しだけに絞り、持ち出されたときの被害を最大1時間の Bedrock 利用に限定する
+  - `gh api <外部 URL>` などを経由した外部送信は許可リストでは塞ぎきれない。そのため job が持つ AWS 認証情報と OIDC token の権限を Bedrock 呼び出しだけに絞り、持ち出されたときの被害を最大1時間の Bedrock 利用に限定する
 - **対象パッケージの種別**: `📈 major-update` の PR はすべてレビューする
   - Helm chart・GitHub Actions 以外（container image・Terraform provider 等）も、Renovate が変更したファイルと、その依存を参照している定義を材料にして、同じ形式でレビューする
 - **根拠が一部しか取れなかった場合**: 判定は ✅ にせず ⚠️ にし、取得できなかったバージョン範囲・情報源を「影響のある変更」の先頭に明記する
@@ -105,12 +113,12 @@ Renovate PR (labels: 🤖 renovate, 📈 major-update, deploy:<svc>)
    - ✅ そのままマージ可
    - ⚠️ 修正が必要
    - 🛑 手動作業が必要（CRD 適用・データ移行など）
-2. **対象範囲**: 調べたバージョン範囲（chart と、バージョンが変わった sub-chart・アプリケーションそれぞれ）と、参照した一次情報の URL
+2. **対象範囲**: 調べたバージョン範囲（chart と、描画差分で tag が変わった image・バージョンが変わった sub-chart それぞれ。描画差分の image は1行も落とさない）と、参照した一次情報の URL
    - PR 本文のリリースノートが別パッケージのものだった場合や、途中のバージョンが欠けていた場合は、その旨を明記する
 3. **影響のある変更**: 自リポジトリの定義に該当する破壊的変更・deprecated・default 値変更だけを列挙する
    - 各項目にファイル:行番号と、具体的な修正案（コードブロック）を付ける
 4. **影響のない変更**: 該当しなかった主要な破壊的変更を `<details>` で折りたたんで列挙する（調べ漏れでないことを示すため）
-5. **描画結果の注目点**: `helm template` の新旧比較で見つかった、挙動が変わりうる箇所（StatefulSet の selector 変更、PVC 再作成など）。比較を実行しなかった場合は省略する
+5. **描画結果の注目点**: 描画差分の CRD 変化・追加 / 削除されたリソースと、全文 diff から見つかった挙動が変わりうる箇所（StatefulSet の selector 変更、PVC 再作成など）。描画差分に component がない場合は省略する
 
 ## Constraints
 

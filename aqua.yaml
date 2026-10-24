@@ -8,6 +8,7 @@ packages:
   - name: helmfile/helmfile@v0.169.2
   - name: helm/helm@v3.17.3
   - name: kubernetes-sigs/kustomize@kustomize/v5.6.0
+  - name: mikefarah/yq@v4.54.1
   - name: nektos/act@v0.2.87
   - name: rhysd/actionlint@v1.7.7
   - name: opentofu/opentofu@v1.12.6
