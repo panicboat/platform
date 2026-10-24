@@ -45,7 +45,7 @@ jobs:
       matrix:
         target: ${{ fromJson(needs.resolve.outputs.targets) }}
       fail-fast: false
-    uses: ./.github/workflows/reusable--terragrunt-executor.yaml
+    uses: ./.github/workflows/reusable--terragrunt-runner.yaml
     with:
       service-name: ${{ matrix.target.service }}
       environment: ${{ matrix.target.environment }}
