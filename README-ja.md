@@ -35,6 +35,10 @@
 
 - `auto-label--deploy-trigger.yaml` が PR ラベル / `main` への push で起動する。
 - `panicboat/deploy-actions/label-resolver` が `workflow-config.yaml` を参照して各ラベルを 1 つ以上の `{service}/{environment}` ターゲットに展開する。
+- `apply_trigger: merge` の Terragrunt environment は `main` への push で apply される。
+- `apply_trigger: release` の Terragrunt environment は `aws/{service}` の release 公開時に `auto-release--trigger.yaml` が apply する。
+  - release PR では `auto-release--plan.yaml` が `terragrunt plan` を実行する。plan を出し直すときは該当する `auto-release--plan` の run で「Re-run all jobs」を使う。
+  - release の apply を再実行するときは `auto-release--trigger` を `workflow_dispatch` で起動し、release tag（`{service}-vX.Y.Z`）を渡す。
 
 ### Stacks
 
@@ -47,6 +51,7 @@
 ### Environments and Authentication
 
 - Environment、AWS region、IAM role は `workflow-config.yaml` で定義する。環境の追加・削除は同ファイルの編集で行う。
+- `workflow-config.yaml` の `apply_trigger` が environment を apply するタイミングを決める。`merge` は `main` への push、`release` は service の release 公開時に apply する。
 - 認証は GitHub OIDC。`aws/github-oidc-auth/` が environment ごとの plan / apply role を発行し、executor がそれを引き受ける。
 - Terragrunt の remote state は S3 + DynamoDB に保存される。bucket / lock table 名は各 `aws/{service}/root.hcl`（および `github/` 配下の同等ファイル）で定義される。
 
@@ -57,6 +62,7 @@ flowchart LR
   subgraph Triggers
     PRevent[PR open/sync]
     Mainpush[push main]
+    Release[release published]
   end
 
   subgraph Labeling
@@ -75,6 +81,7 @@ flowchart LR
   end
 
   subgraph Terragrunt
+    ReleaseTrigger[auto-release--trigger]
     TG[reusable--terragrunt-executor]
     Plan[terragrunt plan]
     Apply[terragrunt apply]
@@ -91,8 +98,10 @@ flowchart LR
   Dispatcher --> Trigger
   Trigger --> Resolver
   Resolver -->|stack: terragrunt| TG
+  Release --> ReleaseTrigger
+  ReleaseTrigger --> TG
   TG -->|on pull_request| Plan
-  TG -->|on push main| Apply
+  TG -->|on push main or release published| Apply
   Plan --> PRComment
   Apply --> AWS
   Resolver -->|stack: kubernetes| Group

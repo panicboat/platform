@@ -35,6 +35,10 @@ A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.
 
 - `auto-label--deploy-trigger.yaml` runs on PR labels and on push to `main`.
 - `panicboat/deploy-actions/label-resolver` reads `workflow-config.yaml` to expand each label into one or more `{service}/{environment}` targets.
+- Terragrunt environments with `apply_trigger: merge` are applied on push to `main`.
+- Terragrunt environments with `apply_trigger: release` are applied by `auto-release--trigger.yaml` when the `aws/{service}` release is published.
+  - The release PR runs `terragrunt plan` through `auto-release--plan.yaml`; to re-plan, use "Re-run all jobs" on that `auto-release--plan` run.
+  - To re-apply a release, run `auto-release--trigger` with `workflow_dispatch` and pass the release tag (`{service}-vX.Y.Z`).
 
 ### Stacks
 
@@ -47,6 +51,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.
 ### Environments and authentication
 
 - Environments, AWS regions, and IAM roles are defined in `workflow-config.yaml`. Adding or removing an environment means editing that file.
+- `apply_trigger` in `workflow-config.yaml` decides when an environment is applied: `merge` applies on push to `main`, `release` applies when the service release is published.
 - Authentication uses GitHub OIDC. `aws/github-oidc-auth/` issues per-environment plan / apply roles that the executors assume.
 - Terragrunt remote state lives in S3 + DynamoDB; bucket and lock-table names are defined in each `aws/{service}/root.hcl` (and the equivalent under `github/`).
 
@@ -57,6 +62,7 @@ flowchart LR
   subgraph Triggers
     PRevent[PR open/sync]
     Mainpush[push main]
+    Release[release published]
   end
 
   subgraph Labeling
@@ -75,6 +81,7 @@ flowchart LR
   end
 
   subgraph Terragrunt
+    ReleaseTrigger[auto-release--trigger]
     TG[reusable--terragrunt-executor]
     Plan[terragrunt plan]
     Apply[terragrunt apply]
@@ -91,8 +98,10 @@ flowchart LR
   Dispatcher --> Trigger
   Trigger --> Resolver
   Resolver -->|stack: terragrunt| TG
+  Release --> ReleaseTrigger
+  ReleaseTrigger --> TG
   TG -->|on pull_request| Plan
-  TG -->|on push main| Apply
+  TG -->|on push main or release published| Apply
   Plan --> PRComment
   Apply --> AWS
   Resolver -->|stack: kubernetes| Group
