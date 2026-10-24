@@ -11,6 +11,7 @@ locals {
             "CI Gatekeeper",
             "Validate PR title",
             "Ensure actions are pinned to SHAs",
+            "Docs Sync Check",
           ]
           # Allows release and image update bots to push directly without failing status checks.
           bypass_app_ids = [1371999, 4671042]
