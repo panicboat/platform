@@ -20,6 +20,11 @@ stacks:
         iam_role_apply: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-apply-role
         apply_trigger: release
 
+  - name: terragrunt-shared
+    paths:
+      - "aws/{service}"
+    attributes: {}
+
   - name: kubernetes
     paths:
       - "kubernetes/components/{service}/{environment}"

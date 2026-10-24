@@ -104,6 +104,9 @@ jobs:
     strategy:
       matrix:
         target: ${{ fromJson(needs.deploy-trigger.outputs.targets) }}
+        exclude:
+          - target:
+              stack: terragrunt-shared
       fail-fast: false
     uses: ./.github/workflows/reusable--terragrunt-executor.yaml
     with:
@@ -129,6 +132,8 @@ jobs:
         exclude:
           - target:
               stack: terragrunt
+          - target:
+              stack: terragrunt-shared
       fail-fast: false
     uses: ./.github/workflows/reusable--kubernetes-builder.yaml
     with:
