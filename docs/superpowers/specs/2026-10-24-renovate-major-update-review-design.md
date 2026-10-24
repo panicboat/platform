@@ -75,23 +75,25 @@ Renovate PR (labels: 🤖 renovate, 📈 major-update, deploy:<svc>)
 
 - **IAM role の形**: `aws/github-oidc-auth/modules` に Bedrock 呼び出し専用 role を追加し、変数で有効化して `master` だけで作る
   - 既存の plan role（`ReadOnlyAccess`）には `bedrock:InvokeModel` が含まれない。Terraform plan 用 role に Bedrock 権限を混ぜないため、別 role にする
-  - 信頼条件は `repo:panicboat/platform:pull_request` に限定する
+  - review job は GitHub environment `renovate-major-review` で動かし、信頼条件はその sub `repo:panicboat/platform:environment:renovate-major-review` に限定する
+  - 既存の plan role（master・develop・production）は `repo:panicboat/platform:pull_request` を信頼している。review job が同じ sub の OIDC token を発行できると、prompt injection で token を持ち出されたときに全 account の `ReadOnlyAccess` まで被害が広がるため、environment で sub を分ける
   - 権限は `bedrock:InvokeModel`・`bedrock:InvokeModelWithResponseStream` を、`sonnet-4-6` の inference profile とそのルーティング先 foundation model に限定する
   - Resource ARN の組み立ては `aws/eks-holmesgpt/modules/main.tf` の `bedrock_invoke_resources` を参考にする
 - **再レビュー**: Renovate による PR 更新を起点にした自動再レビューは作らない
   - hydrate のコミット後は Renovate が自動 rebase を止める（"Edited/Blocked Notification"）ため、PR が自動で更新されることがほぼない
-  - 再レビューは手動起動（`workflow_dispatch` で PR 番号を指定、など）で行えるようにする
+  - 再レビューは `📈 major-update` ラベルを付け直して起動する（`workflow_dispatch` は sub が変わり Bedrock role の信頼条件に合わないため使わない）
 - **テンプレート側の変化の補完**: StatefulSet の selector 変更・PVC 再作成など、values に現れないテンプレートの変化が疑われる場合、Claude が新旧 chart を `helm template` で描画して該当リソースだけを比較する
   - Kustomize Diff を使わない代わりの手段。常時実行するか、疑わしい場合だけ実行するかは実装時に決める
 - **書き込み権限の分離**: Claude を動かす step には GitHub への書き込み権限を持つ token を渡さない
   - upstream のリリースノートは外部入力で prompt injection の経路になるため
   - Claude はコメント本文をファイルに出力するだけにする。投稿は後続の別 step が `pull-requests: write` だけを持つ token で行う
-  - Claude に許可するツールは、リポジトリの読み取り、Web 取得、`gh` の読み取り系、`helm show` 等の読み取り系コマンドに限定する
+  - Claude に許可するツールは、リポジトリの読み取り、Web 取得、`gh`・`git`・`helm` の一部サブコマンドに限定する
+  - `helm template --post-renderer` や `gh api <外部 URL>` を経由した任意コマンド実行・外部送信は許可リストでは塞ぎきれない。そのため job が持つ AWS 認証情報と OIDC token の権限を Bedrock 呼び出しだけに絞り、持ち出されたときの被害を最大1時間の Bedrock 利用に限定する
 - **対象パッケージの種別**: `📈 major-update` の PR はすべてレビューする
   - Helm chart・GitHub Actions 以外（container image・Terraform provider 等）も、Renovate が変更したファイルと、その依存を参照している定義を材料にして、同じ形式でレビューする
 - **根拠が一部しか取れなかった場合**: 判定は ✅ にせず ⚠️ にし、取得できなかったバージョン範囲・情報源を「影響のある変更」の先頭に明記する
 - **失敗時**: Bedrock の障害・quota 超過・タイムアウトでは job を失敗させるだけで、PR にコメントは残さない
-  - このレビューは必須チェック（merge gate）にしない
+  - このレビューは必須チェック（merge gate）にしない。必須チェック `CI Gatekeeper` が待つ対象からも除外する
 - **追加の判断材料**: Helm chart の場合、`helm show values` で新旧の default values を取り、その差分も材料にする
   - リリースノートに書かれない default 値の変更を拾うため
 

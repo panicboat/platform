@@ -17,6 +17,8 @@ jobs:
     if: github.event.label.name == '📈 major-update' && github.event.pull_request.user.login == 'renovate[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Environment-scoped OIDC sub keeps a prompt-injected run from assuming the plan roles, which trust the pull_request sub.
+    environment: renovate-major-review
     permissions:
       contents: read
       pull-requests: read

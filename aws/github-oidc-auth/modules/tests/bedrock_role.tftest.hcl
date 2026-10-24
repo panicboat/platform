@@ -46,8 +46,8 @@ run "creates_bedrock_role_for_listed_models" {
   }
 
   assert {
-    condition     = jsondecode(aws_iam_role.bedrock[0].assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == ["repo:panicboat/platform:pull_request"]
-    error_message = "Only pull_request runs of panicboat/platform may assume the bedrock role."
+    condition     = jsondecode(aws_iam_role.bedrock[0].assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == ["repo:panicboat/platform:environment:renovate-major-review"]
+    error_message = "Only the renovate-major-review environment of panicboat/platform may assume the bedrock role."
   }
 
   assert {
