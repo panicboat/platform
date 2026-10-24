@@ -67,7 +67,8 @@ Renovate PR (labels: 🤖 renovate, 📈 major-update, deploy:<svc>)
   - `auto-label--deploy-trigger.yaml` に job を足すと、同 workflow の `cancel-in-progress` で Claude が途中キャンセル・再起動され Bedrock 消費が無駄になるうえ、デプロイの中核 workflow に手が入る
 - **レビュー材料**: 次の3つを使う。Kustomize Diff コメントは使わない
   - upstream の一次情報（PR 本文のノートは参考扱い）
-    - Helm chart では chart 自体に加え、chart が載せるアプリケーション（sub-chart・operator を含む）の `appVersion` が変わる場合、そのアプリケーションの release notes / upgrade guide も読む。chart のノートはアプリ側の破壊的変更（設定項目の削除・storage 形式・CRD schema）をほとんど転記しないため
+    - Helm chart では chart 自体に加え、バージョンが変わった sub-chart（chart として同じ手順で読む）と、`appVersion`・sub-chart の `appVersion`・default values の image tag から特定したアプリケーションの release notes / upgrade guide も読む。chart のノートは同梱物側の破壊的変更（設定項目の削除・storage 形式・CRD schema・security context）をほとんど転記しないため
+    - 範囲は semver で `current < v <= new` とする。複数の系列を並行リリースするプロジェクトがあるため、公開日順では取らない
   - 対象 component の `helmfile.yaml`・`values.yaml.gotmpl`（または `values.yaml`）・`kustomization/` 配下
   - GitHub Actions 更新の場合は、その action を使っている workflow ファイル
   - Kustomize Diff は hydrate と並行実行のため取得できない。加えて #1018 では 7,636 行・120 ファイルの大半が CRD 差分で、材料としてはノイズが多い
@@ -104,7 +105,7 @@ Renovate PR (labels: 🤖 renovate, 📈 major-update, deploy:<svc>)
    - ✅ そのままマージ可
    - ⚠️ 修正が必要
    - 🛑 手動作業が必要（CRD 適用・データ移行など）
-2. **対象範囲**: 調べたバージョン範囲と、参照した一次情報の URL
+2. **対象範囲**: 調べたバージョン範囲（chart と、バージョンが変わった sub-chart・アプリケーションそれぞれ）と、参照した一次情報の URL
    - PR 本文のリリースノートが別パッケージのものだった場合や、途中のバージョンが欠けていた場合は、その旨を明記する
 3. **影響のある変更**: 自リポジトリの定義に該当する破壊的変更・deprecated・default 値変更だけを列挙する
    - 各項目にファイル:行番号と、具体的な修正案（コードブロック）を付ける
@@ -133,6 +134,7 @@ Renovate PR (labels: 🤖 renovate, 📈 major-update, deploy:<svc>)
 - 滞留中の #1018・#1019 に対してレビューを実行し、実際にコメントを投稿して次の3点を確認する（投稿前にユーザーに確認を取る）
   - #1019: `tempo-distributed` ではなく `grafana-community/tempo` chart の 2.4.0 → 3.0.0 を対象にしていること
   - #1018: v89・v90・v91 の全メジャーの変更を対象範囲に含めていること
+  - #1018: prometheus-operator・Prometheus・grafana sub-chart のうちバージョンが変わったものの一次情報 URL が対象範囲に含まれていること
   - 各指摘にファイル:行番号と一次情報の URL が付いていること
 - PR に push・approve・ラベル変更が一切行われていないこと
 
