@@ -63,3 +63,4 @@ Every claim must cite a source URL or a repository location.
 ## Output
 
 Return the whole comment as the `body` field of the structured output.
+Keep it under 60,000 characters (GitHub rejects comments over 65,536); shorten the `影響のない変更` list first when it does not fit.

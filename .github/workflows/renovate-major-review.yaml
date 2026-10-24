@@ -57,7 +57,7 @@ jobs:
             Pull request number: ${{ github.event.pull_request.number }}
           claude_args: |
             --model global.anthropic.claude-sonnet-4-6
-            --json-schema '{"type":"object","properties":{"body":{"type":"string","minLength":1}},"required":["body"]}'
+            --json-schema '{"type":"object","properties":{"body":{"type":"string","minLength":1,"maxLength":60000}},"required":["body"]}'
             --allowedTools "Read,Glob,Grep,WebFetch,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(helm repo add:*),Bash(helm repo update:*),Bash(helm show:*),Bash(helm template:*)"
 
   post:

@@ -19,3 +19,6 @@ jobs:
         uses: int128/wait-for-workflows-action@b320164b37276db89a12829914d6eb6ef4973d2b # v1.108.0
         with:
           max-timeout-seconds: 1800 # 30 minutes
+          # The AI review is advisory; a Bedrock outage must not block merges through this required check.
+          exclude-workflow-names: |
+            Renovate Major Review
