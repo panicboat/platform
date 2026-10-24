@@ -48,6 +48,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.
 
 - Environments, AWS regions, and IAM roles are defined in `workflow-config.yaml`. Adding or removing an environment means editing that file.
 - Authentication uses GitHub OIDC. `aws/github-oidc-auth/` issues per-environment plan / apply roles that the executors assume.
+- The GitHub environment `production` accepts deployments only from refs that match the tag pattern `*-v*`. The setting is managed in `github/repository/`.
 - Terragrunt remote state lives in S3 + DynamoDB; bucket and lock-table names are defined in each `aws/{service}/root.hcl` (and the equivalent under `github/`).
 
 ### Pipeline Flow
