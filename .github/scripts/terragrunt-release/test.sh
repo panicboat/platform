@@ -332,22 +332,22 @@ YAML
 test_deploy_trigger_applies_only_merge_targets() {
     local expected="\${{ matrix.target.stack == 'terragrunt' && (github.event_name == 'pull_request' && 'plan' || (matrix.target.apply_trigger == 'merge' && 'apply' || '')) || '' }}"
     local actual
-    actual="$(yq '.jobs.deploy-terragrunt.with.action-type' "${repo_root}/.github/workflows/auto-label--deploy-trigger.yaml")"
+    actual="$(yq '.jobs.deploy-terragrunt.with.action-type' "${repo_root}/.github/workflows/label-base-deploy--resolver.yaml")"
     assert_eq "${expected}" "${actual}"
 }
 
 test_deploy_trigger_excludes_shared_targets() {
     local job stack
     for job in deploy-terragrunt deploy-kubernetes; do
-        stack="$(yq ".jobs.${job}.strategy.matrix.exclude[] | select(.target.stack == \"terragrunt-shared\") | .target.stack" "${repo_root}/.github/workflows/auto-label--deploy-trigger.yaml")"
+        stack="$(yq ".jobs.${job}.strategy.matrix.exclude[] | select(.target.stack == \"terragrunt-shared\") | .target.stack" "${repo_root}/.github/workflows/label-base-deploy--resolver.yaml")"
         assert_eq "terragrunt-shared" "${stack}"
     done
 }
 
 test_release_workflows_skip_empty_targets() {
     local expected="needs.resolve.outputs.targets != '[]'"
-    assert_eq "${expected}" "$(yq '.jobs.plan.if' "${repo_root}/.github/workflows/auto-release--plan.yaml")"
-    assert_eq "${expected}" "$(yq '.jobs.apply.if' "${repo_root}/.github/workflows/auto-release--trigger.yaml")"
+    assert_eq "${expected}" "$(yq '.jobs.plan.if' "${repo_root}/.github/workflows/release--plan.yaml")"
+    assert_eq "${expected}" "$(yq '.jobs.apply.if' "${repo_root}/.github/workflows/release--deploy.yaml")"
 }
 
 test_repository_config_excludes_production() {

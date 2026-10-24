@@ -1,3 +1,4 @@
+# Runs terragrunt plan or apply in one working directory and reports the result with tfcmt.
 name: 'Reusable - Terragrunt Executor'
 
 on:

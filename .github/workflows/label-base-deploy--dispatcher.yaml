@@ -1,4 +1,5 @@
-name: 'Auto Label - Label Dispatcher'
+# Adds deploy:{service} labels to a pull request from the stack paths it changes.
+name: 'Label Base Deploy - Dispatcher'
 
 on:
   pull_request:

@@ -1,3 +1,4 @@
+# Reviews Renovate major-update pull requests with Claude on Bedrock and posts the review.
 name: 'Renovate Major Review'
 
 on:

@@ -1,4 +1,5 @@
-name: Release
+# Runs release-please for each aws/{service} config to open release pull requests and publish releases.
+name: 'Release - Please'
 
 on:
   push:

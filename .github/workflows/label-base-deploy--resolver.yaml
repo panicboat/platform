@@ -1,4 +1,5 @@
-name: 'Auto Label - Label Resolver'
+# Resolves deploy labels into targets, plans them on pull requests, and applies apply_trigger: merge targets on push to main.
+name: 'Label Base Deploy - Resolver'
 
 on:
   pull_request:
@@ -15,12 +16,12 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: deploy-trigger-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: label-base-deploy-resolver-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  deploy-trigger:
-    name: 'Deployment Trigger'
+  resolve:
+    name: 'Resolve Targets'
     runs-on: ubuntu-latest
     outputs:
       targets: ${{ steps.resolver.outputs.targets }}
@@ -59,10 +60,10 @@ jobs:
 
   kubernetes-targets-group:
     name: 'Group Kubernetes Targets by Environment'
-    needs: deploy-trigger
+    needs: resolve
     if: |
-      needs.deploy-trigger.outputs.has-targets == 'true' &&
-      contains(needs.deploy-trigger.outputs.targets, '"stack":"kubernetes"')
+      needs.resolve.outputs.has-targets == 'true' &&
+      contains(needs.resolve.outputs.targets, '"stack":"kubernetes"')
     runs-on: ubuntu-latest
     outputs:
       environments: ${{ steps.group.outputs.environments }}
@@ -70,7 +71,7 @@ jobs:
       - name: Group by environment
         id: group
         env:
-          TARGETS: ${{ needs.deploy-trigger.outputs.targets }}
+          TARGETS: ${{ needs.resolve.outputs.targets }}
         run: |
           set -euo pipefail
           grouped=$(echo "$TARGETS" | jq -c '
@@ -97,13 +98,13 @@ jobs:
 
   deploy-terragrunt:
     name: 'Deploy Terragrunt (${{ matrix.target.service }}:${{ matrix.target.environment }})'
-    needs: deploy-trigger
+    needs: resolve
     if: |
-      needs.deploy-trigger.outputs.has-targets == 'true' &&
-      contains(needs.deploy-trigger.outputs.targets, '"stack":"terragrunt"')
+      needs.resolve.outputs.has-targets == 'true' &&
+      contains(needs.resolve.outputs.targets, '"stack":"terragrunt"')
     strategy:
       matrix:
-        target: ${{ fromJson(needs.deploy-trigger.outputs.targets) }}
+        target: ${{ fromJson(needs.resolve.outputs.targets) }}
         exclude:
           - target:
               stack: terragrunt-shared
@@ -122,13 +123,13 @@ jobs:
 
   deploy-kubernetes:
     name: 'Deploy Kubernetes (${{ matrix.target.service }}:${{ matrix.target.environment }})'
-    needs: [deploy-trigger, deploy-kubernetes-hydrate]
+    needs: [resolve, deploy-kubernetes-hydrate]
     if: |
-      needs.deploy-trigger.outputs.has-targets == 'true' &&
-      contains(needs.deploy-trigger.outputs.targets, '"stack":"kubernetes"')
+      needs.resolve.outputs.has-targets == 'true' &&
+      contains(needs.resolve.outputs.targets, '"stack":"kubernetes"')
     strategy:
       matrix:
-        target: ${{ fromJson(needs.deploy-trigger.outputs.targets) }}
+        target: ${{ fromJson(needs.resolve.outputs.targets) }}
         exclude:
           - target:
               stack: terragrunt
@@ -145,8 +146,8 @@ jobs:
 
   deployment-summary:
     name: 'Deployment Summary'
-    needs: [deploy-trigger, deploy-terragrunt, deploy-kubernetes-hydrate, deploy-kubernetes]
-    if: always() && needs.deploy-trigger.outputs.has-targets == 'true'
+    needs: [resolve, deploy-terragrunt, deploy-kubernetes-hydrate, deploy-kubernetes]
+    if: always() && needs.resolve.outputs.has-targets == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Summary
@@ -154,9 +155,9 @@ jobs:
           echo "📊 Deployment Summary"
           echo "Event: ${{ github.event_name }}"
           echo "Branch: ${{ github.ref_name }}"
-          echo "Environment: ${{ needs.deploy-trigger.outputs.target-environment }}"
-          echo "Safety Status: ${{ needs.deploy-trigger.outputs.safety-status }}"
-          echo "Targets: ${{ needs.deploy-trigger.outputs.targets }}"
+          echo "Environment: ${{ needs.resolve.outputs.target-environment }}"
+          echo "Safety Status: ${{ needs.resolve.outputs.safety-status }}"
+          echo "Targets: ${{ needs.resolve.outputs.targets }}"
           echo "Terragrunt Job Status: ${{ needs.deploy-terragrunt.result }}"
           echo "Kubernetes Job Status: ${{ needs.deploy-kubernetes.result }}"
           echo "Kubernetes Hydrate Job Status: ${{ needs.deploy-kubernetes-hydrate.result }}"

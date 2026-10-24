@@ -37,14 +37,14 @@
 
 | Event | Workflow | Terragrunt |
 |-------|----------|------------|
-| PR に `deploy:{service}` ラベルが付く | [auto-label--deploy-trigger.yaml](.github/workflows/auto-label--deploy-trigger.yaml) | すべての target を plan |
-| `main` への push | [auto-label--deploy-trigger.yaml](.github/workflows/auto-label--deploy-trigger.yaml) | `apply_trigger: merge` の target を apply |
-| release PR の作成・更新 | [auto-release--plan.yaml](.github/workflows/auto-release--plan.yaml) | その service の `apply_trigger: release` の environment を plan |
-| release の公開 | [auto-release--trigger.yaml](.github/workflows/auto-release--trigger.yaml) | その service の `apply_trigger: release` の environment を apply |
+| PR に `deploy:{service}` ラベルが付く | [label-base-deploy--resolver.yaml](.github/workflows/label-base-deploy--resolver.yaml) | すべての target を plan |
+| `main` への push | [label-base-deploy--resolver.yaml](.github/workflows/label-base-deploy--resolver.yaml) | `apply_trigger: merge` の target を apply |
+| release PR の作成・更新 | [release--plan.yaml](.github/workflows/release--plan.yaml) | その service の `apply_trigger: release` の environment を plan |
+| release の公開 | [release--deploy.yaml](.github/workflows/release--deploy.yaml) | その service の `apply_trigger: release` の environment を apply |
 
 #### Targets
 
-- PR の作成・更新時に、[auto-label--label-dispatcher.yaml](.github/workflows/auto-label--label-dispatcher.yaml) が `deploy:{service}` ラベルを付ける。release-please の branch にはラベルを付けない。
+- PR の作成・更新時に、[label-base-deploy--dispatcher.yaml](.github/workflows/label-base-deploy--dispatcher.yaml) が `deploy:{service}` ラベルを付ける。release-please の branch にはラベルを付けない。
   - module や `root.hcl` を含め、`aws/{service}/` 配下のどの変更でもラベルが付く。
 - `label-resolver` が [workflow-config.yaml](workflow-config.yaml) を使って、ラベルをその service の全 environment に展開する。
 - `terragrunt` stack の `exclude` に一致する `{service}/{environment}` の組は、release も含めて plan も apply もされない。
@@ -56,8 +56,8 @@
   - 設定がないと [check-release-configs.sh](.github/scripts/terragrunt-release/check-release-configs.sh) が CI を失敗させる。
 - `apply_trigger: merge` の environment ディレクトリだけを変える commit は、release を作らない（`exclude-paths`）。
 - `apply_trigger: release` の environment がすべて除外されている間も release PR は作られるが、plan も apply もされない。
-- plan を出し直すときは、`auto-release--plan` の run で「Re-run all jobs」を使う。
-- apply を再実行するときは、`gh workflow run auto-release--trigger.yaml --ref {service}-vX.Y.Z -f tag={service}-vX.Y.Z` を実行する。
+- plan を出し直すときは、`Release - Plan` の run で「Re-run all jobs」を使う。
+- apply を再実行するときは、`gh workflow run release--deploy.yaml --ref {service}-vX.Y.Z -f tag={service}-vX.Y.Z` を実行する。
 
 ### Stacks
 
@@ -86,8 +86,8 @@ flowchart LR
   end
 
   subgraph Labeling
-    Dispatcher[auto-label--label-dispatcher<br/>panicboat/deploy-actions/label-dispatcher]
-    Trigger[auto-label--deploy-trigger<br/>on: pull_request labeled]
+    Dispatcher[label-base-deploy--dispatcher<br/>panicboat/deploy-actions/label-dispatcher]
+    Trigger[label-base-deploy--resolver<br/>on: pull_request labeled]
     Resolver[label-resolver]
   end
 
@@ -101,7 +101,7 @@ flowchart LR
   end
 
   subgraph Terragrunt
-    ReleaseTrigger[auto-release--trigger]
+    ReleaseTrigger[release--deploy]
     TG[reusable--terragrunt-executor]
     Plan[terragrunt plan]
     Apply[terragrunt apply]
