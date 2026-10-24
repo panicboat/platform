@@ -38,7 +38,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against `workflow-config.
 - Terragrunt environments with `apply_trigger: merge` are applied on push to `main`.
 - Terragrunt environments with `apply_trigger: release` are applied by `auto-release--trigger.yaml` when the `aws/{service}` release is published.
   - The release PR runs `terragrunt plan` through `auto-release--plan.yaml`; to re-plan, use "Re-run all jobs" on that `auto-release--plan` run.
-  - To re-apply a release, run `auto-release--trigger` with `workflow_dispatch` and pass the release tag (`{service}-vX.Y.Z`).
+  - To re-apply a release, run `auto-release--trigger` with `workflow_dispatch` on the release tag ref and pass the same tag: `gh workflow run auto-release--trigger.yaml --ref {service}-vX.Y.Z -f tag={service}-vX.Y.Z`.
 - Changes to files outside environment directories under `aws/{service}/` (modules, `root.hcl`, ...) are detected through the `terragrunt-shared` stack and target every environment of that service.
 - A service with an `apply_trigger: release` environment directory needs `aws/{service}/release-please-config.json` and `release-please-manifest.json`; `check-release-configs.sh` fails CI otherwise.
   - Commits that change only `apply_trigger: merge` environment directories are kept out of the release through `exclude-paths` in `release-please-config.json`.

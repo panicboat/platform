@@ -38,7 +38,7 @@
 - `apply_trigger: merge` の Terragrunt environment は `main` への push で apply される。
 - `apply_trigger: release` の Terragrunt environment は `aws/{service}` の release 公開時に `auto-release--trigger.yaml` が apply する。
   - release PR では `auto-release--plan.yaml` が `terragrunt plan` を実行する。plan を出し直すときは該当する `auto-release--plan` の run で「Re-run all jobs」を使う。
-  - release の apply を再実行するときは `auto-release--trigger` を `workflow_dispatch` で起動し、release tag（`{service}-vX.Y.Z`）を渡す。
+  - release の apply を再実行するときは、`auto-release--trigger` を release tag の ref で `workflow_dispatch` 起動し、同じ tag を渡す：`gh workflow run auto-release--trigger.yaml --ref {service}-vX.Y.Z -f tag={service}-vX.Y.Z`。
 - `aws/{service}/` 配下の environment ディレクトリ以外のファイル（module、`root.hcl` など）の変更は `terragrunt-shared` stack で検出され、その service の全 environment が対象になる。
 - `apply_trigger: release` の environment ディレクトリを持つ service には `aws/{service}/release-please-config.json` と `release-please-manifest.json` が必要。無い場合は `check-release-configs.sh` が CI を失敗させる。
   - `apply_trigger: merge` の environment ディレクトリだけを変える commit は、`release-please-config.json` の `exclude-paths` で release から外れる。
