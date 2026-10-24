@@ -74,6 +74,7 @@
 - **`chore` も release 対象にする**: `feat` / `fix` だけを対象にすると、Renovate の version bump（`chore(...)`）が production に出る手段を持たなくなる。人の PR も Renovate の PR もタイトルを変えずに使える代わりに、Renovate の version bump もすべて CHANGELOG とリリースに載る
 - **`refactor` も release 対象にする**: このリポジトリでは module の変更に `refactor` も使う（例：#909）。`chore` と同じ理由で CHANGELOG に表示する
 - **release 公開時の apply に承認（required reviewers）を付けない**: release PR の merge がすでに人の判断なので、承認を二重にしない
+- **apply の契機は `workflow-config.yaml` の環境属性 `apply_trigger` で持つ**: 値は `merge` か `release`。deploy-actions を変更せずに済み、どの環境が release で apply されるかの情報が workflow に散らばらない
 - **対象は `aws/` だけ**: `github/` は `master` しかなく、kubernetes は経路が違う
 
 ---
@@ -88,6 +89,9 @@
 | `develop` | plan | apply | なし |
 | `production` | plan | なし | apply |
 
+- 各環境の属性に `apply_trigger` を持たせ、表の「main merge」「release 公開」のどちらで apply するかを表す。`master` と `develop` は `merge`、`production` は `release`
+  - deploy-actions の config 検証は、最上位キー（`stacks` のみ）と stack のフィールドを固定しているが、環境の属性には任意のキーを許可し、resolver の出力（matrix の target）にそのまま入れる（REASONED：`deploy-actions` `shared/entities/workflow_config.rb`）
+  - deploy-actions はこの値の意味を知らないので、platform 側の workflow で `merge` / `release` 以外の値や未設定を失敗させる
 - `workflow-config.yaml` の terragrunt stack に `develop` と `production` を宣言する
   - `production`：`337169763788`、role は `github-oidc-auth-production-github-actions-{plan,apply}-role`（#886 の spec と過去のコメントアウトから。実装時に実在を確認する）
   - `develop`：`270242382571`、role 名は同じ命名規則とし、実装時に実在を確認する。`aws/github-oidc-auth/develop/env.hcl` の `aws_region` は `us-east-1` なので、環境属性の `aws_region` をどうするかも実装時に確認する
@@ -109,12 +113,12 @@
 
 ### Main merge
 
-- main への push では、label-resolver に production を除いた環境を渡し、`master` と `develop` だけを apply する
-- 除外する環境のリストを `workflow-config.yaml` から求めるか、workflow に書くかは builder に任せる。ただし production が混入しないことをテストで確かめる
+- main への push では、`matrix.target.apply_trigger == 'merge'` の target にだけ `action-type: apply` を割り当てる。`release` の target は `action-type` を空にし、`reusable--terragrunt-executor.yaml` の `if: inputs.action-type != ''` で skip させる
+- workflow に環境名（`production` など）を書かない。`release` の target に apply が割り当たらないことをテストで確かめる
 
 ### Release PR
 
-- `aws/` 配下で `production/` ディレクトリを持つサービスごとに、`aws/<service>/release-please-config.json` と `aws/<service>/release-please-manifest.json` を置く（monorepo の `dystopia/monolith/` と同じ形）
+- `apply_trigger: release` の環境のディレクトリ（今は `production/`）を持つ `aws/` 配下のサービスごとに、`aws/<service>/release-please-config.json` と `aws/<service>/release-please-manifest.json` を置く（monorepo の `dystopia/monolith/` と同じ形）
   - 2026-10-24 時点の対象は `alb`・`eks`・`eks-holmesgpt`・`eks-karpenter`・`eks-logs`・`eks-metrics`・`eks-secrets`・`eks-traces`・`github-oidc-auth`・`iam-service-linked-roles`・`secrets-manager`・`vpc` の 12 サービス。実装時に `aws/*/production/` の存在で確認し直す
   - `separate-pull-requests: true`、`include-component-in-tag: true`、`component: <service>`。tag は `<service>-vX.Y.Z`
   - `changelog-sections` で `chore` と `refactor` を表示する。`feat` / `fix` / `perf` を上に、`refactor` と `chore` を下の別見出しに並べる
@@ -127,7 +131,7 @@
 - apply job は GitHub environment `production` を宣言する。production の apply role の trust が `main` への push か `environment:production` しか許可していないため、tag ref で動く release 公開の job はこの宣言がないと role を assume できない（VERIFIED：`aws/github-oidc-auth/modules/main.tf` の `apply_conditions`）
   - environment `production` に required reviewers は付けない
   - platform には GitHub environment がまだない。job が宣言すると GitHub が自動で作るが、Terraform（`github/repository`）で管理するかは builder に任せる
-- release 公開で、tag 名から `<service>` を取り出し、`aws/<service>/production` が存在すれば、その commit で production に apply する。`iam_role_apply` と `aws_region` は `workflow-config.yaml` の `production` から取る
+- release 公開で、tag 名から `<service>` を取り出し、`workflow-config.yaml` で `apply_trigger: release` の環境について `aws/<service>/<environment>` が存在すれば、その commit で apply する。`iam_role_apply` と `aws_region` も同じ環境の属性から取る
 - tag を指定して手動で再実行できる `workflow_dispatch` を用意する（monorepo の `auto-release--trigger.yaml` と同じ）
 - tag の形式に合わない、またはディレクトリがない場合は失敗させる
 
@@ -153,7 +157,6 @@
 - 全環境に効くファイルの変更を検出する方法（config だけか、`deploy-actions` の変更か）
 - release PR で通常のラベル付与・plan を走らせない方法
 - release PR の plan を出し直す手段の方式
-- main merge で production を除外する環境リストの求め方
 - 各サービスの初期バージョンと `bootstrap-sha`（最初の release PR に過去の全履歴が載らないようにする）
 - open のまま残っている release PR #890 の close（実装時にユーザーに確認してから行う）
 
@@ -177,7 +180,8 @@
 
 - [ ] `aws/<service>/modules/` だけを変更した PR に、自動で `deploy:<service>` が付く
 - [ ] その PR で `master`・`develop`・`production` のうち存在する全環境の plan が出る
-- [ ] その PR を merge すると、`master` と `develop` だけが apply され、production の apply job が起動しない
+- [ ] その PR を merge すると、`apply_trigger: merge` の `master` と `develop` だけが apply され、production の apply job が起動しない
+- [ ] `apply_trigger` が未設定、または `merge` / `release` 以外の値の環境があると、workflow が失敗する
 - [ ] merge 後に `aws/<service>` の release PR が作られる、または更新される。`chore` だけ、`refactor` だけの変更でも作られる
 - [ ] release PR に、そのサービスの production の plan だけが出る。他サービス・他環境の plan は出ない
 - [ ] release PR を merge すると、承認待ちなしで、そのサービスの production だけが apply される
