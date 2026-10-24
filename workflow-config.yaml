@@ -19,6 +19,8 @@ stacks:
         iam_role_plan: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-plan-role
         iam_role_apply: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-apply-role
         apply_trigger: release
+    exclude:
+      - environment: production
 
   - name: terragrunt-shared
     paths:

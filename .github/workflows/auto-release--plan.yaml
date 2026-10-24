@@ -39,6 +39,7 @@ jobs:
   plan:
     name: 'Plan Release (${{ matrix.target.service }}:${{ matrix.target.environment }})'
     needs: resolve
+    if: needs.resolve.outputs.targets != '[]'
     strategy:
       matrix:
         target: ${{ fromJson(needs.resolve.outputs.targets) }}

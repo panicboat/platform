@@ -128,6 +128,7 @@ test_release_service_error_is_single_line() {
 }
 
 write_release_config() {
+    local exclude="${1:-}"
     cat > workflow-config.yaml <<'YAML'
 stacks:
   - name: terragrunt-shared
@@ -153,6 +154,9 @@ stacks:
     paths:
       - "kubernetes/components/{service}/{environment}"
 YAML
+    if [ -n "${exclude}" ]; then
+        EXCLUDE="${exclude}" yq -i '(.stacks[] | select(.name == "terragrunt") | .exclude) = env(EXCLUDE)' workflow-config.yaml
+    fi
 }
 
 test_release_targets_lists_release_envs() {
@@ -173,6 +177,38 @@ test_release_targets_skips_missing_dirs() {
 
 test_release_targets_fails_without_targets() {
     write_release_config
+    mkdir -p aws/route53/master
+    assert_fails bash "${script_dir}/release-targets.sh" route53
+    assert_stderr_contains "no release targets for route53"
+}
+
+test_release_targets_skips_excluded_envs() {
+    write_release_config '[{environment: production}]'
+    mkdir -p aws/vpc/production aws/vpc/staging
+    local targets
+    targets="$(bash "${script_dir}/release-targets.sh" vpc)"
+    assert_eq "1" "$(jq 'length' <<<"${targets}")"
+    assert_eq "staging" "$(jq -r '.[0].environment' <<<"${targets}")"
+}
+
+test_release_targets_returns_empty_when_all_excluded() {
+    write_release_config '[{environment: production}, {environment: staging}]'
+    mkdir -p aws/vpc/production
+    assert_eq "[]" "$(bash "${script_dir}/release-targets.sh" vpc)"
+}
+
+test_release_targets_honors_service_scoped_exclude() {
+    write_release_config '[{service: vpc, environment: production}]'
+    mkdir -p aws/vpc/production aws/eks/production
+    assert_eq "[]" "$(bash "${script_dir}/release-targets.sh" vpc)"
+    local targets
+    targets="$(bash "${script_dir}/release-targets.sh" eks)"
+    assert_eq "1" "$(jq 'length' <<<"${targets}")"
+    assert_eq "production" "$(jq -r '.[0].environment' <<<"${targets}")"
+}
+
+test_release_targets_fails_without_dirs_even_with_exclude() {
+    write_release_config '[{environment: production}]'
     mkdir -p aws/route53/master
     assert_fails bash "${script_dir}/release-targets.sh" route53
     assert_stderr_contains "no release targets for route53"
@@ -199,6 +235,15 @@ test_check_configs_rejects_missing_config() {
     mkdir -p aws/eks/production
     assert_fails bash "${script_dir}/check-release-configs.sh"
     assert_stderr_contains "aws/eks/release-please-config.json"
+}
+
+test_check_configs_requires_config_for_excluded_env() {
+    write_release_config '[{environment: production}]'
+    mkdir -p aws/eks/production
+    assert_fails bash "${script_dir}/check-release-configs.sh"
+    assert_stderr_contains "aws/eks/release-please-config.json"
+    write_service_release_config eks
+    assert_eq "" "$(bash "${script_dir}/check-release-configs.sh" 2>&1)"
 }
 
 test_check_configs_rejects_orphan_config() {
@@ -297,6 +342,18 @@ test_deploy_trigger_excludes_shared_targets() {
         stack="$(yq ".jobs.${job}.strategy.matrix.exclude[] | select(.target.stack == \"terragrunt-shared\") | .target.stack" "${repo_root}/.github/workflows/auto-label--deploy-trigger.yaml")"
         assert_eq "terragrunt-shared" "${stack}"
     done
+}
+
+test_release_workflows_skip_empty_targets() {
+    local expected="needs.resolve.outputs.targets != '[]'"
+    assert_eq "${expected}" "$(yq '.jobs.plan.if' "${repo_root}/.github/workflows/auto-release--plan.yaml")"
+    assert_eq "${expected}" "$(yq '.jobs.apply.if' "${repo_root}/.github/workflows/auto-release--trigger.yaml")"
+}
+
+test_repository_config_excludes_production() {
+    local excluded
+    excluded="$(yq '.stacks[] | select(.name == "terragrunt") | .exclude[] | select(.environment == "production") | .environment' "${repo_root}/workflow-config.yaml")"
+    assert_eq "production" "${excluded}"
 }
 
 failed=0

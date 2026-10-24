@@ -48,6 +48,7 @@ jobs:
   apply:
     name: 'Apply Release (${{ matrix.target.service }}:${{ matrix.target.environment }})'
     needs: resolve
+    if: needs.resolve.outputs.targets != '[]'
     concurrency:
       group: terragrunt-apply-${{ matrix.target.working_directory }}
       cancel-in-progress: false

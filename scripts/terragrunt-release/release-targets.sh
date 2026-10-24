@@ -7,15 +7,18 @@ config_path="${2:-workflow-config.yaml}"
 candidates="$(yq -o=json '.' "${config_path}" | jq -c --arg service "${service}" '
     .stacks[]
     | select(.name == "terragrunt")
+    | (.exclude // []) as $exclude
     | .environments | to_entries[]
     | select(.value.apply_trigger == "release")
+    | {service: $service, environment: .key} as $values
     | {
         service: $service,
         environment: .key,
         working_directory: "aws/\($service)/\(.key)",
         aws_region: .value.aws_region,
         iam_role_plan: .value.iam_role_plan,
-        iam_role_apply: .value.iam_role_apply
+        iam_role_apply: .value.iam_role_apply,
+        excluded: any($exclude[]; to_entries | all(.[]; . as $pair | $values | has($pair.key) and .[$pair.key] == $pair.value))
     }
 ')"
 
@@ -33,4 +36,4 @@ if [ "$(jq 'length' <<<"${targets}")" -eq 0 ]; then
     exit 1
 fi
 
-echo "${targets}"
+jq -c 'map(select(.excluded | not) | del(.excluded))' <<<"${targets}"
