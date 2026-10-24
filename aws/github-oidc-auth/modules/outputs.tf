@@ -42,3 +42,8 @@ output "apply_role_name" {
   description = "Name of the apply GitHub Actions IAM role"
   value       = aws_iam_role.apply.name
 }
+
+output "bedrock_role_arn" {
+  description = "ARN of the Bedrock invoke GitHub Actions IAM role"
+  value       = one(aws_iam_role.bedrock[*].arn)
+}
