@@ -1,0 +1,79 @@
+name: 'Renovate Major Review'
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions: {}
+
+concurrency:
+  # Label name keeps runs for other labels Renovate adds at the same time from cancelling the review.
+  group: renovate-major-review-${{ github.event.pull_request.number }}-${{ github.event.label.name }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: 'Review'
+    if: github.event.label.name == '📈 major-update' && github.event.pull_request.user.login == 'renovate[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Environment-scoped OIDC sub keeps a prompt-injected run from assuming the plan roles, which trust the pull_request sub.
+    environment: renovate-major-review
+    permissions:
+      contents: read
+      pull-requests: read
+      id-token: write
+    outputs:
+      body: ${{ steps.claude.outputs.structured_output && fromJSON(steps.claude.outputs.structured_output).body || '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup aqua
+        uses: aquaproj/aqua-installer@82d0e83878a8657c4a6f2ff1755d3bfbfc67f329 # v4.1.0
+        with:
+          aqua_version: v2.64.0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::559744160976:role/github-oidc-auth-master-github-actions-bedrock-role
+          aws-region: us-east-1
+
+      - name: Review with Claude
+        id: claude
+        uses: anthropics/claude-code-action@16f9f71ab9c490faf367f94dd294897edc25be33 # v1.0.261
+        env:
+          # The Bedrock role only allows Sonnet 4.6, so background tasks must not fall back to Haiku.
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: global.anthropic.claude-sonnet-4-6
+        with:
+          use_bedrock: 'true'
+          # Read-only token; without it the action exchanges OIDC for the Claude App's write token.
+          github_token: ${{ github.token }}
+          allowed_bots: renovate
+          prompt: |
+            Read `.github/prompts/renovate-major-review.md` and follow it.
+            Pull request number: ${{ github.event.pull_request.number }}
+          claude_args: |
+            --model global.anthropic.claude-sonnet-4-6
+            --json-schema '{"type":"object","properties":{"body":{"type":"string","minLength":1,"maxLength":60000}},"required":["body"]}'
+            --allowedTools "Read,Glob,Grep,WebFetch,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(helm repo add:*),Bash(helm repo update:*),Bash(helm pull:*),Bash(helm show:*),Bash(helm template:*)"
+
+  post:
+    name: 'Post Review'
+    needs: review
+    if: needs.review.result == 'success' && needs.review.outputs.body != ''
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Upsert review comment
+        uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
+        with:
+          message: ${{ needs.review.outputs.body }}
+          comment-tag: renovate-major-review
+          mode: upsert
+          pr-number: ${{ github.event.pull_request.number }}
