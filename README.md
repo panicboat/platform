@@ -37,14 +37,14 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 
 | Event | Workflow | Terragrunt |
 |-------|----------|------------|
-| `deploy:{service}` label added to a PR | [auto-label--deploy-trigger.yaml](.github/workflows/auto-label--deploy-trigger.yaml) | plan every target |
-| Push to `main` | [auto-label--deploy-trigger.yaml](.github/workflows/auto-label--deploy-trigger.yaml) | apply targets with `apply_trigger: merge` |
-| Release PR opened / updated | [auto-release--plan.yaml](.github/workflows/auto-release--plan.yaml) | plan the service's `apply_trigger: release` environments |
-| Release published | [auto-release--trigger.yaml](.github/workflows/auto-release--trigger.yaml) | apply the service's `apply_trigger: release` environments |
+| `deploy:{service}` label added to a PR | [label-base-deploy--resolver.yaml](.github/workflows/label-base-deploy--resolver.yaml) | plan every target |
+| Push to `main` | [label-base-deploy--resolver.yaml](.github/workflows/label-base-deploy--resolver.yaml) | apply targets with `apply_trigger: merge` |
+| Release PR opened / updated | [release--plan.yaml](.github/workflows/release--plan.yaml) | plan the service's `apply_trigger: release` environments |
+| Release published | [release--deploy.yaml](.github/workflows/release--deploy.yaml) | apply the service's `apply_trigger: release` environments |
 
 #### Targets
 
-- [auto-label--label-dispatcher.yaml](.github/workflows/auto-label--label-dispatcher.yaml) adds `deploy:{service}` to a PR when it is opened or updated; release-please branches get no label.
+- [label-base-deploy--dispatcher.yaml](.github/workflows/label-base-deploy--dispatcher.yaml) adds `deploy:{service}` to a PR when it is opened or updated; release-please branches get no label.
   - Any change under `aws/{service}/`, including modules and `root.hcl`, adds the label.
 - `label-resolver` expands the label into every environment of that service using [workflow-config.yaml](workflow-config.yaml).
 - A `{service}/{environment}` pair matched by `exclude` of the `terragrunt` stack is never planned or applied, including by releases.
@@ -56,8 +56,8 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
   - [check-release-configs.sh](.github/scripts/terragrunt-release/check-release-configs.sh) fails CI when a config is missing.
 - Commits that touch only `apply_trigger: merge` environment directories do not create a release (`exclude-paths`).
 - While every `apply_trigger: release` environment is excluded, the release PR is still created, but nothing is planned or applied.
-- To re-plan, use "Re-run all jobs" on the `auto-release--plan` run.
-- To re-apply, run `gh workflow run auto-release--trigger.yaml --ref {service}-vX.Y.Z -f tag={service}-vX.Y.Z`.
+- To re-plan, use "Re-run all jobs" on the `Release - Plan` run.
+- To re-apply, run `gh workflow run release--deploy.yaml --ref {service}-vX.Y.Z -f tag={service}-vX.Y.Z`.
 
 ### Stacks
 
@@ -86,8 +86,8 @@ flowchart LR
   end
 
   subgraph Labeling
-    Dispatcher[auto-label--label-dispatcher<br/>panicboat/deploy-actions/label-dispatcher]
-    Trigger[auto-label--deploy-trigger<br/>on: pull_request labeled]
+    Dispatcher[label-base-deploy--dispatcher<br/>panicboat/deploy-actions/label-dispatcher]
+    Trigger[label-base-deploy--resolver<br/>on: pull_request labeled]
     Resolver[label-resolver]
   end
 
@@ -101,7 +101,7 @@ flowchart LR
   end
 
   subgraph Terragrunt
-    ReleaseTrigger[auto-release--trigger]
+    ReleaseTrigger[release--deploy]
     TG[reusable--terragrunt-executor]
     Plan[terragrunt plan]
     Apply[terragrunt apply]

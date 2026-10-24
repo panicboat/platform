@@ -1,4 +1,4 @@
-name: 'Auto Label - Label Dispatcher'
+name: 'Label Base Deploy - Dispatcher'
 
 on:
   pull_request:

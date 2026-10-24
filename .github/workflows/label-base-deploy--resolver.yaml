@@ -1,4 +1,4 @@
-name: 'Auto Label - Label Resolver'
+name: 'Label Base Deploy - Resolver'
 
 on:
   pull_request:

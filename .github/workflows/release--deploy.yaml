@@ -1,8 +1,14 @@
-name: 'Auto Release - Plan'
+name: 'Release - Deploy'
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to (re-)apply (e.g. vpc-v0.2.0)'
+        required: true
+        type: string
 
 permissions:
   id-token: write
@@ -10,36 +16,42 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: auto-release-plan-${{ github.head_ref }}
-  cancel-in-progress: true
+  group: auto-release-trigger-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
 
 jobs:
   resolve:
     name: 'Resolve Release Targets'
-    if: startsWith(github.head_ref, 'release-please--branches--main--components--')
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
     outputs:
       targets: ${{ steps.resolve.outputs.targets }}
+      tag: ${{ steps.resolve.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
 
       - name: Resolve release targets
         id: resolve
-        env:
-          HEAD_REF: ${{ github.head_ref }}
         run: |
           set -euo pipefail
-          service=$(bash .github/scripts/terragrunt-release/release-service.sh --branch "$HEAD_REF")
+          service=$(bash .github/scripts/terragrunt-release/release-service.sh --tag "$TAG")
           targets=$(bash .github/scripts/terragrunt-release/release-targets.sh "$service")
           echo "targets=$targets" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-  plan:
-    name: 'Plan Release (${{ matrix.target.service }}:${{ matrix.target.environment }})'
+  apply:
+    name: 'Apply Release (${{ matrix.target.service }}:${{ matrix.target.environment }})'
     needs: resolve
     if: needs.resolve.outputs.targets != '[]'
+    concurrency:
+      group: terragrunt-apply-${{ matrix.target.working_directory }}
+      cancel-in-progress: false
     strategy:
       matrix:
         target: ${{ fromJson(needs.resolve.outputs.targets) }}
@@ -48,10 +60,12 @@ jobs:
     with:
       service-name: ${{ matrix.target.service }}
       environment: ${{ matrix.target.environment }}
-      action-type: plan
-      iam-role: ${{ matrix.target.iam_role_plan }}
+      action-type: apply
+      iam-role: ${{ matrix.target.iam_role_apply }}
       aws-region: ${{ matrix.target.aws_region }}
       working-directory: ${{ matrix.target.working_directory }}
       app-id: ${{ vars.APP_ID }}
+      ref: ${{ needs.resolve.outputs.tag }}
+      github-environment: ${{ matrix.target.environment }}
     secrets:
       private-key: ${{ secrets.APP_PRIVATE_KEY }}
