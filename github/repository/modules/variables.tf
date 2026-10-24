@@ -43,6 +43,7 @@ variable "repositories" {
       wiki     = bool
       projects = bool
     })
+    environments = optional(map(object({ deployment_tag_patterns = list(string) })), {})
   }))
 }
 

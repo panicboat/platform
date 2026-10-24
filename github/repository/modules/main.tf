@@ -38,3 +38,36 @@ resource "github_workflow_repository_permissions" "repository" {
   default_workflow_permissions     = "read"
   can_approve_pull_request_reviews = false
 }
+
+resource "github_repository_environment" "repository" {
+  for_each = merge([
+    for repo_key, repo in var.repositories : {
+      for env_name, env in repo.environments :
+      "${repo_key}/${env_name}" => { repo_key = repo_key, name = env_name }
+    }
+  ]...)
+
+  repository        = github_repository.repository[each.value.repo_key].name
+  environment       = each.value.name
+  can_admins_bypass = false
+
+  deployment_branch_policy {
+    protected_branches     = false
+    custom_branch_policies = true
+  }
+}
+
+resource "github_repository_environment_deployment_policy" "repository" {
+  for_each = merge([
+    for repo_key, repo in var.repositories : merge([
+      for env_name, env in repo.environments : {
+        for pattern in env.deployment_tag_patterns :
+        "${repo_key}/${env_name}/${pattern}" => { env_key = "${repo_key}/${env_name}", pattern = pattern }
+      }
+    ]...)
+  ]...)
+
+  repository  = github_repository_environment.repository[each.value.env_key].repository
+  environment = github_repository_environment.repository[each.value.env_key].environment
+  tag_pattern = each.value.pattern
+}

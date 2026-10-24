@@ -9,5 +9,6 @@ locals {
       wiki     = false
       projects = true
     }
+    environments = { production = { deployment_tag_patterns = ["*-v*"] } }
   }
 }
