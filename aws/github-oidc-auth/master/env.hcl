@@ -11,6 +11,8 @@ locals {
 
   additional_iam_policies = []
 
+  bedrock_models = ["anthropic.claude-sonnet-4-6"]
+
   # Manages account-level OIDC provider singleton for the management account.
   create_oidc_provider = true
   oidc_provider_arn    = ""
