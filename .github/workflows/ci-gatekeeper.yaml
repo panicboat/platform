@@ -7,19 +7,11 @@ on:
     branches:
       - '**'
 
-permissions:
-  actions: read
-
 jobs:
   ci-gatekeeper:
-    name: CI Gatekeeper
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Wait for other workflows
-        uses: int128/wait-for-workflows-action@b320164b37276db89a12829914d6eb6ef4973d2b # v1.108.0
-        with:
-          max-timeout-seconds: 1800 # 30 minutes
-          # The AI review is advisory; a Bedrock outage must not block merges through this required check.
-          exclude-workflow-names: |
-            Renovate Major Review
+    permissions:
+      actions: read
+    uses: panicboat/.github/.github/workflows/reusable--ci-gatekeeper.yaml@d54532665675f1843914da4b324dc2a58dd37239 # v1.0.0
+    with:
+      # The AI review is advisory; a Bedrock outage must not block merges through this required check.
+      exclude-workflow-names: Renovate Major Review

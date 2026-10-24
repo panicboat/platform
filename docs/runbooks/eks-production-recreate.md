@@ -247,14 +247,14 @@ Karpenter が NodePool 観測 → Pending pod (= ebs-csi-controller / hubble-rel
 
 ```bash
 # RECREATE marker は Phase 4 で edit 済 (= 再 edit 不要)
-# hydrate-component で全 component を新 cluster ID で再生成
+# hydrate-component で全 component を新 cluster ID で再生成 (scripts は platform の隣に clone した panicboat/.github にある)
 for comp in $(find kubernetes/components -mindepth 1 -maxdepth 1 -type d -exec basename {} \;); do
   if [ -d "kubernetes/components/${comp}/production" ]; then
     echo "Hydrating ${comp}..."
-    bash .github/scripts/kubernetes-hydrate/hydrate-component.sh "$comp" production
+    bash ../.github/scripts/kubernetes-hydrate/hydrate-component.sh "$comp" production
   fi
 done
-bash .github/scripts/kubernetes-hydrate/hydrate-index.sh production
+bash ../.github/scripts/kubernetes-hydrate/hydrate-index.sh production
 
 # commit + push (= main 直接 push は branch protection で blocked のため PR 経由)
 git checkout -b chore/hydrate-after-recreate-$(date +%Y%m%d)

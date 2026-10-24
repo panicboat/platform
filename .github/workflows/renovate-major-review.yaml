@@ -13,105 +13,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  render:
-    name: 'Render'
-    if: github.event.label.name == '📈 major-update' && github.event.pull_request.user.login == 'renovate[bot]'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # helmfile templates can exec commands, so PR content is rendered in a job without id-token or the review environment.
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Setup aqua
-        uses: aquaproj/aqua-installer@82d0e83878a8657c4a6f2ff1755d3bfbfc67f329 # v4.1.0
-        with:
-          aqua_version: v2.64.0
-
-      - name: Render manifest diff
-        # HEAD is the PR merge commit, so its first parent is the base it merges into.
-        run: bash .github/scripts/kubernetes-hydrate/render-diff.sh HEAD^1 "${RUNNER_TEMP}/render-diff"
-
-      - name: Upload manifest diff
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: render-diff
-          path: ${{ runner.temp }}/render-diff
-          retention-days: 1
-
   review:
-    name: 'Review'
-    needs: render
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    # Environment-scoped OIDC sub keeps a prompt-injected run from assuming the plan roles, which trust the pull_request sub.
-    environment: renovate-major-review
     permissions:
       contents: read
-      pull-requests: read
-      id-token: write
-    outputs:
-      body: ${{ steps.claude.outputs.structured_output && fromJSON(steps.claude.outputs.structured_output).body || '' }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Download manifest diff
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: render-diff
-          path: .render-diff
-
-      - name: Setup aqua
-        uses: aquaproj/aqua-installer@82d0e83878a8657c4a6f2ff1755d3bfbfc67f329 # v4.1.0
-        with:
-          aqua_version: v2.64.0
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
-        with:
-          role-to-assume: arn:aws:iam::559744160976:role/github-oidc-auth-master-github-actions-bedrock-role
-          aws-region: us-east-1
-
-      - name: Review with Claude
-        id: claude
-        uses: anthropics/claude-code-action@16f9f71ab9c490faf367f94dd294897edc25be33 # v1.0.261
-        env:
-          # The Bedrock role only allows Sonnet 4.6, so background tasks must not fall back to Haiku.
-          ANTHROPIC_DEFAULT_HAIKU_MODEL: global.anthropic.claude-sonnet-4-6
-        with:
-          use_bedrock: 'true'
-          # Read-only token; without it the action exchanges OIDC for the Claude App's write token.
-          github_token: ${{ github.token }}
-          allowed_bots: renovate
-          prompt: |
-            Read `.github/prompts/renovate-major-review.md` and follow it.
-            Pull request number: ${{ github.event.pull_request.number }}
-          claude_args: |
-            --model global.anthropic.claude-sonnet-4-6
-            --json-schema '{"type":"object","properties":{"body":{"type":"string","minLength":1,"maxLength":60000}},"required":["body"]}'
-            --allowedTools "Read,Glob,Grep,WebFetch,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(helm repo add:*),Bash(helm repo update:*),Bash(helm pull:*),Bash(helm show:*)"
-
-  post:
-    name: 'Post Review'
-    needs: review
-    if: needs.review.result == 'success' && needs.review.outputs.body != ''
-    runs-on: ubuntu-latest
-    permissions:
       pull-requests: write
-    steps:
-      - name: Upsert review comment
-        uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
-        with:
-          message: ${{ needs.review.outputs.body }}
-          comment-tag: renovate-major-review
-          mode: upsert
-          pr-number: ${{ github.event.pull_request.number }}
+      id-token: write
+    uses: panicboat/.github/.github/workflows/reusable--renovate-major-review.yaml@d54532665675f1843914da4b324dc2a58dd37239 # v1.0.0
+    with:
+      prompt-path: .github/prompts/renovate-major-review.md

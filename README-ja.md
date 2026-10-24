@@ -53,7 +53,7 @@
 #### Releases
 
 - `apply_trigger: release` の environment を持つ `aws/{service}` は、それぞれ release-please の設定（`release-please-config.json` / `release-please-manifest.json`）を持つ。
-  - 設定がないと [check-release-configs.sh](.github/scripts/terragrunt-release/check-release-configs.sh) が CI を失敗させる。
+  - 設定がないと [check-release-configs.sh](https://github.com/panicboat/.github/blob/main/scripts/terragrunt-release/check-release-configs.sh) が CI を失敗させる。
 - `apply_trigger: merge` の environment ディレクトリだけを変える commit は、release を作らない（`exclude-paths`）。
 - `apply_trigger: release` の environment がすべて除外されている間も release PR は作られるが、plan も apply もされない。
 - plan を出し直すときは、`Release - Plan` の run で「Re-run all jobs」を使う。
@@ -63,9 +63,9 @@
 
 | Stack | Path convention | Tooling |
 |-------|-----------------|---------|
-| AWS infrastructure | `aws/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](.github/workflows/reusable--terragrunt-runner.yaml)) |
-| GitHub configuration | `github/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](.github/workflows/reusable--terragrunt-runner.yaml)) |
-| Kubernetes platform | `kubernetes/components/{service}/{environment}` | Helmfile → Kustomize hydration ([reusable--kubernetes-hydrator.yaml](.github/workflows/reusable--kubernetes-hydrator.yaml) / [reusable--kubernetes-builder.yaml](.github/workflows/reusable--kubernetes-builder.yaml)) → Flux CD |
+| AWS infrastructure | `aws/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--terragrunt-runner.yaml)) |
+| GitHub configuration | `github/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--terragrunt-runner.yaml)) |
+| Kubernetes platform | `kubernetes/components/{service}/{environment}` | Helmfile → Kustomize hydration ([reusable--kubernetes-hydrator.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--kubernetes-hydrator.yaml) / [reusable--kubernetes-builder.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--kubernetes-builder.yaml)) → Flux CD |
 
 ### Environments and Authentication
 
@@ -92,7 +92,7 @@ flowchart LR
   end
 
   subgraph KubernetesCI [Kubernetes CI]
-    Group[kubernetes-targets-group<br/>group by env]
+    Group[helmfile-targets-group<br/>group by env]
     Hydrator[reusable--kubernetes-hydrator<br/>matrix: env<br/>concurrency: hydrate-PR-env]
     Commit[auto-commit<br/>kubernetes/manifests/]
     Builder[reusable--kubernetes-builder<br/>matrix: service x env<br/>diff only]
@@ -124,7 +124,7 @@ flowchart LR
   TG -->|on push main or release published| Apply
   Plan --> PRComment
   Apply --> AWS
-  Resolver -->|stack: kubernetes| Group
+  Resolver -->|stack: helmfile| Group
   Group --> Hydrator
   Hydrator -->|hydrate-component.sh<br/>+ hydrate-index.sh| Commit
   Hydrator -->|index diff| IndexComment
@@ -139,4 +139,4 @@ flowchart LR
 
 - Flux bootstrap は `kubernetes/clusters/{cluster}/flux-system/` に置く。cluster の root Kustomization が `kubernetes/manifests/{cluster}/` 配下のレンダリング済みマニフェストと外部 `GitRepository`（現状はアプリケーション monorepo）を集約する。
 - Platform と application の repository は別々に pull され、疎結合に保たれる。同期間隔や source URL は `kubernetes/clusters/{cluster}/` 配下のマニフェストが source of truth。
-- [kubernetes/components/](kubernetes/components/) を変更する PR では CI が [.github/scripts/kubernetes-hydrate/](.github/scripts/kubernetes-hydrate/) を実行し、レンダリング結果を [kubernetes/manifests/](kubernetes/manifests/) にコミット、差分を PR コメントに投稿する。マージ後に Flux が適用する。
+- [kubernetes/components/](kubernetes/components/) を変更する PR では CI が [scripts/kubernetes-hydrate/](https://github.com/panicboat/.github/tree/main/scripts/kubernetes-hydrate) を実行し、レンダリング結果を [kubernetes/manifests/](kubernetes/manifests/) にコミット、差分を PR コメントに投稿する。マージ後に Flux が適用する。
