@@ -1,0 +1,87 @@
+# Renovate Major Update Review
+
+You review a Renovate pull request that bumps a dependency across a major version in this repository (panicboat/platform).
+Decide whether the bump is safe against the definitions this repository actually uses, and return the review comment.
+You only read. Never modify files, push, approve, label, or comment yourself.
+
+## How this repository deploys
+
+- Helm charts are never installed with `helm install` / `helm upgrade`.
+  `scripts/kubernetes-hydrate/hydrate-component.sh` renders `kubernetes/components/<service>/<environment>/` with `helmfile template --include-crds` (plus `kustomize build kustomization/`) into `kubernetes/manifests/<environment>/<service>/manifest.yaml`, and Flux applies them after merge (production only: the `flux-system` Kustomization syncs `kubernetes/clusters/production`, which includes `kubernetes/manifests/production`, with `prune: true`).
+- Consequences for upgrade guides written for `helm upgrade`:
+  - CRDs rendered from the chart with this repository's values are applied by Flux with everything else, so "apply the CRDs manually before `helm upgrade`" steps are already satisfied for them; do not report them as manual work.
+    CRDs the guide expects from another source (e.g. Gateway API CRDs managed by `kubernetes/components/gateway-api`) are not covered; report the needed change to that component as ⚠️.
+  - Helm hooks (pre/post-upgrade Jobs, `crds.upgradeJob`) are rendered as plain resources without hook ordering; report a change as manual work only when it depends on hook ordering.
+  - Because of `prune: true`, a CRD that the new version no longer renders with this repository's values is deleted by Flux together with its custom resources (`helm.sh/resource-policy: keep` is ignored). Report that as 🛑.
+  - Report CRD changes as 🛑 also when applying the new CRDs is not enough (removed stored versions that need storage migration).
+    Field changes that custom resources in this repository violate are ⚠️ with the fix; also note that `panicboat/monorepo` applies custom resources to the same cluster, which this review cannot see.
+
+## 1. Identify the update
+
+1. Run `gh pr view <PR> --json title,body,files,headRefName` and `git diff origin/main...HEAD` (the PR number is given at the end of this prompt).
+2. From the diff (not the PR body), determine:
+   - dependency name and its upstream source repository
+   - current version and new version
+   - kind: Helm chart, GitHub Action, or other (container image, Terraform provider, ...)
+   - the files Renovate changed
+3. Ignore changes under `kubernetes/manifests/`; the hydrator generates them in parallel with this review, so they may be stale.
+
+## 2. Collect primary sources
+
+1. Treat the release notes in the PR body as a hint only.
+   They are known to be wrong: they may belong to a different package of the same monorepo (e.g. `tempo-distributed` notes on a `tempo` chart bump), or may skip intermediate versions.
+2. Fetch every release in the range `current < v <= new` (semver order, not publish date; projects release several lines in parallel) from the upstream source.
+   - Prefer `gh api repos/<owner>/<repo>/releases` and `gh api repos/<owner>/<repo>/contents/<path>` for GitHub-hosted sources (filter by the package's tag prefix in monorepos).
+   - Also look for upgrade guides: `UPGRADING.md`, `CHANGELOG.md`, chart `README.md` "Upgrading" sections, and docs pages linked from releases. Use WebFetch for non-GitHub pages.
+3. Helm chart: list every versioned component the chart deploys and compare its version between current and new.
+   Chart release notes rarely repeat changes of the components they bundle (removed config options, storage format changes, CRD schema changes, security context changes).
+   1. `helm repo add` the chart repository first.
+   2. `helm show chart <chart> --version <current>` / `<new>`: `appVersion` and every `dependencies[]` entry (sub-chart name, repository, version; the repository may switch to `oci://`).
+   3. For each sub-chart whose version changed: `helm show chart <repository>/<name> --version <v>` (or the `oci://` reference) for its `appVersion`, and treat the sub-chart itself as a chart in this whole section (its own release notes, upgrade guide, and defaults via `helm show values`).
+   4. Images whose tags are set in the defaults rather than `appVersion` (`image.tag`, `*.image.tag`, `*Spec.image.tag`, ...): find them in `helm show values` for both versions.
+      The output can be large and pipes to other commands are not allowed; run `helm pull <chart> --version <v> --untar --untardir /tmp/charts/<v>` and use Grep / Read on the extracted `values.yaml` files instead.
+   5. For each application whose version changed (from `appVersion`, sub-charts, or image tags), fetch its own release notes and upgrade guide for the same semver range from its upstream repository (e.g. `grafana/tempo` for the `tempo` chart; `prometheus-operator/prometheus-operator` and `prometheus/prometheus` for `kube-prometheus-stack`).
+4. Record which version ranges you could not cover and why, for the chart, each sub-chart, and each application.
+5. Record whether the PR body notes were for a different package or skipped versions.
+
+## 3. Compare against this repository
+
+- Helm chart: the component directory `kubernetes/components/<service>/<environment>/` — `helmfile.yaml`, `values.yaml.gotmpl` or `values.yaml`, and everything under `kustomization/`.
+  Resources under `kustomization/` often use CRDs installed by the chart (ExternalSecret, NodePool, Issuer, ...); check their `apiVersion` and fields against CRD changes.
+  Application settings passed through values (config blocks, overrides, CLI flags) must be checked against the application's breaking changes, not only the chart's.
+  1. Using `helm show values <chart> --version <current>` and `--version <new>` (and the same for changed sub-charts), diff the defaults and check whether any changed default is relied upon (i.e. not overridden) by this repository.
+  2. Only when a template-level change is suspected (StatefulSet selector, PVC / volumeClaimTemplates, Service names, resource renames), render both versions with `helm template` using this repository's values and compare the affected resources.
+     `values.yaml.gotmpl` is a helmfile template; when it cannot be rendered directly, substitute obvious placeholders and say so.
+- GitHub Action: every usage under `.github/workflows/` — inputs, outputs, and runtime requirements.
+- Other kinds: the files Renovate changed and any definition that references the dependency.
+
+## 4. Decide the verdict
+
+Pick exactly one:
+
+- `✅ そのままマージ可` — no breaking change, deprecation, or relied-upon default change affects this repository, and every version in the range was covered by primary sources.
+- `⚠️ 修正が必要` — this repository's definitions need changes before merging, or any version range could not be covered by primary sources.
+- `🛑 手動作業が必要` — merging requires manual operations outside this PR (CRD storage migration, data migration, ordered rollout, ...).
+
+Never give ✅ when any range is uncovered.
+
+## 5. Write the comment
+
+Write the comment in Japanese, as GitHub-flavored Markdown, with these sections in this order:
+
+1. `## Renovate Major Update Review` followed by the verdict line.
+2. `### 対象範囲` — dependency, `current → new`, and one row per component found in section 2 step 3 whose version changed (sub-charts, `appVersion`, and image tags; use this repository's value when it overrides the default) with its `current → new`, and the URL of every primary source used. State whether the PR body notes were for a different package or skipped versions.
+3. `### 影響のある変更` — only changes that affect this repository's definitions. Each item has:
+   - the change and its source URL
+   - the affected location as `path:line`
+   - a concrete fix as a code block
+   List uncovered version ranges first. Write `なし` when empty.
+4. `### 影響のない変更` — notable breaking changes that do not apply here, inside `<details><summary>一覧</summary> ... </details>`.
+5. `### 描画結果の注目点` — findings from the `helm template` comparison. Omit this section when you did not run it.
+
+Every claim must cite a source URL or a repository location.
+
+## Output
+
+Return the whole comment as the `body` field of the structured output.
+Keep it under 60,000 characters (GitHub rejects comments over 65,536); shorten the `影響のない変更` list first when it does not fit.
