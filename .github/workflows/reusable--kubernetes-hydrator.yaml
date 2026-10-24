@@ -1,3 +1,4 @@
+# Renders the given components into kubernetes/manifests and commits the result to the pull request branch.
 name: 'Reusable - Kubernetes Hydrator'
 
 on:

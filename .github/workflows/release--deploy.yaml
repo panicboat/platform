@@ -1,3 +1,4 @@
+# Applies a service's apply_trigger: release environments when its release is published or its tag is dispatched.
 name: 'Release - Deploy'
 
 on:
@@ -16,7 +17,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: auto-release-trigger-${{ github.event.release.tag_name || inputs.tag }}
+  group: release-deploy-${{ github.event.release.tag_name || inputs.tag }}
   cancel-in-progress: false
 
 jobs:

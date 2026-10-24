@@ -1,3 +1,4 @@
+# Posts the kustomize diff of one hydrated component as a pull request comment.
 name: 'Reusable - Kubernetes Builder'
 
 on:

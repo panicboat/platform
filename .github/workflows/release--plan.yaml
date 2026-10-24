@@ -1,3 +1,4 @@
+# Plans a service's apply_trigger: release environments on its release-please pull request.
 name: 'Release - Plan'
 
 on:
@@ -10,7 +11,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: auto-release-plan-${{ github.head_ref }}
+  group: release-plan-${{ github.head_ref }}
   cancel-in-progress: true
 
 jobs:
