@@ -7,7 +7,7 @@ terraform {
 }
 
 inputs = {
-  # The billing account is billed in JPY; 800 JPY is roughly 5 USD.
+  # The billing account is billed in JPY, so the budget is set in JPY as well.
   budget_currency_code = "JPY"
-  budget_amount        = 800
+  budget_amount        = 3000
 }
