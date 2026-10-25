@@ -20,7 +20,7 @@
 全体は 3 つに分かれ、この spec は 1 だけを扱う。
 
 1. GCP の土台（この spec）
-2. Gemini 用の Workload Identity Federation と service account を `gcp/github-oidc-auth` に足す（`aws/github-oidc-auth/modules/bedrock.tf` にあたる）
+2. Gemini 用の Workload Identity Federation と service account を `gcp/workload-identity` に足す（`aws/github-oidc-auth/modules/bedrock.tf` にあたる）
 3. `panicboat/.github` の共通 workflow を Vertex AI + Gemini（`google-github-actions/run-gemini-cli`）に切り替える
 
 ### Current state
@@ -63,10 +63,14 @@
 
 - **GCP の resource は platform の terragrunt で管理する**
 - **stack は 2 つ**
-  - `gcp/github-oidc-auth/master`: CI の terragrunt が GCP に入るための Workload Identity Federation と権限。Overall plan の 2 で Gemini 用の resource（`vertex.tf`）もここに足す
+  - `gcp/workload-identity/master`: CI の terragrunt が GCP に入るための Workload Identity Federation と権限。Overall plan の 2 で Gemini 用の resource（`vertex.tf`）もここに足す
   - `gcp/billing/master`: 請求先アカウントの予算アラート。プロジェクトの外の resource なので分ける
+- **GCP のサービス名は、`aws/` のサービス名と重ねない**
+  - label は `deploy:<service>` で provider を含まないため、同じ名前だと label-resolver が両方の stack を対象にする（REASONED：deploy-actions v2.0.1 `label-resolver/use_cases/generated_matrix.rb`）
+  - tfcmt の target も `<service>/<environment>` で同じになり、`TFCMT_PLAN_PATCH` で両方の plan コメントが互いに上書きされる
+  - そのため `gcp/github-oidc-auth` ではなく `gcp/workload-identity` にする
 - **state は今の S3 bucket に置き、key は `platform/gcp/<service>/<environment>/terraform.tfstate` にする**
-  - provider のディレクトリを key に含め、`aws/github-oidc-auth` と `gcp/github-oidc-auth` の key がぶつからないようにする
+  - provider のディレクトリを key に含め、provider をまたいで同じサービス名があっても key がぶつからないようにする
   - 既存の stack も同じ規則に揃える（panicboat/monorepo#1768）
 - **CI から GCP への認証は、AWS の role を GCP の Workload Identity Federation に信頼させる**
   - runner はすでに master の plan role か apply role を assume しているので、その credential を GCP の credential に交換する
@@ -82,7 +86,7 @@
 
 ## Design
 
-### Workload Identity Federation（`gcp/github-oidc-auth`）
+### Workload Identity Federation（`gcp/workload-identity`）
 
 - Workload Identity Pool に AWS provider を 1 つ作り、アカウント `559744160976` だけを受け付ける
 - attribute condition で、assumed role からの credential だけを受け付ける
@@ -124,10 +128,10 @@ CI が GCP に入るための権限は CI 自身では作れないので、初�
 1. GCP を使い始め、請求先アカウントを作る（手作業）
 2. プロジェクトを作り、請求先アカウントにひも付ける（手作業）
    - プロジェクト ID は作成後に変えられない。ID と請求先アカウント ID は、この手順でユーザーが決めた値を `env.hcl` などの入力にする
-3. `gcp/github-oidc-auth/master` を手元から apply する
+3. `gcp/workload-identity/master` を手元から apply する
 4. credential の設定ファイルを作り、リポジトリに置く
 5. `workflow-config.yaml` の terragrunt stack の paths に `gcp/{service}/{environment}` を足す
-6. CI の plan で `gcp/github-oidc-auth/master` に差分が出ないことを確かめる
+6. CI の plan で `gcp/workload-identity/master` に差分が出ないことを確かめる
 7. 請求先アカウントで、plan role の principal に予算を読む権限を、apply role の principal に予算を管理する権限を付ける（手作業）
 8. `gcp/billing/master` を CI から apply する
 
