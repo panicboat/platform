@@ -25,7 +25,9 @@
 
 ### Current state
 
-- GCP のアカウント、請求先アカウント（billing account）、プロジェクトはまだ何もない（ユーザー申告）
+- GCP には Google Workspace `panicboat.net` の Organization（`731586494509`）がある（VERIFIED：`gcloud organizations list`）
+  - 既存のプロジェクト `panicboat-platform-auth`（`526108552713`）は、EKS の oauth2-proxy が使う Google OAuth client を置いている（`docs/superpowers/specs/2026-08-18-production-account-migration-design.md`）
+  - Organization には `iam.allowedPolicyMemberDomains` が設定され、許可は Workspace の顧客 ID `C01ivkwt8` だけ。Organization 内のプロジェクトにある Workload Identity Pool の principal はこれで許可される（REASONED：[Restricting identities by domain](https://docs.cloud.google.com/organization-policy/restrict-domains)）
 - `workflow-config.yaml` の terragrunt stack は `aws/{service}/{environment}` と `github/{service}/{environment}` を対象にしている（VERIFIED）
 - `github/` の stack は AWS 以外の provider を扱うが、state は AWS の S3 bucket（`terragrunt-state-${get_aws_account_id()}`）と DynamoDB（`terragrunt-state-locks`）に置いている（VERIFIED：`github/repository/root.hcl`）
 - CI の terragrunt は `panicboat/.github` の `reusable--terragrunt-runner.yaml` が動かす。用意する credential は AWS の role（`configure-aws-credentials`）と GitHub App token だけ（VERIFIED）
@@ -44,7 +46,7 @@
 ## Non-goals
 
 - Gemini 用の認証と、workflow の切り替え（Overall plan の 2 と 3）
-- GCP の Organization・フォルダの作成。個人アカウントのまま使う
+- GCP の Organization・フォルダ・組織ポリシーの変更
 - develop・production などの環境の分割。GCP は `master` だけにする
 - 既存の stack の state key の変更（panicboat/monorepo#1768 で扱う）
 - `reusable--terragrunt-runner.yaml` の変更
@@ -77,8 +79,9 @@
   - runner と `workflow-config.yaml` の形を変えずに済む
   - GitHub OIDC を GCP に直接信頼させる案は、runner に GCP の認証 step を足し、`workflow-config.yaml` に GCP の属性を持たせる必要があるため採らない
 - **plan role は閲覧だけ、apply role は変更できる権限にする**: AWS の plan / apply の分け方と揃える
-- **GCP のプロジェクトは 1 つ。プロジェクトと請求先アカウントは手作業で作る**
-  - Organization のない個人アカウントでは、Terraform でプロジェクトを作るのに個人の credential が要るため
+- **GCP のプロジェクトは `panicboat-platform-github` の 1 つ。Organization の下に手作業で作る**
+  - CI の権限が Organization にないため、プロジェクトの作成を Terraform にすると、初回の構築に個人の credential が要る。手作業でも同じなので、Terraform にしない
+  - 名前は使う側（GitHub Actions）で付ける。`panicboat-platform-auth` の OAuth client を CI の owner 相当の権限から切り離し、同じプロジェクトに寄せないため
   - 作業時に Claude が手順を案内する
 - **予算アラートを付ける**: 費用を下げるための取り組みなので、超過に気付けるようにする
 
