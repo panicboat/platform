@@ -5,54 +5,18 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-permissions:
-  id-token: write
-  contents: read
-  pull-requests: write
-
 concurrency:
   group: release-plan-${{ github.head_ref }}
   cancel-in-progress: true
 
 jobs:
-  resolve:
-    name: 'Resolve Release Targets'
-    if: startsWith(github.head_ref, 'release-please--branches--main--components--')
-    runs-on: ubuntu-latest
+  release-plan:
     permissions:
+      id-token: write
       contents: read
-    outputs:
-      targets: ${{ steps.resolve.outputs.targets }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Resolve release targets
-        id: resolve
-        env:
-          HEAD_REF: ${{ github.head_ref }}
-        run: |
-          set -euo pipefail
-          service=$(bash .github/scripts/terragrunt-release/release-service.sh --branch "$HEAD_REF")
-          targets=$(bash .github/scripts/terragrunt-release/release-targets.sh "$service")
-          echo "targets=$targets" >> "$GITHUB_OUTPUT"
-
-  plan:
-    name: 'Plan Release (${{ matrix.target.service }}:${{ matrix.target.environment }})'
-    needs: resolve
-    if: needs.resolve.outputs.targets != '[]'
-    strategy:
-      matrix:
-        target: ${{ fromJson(needs.resolve.outputs.targets) }}
-      fail-fast: false
-    uses: ./.github/workflows/reusable--terragrunt-runner.yaml
+      pull-requests: write
+    uses: panicboat/.github/.github/workflows/reusable--release--plan.yaml@d54532665675f1843914da4b324dc2a58dd37239 # v1.0.0
     with:
-      service-name: ${{ matrix.target.service }}
-      environment: ${{ matrix.target.environment }}
-      action-type: plan
-      iam-role: ${{ matrix.target.iam_role_plan }}
-      aws-region: ${{ matrix.target.aws_region }}
-      working-directory: ${{ matrix.target.working_directory }}
       app-id: ${{ vars.APP_ID }}
     secrets:
       private-key: ${{ secrets.APP_PRIVATE_KEY }}

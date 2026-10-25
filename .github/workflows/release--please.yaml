@@ -6,46 +6,16 @@ on:
     branches: [main]
   workflow_dispatch: {}
 
-permissions:
-  contents: read
-
 concurrency:
   group: release-please
   cancel-in-progress: false
 
 jobs:
-  discover:
-    runs-on: ubuntu-latest
-    outputs:
-      paths: ${{ steps.find.outputs.paths }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Find release-please configs
-        id: find
-        run: |
-          set -euo pipefail
-          paths=$(git ls-files '*/release-please-config.json' | jq -R 'rtrimstr("/release-please-config.json")' | jq -sc .)
-          echo "paths=$paths" >> "$GITHUB_OUTPUT"
-
   release-please:
-    needs: discover
-    if: needs.discover.outputs.paths != '[]'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        path: ${{ fromJson(needs.discover.outputs.paths) }}
-    steps:
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
-        with:
-          app-id: ${{ vars.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
-      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
-        with:
-          token: ${{ steps.app-token.outputs.token }}
-          config-file: ${{ matrix.path }}/release-please-config.json
-          manifest-file: ${{ matrix.path }}/release-please-manifest.json
+    permissions:
+      contents: read
+    uses: panicboat/.github/.github/workflows/reusable--release--please.yaml@d54532665675f1843914da4b324dc2a58dd37239 # v1.0.0
+    with:
+      app-id: ${{ vars.APP_ID }}
+    secrets:
+      private-key: ${{ secrets.APP_PRIVATE_KEY }}

@@ -53,7 +53,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 #### Releases
 
 - Each `aws/{service}` with an `apply_trigger: release` environment has its own release-please config (`release-please-config.json` / `release-please-manifest.json`).
-  - [check-release-configs.sh](.github/scripts/terragrunt-release/check-release-configs.sh) fails CI when a config is missing.
+  - [check-release-configs.sh](https://github.com/panicboat/.github/blob/main/scripts/terragrunt-release/check-release-configs.sh) fails CI when a config is missing.
 - Commits that touch only `apply_trigger: merge` environment directories do not create a release (`exclude-paths`).
 - While every `apply_trigger: release` environment is excluded, the release PR is still created, but nothing is planned or applied.
 - To re-plan, use "Re-run all jobs" on the `Release - Plan` run.
@@ -63,9 +63,9 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 
 | Stack | Path convention | Tooling |
 |-------|-----------------|---------|
-| AWS infrastructure | `aws/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](.github/workflows/reusable--terragrunt-runner.yaml)) |
-| GitHub configuration | `github/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](.github/workflows/reusable--terragrunt-runner.yaml)) |
-| Kubernetes platform | `kubernetes/components/{service}/{environment}` | Helmfile → Kustomize hydration ([reusable--kubernetes-hydrator.yaml](.github/workflows/reusable--kubernetes-hydrator.yaml) / [reusable--kubernetes-builder.yaml](.github/workflows/reusable--kubernetes-builder.yaml)) → Flux CD |
+| AWS infrastructure | `aws/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--terragrunt-runner.yaml)) |
+| GitHub configuration | `github/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--terragrunt-runner.yaml)) |
+| Kubernetes platform | `kubernetes/components/{service}/{environment}` | Helmfile → Kustomize hydration ([reusable--kubernetes-hydrator.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--kubernetes-hydrator.yaml) / [reusable--kubernetes-builder.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--kubernetes-builder.yaml)) → Flux CD |
 
 ### Environments and authentication
 
@@ -92,7 +92,7 @@ flowchart LR
   end
 
   subgraph KubernetesCI [Kubernetes CI]
-    Group[kubernetes-targets-group<br/>group by env]
+    Group[helmfile-targets-group<br/>group by env]
     Hydrator[reusable--kubernetes-hydrator<br/>matrix: env<br/>concurrency: hydrate-PR-env]
     Commit[auto-commit<br/>kubernetes/manifests/]
     Builder[reusable--kubernetes-builder<br/>matrix: service x env<br/>diff only]
@@ -124,7 +124,7 @@ flowchart LR
   TG -->|on push main or release published| Apply
   Plan --> PRComment
   Apply --> AWS
-  Resolver -->|stack: kubernetes| Group
+  Resolver -->|stack: helmfile| Group
   Group --> Hydrator
   Hydrator -->|hydrate-component.sh<br/>+ hydrate-index.sh| Commit
   Hydrator -->|index diff| IndexComment
@@ -139,4 +139,4 @@ flowchart LR
 
 - Flux bootstrap lives in `kubernetes/clusters/{cluster}/flux-system/`. The cluster's root Kustomization aggregates the rendered manifests under `kubernetes/manifests/{cluster}/` and any external `GitRepository` (currently the application monorepo).
 - Platform and application repositories are pulled independently and stay loosely coupled. Sync intervals and source URLs are configured in `kubernetes/clusters/{cluster}/` — treat those manifests as the source of truth.
-- When [kubernetes/components/](kubernetes/components/) changes, CI runs [.github/scripts/kubernetes-hydrate/](.github/scripts/kubernetes-hydrate/), commits the rendered output to [kubernetes/manifests/](kubernetes/manifests/), and posts the diff as a PR comment. Flux applies the change once merged.
+- When [kubernetes/components/](kubernetes/components/) changes, CI runs [scripts/kubernetes-hydrate/](https://github.com/panicboat/.github/tree/main/scripts/kubernetes-hydrate), commits the rendered output to [kubernetes/manifests/](kubernetes/manifests/), and posts the diff as a PR comment. Flux applies the change once merged.

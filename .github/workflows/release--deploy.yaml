@@ -11,62 +11,18 @@ on:
         required: true
         type: string
 
-permissions:
-  id-token: write
-  contents: read
-  pull-requests: write
-
 concurrency:
   group: release-deploy-${{ github.event.release.tag_name || inputs.tag }}
   cancel-in-progress: false
 
 jobs:
-  resolve:
-    name: 'Resolve Release Targets'
-    runs-on: ubuntu-latest
+  release-deploy:
     permissions:
+      id-token: write
       contents: read
-    env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
-    outputs:
-      targets: ${{ steps.resolve.outputs.targets }}
-      tag: ${{ steps.resolve.outputs.tag }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ env.TAG }}
-
-      - name: Resolve release targets
-        id: resolve
-        run: |
-          set -euo pipefail
-          service=$(bash .github/scripts/terragrunt-release/release-service.sh --tag "$TAG")
-          targets=$(bash .github/scripts/terragrunt-release/release-targets.sh "$service")
-          echo "targets=$targets" >> "$GITHUB_OUTPUT"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-
-  apply:
-    name: 'Apply Release (${{ matrix.target.service }}:${{ matrix.target.environment }})'
-    needs: resolve
-    if: needs.resolve.outputs.targets != '[]'
-    concurrency:
-      group: terragrunt-apply-${{ matrix.target.working_directory }}
-      cancel-in-progress: false
-    strategy:
-      matrix:
-        target: ${{ fromJson(needs.resolve.outputs.targets) }}
-      fail-fast: false
-    uses: ./.github/workflows/reusable--terragrunt-runner.yaml
+      pull-requests: write
+    uses: panicboat/.github/.github/workflows/reusable--release--deploy.yaml@d54532665675f1843914da4b324dc2a58dd37239 # v1.0.0
     with:
-      service-name: ${{ matrix.target.service }}
-      environment: ${{ matrix.target.environment }}
-      action-type: apply
-      iam-role: ${{ matrix.target.iam_role_apply }}
-      aws-region: ${{ matrix.target.aws_region }}
-      working-directory: ${{ matrix.target.working_directory }}
       app-id: ${{ vars.APP_ID }}
-      ref: ${{ needs.resolve.outputs.tag }}
-      github-environment: ${{ matrix.target.environment }}
     secrets:
       private-key: ${{ secrets.APP_PRIVATE_KEY }}

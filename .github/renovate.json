@@ -1,71 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended",
-    ":semanticCommits",
-    ":separateMajorReleases",
-    "group:monorepos",
-    "group:recommended",
-    "helpers:pinGitHubActionDigests"
+    "github>panicboat/.github"
   ],
-  "semanticCommitScope": "{{packageFileDir}}",
-  "timezone": "Asia/Tokyo",
-  "labels": [
-    "🤖 renovate"
-  ],
-  "assigneesFromCodeOwners": false,
-  "reviewersFromCodeOwners": true,
-  "automergeType": "pr",
-  "automergeStrategy": "squash",
-  "platformAutomerge": true,
-  "prConcurrentLimit": 15,
-  "prHourlyLimit": 5,
-  "branchPrefix": "renovate/",
-  "rangeStrategy": "bump",
-  "schedule": [
-    "before 4am every weekday"
-  ],
-  "minimumReleaseAge": "1 day",
-  "separateMinorPatch": false,
   "packageRules": [
-    {
-      "description": "Default: separate PRs per package",
-      "groupName": "{{packageFileDir}}/{{depName}}",
-      "matchPackageNames": [
-        "*"
-      ]
-    },
-    {
-      "description": "🚫 Production environments - disable automerge",
-      "matchFileNames": [
-        "**/production/**"
-      ],
-      "automerge": false,
-      "prPriority": -1,
-      "addLabels": [
-        "⚠️ production"
-      ]
-    },
-    {
-      "description": "🚫 Major updates - disable automerge",
-      "matchUpdateTypes": [
-        "major"
-      ],
-      "automerge": false,
-      "addLabels": [
-        "📈 major-update"
-      ]
-    },
-    {
-      "description": "✅ Minor/Patch updates - enable automerge",
-      "matchUpdateTypes": [
-        "minor",
-        "patch",
-        "pin",
-        "digest"
-      ],
-      "automerge": true
-    },
     {
       "description": "Track OpenTofu releases instead of Terraform for required_version",
       "matchDepTypes": [
