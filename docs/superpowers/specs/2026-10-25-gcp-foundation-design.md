@@ -143,7 +143,7 @@ CI が GCP に入るための権限は CI 自身では作れないので、初�
 ## Constraints
 
 - module には、既存の stack と同じく `modules/tests/` に OpenTofu のテストを置く（例：`aws/github-oidc-auth/modules/tests/bedrock_role.tftest.hcl`）
-- 手作業の手順（1・2・7）は、ユーザーが作業するときに Claude が案内する。手順そのものは README に残す
+- 手作業の手順（1・2・7）は、ユーザーが作業するときに Claude が案内する。README には手順を書かない
 
 ## Open Questions For The Builder
 

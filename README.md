@@ -80,15 +80,6 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 - The GitHub environment `production` of both `platform` and `monorepo` accepts deployments only from refs that match the tag pattern `*-v*`. The settings are managed in [github/repository/](github/repository/).
 - Terragrunt remote state lives in S3 + DynamoDB; bucket and lock-table names are defined in each `aws/{service}/root.hcl` (and the equivalent under [github/](github/) and [gcp/](gcp/)).
 
-### GCP bootstrap
-
-CI cannot grant itself access to GCP, so the first setup is manual.
-
-1. Create the project `panicboat-platform-github` under the `panicboat.net` organization and link it to the billing account recorded in [gcp/project.hcl](gcp/project.hcl).
-2. Run `gcloud auth application-default login` and `gcloud auth application-default set-quota-project panicboat-platform-github`, then `make apply ENV=master` in [gcp/workload-identity/](gcp/workload-identity/).
-3. Generate [gcp/credential-configuration.json](gcp/credential-configuration.json) with `gcloud iam workload-identity-pools create-cred-config <workload_identity_provider_name output> --aws`.
-4. On the billing account, grant `roles/billing.viewer` to the `plan_principal` output and `roles/billing.costsManager` to the `apply_principal` output, so CI can plan and apply [gcp/billing/](gcp/billing/).
-
 ### Pipeline Flow
 
 ```mermaid
