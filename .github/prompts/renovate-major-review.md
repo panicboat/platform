@@ -19,17 +19,17 @@ You only read. Never modify files, push, approve, label, or comment yourself.
 
 ## 1. Identify the update
 
-1. Read `.review-context/pull-request.json` (the PR's `title`, `body`, `files`, and `headRefName`) and `.review-context/diff.patch` (the PR's diff) with read_file. The workflow wrote them before you started; `gh` is not available.
+1. Read `.review-context/pull-request.json` (the PR's `title`, `body`, `files`, and `headRefName`) and `.review-context/diff.patch` (the PR's diff) with Read. The workflow wrote them before you started; `gh` is not available.
 2. From the diff (not the PR body), determine:
    - dependency name and its upstream source repository
    - current version and new version
    - kind: Helm chart, GitHub Action, or other (container image, Terraform provider, ...)
    - the files Renovate changed
 3. Ignore changes under `kubernetes/manifests/`; the hydrator generates them in parallel with this review, so they may be stale.
-4. Read `.render-diff/summary.md` (the rendered diff) with read_file.
+4. Read `.render-diff/summary.md` (the rendered diff) with Read.
    For every component directory the pull request changes, it compares the base and the head rendered with this repository's values (`scripts/kubernetes-hydrate/render-diff.sh` of `panicboat/.github`): image references, CRD versions, and added / removed resources.
-   Its `Full diff` paths are relative to `.render-diff/`; the files can be large, so search them with grep_search instead of reading them whole.
-   A component marked `Rendering failed` or `Summarizing failed` is uncovered (for `Summarizing failed`, still search its full diff with grep_search).
+   Its `Full diff` paths are relative to `.render-diff/`; the files can be large, so Grep them instead of reading them whole.
+   A component marked `Rendering failed` or `Summarizing failed` is uncovered (for `Summarizing failed`, still Grep its full diff).
    A component marked `Not rendered` is not deployed by the hydrator; review it from its files only.
 
 ## 2. Collect primary sources
@@ -37,13 +37,13 @@ You only read. Never modify files, push, approve, label, or comment yourself.
 1. Treat the release notes in the PR body as a hint only.
    They are known to be wrong: they may belong to a different package of the same monorepo (e.g. `tempo-distributed` notes on a `tempo` chart bump), or may skip intermediate versions.
 2. Fetch every release in the range `current < v <= new` (semver order, not publish date; projects release several lines in parallel) from the upstream source.
-   - Use web_fetch for every source, including GitHub-hosted ones: `https://github.com/<owner>/<repo>/releases/tag/<tag>` for each release (filter by the package's tag prefix in monorepos), `https://github.com/<owner>/<repo>/releases?page=<n>` to list releases, and `https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>` for files.
+   - Use WebFetch for every source, including GitHub-hosted ones: `https://github.com/<owner>/<repo>/releases/tag/<tag>` for each release (filter by the package's tag prefix in monorepos), `https://github.com/<owner>/<repo>/releases?page=<n>` to list releases, and `https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>` for files.
    - Also look for upgrade guides: `UPGRADING.md`, `CHANGELOG.md`, chart `README.md` "Upgrading" sections, and docs pages linked from releases.
 3. List every bundled component whose version changed, and collect its primary sources as in step 2.
    Release notes of a chart or package rarely repeat changes of the components it bundles (removed config options, storage format changes, CRD schema changes, security context changes).
    1. Every row of the rendered diff's `Images` table is such a component.
       Find the upstream source repository of each image and fetch its release notes and upgrade guide for the same semver range.
-   2. Helm chart: `helm repo add` the chart repository, then `helm show chart <chart> --version <current>` / `<new>` for every `dependencies[]` entry (sub-chart name, repository, version; the repository may switch to `oci://`).
+   2. Helm chart: with Bash, `helm repo add` the chart repository, then `helm show chart <chart> --version <current>` / `<new>` for every `dependencies[]` entry (sub-chart name, repository, version; the repository may switch to `oci://`).
       Treat each sub-chart whose version changed as a chart in this whole section (its own release notes, upgrade guide, and defaults).
 4. Record which version ranges you could not cover and why, for the dependency and each component from step 3.
 5. Record whether the PR body notes were for a different package or skipped versions.
@@ -54,8 +54,8 @@ You only read. Never modify files, push, approve, label, or comment yourself.
   Resources under `kustomization/` often use CRDs installed by the chart (ExternalSecret, NodePool, Issuer, ...); check their `apiVersion` and fields against CRD changes.
   Application settings passed through values (config blocks, overrides, CLI flags) must be checked against the application's breaking changes, not only the chart's.
   1. Compare the defaults of `<current>` and `<new>` (and of changed sub-charts) and check whether any changed default is relied upon (i.e. not overridden) by this repository.
-     `helm show values` output can be large and pipes to other commands are not allowed; run `helm pull <chart> --version <v> --untar --untardir .helm-charts/<v>` (inside the checkout, since read_file and grep_search cannot read outside it) and use grep_search / read_file on the extracted `values.yaml` files.
-  2. Search the full diff of the rendered diff with grep_search for template-level changes (StatefulSet selector, PVC / volumeClaimTemplates, Service names, resource renames, security contexts).
+     `helm show values` output can be large and pipes to other commands are not allowed; run `helm pull <chart> --version <v> --untar --untardir helm-charts/<v>` with Bash (inside the checkout, since Read and Grep cannot read outside it) and use Grep / Read on the extracted `values.yaml` files.
+  2. Grep the full diff of the rendered diff for template-level changes (StatefulSet selector, PVC / volumeClaimTemplates, Service names, resource renames, security contexts).
 - GitHub Action: every usage under `.github/workflows/` — inputs, outputs, and runtime requirements.
 - Other kinds: the files Renovate changed and any definition that references the dependency.
 
@@ -87,12 +87,6 @@ Every claim must cite a source URL or a repository location.
 
 ## Output
 
-Your final answer must be exactly one JSON object and nothing else: no text before or after it and no code fence.
-
-```json
-{"body": "<the whole comment from section 5>"}
-```
-
-- `body` is a JSON string; escape newlines and double quotes in it.
+Return the whole comment as the `body` field of the structured output.
 
 Keep `body` under 60,000 characters (GitHub rejects comments over 65,536); shorten the `影響のない変更` list first when it does not fit.

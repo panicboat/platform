@@ -1,4 +1,4 @@
-# Reviews Renovate major-update pull requests with Gemini on Vertex AI and posts the review.
+# Reviews Renovate major-update pull requests with Claude and posts the review.
 name: 'Renovate Major Review'
 
 on:
@@ -18,6 +18,6 @@ jobs:
       contents: read
       pull-requests: write
       id-token: write
-    uses: panicboat/.github/.github/workflows/reusable--renovate-major-review.yaml@e7a229f86dc6e9676d29ec12601da9a1996a0765 # v2.0.0
+    uses: panicboat/.github/.github/workflows/reusable--renovate-major-review.yaml@cf98ce094f5e91cfc9072b5e401d9ed371bf0719 # v3.0.0
     with:
       prompt-path: .github/prompts/renovate-major-review.md
