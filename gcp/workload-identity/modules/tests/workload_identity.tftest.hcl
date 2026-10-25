@@ -54,7 +54,7 @@ run "grants_admin_roles_to_the_apply_role" {
   command = apply
 
   assert {
-    condition     = toset([for m in google_project_iam_member.this : m.role if m.member == output.apply_principal]) == toset(["roles/editor", "roles/resourcemanager.projectIamAdmin", "roles/iam.workloadIdentityPoolAdmin", "roles/serviceusage.serviceUsageAdmin"])
+    condition     = toset([for m in google_project_iam_member.this : m.role if m.member == output.apply_principal]) == toset(["roles/editor", "roles/resourcemanager.projectIamAdmin", "roles/iam.workloadIdentityPoolAdmin", "roles/serviceusage.serviceUsageAdmin", "roles/iam.roleAdmin"])
     error_message = "The apply role must get the admin roles."
   }
 }
@@ -63,7 +63,7 @@ run "keeps_services_enabled_on_destroy" {
   command = apply
 
   assert {
-    condition     = toset(keys(google_project_service.this)) == toset(["iam.googleapis.com", "sts.googleapis.com", "iamcredentials.googleapis.com", "cloudresourcemanager.googleapis.com", "serviceusage.googleapis.com", "billingbudgets.googleapis.com"])
+    condition     = toset(keys(google_project_service.this)) == toset(["iam.googleapis.com", "sts.googleapis.com", "iamcredentials.googleapis.com", "cloudresourcemanager.googleapis.com", "serviceusage.googleapis.com", "billingbudgets.googleapis.com", "aiplatform.googleapis.com"])
     error_message = "The stack must enable exactly the required services."
   }
 
