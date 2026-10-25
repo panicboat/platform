@@ -25,6 +25,13 @@ remote_state {
   }
 }
 
+terraform {
+  extra_arguments "gcp_credentials" {
+    commands = get_terraform_commands_that_need_vars()
+    env_vars = local.project.locals.terraform_env_vars
+  }
+}
+
 inputs = {
   project_id = local.project.locals.project_id
 }

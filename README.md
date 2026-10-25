@@ -4,10 +4,11 @@
 
 ## 📖 Overview
 
-A monorepo that manages three deployment surfaces from a single label-driven CI pipeline:
+A monorepo that manages four deployment surfaces from a single label-driven CI pipeline:
 
 - **AWS infrastructure** — Terragrunt + OpenTofu ([aws/](aws/))
 - **GitHub configuration** — Terragrunt for repo / branch / ruleset settings ([github/](github/))
+- **GCP infrastructure** — Terragrunt + OpenTofu ([gcp/](gcp/))
 - **Kubernetes platform** — Helmfile-rendered manifests applied by Flux CD ([kubernetes/](kubernetes/))
 
 A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.yaml](workflow-config.yaml) to expand into concrete deploy targets, and the matching reusable workflow runs.
@@ -21,6 +22,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 │   └── workflows/       # Reusable executors, deploy trigger, hydrator/builder, etc.
 ├── aws/                 # Terragrunt stacks per service ({environment})
 ├── github/              # Terragrunt stacks for GitHub repo / branch settings
+├── gcp/                 # Terragrunt stacks for the GCP project panicboat-platform-github
 ├── kubernetes/
 │   ├── clusters/        # Flux bootstrap (per cluster)
 │   ├── components/      # Helmfile sources (per environment)
@@ -65,6 +67,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 |-------|-----------------|---------|
 | AWS infrastructure | `aws/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--terragrunt-runner.yaml)) |
 | GitHub configuration | `github/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--terragrunt-runner.yaml)) |
+| GCP infrastructure | `gcp/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--terragrunt-runner.yaml)) |
 | Kubernetes platform | `kubernetes/components/{service}/{environment}` | Helmfile → Kustomize hydration ([reusable--kubernetes-hydrator.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--kubernetes-hydrator.yaml) / [reusable--kubernetes-builder.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--kubernetes-builder.yaml)) → Flux CD |
 
 ### Environments and authentication
@@ -72,8 +75,19 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 - Environments, AWS regions, and IAM roles are defined in [workflow-config.yaml](workflow-config.yaml). Adding or removing an environment means editing that file.
 - `apply_trigger` in [workflow-config.yaml](workflow-config.yaml) decides when an environment is applied: `merge` applies on push to `main`, `release` applies when the service release is published.
 - Authentication uses GitHub OIDC. [aws/github-oidc-auth/](aws/github-oidc-auth/) issues per-environment plan / apply roles that the executors assume.
+- GCP stacks reuse the master plan / apply roles: [gcp/workload-identity/](gcp/workload-identity/) lets them exchange their AWS credentials for GCP credentials through Workload Identity Federation, configured by [gcp/credential-configuration.json](gcp/credential-configuration.json) in CI only. Local runs use the gcloud application default credentials.
+- Name a `gcp/{service}` differently from every `aws/{service}`: the `deploy:{service}` label and the tfcmt target do not include the provider, so equal names plan both stacks and overwrite each other's plan comment.
 - The GitHub environment `production` of both `platform` and `monorepo` accepts deployments only from refs that match the tag pattern `*-v*`. The settings are managed in [github/repository/](github/repository/).
-- Terragrunt remote state lives in S3 + DynamoDB; bucket and lock-table names are defined in each `aws/{service}/root.hcl` (and the equivalent under [github/](github/)).
+- Terragrunt remote state lives in S3 + DynamoDB; bucket and lock-table names are defined in each `aws/{service}/root.hcl` (and the equivalent under [github/](github/) and [gcp/](gcp/)).
+
+### GCP bootstrap
+
+CI cannot grant itself access to GCP, so the first setup is manual.
+
+1. Create the project `panicboat-platform-github` under the `panicboat.net` organization and link it to the billing account recorded in [gcp/project.hcl](gcp/project.hcl).
+2. Run `gcloud auth application-default login` and `gcloud auth application-default set-quota-project panicboat-platform-github`, then `make apply ENV=master` in [gcp/workload-identity/](gcp/workload-identity/).
+3. Generate [gcp/credential-configuration.json](gcp/credential-configuration.json) with `gcloud iam workload-identity-pools create-cred-config <workload_identity_provider_name output> --aws`.
+4. On the billing account, grant `roles/billing.viewer` to the `plan_principal` output and `roles/billing.costsManager` to the `apply_principal` output, so CI can plan and apply [gcp/billing/](gcp/billing/).
 
 ### Pipeline Flow
 

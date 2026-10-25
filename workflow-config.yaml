@@ -3,6 +3,7 @@ stacks:
     paths:
       - "aws/{service}/{environment}"
       - "github/{service}/{environment}"
+      - "gcp/{service}/{environment}"
     environments:
       master:
         aws_region: ap-northeast-1
