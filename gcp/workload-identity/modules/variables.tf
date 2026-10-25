@@ -17,3 +17,9 @@ variable "apply_role_name" {
   description = "Name of the AWS IAM role that runs terragrunt apply"
   type        = string
 }
+
+variable "gemini_oidc_subjects" {
+  description = "GitHub Actions OIDC subjects allowed to invoke Gemini on Vertex AI"
+  type        = list(string)
+  default     = []
+}
