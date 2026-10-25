@@ -4,7 +4,6 @@ locals {
     fluxcd-bot             = { name = "github-app/fluxcd-bot" }
     alertmanager-slack     = { name = "eks/alertmanager/slack" }
     grafana-admin          = { name = "eks/grafana/admin" }
-    keycloak-admin         = { name = "eks/keycloak/admin" }
     oauth2-proxy-google    = { name = "eks/oauth2-proxy/google" }
     holmesgpt-alertmanager = { name = "eks/holmesgpt/alertmanager" }
   }
