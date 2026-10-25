@@ -10,4 +10,4 @@ jobs:
   ensure-sha-pinned:
     permissions:
       contents: read
-    uses: panicboat/.github/.github/workflows/reusable--lint-actions.yaml@d54532665675f1843914da4b324dc2a58dd37239 # v1.0.0
+    uses: panicboat/.github/.github/workflows/reusable--lint-actions.yaml@cf98ce094f5e91cfc9072b5e401d9ed371bf0719 # v3.0.0
