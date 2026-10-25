@@ -6,7 +6,6 @@ locals {
     "cloudresourcemanager.googleapis.com",
     "serviceusage.googleapis.com",
     "billingbudgets.googleapis.com",
-    "aiplatform.googleapis.com",
   ]
 
   role_names = {
@@ -31,7 +30,6 @@ locals {
       "roles/resourcemanager.projectIamAdmin",
       "roles/iam.workloadIdentityPoolAdmin",
       "roles/serviceusage.serviceUsageAdmin",
-      "roles/iam.roleAdmin",
     ]
   }
 
