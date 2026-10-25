@@ -19,7 +19,7 @@ You only read. Never modify files, push, approve, label, or comment yourself.
 
 ## 1. Identify the update
 
-1. Read `.review-context/pull-request.json` (the PR's `title`, `body`, `files`, and `headRefName`) and `.review-context/diff.patch` (the PR's diff) with read_file. The workflow wrote them before you started; `gh` is not available. `git diff origin/main...HEAD` also works.
+1. Read `.review-context/pull-request.json` (the PR's `title`, `body`, `files`, and `headRefName`) and `.review-context/diff.patch` (the PR's diff) with read_file. The workflow wrote them before you started; `gh` is not available.
 2. From the diff (not the PR body), determine:
    - dependency name and its upstream source repository
    - current version and new version

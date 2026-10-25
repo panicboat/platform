@@ -18,6 +18,6 @@ jobs:
       contents: read
       pull-requests: write
       id-token: write
-    uses: panicboat/.github/.github/workflows/reusable--renovate-major-review.yaml@ef91497c00610129a80e807c7577f11df727d39f # feat/gemini-on-vertex
+    uses: panicboat/.github/.github/workflows/reusable--renovate-major-review.yaml@461847a72241100dbc79a60cf1e7b7bdc7ccd4e1 # feat/gemini-on-vertex
     with:
       prompt-path: .github/prompts/renovate-major-review.md
