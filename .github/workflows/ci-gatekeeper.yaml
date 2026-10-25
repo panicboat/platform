@@ -13,5 +13,5 @@ jobs:
       actions: read
     uses: panicboat/.github/.github/workflows/reusable--ci-gatekeeper.yaml@d54532665675f1843914da4b324dc2a58dd37239 # v1.0.0
     with:
-      # The AI review is advisory; a Bedrock outage must not block merges through this required check.
+      # The AI review is advisory; an Anthropic API outage must not block merges through this required check.
       exclude-workflow-names: Renovate Major Review

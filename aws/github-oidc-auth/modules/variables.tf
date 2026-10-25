@@ -69,15 +69,3 @@ variable "assume_role_arns" {
   type        = list(string)
   default     = []
 }
-
-variable "bedrock_models" {
-  description = "Bedrock foundation model IDs invokable via global inference profiles; the role is skipped when empty"
-  type        = list(string)
-  default     = []
-}
-
-variable "bedrock_oidc_subjects" {
-  description = "GitHub OIDC subjects allowed to assume the Bedrock role"
-  type        = list(string)
-  default     = []
-}
