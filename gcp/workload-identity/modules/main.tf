@@ -22,6 +22,8 @@ locals {
     plan = [
       "roles/viewer",
       "roles/iam.securityReviewer",
+      # The billing stack sends this project as the quota project, which needs serviceusage.services.use.
+      "roles/serviceusage.serviceUsageConsumer",
     ]
     apply = [
       "roles/editor",

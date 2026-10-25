@@ -45,7 +45,7 @@ run "grants_only_read_roles_to_the_plan_role" {
   }
 
   assert {
-    condition     = toset([for m in google_project_iam_member.this : m.role if m.member == output.plan_principal]) == toset(["roles/viewer", "roles/iam.securityReviewer"])
+    condition     = toset([for m in google_project_iam_member.this : m.role if m.member == output.plan_principal]) == toset(["roles/viewer", "roles/iam.securityReviewer", "roles/serviceusage.serviceUsageConsumer"])
     error_message = "The plan role must get only read roles."
   }
 }
