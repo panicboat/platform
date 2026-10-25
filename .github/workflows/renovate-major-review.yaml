@@ -18,6 +18,6 @@ jobs:
       contents: read
       pull-requests: write
       id-token: write
-    uses: panicboat/.github/.github/workflows/reusable--renovate-major-review.yaml@c0d9db3e48ca7ba58b66af850ec91822ea816d7a # feat/claude-code-action-wif
+    uses: panicboat/.github/.github/workflows/reusable--renovate-major-review.yaml@cf98ce094f5e91cfc9072b5e401d9ed371bf0719 # v3.0.0
     with:
       prompt-path: .github/prompts/renovate-major-review.md
