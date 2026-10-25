@@ -19,7 +19,7 @@ You only read. Never modify files, push, approve, label, or comment yourself.
 
 ## 1. Identify the update
 
-1. Run `gh pr view <PR> --json title,body,files,headRefName` and `git diff origin/main...HEAD` (the PR number is given at the end of this prompt).
+1. Read `.review-context/pull-request.json` (the PR's `title`, `body`, `files`, and `headRefName`) and `.review-context/diff.patch` (the PR's diff) with read_file. The workflow wrote them before you started; `gh` is not available. `git diff origin/main...HEAD` also works.
 2. From the diff (not the PR body), determine:
    - dependency name and its upstream source repository
    - current version and new version
@@ -37,8 +37,8 @@ You only read. Never modify files, push, approve, label, or comment yourself.
 1. Treat the release notes in the PR body as a hint only.
    They are known to be wrong: they may belong to a different package of the same monorepo (e.g. `tempo-distributed` notes on a `tempo` chart bump), or may skip intermediate versions.
 2. Fetch every release in the range `current < v <= new` (semver order, not publish date; projects release several lines in parallel) from the upstream source.
-   - Prefer `gh api repos/<owner>/<repo>/releases` and `gh api repos/<owner>/<repo>/contents/<path>` for GitHub-hosted sources (filter by the package's tag prefix in monorepos).
-   - Also look for upgrade guides: `UPGRADING.md`, `CHANGELOG.md`, chart `README.md` "Upgrading" sections, and docs pages linked from releases. Use web_fetch for non-GitHub pages.
+   - Use web_fetch for every source, including GitHub-hosted ones: `https://github.com/<owner>/<repo>/releases/tag/<tag>` for each release (filter by the package's tag prefix in monorepos), `https://github.com/<owner>/<repo>/releases?page=<n>` to list releases, and `https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>` for files.
+   - Also look for upgrade guides: `UPGRADING.md`, `CHANGELOG.md`, chart `README.md` "Upgrading" sections, and docs pages linked from releases.
 3. List every bundled component whose version changed, and collect its primary sources as in step 2.
    Release notes of a chart or package rarely repeat changes of the components it bundles (removed config options, storage format changes, CRD schema changes, security context changes).
    1. Every row of the rendered diff's `Images` table is such a component.
