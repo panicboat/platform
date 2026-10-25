@@ -9,6 +9,6 @@ releases:
   - name: falco
     namespace: falco
     chart: falcosecurity/falco
-    version: "9.2.0"
+    version: "9.2.1"
     values:
       - values.yaml.gotmpl

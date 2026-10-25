@@ -6,10 +6,10 @@ metadata:
   name: falco
   namespace: falco
   labels:
-    helm.sh/chart: falco-9.2.0
+    helm.sh/chart: falco-9.2.1
     app.kubernetes.io/name: falco
     app.kubernetes.io/instance: falco
-    app.kubernetes.io/version: "0.45.0"
+    app.kubernetes.io/version: "0.45.1"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: falco/templates/configmap.yaml
@@ -19,10 +19,10 @@ metadata:
   name: falco
   namespace: falco
   labels:
-    helm.sh/chart: falco-9.2.0
+    helm.sh/chart: falco-9.2.1
     app.kubernetes.io/name: falco
     app.kubernetes.io/instance: falco
-    app.kubernetes.io/version: "0.45.0"
+    app.kubernetes.io/version: "0.45.1"
     app.kubernetes.io/managed-by: Helm
 data:
   falco.yaml: |-
@@ -181,10 +181,10 @@ metadata:
   name: falco-falcoctl
   namespace: falco
   labels:
-    helm.sh/chart: falco-9.2.0
+    helm.sh/chart: falco-9.2.1
     app.kubernetes.io/name: falco
     app.kubernetes.io/instance: falco
-    app.kubernetes.io/version: "0.45.0"
+    app.kubernetes.io/version: "0.45.1"
     app.kubernetes.io/managed-by: Helm
 data:
   falcoctl.yaml: |-
@@ -204,7 +204,7 @@ data:
         pluginsDir: /plugins
         refs:
         - falco-rules:5.1.0
-        - ghcr.io/falcosecurity/plugins/plugin/container:0.7.4
+        - ghcr.io/falcosecurity/plugins/plugin/container:0.7.5
         resolveDeps: true
         rulesfilesDir: /rulesfiles
         stateDir: /artifactstate
@@ -219,10 +219,10 @@ metadata:
   name: falco-rules
   namespace: falco
   labels:
-    helm.sh/chart: falco-9.2.0
+    helm.sh/chart: falco-9.2.1
     app.kubernetes.io/name: falco
     app.kubernetes.io/instance: falco
-    app.kubernetes.io/version: "0.45.0"
+    app.kubernetes.io/version: "0.45.1"
     app.kubernetes.io/managed-by: Helm
 data:
   beyla-packet-socket.yaml: |-
@@ -238,10 +238,10 @@ metadata:
   name: falco-metrics
   namespace: falco
   labels:
-    helm.sh/chart: falco-9.2.0
+    helm.sh/chart: falco-9.2.1
     app.kubernetes.io/name: falco
     app.kubernetes.io/instance: falco
-    app.kubernetes.io/version: "0.45.0"
+    app.kubernetes.io/version: "0.45.1"
     app.kubernetes.io/managed-by: Helm
     type: "falco-metrics"
 spec:
@@ -262,10 +262,10 @@ metadata:
   name: falco
   namespace: falco
   labels:
-    helm.sh/chart: falco-9.2.0
+    helm.sh/chart: falco-9.2.1
     app.kubernetes.io/name: falco
     app.kubernetes.io/instance: falco
-    app.kubernetes.io/version: "0.45.0"
+    app.kubernetes.io/version: "0.45.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   selector:
@@ -279,8 +279,8 @@ spec:
         app.kubernetes.io/name: falco
         app.kubernetes.io/instance: falco
       annotations:
-        checksum/config: 953f69d1d09990331517eb50bb2ba2275cad45ee5d4d1fe6ddb5095e8ce52e7e
-        checksum/rules: 6f8a99e81812f088976068200c2d1f4bd5db87c40ca9870721d194a784ce0dbf
+        checksum/config: 579000a6b13c38710fad556be31a6b28aef5e63bbb5182c67e7d8ce5274d83a3
+        checksum/rules: dfcdb05cc3cc74006f6aed4eea4376547bc676757a6a12558468d2c64502564c
         checksum/certs: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
         container.apparmor.security.beta.kubernetes.io/falco: unconfined
     spec:
@@ -293,7 +293,7 @@ spec:
           operator: Exists
       containers:
         - name: falco
-          image: docker.io/falcosecurity/falco:0.45.0
+          image: docker.io/falcosecurity/falco:0.45.1
           imagePullPolicy: IfNotPresent
           resources:
             limits:
@@ -374,6 +374,7 @@ spec:
               name: root-falco-fs
             - mountPath: /host/proc
               name: proc-fs
+              readOnly: true
             - mountPath: /host/etc
               name: etc-fs
               readOnly: true
@@ -475,10 +476,10 @@ metadata:
   name: falco
   namespace: falco
   labels:
-    helm.sh/chart: falco-9.2.0
+    helm.sh/chart: falco-9.2.1
     app.kubernetes.io/name: falco
     app.kubernetes.io/instance: falco
-    app.kubernetes.io/version: "0.45.0"
+    app.kubernetes.io/version: "0.45.1"
     app.kubernetes.io/managed-by: Helm
     release: kube-prometheus-stack
 spec:
