@@ -6,7 +6,7 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-19.2.1
+    helm.sh/chart: loki-19.4.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -20,7 +20,7 @@ metadata:
   name: loki-memcached
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-19.2.1
+    helm.sh/chart: loki-19.4.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -34,7 +34,7 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-19.2.1
+    helm.sh/chart: loki-19.4.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -47,7 +47,7 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-19.2.1
+    helm.sh/chart: loki-19.4.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -180,7 +180,7 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-19.2.1
+    helm.sh/chart: loki-19.4.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -244,6 +244,12 @@ data:
     
         location = / {
           
+          return 200 'OK';
+          auth_basic off;
+        }
+    
+        location = /livez {
+          access_log off;
           return 200 'OK';
           auth_basic off;
         }
@@ -612,7 +618,7 @@ metadata:
   name: loki-runtime
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-19.2.1
+    helm.sh/chart: loki-19.4.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -625,7 +631,7 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   labels:
-    helm.sh/chart: loki-19.2.1
+    helm.sh/chart: loki-19.4.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -641,7 +647,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: loki-clusterrolebinding
   labels:
-    helm.sh/chart: loki-19.2.1
+    helm.sh/chart: loki-19.4.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -661,7 +667,7 @@ metadata:
   name: loki-gateway-exporter
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-19.2.1
+    helm.sh/chart: loki-19.4.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -686,7 +692,7 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-19.2.1
+    helm.sh/chart: loki-19.4.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -712,7 +718,7 @@ metadata:
   name: "loki"
   namespace: "monitoring"
   labels:
-    helm.sh/chart: loki-19.2.1
+    helm.sh/chart: loki-19.4.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -747,7 +753,7 @@ metadata:
   name: "loki-headless"
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-19.2.1
+    helm.sh/chart: loki-19.4.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -785,7 +791,7 @@ metadata:
   name: loki-memberlist
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-19.2.1
+    helm.sh/chart: loki-19.4.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -810,7 +816,7 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-19.2.1
+    helm.sh/chart: loki-19.4.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -828,7 +834,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 267f43c08ec80ca887c82c41b5a4224bf28fc71ba5e2c5028dee50298abb59a5
+        checksum/config: fce51263536a156a9e1fed3c8c18c657d9ca3196e0ecba14d825154208cd0187
       labels:
         app.kubernetes.io/name: loki
         app.kubernetes.io/instance: loki
@@ -955,7 +961,7 @@ metadata:
   name: "loki"
   namespace: "monitoring"
   labels:
-    helm.sh/chart: loki-19.2.1
+    helm.sh/chart: loki-19.4.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -980,10 +986,8 @@ spec:
         storage/size: 10Gi
         kubectl.kubernetes.io/default-container: "loki"
       labels:
-        helm.sh/chart: loki-19.2.1
         app.kubernetes.io/name: loki
         app.kubernetes.io/instance: loki
-        app.kubernetes.io/version: "3.7.9"
         app.kubernetes.io/component: single-binary
         app.kubernetes.io/part-of: memberlist
     spec:
@@ -1170,7 +1174,7 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-19.2.1
+    helm.sh/chart: loki-19.4.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
