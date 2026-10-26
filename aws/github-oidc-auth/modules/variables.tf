@@ -69,3 +69,15 @@ variable "assume_role_arns" {
   type        = list(string)
   default     = []
 }
+
+variable "claude_code_oidc_subjects" {
+  description = "GitHub OIDC subjects allowed to assume the claude-code role; the role and the secret are skipped when empty"
+  type        = list(string)
+  default     = []
+}
+
+variable "claude_code_bedrock_models" {
+  description = "Bedrock foundation model IDs the claude-code role may invoke via global inference profiles"
+  type        = list(string)
+  default     = []
+}
