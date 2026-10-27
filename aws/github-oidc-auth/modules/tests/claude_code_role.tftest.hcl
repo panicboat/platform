@@ -7,7 +7,7 @@ mock_provider "aws" {
 
   mock_resource "aws_secretsmanager_secret" {
     defaults = {
-      arn = "arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:github-oidc-auth-master-claude-code-oauth-token-AbCdEf"
+      arn = "arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:github-actions/claude-code/oauth-token-AbCdEf"
     }
   }
 }
@@ -74,7 +74,7 @@ run "creates_claude_code_role_for_listed_subjects" {
   }
 
   assert {
-    condition     = aws_secretsmanager_secret.claude_code_oauth_token[0].name == "github-oidc-auth-master-claude-code-oauth-token"
+    condition     = aws_secretsmanager_secret.claude_code_oauth_token[0].name == "github-actions/claude-code/oauth-token"
     error_message = "The OAuth token secret must use the stable name."
   }
 

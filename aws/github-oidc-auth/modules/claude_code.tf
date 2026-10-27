@@ -19,11 +19,11 @@ locals {
 resource "aws_secretsmanager_secret" "claude_code_oauth_token" {
   count = local.claude_code_enabled ? 1 : 0
 
-  name        = "${var.project_name}-${var.environment}-claude-code-oauth-token"
+  name        = "github-actions/claude-code/oauth-token"
   description = "Claude subscription OAuth token for claude-code-action"
 
   tags = merge(var.common_tags, {
-    Name    = "${var.project_name}-${var.environment}-claude-code-oauth-token"
+    Name    = "github-actions/claude-code/oauth-token"
     Purpose = "github-actions-claude-code"
   })
 }
