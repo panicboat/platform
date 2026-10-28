@@ -22,7 +22,7 @@
 │   └── workflows/       # reusable executor, deploy trigger, hydrator/builder など
 ├── aws/                 # service ごとの Terragrunt stack ({environment})
 ├── github/              # GitHub repo / branch 設定の Terragrunt stack
-├── gcp/                 # GCP プロジェクト panicboat-platform-github の Terragrunt stack
+├── gcp/                 # GCP の Terragrunt stack（GCP プロジェクトの表示名ごとのディレクトリ）
 ├── kubernetes/
 │   ├── clusters/        # cluster ごとの Flux bootstrap
 │   ├── components/      # environment ごとの Helmfile source
@@ -67,7 +67,7 @@
 |-------|-----------------|---------|
 | AWS infrastructure | `aws/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--terragrunt-runner.yaml)) |
 | GitHub configuration | `github/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--terragrunt-runner.yaml)) |
-| GCP infrastructure | `gcp/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--terragrunt-runner.yaml)) |
+| GCP infrastructure | `gcp/{project}/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--terragrunt-runner.yaml)) |
 | Kubernetes platform | `kubernetes/components/{service}/{environment}` | Helmfile → Kustomize hydration ([reusable--kubernetes-hydrator.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--kubernetes-hydrator.yaml) / [reusable--kubernetes-builder.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--kubernetes-builder.yaml)) → Flux CD |
 
 ### Environments and Authentication
@@ -75,10 +75,12 @@
 - Environment、AWS region、IAM role は [workflow-config.yaml](workflow-config.yaml) で定義する。環境の追加・削除は同ファイルの編集で行う。
 - [workflow-config.yaml](workflow-config.yaml) の `apply_trigger` が environment を apply するタイミングを決める。`merge` は `main` への push、`release` は service の release 公開時に apply する。
 - 認証は GitHub OIDC。[aws/github-oidc-auth/](aws/github-oidc-auth/) が environment ごとの plan / apply role を発行し、executor がそれを引き受ける。
-- GCP の stack も master の plan / apply role を使う。[gcp/workload-identity/](gcp/workload-identity/) の Workload Identity Federation で、AWS の credential を GCP の credential に交換する。CI のときだけ [gcp/credential-configuration.json](gcp/credential-configuration.json) を使い、手元では gcloud の application default credentials を使う。
-- `gcp/{service}` は、どの `aws/{service}` とも違う名前にする。`deploy:{service}` ラベルと tfcmt の target は provider を含まないので、同じ名前だと両方の stack が plan され、plan コメントが互いに上書きされる。
+- GCP の stack も master の plan / apply role を使う。[gcp/github-actions-master/foundation/](gcp/github-actions-master/foundation/) が CI 用の project を作り、その Workload Identity Federation で AWS の credential を GCP の credential に交換する。CI のときだけ [gcp/credential-configuration.json](gcp/credential-configuration.json) を使い、手元では gcloud の application default credentials を使う。
+- `{project}` は GCP プロジェクトの表示名。表示名と異なることがある project ID は `{project}/project.hcl` に書く。
+- foundation の stack は、CI がまだ GCP に入れないため、最初に手元から apply する。CI の principal に付ける組織と請求先アカウントの権限（apply は project の作成と請求先アカウントの利用、plan は閲覧）は手作業で付け、apply role に組織の IAM を管理させない。
+- `{service}` は、`aws/`・`github/`・すべての GCP プロジェクトを通して、ほかの stack と違う名前にする。`deploy:{service}` ラベルと tfcmt の target は provider も GCP プロジェクトも含まないので、同じ名前だと両方の stack が plan され、plan コメントが互いに上書きされる。
 - `platform` と `monorepo` の GitHub environment `production` は、tag pattern `*-v*` に一致する ref からの deployment だけを受け付ける。これらの設定は [github/repository/](github/repository/) で管理する。
-- Terragrunt の remote state は S3 + DynamoDB に保存される。bucket / lock table 名は各 `aws/{service}/root.hcl`（および [github/](github/)・[gcp/](gcp/) 配下の同等ファイル）で定義される。
+- Terragrunt の remote state は S3 + DynamoDB に保存される。bucket / lock table 名は各 `aws/{service}/root.hcl`（および [github/](github/)・[gcp/](gcp/) 配下の同等ファイル）で定義される。state key は `platform/<リポジトリ root からの unit のパス>/terraform.tfstate` で、provider をまたいでもぶつからない。
 
 ### Pipeline Flow
 

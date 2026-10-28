@@ -88,6 +88,7 @@ CI が GCP に入るための入口と、その入口を置く project そのも
 
 - project（`google_project`）: ID・表示名 `github-actions-master`、組織 `731586494509`、請求先アカウント `01830F-ABC0AE-C3E6D2`。
   - 既定の network は作らない。
+    - provider は既定の network を消すために Compute API を有効にするので、作成後に Compute API・OS Login API と Compute の既定の service account を手元から消す。
   - 誤って消さないよう、削除を防ぐ設定にする。
 - 有効な API: Workload Identity と IAM の管理に要るもの（IAM、STS、IAM Credentials、Cloud Resource Manager、Service Usage、Cloud Billing）。
 - Workload Identity の pool と AWS provider: 今の `gcp/workload-identity` の module と同じ（master のアカウントだけ、assumed role だけを受け付ける）。
@@ -110,7 +111,8 @@ CI が GCP に入るための入口と、その入口を置く project そのも
 ### google-oauth-production/project
 
 - 有効な API（`google_project_service`）: 管理に要る Cloud Resource Manager・Service Usage・IAM だけを残す。
-  - 既定で有効になった残りの 19 個は、手元から 1 回だけ無効にする（Terraform は管理していない API を無効にしないため）。
+  - 既定で有効になった残りは、手元から 1 回だけ無効にする（Terraform は管理していない API を無効にしないため）。
+  - `iam` を有効にすると `iamcredentials` も有効になり、無効にすると `iam` も止まるため、`iamcredentials` は管理外で有効のまま残す。
   - 無効にした後、oauth2-proxy でログインできることを確かめる。
 - IAM（`google_project_iam_member`）: owner の `iam@panicboat.net`、CI の plan ロールに閲覧、apply ロールに owner 相当。
   - CI の principal は `github-actions-master/foundation` の output から受け取る（terragrunt の dependency）。
@@ -138,7 +140,7 @@ CI が GCP に入るための権限は CI 自身では作れないので、次�
 3. 組織と請求先アカウントで、CI のロールに権限を付ける（上の表）。
 4. credential の設定ファイルを作り直す。
 5. `gcp/google-oauth-production/project/master` を手元から import して apply する。
-6. 既定で有効になった 19 個の API を無効にし、oauth2-proxy でログインできることを確かめる。
+6. 既定で有効になった API を無効にし、oauth2-proxy でログインできることを確かめる（本番の EKS が止まっている間は確かめられない）。
 7. 予算を消し、古い 2 つの state を消す。
 8. PR を出し、CI の plan で 2 つの stack に差分がないことを確かめてから merge する。
 
