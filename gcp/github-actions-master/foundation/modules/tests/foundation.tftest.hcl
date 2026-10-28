@@ -7,10 +7,13 @@ mock_provider "google" {
 }
 
 variables {
-  project_id      = "panicboat-test"
-  aws_account_id  = "559744160976"
-  plan_role_name  = "github-oidc-auth-master-github-actions-plan-role"
-  apply_role_name = "github-oidc-auth-master-github-actions-apply-role"
+  project_id         = "panicboat-test"
+  project_name       = "panicboat-test"
+  org_id             = "731586494509"
+  billing_account_id = "01830F-ABC0AE-C3E6D2"
+  aws_account_id     = "559744160976"
+  plan_role_name     = "github-oidc-auth-master-github-actions-plan-role"
+  apply_role_name    = "github-oidc-auth-master-github-actions-apply-role"
 }
 
 run "restricts_pool_to_master_account" {
@@ -45,7 +48,7 @@ run "grants_only_read_roles_to_the_plan_role" {
   }
 
   assert {
-    condition     = toset([for m in google_project_iam_member.this : m.role if m.member == output.plan_principal]) == toset(["roles/viewer", "roles/iam.securityReviewer", "roles/serviceusage.serviceUsageConsumer"])
+    condition     = toset([for m in google_project_iam_member.this : m.role if m.member == output.plan_principal]) == toset(["roles/viewer", "roles/iam.securityReviewer"])
     error_message = "The plan role must get only read roles."
   }
 }
@@ -63,12 +66,40 @@ run "keeps_services_enabled_on_destroy" {
   command = apply
 
   assert {
-    condition     = toset(keys(google_project_service.this)) == toset(["iam.googleapis.com", "sts.googleapis.com", "iamcredentials.googleapis.com", "cloudresourcemanager.googleapis.com", "serviceusage.googleapis.com", "billingbudgets.googleapis.com"])
+    condition     = toset(keys(google_project_service.this)) == toset(["iam.googleapis.com", "sts.googleapis.com", "iamcredentials.googleapis.com", "cloudresourcemanager.googleapis.com", "serviceusage.googleapis.com", "cloudbilling.googleapis.com"])
     error_message = "The stack must enable exactly the required services."
   }
 
   assert {
     condition     = alltrue([for s in google_project_service.this : s.disable_on_destroy == false])
     error_message = "Destroying the stack must not disable services."
+  }
+}
+
+run "creates_the_project_under_the_organization" {
+  command = apply
+
+  assert {
+    condition     = google_project.this.project_id == "panicboat-test" && google_project.this.name == "panicboat-test"
+    error_message = "The project must use the given ID and display name."
+  }
+
+  assert {
+    condition     = google_project.this.org_id == "731586494509" && google_project.this.billing_account == "01830F-ABC0AE-C3E6D2"
+    error_message = "The project must belong to the organization and the billing account."
+  }
+}
+
+run "protects_the_project" {
+  command = apply
+
+  assert {
+    condition     = google_project.this.deletion_policy == "PREVENT"
+    error_message = "The project must not be destroyed by an apply."
+  }
+
+  assert {
+    condition     = google_project.this.auto_create_network == false
+    error_message = "The project must not get the default network."
   }
 }

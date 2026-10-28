@@ -1,3 +1,13 @@
+output "project_id" {
+  description = "ID of the CI project"
+  value       = google_project.this.project_id
+}
+
+output "project_number" {
+  description = "Number of the CI project, part of every principal of the pool"
+  value       = google_project.this.number
+}
+
 output "workload_identity_provider_name" {
   description = "Full resource name of the AWS provider, used to generate the credential configuration"
   value       = google_iam_workload_identity_pool_provider.aws.name
