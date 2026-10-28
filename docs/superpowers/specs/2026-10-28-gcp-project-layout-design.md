@@ -62,7 +62,7 @@ gcp/
 ├── credential-configuration.json
 ├── github-actions-master/
 │   ├── project.hcl
-│   └── foundation/
+│   └── workload-identity/
 │       ├── root.hcl
 │       ├── master/terragrunt.hcl
 │       └── modules/
@@ -82,7 +82,7 @@ gcp/
   - `<stack>` は `aws/` のサービス名と重ねない（`deploy:<service>` の label と tfcmt の target が provider を含まないため）。
 - 表示名を変えたら、ディレクトリ名と state key も変える（state の移し方は #1200 と同じ）。
 
-### github-actions-master/foundation
+### github-actions-master/workload-identity
 
 CI が GCP に入るための入口と、その入口を置く project そのものを 1 つの stack で持つ。
 
@@ -115,7 +115,7 @@ CI が GCP に入るための入口と、その入口を置く project そのも
   - `iam` を有効にすると `iamcredentials` も有効になり、無効にすると `iam` も止まるため、`iamcredentials` は管理外で有効のまま残す。
   - 無効にした後、oauth2-proxy でログインできることを確かめる。
 - IAM（`google_project_iam_member`）: owner の `iam@panicboat.net`、CI の plan ロールに閲覧、apply ロールに owner 相当。
-  - CI の principal は `github-actions-master/foundation` の output から受け取る（terragrunt の dependency）。
+  - CI の principal は `github-actions-master/workload-identity` の output から受け取る（terragrunt の dependency）。
 - project 自体（`google_project`）は管理しない。
   - 作り直す予定で、表示名も変えないため。
 
@@ -136,7 +136,7 @@ CI が GCP に入るための入口と、その入口を置く project そのも
 CI が GCP に入るための権限は CI 自身では作れないので、次の順に手元から行う。
 
 1. `gcloud auth application-default login`（ユーザー）
-2. `gcp/github-actions-master/foundation/master` を手元から apply する（project、API、pool、provider、project の IAM ができる）。
+2. `gcp/github-actions-master/workload-identity/master` を手元から apply する（project、API、pool、provider、project の IAM ができる）。
 3. 組織と請求先アカウントで、CI のロールに権限を付ける（上の表）。
 4. credential の設定ファイルを作り直す。
 5. `gcp/google-oauth-production/project/master` を手元から import して apply する。
@@ -150,5 +150,5 @@ CI が GCP に入るための権限は CI 自身では作れないので、次�
 
 ## Left to the builder
 
-- `foundation` の module の構成（今の `workload-identity` の module を移して project を足すか、作り直すか）。
+- `workload-identity` の module の構成（今の `workload-identity` の module を移して project を足すか、作り直すか）。
 - `google_project` の削除を防ぐ設定と、既定の network を作らない設定の書き方（provider のバージョンで確かめる）。

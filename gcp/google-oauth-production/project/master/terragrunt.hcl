@@ -6,8 +6,8 @@ terraform {
   source = "../modules"
 }
 
-dependency "foundation" {
-  config_path = "../../../github-actions-master/foundation/master"
+dependency "workload_identity" {
+  config_path = "../../../github-actions-master/workload-identity/master"
 
   mock_outputs = {
     plan_principal  = "principalSet://iam.googleapis.com/projects/0/locations/global/workloadIdentityPools/terragrunt/attribute.aws_role/plan"
@@ -18,6 +18,6 @@ dependency "foundation" {
 
 inputs = {
   owner_members   = ["user:iam@panicboat.net"]
-  plan_principal  = dependency.foundation.outputs.plan_principal
-  apply_principal = dependency.foundation.outputs.apply_principal
+  plan_principal  = dependency.workload_identity.outputs.plan_principal
+  apply_principal = dependency.workload_identity.outputs.apply_principal
 }
