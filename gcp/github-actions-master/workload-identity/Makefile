@@ -9,7 +9,7 @@ NC := \033[0m # No Color
 .PHONY: help init plan apply destroy validate fmt check clean
 
 help: ## Show this help message
-	@echo "GCP Billing - Terragrunt Commands"
+	@echo "GCP github-actions-master workload identity - Terragrunt Commands"
 	@echo ""
 	@echo "Usage: make <target> [ENV=<environment>]"
 	@echo ""
