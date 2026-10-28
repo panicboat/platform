@@ -1,4 +1,4 @@
-# Resolves deploy labels into targets, plans them on pull requests, and applies apply_trigger: merge targets on push to main.
+# Resolves deploy labels into targets, plans them on pull requests, and applies non-production targets on push to main.
 name: 'Label Base Deploy - Resolver'
 
 on:
@@ -20,7 +20,7 @@ jobs:
       id-token: write
       contents: write # the helmfile hydrator pushes hydrated manifests
       pull-requests: write
-    uses: panicboat/.github/.github/workflows/reusable--label-base-deploy--resolver.yaml@abf935e759c635244c5ba4646d852a73693944d6 # v3.1.1
+    uses: panicboat/.github/.github/workflows/reusable--label-base-deploy--resolver.yaml@813235b879c17711be263e1d4ff22dfaec6d8dbc # v3.2.0
     with:
       app-id: ${{ vars.APP_ID }}
     secrets:

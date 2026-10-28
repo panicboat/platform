@@ -40,9 +40,9 @@
 | Event | Workflow | Terragrunt |
 |-------|----------|------------|
 | PR に `deploy:{service}` ラベルが付く | [label-base-deploy--resolver.yaml](.github/workflows/label-base-deploy--resolver.yaml) | すべての target を plan |
-| `main` への push | [label-base-deploy--resolver.yaml](.github/workflows/label-base-deploy--resolver.yaml) | `apply_trigger: merge` の target を apply |
-| release PR の作成・更新 | [release--plan.yaml](.github/workflows/release--plan.yaml) | その service の `apply_trigger: release` の environment を plan |
-| release の公開 | [release--deploy.yaml](.github/workflows/release--deploy.yaml) | その service の `apply_trigger: release` の environment を apply |
+| `main` への push | [label-base-deploy--resolver.yaml](.github/workflows/label-base-deploy--resolver.yaml) | `production` 以外の environment の target を apply |
+| release PR の作成・更新 | [release--plan.yaml](.github/workflows/release--plan.yaml) | その service の production の environment を plan |
+| release の公開 | [release--deploy.yaml](.github/workflows/release--deploy.yaml) | その service の production の environment を apply |
 
 #### Targets
 
@@ -54,10 +54,10 @@
 
 #### Releases
 
-- `apply_trigger: release` の environment を持つ `aws/{service}` は、それぞれ release-please の設定（`release-please-config.json` / `release-please-manifest.json`）を持つ。
+- production の environment を持つ `aws/{service}` は、それぞれ release-please の設定（`release-please-config.json` / `release-please-manifest.json`）を持つ。
   - 設定がないと [check-release-configs.sh](https://github.com/panicboat/.github/blob/main/scripts/terragrunt-release/check-release-configs.sh) が CI を失敗させる。
-- `apply_trigger: merge` の environment ディレクトリだけを変える commit は、release を作らない（`exclude-paths`）。
-- `apply_trigger: release` の environment がすべて除外されている間も release PR は作られるが、plan も apply もされない。
+- production 以外の environment ディレクトリだけを変える commit は、release を作らない（`exclude-paths`）。
+- production の environment が除外されている間も release PR は作られるが、plan も apply もされない。
 - plan を出し直すときは、`Release - Plan` の run で「Re-run all jobs」を使う。
 - apply を再実行するときは、`gh workflow run release--deploy.yaml --ref {service}-vX.Y.Z -f tag={service}-vX.Y.Z` を実行する。
 
@@ -73,7 +73,7 @@
 ### Environments and Authentication
 
 - Environment、AWS region、IAM role は [workflow-config.yaml](workflow-config.yaml) で定義する。環境の追加・削除は同ファイルの編集で行う。
-- [workflow-config.yaml](workflow-config.yaml) の `apply_trigger` が environment を apply するタイミングを決める。`merge` は `main` への push、`release` は service の release 公開時に apply する。
+- `terragrunt` stack は、名前が `production` の environment を service の release が公開されたときに apply し、それ以外の environment を `main` への push で apply する。
 - 認証は GitHub OIDC。[aws/github-oidc-auth/](aws/github-oidc-auth/) が environment ごとの plan / apply role を発行し、executor がそれを引き受ける。
 - GCP の stack も master の plan / apply role を使う。[gcp/github-actions-master/workload-identity/](gcp/github-actions-master/workload-identity/) が CI 用の project を作り、その Workload Identity Federation で AWS の credential を GCP の credential に交換する。CI のときだけ [gcp/credential-configuration.json](gcp/credential-configuration.json) を使い、手元では gcloud の application default credentials を使う。
 - `{project}` は GCP プロジェクトの表示名。表示名と異なることがある project ID は `{project}/project.hcl` に書く。

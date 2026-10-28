@@ -1,4 +1,4 @@
-# Applies a service's apply_trigger: release environments when its release is published or its tag is dispatched.
+# Applies a service's production environment when its release is published or its tag is dispatched.
 name: 'Release - Deploy'
 
 on:
@@ -21,7 +21,7 @@ jobs:
       id-token: write
       contents: read
       pull-requests: write
-    uses: panicboat/.github/.github/workflows/reusable--release--deploy.yaml@abf935e759c635244c5ba4646d852a73693944d6 # v3.1.1
+    uses: panicboat/.github/.github/workflows/reusable--release--deploy.yaml@813235b879c17711be263e1d4ff22dfaec6d8dbc # v3.2.0
     with:
       app-id: ${{ vars.APP_ID }}
     secrets:

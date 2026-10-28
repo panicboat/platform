@@ -40,9 +40,9 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 | Event | Workflow | Terragrunt |
 |-------|----------|------------|
 | `deploy:{service}` label added to a PR | [label-base-deploy--resolver.yaml](.github/workflows/label-base-deploy--resolver.yaml) | plan every target |
-| Push to `main` | [label-base-deploy--resolver.yaml](.github/workflows/label-base-deploy--resolver.yaml) | apply targets with `apply_trigger: merge` |
-| Release PR opened / updated | [release--plan.yaml](.github/workflows/release--plan.yaml) | plan the service's `apply_trigger: release` environments |
-| Release published | [release--deploy.yaml](.github/workflows/release--deploy.yaml) | apply the service's `apply_trigger: release` environments |
+| Push to `main` | [label-base-deploy--resolver.yaml](.github/workflows/label-base-deploy--resolver.yaml) | apply non-production targets |
+| Release PR opened / updated | [release--plan.yaml](.github/workflows/release--plan.yaml) | plan the service's production environment |
+| Release published | [release--deploy.yaml](.github/workflows/release--deploy.yaml) | apply the service's production environment |
 
 #### Targets
 
@@ -54,10 +54,10 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 
 #### Releases
 
-- Each `aws/{service}` with an `apply_trigger: release` environment has its own release-please config (`release-please-config.json` / `release-please-manifest.json`).
+- Each `aws/{service}` with a production environment has its own release-please config (`release-please-config.json` / `release-please-manifest.json`).
   - [check-release-configs.sh](https://github.com/panicboat/.github/blob/main/scripts/terragrunt-release/check-release-configs.sh) fails CI when a config is missing.
-- Commits that touch only `apply_trigger: merge` environment directories do not create a release (`exclude-paths`).
-- While every `apply_trigger: release` environment is excluded, the release PR is still created, but nothing is planned or applied.
+- Commits that touch only non-production environment directories do not create a release (`exclude-paths`).
+- While the production environment is excluded, the release PR is still created, but nothing is planned or applied.
 - To re-plan, use "Re-run all jobs" on the `Release - Plan` run.
 - To re-apply, run `gh workflow run release--deploy.yaml --ref {service}-vX.Y.Z -f tag={service}-vX.Y.Z`.
 
@@ -73,7 +73,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 ### Environments and authentication
 
 - Environments, AWS regions, and IAM roles are defined in [workflow-config.yaml](workflow-config.yaml). Adding or removing an environment means editing that file.
-- `apply_trigger` in [workflow-config.yaml](workflow-config.yaml) decides when an environment is applied: `merge` applies on push to `main`, `release` applies when the service release is published.
+- The `terragrunt` stack applies the environment named `production` when the service release is published, and every other environment on push to `main`.
 - Authentication uses GitHub OIDC. [aws/github-oidc-auth/](aws/github-oidc-auth/) issues per-environment plan / apply roles that the executors assume.
 - GCP stacks reuse the master plan / apply roles: [gcp/github-actions-master/workload-identity/](gcp/github-actions-master/workload-identity/) creates the CI project and lets them exchange their AWS credentials for GCP credentials through Workload Identity Federation, configured by [gcp/credential-configuration.json](gcp/credential-configuration.json) in CI only. Local runs use the gcloud application default credentials.
 - `{project}` is the display name of the GCP project; `{project}/project.hcl` holds its ID, which can differ from the display name.

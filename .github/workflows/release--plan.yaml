@@ -1,4 +1,4 @@
-# Plans a service's apply_trigger: release environments on its release-please pull request.
+# Plans a service's production environment on its release-please pull request.
 name: 'Release - Plan'
 
 on:
@@ -15,7 +15,7 @@ jobs:
       id-token: write
       contents: read
       pull-requests: write
-    uses: panicboat/.github/.github/workflows/reusable--release--plan.yaml@abf935e759c635244c5ba4646d852a73693944d6 # v3.1.1
+    uses: panicboat/.github/.github/workflows/reusable--release--plan.yaml@813235b879c17711be263e1d4ff22dfaec6d8dbc # v3.2.0
     with:
       app-id: ${{ vars.APP_ID }}
     secrets:

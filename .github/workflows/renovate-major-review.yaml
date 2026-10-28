@@ -18,6 +18,6 @@ jobs:
       contents: read
       pull-requests: write
       id-token: write
-    uses: panicboat/.github/.github/workflows/reusable--renovate-major-review.yaml@abf935e759c635244c5ba4646d852a73693944d6 # v3.1.1
+    uses: panicboat/.github/.github/workflows/reusable--renovate-major-review.yaml@813235b879c17711be263e1d4ff22dfaec6d8dbc # v3.2.0
     with:
       prompt-path: .github/prompts/renovate-major-review.md
