@@ -26,7 +26,7 @@ spec:
     name: monorepo
   suspend: false
 ---
-# Syncs dedicated read-only GitHub App credentials for monorepo cloning.
+# Syncs the GitHub App credentials Flux uses to clone monorepo and to push image updates to its main branch.
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
