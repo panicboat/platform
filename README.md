@@ -18,8 +18,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 ```
 .
 ├── .github/
-│   ├── scripts/         # Scripts run by workflows (hydration, terragrunt release)
-│   └── workflows/       # Reusable executors, deploy trigger, hydrator/builder, etc.
+│   └── workflows/       # Workflows that call the shared workflows of panicboat/.github
 ├── aws/                 # Terragrunt stacks per service ({environment})
 ├── github/              # Terragrunt stacks for GitHub repo / branch settings
 ├── gcp/                 # Terragrunt stacks, one directory per GCP project display name
@@ -55,7 +54,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 #### Releases
 
 - Each `aws/{service}` with a production environment has its own release-please config (`release-please-config.json` / `release-please-manifest.json`).
-  - [check-release-configs.sh](https://github.com/panicboat/.github/blob/main/scripts/terragrunt-release/check-release-configs.sh) fails CI when a config is missing.
+  - [test-terragrunt-release.yaml](.github/workflows/test-terragrunt-release.yaml) fails CI when a config is missing.
 - Commits that touch only non-production environment directories do not create a release (`exclude-paths`).
 - While the production environment is excluded, the release PR is still created, but nothing is planned or applied.
 - To re-plan, use "Re-run all jobs" on the `Release - Plan` run.
@@ -65,10 +64,10 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 
 | Stack | Path convention | Tooling |
 |-------|-----------------|---------|
-| AWS infrastructure | `aws/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--terragrunt-runner.yaml)) |
-| GitHub configuration | `github/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--terragrunt-runner.yaml)) |
-| GCP infrastructure | `gcp/{project}/{service}/{environment}` | Terragrunt + OpenTofu ([reusable--terragrunt-runner.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--terragrunt-runner.yaml)) |
-| Kubernetes platform | `kubernetes/components/{service}/{environment}` | Helmfile → Kustomize hydration ([reusable--kubernetes-hydrator.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--kubernetes-hydrator.yaml) / [reusable--kubernetes-builder.yaml](https://github.com/panicboat/.github/blob/main/.github/workflows/reusable--kubernetes-builder.yaml)) → Flux CD |
+| AWS infrastructure | `aws/{service}/{environment}` | Terragrunt + OpenTofu |
+| GitHub configuration | `github/{service}/{environment}` | Terragrunt + OpenTofu |
+| GCP infrastructure | `gcp/{project}/{service}/{environment}` | Terragrunt + OpenTofu |
+| Kubernetes platform | `kubernetes/components/{service}/{environment}` | Helmfile → Kustomize hydration → Flux CD |
 
 ### Environments and authentication
 
@@ -88,6 +87,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 flowchart LR
   subgraph Triggers
     PRevent[PR open/sync]
+    ReleasePR[release PR open/sync]
     Mainpush[push main]
     Release[release published]
   end
@@ -99,17 +99,18 @@ flowchart LR
   end
 
   subgraph KubernetesCI [Kubernetes CI]
-    Group[helmfile-targets-group<br/>group by env]
-    Hydrator[reusable--kubernetes-hydrator<br/>matrix: env<br/>concurrency: hydrate-PR-env]
+    Group[group targets by env]
+    Hydrator[helmfile hydration<br/>per env]
     Commit[auto-commit<br/>kubernetes/manifests/]
-    Builder[reusable--kubernetes-builder<br/>matrix: service x env<br/>diff only]
+    Builder[kustomize diff<br/>per service x env]
     IndexComment[(PR comment<br/>kubernetes-index-env)]
     CompComment[(PR comment<br/>kubernetes-service-env)]
   end
 
   subgraph Terragrunt
+    PlanTrigger[release--plan]
     ReleaseTrigger[release--deploy]
-    TG[reusable--terragrunt-runner]
+    TG[terragrunt]
     Plan[terragrunt plan]
     Apply[terragrunt apply]
     PRComment[(PR comment)]
@@ -125,15 +126,17 @@ flowchart LR
   Dispatcher --> Trigger
   Trigger --> Resolver
   Resolver -->|stack: terragrunt| TG
+  ReleasePR --> PlanTrigger
+  PlanTrigger --> TG
   Release --> ReleaseTrigger
   ReleaseTrigger --> TG
-  TG -->|on pull_request| Plan
+  TG -->|on PR or release PR| Plan
   TG -->|on push main or release published| Apply
   Plan --> PRComment
   Apply --> AWS
   Resolver -->|stack: helmfile| Group
   Group --> Hydrator
-  Hydrator -->|hydrate-component.sh<br/>+ hydrate-index.sh| Commit
+  Hydrator --> Commit
   Hydrator -->|index diff| IndexComment
   Commit --> Builder
   Builder --> CompComment
@@ -146,4 +149,4 @@ flowchart LR
 
 - Flux bootstrap lives in `kubernetes/clusters/{cluster}/flux-system/`. The cluster's root Kustomization aggregates the rendered manifests under `kubernetes/manifests/{cluster}/` and any external `GitRepository` (currently the application monorepo).
 - Platform and application repositories are pulled independently and stay loosely coupled. Sync intervals and source URLs are configured in `kubernetes/clusters/{cluster}/` — treat those manifests as the source of truth.
-- When [kubernetes/components/](kubernetes/components/) changes, CI runs [scripts/kubernetes-hydrate/](https://github.com/panicboat/.github/tree/main/scripts/kubernetes-hydrate), commits the rendered output to [kubernetes/manifests/](kubernetes/manifests/), and posts the diff as a PR comment. Flux applies the change once merged.
+- When [kubernetes/components/](kubernetes/components/) changes, CI renders the components, commits the rendered output to [kubernetes/manifests/](kubernetes/manifests/), and posts the diff as a PR comment. Flux applies the change once merged.
