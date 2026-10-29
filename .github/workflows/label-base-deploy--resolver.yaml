@@ -1,4 +1,4 @@
-# Resolves deploy labels into targets, plans them on pull requests, and applies apply_trigger: merge targets on push to main.
+# Resolves deploy labels into targets, plans them on pull requests, and applies non-production targets on push to main.
 name: 'Label Base Deploy - Resolver'
 
 on:

@@ -1,4 +1,4 @@
-# Validates workflow-config.yaml apply_trigger values and the release-please configs.
+# Validates the release-please configs of the production environments.
 name: Test Terragrunt Release
 
 on:

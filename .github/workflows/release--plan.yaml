@@ -1,4 +1,4 @@
-# Plans a service's apply_trigger: release environments on its release-please pull request.
+# Plans a service's production environment on its release-please pull request.
 name: 'Release - Plan'
 
 on:

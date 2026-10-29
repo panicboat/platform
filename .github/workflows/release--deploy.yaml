@@ -1,4 +1,4 @@
-# Applies a service's apply_trigger: release environments when its release is published or its tag is dispatched.
+# Applies a service's production environment when its release is published or its tag is dispatched.
 name: 'Release - Deploy'
 
 on:
