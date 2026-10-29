@@ -15,7 +15,7 @@ jobs:
       id-token: write
       contents: read
       pull-requests: write
-    uses: panicboat/.github/.github/workflows/reusable--release--plan.yaml@813235b879c17711be263e1d4ff22dfaec6d8dbc # v3.2.0
+    uses: panicboat/.github/.github/workflows/reusable--release--plan.yaml@5c8d1e2a12c97f93b40399902879acd68497a8d9 # v3.3.0
     with:
       app-id: ${{ vars.APP_ID }}
     secrets:
