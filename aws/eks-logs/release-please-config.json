@@ -20,8 +20,7 @@
     "aws/eks-logs": {
       "release-type": "simple",
       "component": "eks-logs",
-      "include-component-in-tag": true,
-      "exclude-paths": ["aws/eks-logs/master", "aws/eks-logs/develop"]
+      "include-component-in-tag": true
     }
   }
 }

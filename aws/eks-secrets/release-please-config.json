@@ -20,8 +20,7 @@
     "aws/eks-secrets": {
       "release-type": "simple",
       "component": "eks-secrets",
-      "include-component-in-tag": true,
-      "exclude-paths": ["aws/eks-secrets/master", "aws/eks-secrets/develop"]
+      "include-component-in-tag": true
     }
   }
 }
