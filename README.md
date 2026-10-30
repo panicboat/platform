@@ -56,7 +56,6 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 #### Releases
 
 - Each `aws/{service}` with a production environment has its own release-please config (`release-please-config.json` / `release-please-manifest.json`).
-  - [test-terragrunt-release.yaml](.github/workflows/test-terragrunt-release.yaml) fails CI when a config is missing.
 - Commits that touch only non-production environment directories count as changes of the service's release-please package.
 - While the production environment is excluded, the release PR is still created, but nothing is planned or applied.
 - To re-plan, use "Re-run all jobs" on the `Release - Plan` run.
