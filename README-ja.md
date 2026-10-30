@@ -47,7 +47,8 @@
 
 - PR の作成・更新時に、[label-base-deploy--dispatcher.yaml](.github/workflows/label-base-deploy--dispatcher.yaml) が `deploy:{service}` ラベルを付ける。release-please の branch にはラベルを付けない。
   - module や `root.hcl` を含め、`aws/{service}/` 配下のどの変更でもラベルが付く。
-- `label-resolver` が [workflow-config.yaml](workflow-config.yaml) を使って、ラベルをその service の全 environment に展開する。
+- `label-resolver` が [workflow-config.yaml](workflow-config.yaml) の `services[].stacks` を読み、ラベルをその service の全 environment に展開する。
+- 各 target は、`type` 属性（`terragrunt` または `helmfile`）に対応する workflow に渡される。
 - `terragrunt` stack の `exclude` に一致する `{service}/{environment}` の組は、release も含めて plan も apply もされない。
   - `environment` だけの rule はすべての service に効く。
 
@@ -55,7 +56,7 @@
 
 - production の environment を持つ `aws/{service}` は、それぞれ release-please の設定（`release-please-config.json` / `release-please-manifest.json`）を持つ。
   - 設定がないと [test-terragrunt-release.yaml](.github/workflows/test-terragrunt-release.yaml) が CI を失敗させる。
-- production 以外の environment ディレクトリだけを変える commit は、release を作らない（`exclude-paths`）。
+- production 以外の environment ディレクトリだけを変える commit も、その service の release-please package の変更として数えられる。
 - production の environment が除外されている間も release PR は作られるが、plan も apply もされない。
 - plan を出し直すときは、`Release - Plan` の run で「Re-run all jobs」を使う。
 - apply を再実行するときは、`gh workflow run release--deploy.yaml --ref {service}-vX.Y.Z -f tag={service}-vX.Y.Z` を実行する。
@@ -71,7 +72,7 @@
 
 ### Environments and Authentication
 
-- Environment、AWS region、IAM role は [workflow-config.yaml](workflow-config.yaml) で定義する。環境の追加・削除は同ファイルの編集で行う。
+- Environment は [workflow-config.yaml](workflow-config.yaml) の `services[].stacks[].environments` で stack ごとに宣言し、AWS region と IAM role は `profiles` に置いて environment の `use` で参照する。環境の追加・削除は同ファイルの編集で行う。
 - `terragrunt` stack は、名前が `production` の environment を service の release が公開されたときに apply し、それ以外の environment を `main` への push で apply する。
 - 認証は GitHub OIDC。[aws/github-oidc-auth/](aws/github-oidc-auth/) が environment ごとの plan / apply role を発行し、executor がそれを引き受ける。
 - GCP の stack も master の plan / apply role を使う。[gcp/github-actions-master/workload-identity/](gcp/github-actions-master/workload-identity/) が CI 用の project を作り、その Workload Identity Federation で AWS の credential を GCP の credential に交換する。CI のときだけ [gcp/credential-configuration.json](gcp/credential-configuration.json) を使い、手元では gcloud の application default credentials を使う。
@@ -125,7 +126,7 @@ flowchart LR
   PRevent --> Dispatcher
   Dispatcher --> Trigger
   Trigger --> Resolver
-  Resolver -->|stack: terragrunt| TG
+  Resolver -->|type: terragrunt| TG
   ReleasePR --> PlanTrigger
   PlanTrigger --> TG
   Release --> ReleaseTrigger
@@ -134,7 +135,7 @@ flowchart LR
   TG -->|on push main or release published| Apply
   Plan --> PRComment
   Apply --> AWS
-  Resolver -->|stack: helmfile| Group
+  Resolver -->|type: helmfile| Group
   Group --> Hydrator
   Hydrator --> Commit
   Hydrator -->|index diff| IndexComment
