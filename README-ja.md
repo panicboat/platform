@@ -56,7 +56,6 @@
 #### Releases
 
 - production の environment を持つ `aws/{service}` は、それぞれ release-please の設定（`release-please-config.json` / `release-please-manifest.json`）を持つ。
-  - 設定がないと [test-terragrunt-release.yaml](.github/workflows/test-terragrunt-release.yaml) が CI を失敗させる。
 - production 以外の environment ディレクトリだけを変える commit も、その service の release-please package の変更として数えられる。
 - production の environment が除外されている間も release PR は作られるが、plan も apply もされない。
 - plan を出し直すときは、`Release - Plan` の run で「Re-run all jobs」を使う。
