@@ -47,6 +47,7 @@
 
 - PR の作成・更新時に、[label-base-deploy--dispatcher.yaml](.github/workflows/label-base-deploy--dispatcher.yaml) が `deploy:{service}` ラベルを付ける。release-please の branch にはラベルを付けない。
   - module や `root.hcl` を含め、`aws/{service}/` 配下のどの変更でもラベルが付く。
+  - 今の `aws/{service}/production/` のように、`exclude` の対象の環境だけを変えたときはラベルが付かない。
 - `label-resolver` が [workflow-config.yaml](workflow-config.yaml) の `services[].stacks` を読み、ラベルをその service の全 environment に展開する。
 - 各 target は、`type` 属性（`terragrunt` または `helmfile`）に対応する workflow に渡される。
 - `terragrunt` stack の `exclude` に一致する `{service}/{environment}` の組は、release も含めて plan も apply もされない。

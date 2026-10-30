@@ -1,4 +1,4 @@
-# Adds deploy:{service} labels to a pull request from the stack paths it changes.
+# Adds deploy:{service} labels to a pull request from the files it changes under each service root.
 name: 'Label Base Deploy - Dispatcher'
 
 on:
