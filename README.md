@@ -72,7 +72,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 
 ### Environments and authentication
 
-- Environments are declared per stack in `services[].stacks[].environments` of [workflow-config.yaml](workflow-config.yaml); AWS regions and IAM roles live in its `profiles`, which an environment references with `use`. Adding or removing an environment means editing that file.
+- Terragrunt environments are declared in `services[].stacks[].environments` of [workflow-config.yaml](workflow-config.yaml); AWS regions and IAM roles live in its `profiles`, which an environment references with `use`. Adding or removing a Terragrunt environment means editing that file. Helmfile environments are not declared: they are discovered from the directories under `kubernetes/components/{service}/`.
 - The `terragrunt` stack applies the environment named `production` when the service release is published, and every other environment on push to `main`.
 - Authentication uses GitHub OIDC. [aws/github-oidc-auth/](aws/github-oidc-auth/) issues per-environment plan / apply roles that the executors assume.
 - GCP stacks reuse the master plan / apply roles: [gcp/github-actions-master/workload-identity/](gcp/github-actions-master/workload-identity/) creates the CI project and lets them exchange their AWS credentials for GCP credentials through Workload Identity Federation, configured by [gcp/credential-configuration.json](gcp/credential-configuration.json) in CI only. Local runs use the gcloud application default credentials.
