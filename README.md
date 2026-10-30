@@ -47,6 +47,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 
 - [label-base-deploy--dispatcher.yaml](.github/workflows/label-base-deploy--dispatcher.yaml) adds `deploy:{service}` to a PR when it is opened or updated; release-please branches get no label.
   - Any change under `aws/{service}/`, including modules and `root.hcl`, adds the label.
+  - A change only under an environment that `exclude` covers, such as `aws/{service}/production/` today, adds no label.
 - `label-resolver` reads `services[].stacks` of [workflow-config.yaml](workflow-config.yaml) and expands the label into every environment of that service.
 - Each target goes to the workflow for its `type` attribute (`terragrunt` or `helmfile`).
 - A `{service}/{environment}` pair matched by `exclude` of the `terragrunt` stack is never planned or applied, including by releases.
