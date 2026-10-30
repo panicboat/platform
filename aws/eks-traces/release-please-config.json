@@ -20,8 +20,7 @@
     "aws/eks-traces": {
       "release-type": "simple",
       "component": "eks-traces",
-      "include-component-in-tag": true,
-      "exclude-paths": ["aws/eks-traces/master", "aws/eks-traces/develop"]
+      "include-component-in-tag": true
     }
   }
 }

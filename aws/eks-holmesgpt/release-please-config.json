@@ -20,8 +20,7 @@
     "aws/eks-holmesgpt": {
       "release-type": "simple",
       "component": "eks-holmesgpt",
-      "include-component-in-tag": true,
-      "exclude-paths": ["aws/eks-holmesgpt/master", "aws/eks-holmesgpt/develop"]
+      "include-component-in-tag": true
     }
   }
 }

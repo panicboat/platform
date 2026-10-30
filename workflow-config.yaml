@@ -1,25 +1,43 @@
-stacks:
-  - name: terragrunt
-    paths:
-      - "aws/{service}/{environment}"
-      - "github/{service}/{environment}"
-      - "gcp/{project}/{service}/{environment}"
-    environments:
-      master:
-        aws_region: ap-northeast-1
-        iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-master-github-actions-plan-role
-        iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-master-github-actions-apply-role
-      develop:
-        aws_region: ap-northeast-1
-        iam_role_plan: arn:aws:iam::270242382571:role/github-oidc-auth-develop-github-actions-plan-role
-        iam_role_apply: arn:aws:iam::270242382571:role/github-oidc-auth-develop-github-actions-apply-role
-      production:
-        aws_region: ap-northeast-1
-        iam_role_plan: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-plan-role
-        iam_role_apply: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-apply-role
-    exclude:
-      - environment: production
+profiles:
+  aws-master:
+    aws_region: ap-northeast-1
+    iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-master-github-actions-plan-role
+    iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-master-github-actions-apply-role
+  aws-develop:
+    aws_region: ap-northeast-1
+    iam_role_plan: arn:aws:iam::270242382571:role/github-oidc-auth-develop-github-actions-plan-role
+    iam_role_apply: arn:aws:iam::270242382571:role/github-oidc-auth-develop-github-actions-apply-role
+  aws-production:
+    aws_region: ap-northeast-1
+    iam_role_plan: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-plan-role
+    iam_role_apply: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-apply-role
 
-  - name: helmfile
-    paths:
-      - "kubernetes/components/{service}/{environment}"
+services:
+  - id: infrastructure
+    roots:
+      - "aws/{service}"
+      - "github/{service}"
+      - "gcp/{project}/{service}"
+    stacks:
+      - id: terragrunt
+        path: "{environment}"
+        attributes:
+          type: terragrunt
+        environments:
+          master:
+            use: [aws-master]
+          develop:
+            use: [aws-develop]
+          production:
+            use: [aws-production]
+        exclude:
+          - environment: production
+
+  - id: kubernetes
+    roots:
+      - "kubernetes/components/{service}"
+    stacks:
+      - id: helmfile
+        path: "{environment}"
+        attributes:
+          type: helmfile

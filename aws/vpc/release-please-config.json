@@ -20,8 +20,7 @@
     "aws/vpc": {
       "release-type": "simple",
       "component": "vpc",
-      "include-component-in-tag": true,
-      "exclude-paths": ["aws/vpc/master", "aws/vpc/develop"]
+      "include-component-in-tag": true
     }
   }
 }

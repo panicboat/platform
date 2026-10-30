@@ -10,4 +10,4 @@ jobs:
   validate:
     permissions:
       contents: read
-    uses: panicboat/.github/.github/workflows/reusable--test-terragrunt-release.yaml@5c8d1e2a12c97f93b40399902879acd68497a8d9 # v3.3.0
+    uses: panicboat/.github/.github/workflows/reusable--test-terragrunt-release.yaml@2b5d0c6af56ca62e19b2bf4e76b55c0813a1c443 # v4.0.0

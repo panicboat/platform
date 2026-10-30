@@ -20,8 +20,7 @@
     "aws/eks": {
       "release-type": "simple",
       "component": "eks",
-      "include-component-in-tag": true,
-      "exclude-paths": ["aws/eks/master", "aws/eks/develop"]
+      "include-component-in-tag": true
     }
   }
 }

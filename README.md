@@ -47,7 +47,8 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 
 - [label-base-deploy--dispatcher.yaml](.github/workflows/label-base-deploy--dispatcher.yaml) adds `deploy:{service}` to a PR when it is opened or updated; release-please branches get no label.
   - Any change under `aws/{service}/`, including modules and `root.hcl`, adds the label.
-- `label-resolver` expands the label into every environment of that service using [workflow-config.yaml](workflow-config.yaml).
+- `label-resolver` reads `services[].stacks` of [workflow-config.yaml](workflow-config.yaml) and expands the label into every environment of that service.
+- Each target goes to the workflow for its `type` attribute (`terragrunt` or `helmfile`).
 - A `{service}/{environment}` pair matched by `exclude` of the `terragrunt` stack is never planned or applied, including by releases.
   - A rule with only `environment` covers every service.
 
@@ -55,7 +56,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 
 - Each `aws/{service}` with a production environment has its own release-please config (`release-please-config.json` / `release-please-manifest.json`).
   - [test-terragrunt-release.yaml](.github/workflows/test-terragrunt-release.yaml) fails CI when a config is missing.
-- Commits that touch only non-production environment directories do not create a release (`exclude-paths`).
+- Commits that touch only non-production environment directories count as changes of the service's release-please package.
 - While the production environment is excluded, the release PR is still created, but nothing is planned or applied.
 - To re-plan, use "Re-run all jobs" on the `Release - Plan` run.
 - To re-apply, run `gh workflow run release--deploy.yaml --ref {service}-vX.Y.Z -f tag={service}-vX.Y.Z`.
@@ -71,7 +72,7 @@ A PR labeled by `panicboat/deploy-actions` is resolved against [workflow-config.
 
 ### Environments and authentication
 
-- Environments, AWS regions, and IAM roles are defined in [workflow-config.yaml](workflow-config.yaml). Adding or removing an environment means editing that file.
+- Environments are declared per stack in `services[].stacks[].environments` of [workflow-config.yaml](workflow-config.yaml); AWS regions and IAM roles live in its `profiles`, which an environment references with `use`. Adding or removing an environment means editing that file.
 - The `terragrunt` stack applies the environment named `production` when the service release is published, and every other environment on push to `main`.
 - Authentication uses GitHub OIDC. [aws/github-oidc-auth/](aws/github-oidc-auth/) issues per-environment plan / apply roles that the executors assume.
 - GCP stacks reuse the master plan / apply roles: [gcp/github-actions-master/workload-identity/](gcp/github-actions-master/workload-identity/) creates the CI project and lets them exchange their AWS credentials for GCP credentials through Workload Identity Federation, configured by [gcp/credential-configuration.json](gcp/credential-configuration.json) in CI only. Local runs use the gcloud application default credentials.
@@ -125,7 +126,7 @@ flowchart LR
   PRevent --> Dispatcher
   Dispatcher --> Trigger
   Trigger --> Resolver
-  Resolver -->|stack: terragrunt| TG
+  Resolver -->|type: terragrunt| TG
   ReleasePR --> PlanTrigger
   PlanTrigger --> TG
   Release --> ReleaseTrigger
@@ -134,7 +135,7 @@ flowchart LR
   TG -->|on push main or release published| Apply
   Plan --> PRComment
   Apply --> AWS
-  Resolver -->|stack: helmfile| Group
+  Resolver -->|type: helmfile| Group
   Group --> Hydrator
   Hydrator --> Commit
   Hydrator -->|index diff| IndexComment
