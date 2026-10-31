@@ -72,7 +72,7 @@
 
 ### Environments and Authentication
 
-- Terragrunt の environment は [workflow-config.yaml](workflow-config.yaml) の `services[].stacks[].environments` で宣言し、AWS region と IAM role は `profiles` に置いて environment の `use` で参照する。Helmfile の環境は宣言せず、`kubernetes/components/{service}/` のディレクトリから探索する。Terragrunt の環境の追加・削除は同ファイルの編集で行う。
+- Environment は [workflow-config.yaml](workflow-config.yaml) の `services[].stacks[].environments` で宣言する。Terragrunt の AWS region と IAM role は `profiles` に置いて environment の `use` で参照する。環境の追加・削除は同ファイルの編集で行う。
 - `terragrunt` stack は、名前が `production` の environment を service の release が公開されたときに apply し、それ以外の environment を `main` への push で apply する。
 - 認証は GitHub OIDC。[aws/github-oidc-auth/](aws/github-oidc-auth/) が environment ごとの plan / apply role を発行し、executor がそれを引き受ける。
 - GCP の stack も master の plan / apply role を使う。[gcp/github-actions-master/workload-identity/](gcp/github-actions-master/workload-identity/) が CI 用の project を作り、その Workload Identity Federation で AWS の credential を GCP の credential に交換する。CI のときだけ [gcp/credential-configuration.json](gcp/credential-configuration.json) を使い、手元では gcloud の application default credentials を使う。

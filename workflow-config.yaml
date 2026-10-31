@@ -41,3 +41,6 @@ services:
         path: "{environment}"
         attributes:
           type: helmfile
+        # Discovery would treat karpenter/tests, which holds a test script, as an environment and fail to hydrate it.
+        environments:
+          production: {}
