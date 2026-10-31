@@ -9,6 +9,6 @@ releases:
   - name: opentelemetry-collector
     namespace: monitoring
     chart: opentelemetry/opentelemetry-collector
-    version: "0.178.0"
+    version: "0.178.1"
     values:
       - values.yaml.gotmpl
