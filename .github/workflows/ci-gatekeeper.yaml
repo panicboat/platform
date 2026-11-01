@@ -11,7 +11,7 @@ jobs:
   ci-gatekeeper:
     permissions:
       actions: read
-    uses: panicboat/.github/.github/workflows/reusable--ci-gatekeeper.yaml@c7e840647bcbae967cde37c6d32d39e70029f722 # v0.3.0
+    uses: panicboat/.github/.github/workflows/reusable--ci-gatekeeper.yaml@b4045cb25420c5b596ad99c7e51106062feec5ab # v0.3.1
     with:
       # The AI review is advisory; an Anthropic API outage must not block merges through this required check.
       exclude-workflow-names: Renovate Major Review
