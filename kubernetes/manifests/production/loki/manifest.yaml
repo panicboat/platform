@@ -6,7 +6,7 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-20.0.2
+    helm.sh/chart: loki-20.2.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -20,7 +20,7 @@ metadata:
   name: loki-memcached
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-20.0.2
+    helm.sh/chart: loki-20.2.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -34,7 +34,7 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-20.0.2
+    helm.sh/chart: loki-20.2.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -47,7 +47,7 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-20.0.2
+    helm.sh/chart: loki-20.2.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -180,7 +180,7 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-20.0.2
+    helm.sh/chart: loki-20.2.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -618,7 +618,7 @@ metadata:
   name: loki-runtime
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-20.0.2
+    helm.sh/chart: loki-20.2.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -631,7 +631,7 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   labels:
-    helm.sh/chart: loki-20.0.2
+    helm.sh/chart: loki-20.2.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -647,7 +647,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: loki-clusterrolebinding
   labels:
-    helm.sh/chart: loki-20.0.2
+    helm.sh/chart: loki-20.2.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -667,7 +667,7 @@ metadata:
   name: loki-gateway-exporter
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-20.0.2
+    helm.sh/chart: loki-20.2.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -692,7 +692,7 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-20.0.2
+    helm.sh/chart: loki-20.2.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -718,7 +718,7 @@ metadata:
   name: "loki"
   namespace: "monitoring"
   labels:
-    helm.sh/chart: loki-20.0.2
+    helm.sh/chart: loki-20.2.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -753,7 +753,7 @@ metadata:
   name: "loki-headless"
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-20.0.2
+    helm.sh/chart: loki-20.2.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -791,7 +791,7 @@ metadata:
   name: loki-memberlist
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-20.0.2
+    helm.sh/chart: loki-20.2.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -816,7 +816,7 @@ metadata:
   name: loki-gateway
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-20.0.2
+    helm.sh/chart: loki-20.2.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -889,7 +889,7 @@ spec:
               cpu: 15m
               memory: 64Mi
         - name: exporter
-          image: ghcr.io/jkroepke/access-log-exporter:0.5.2
+          image: ghcr.io/jkroepke/access-log-exporter:1.0.1
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 4040
@@ -961,7 +961,7 @@ metadata:
   name: "loki"
   namespace: "monitoring"
   labels:
-    helm.sh/chart: loki-20.0.2
+    helm.sh/chart: loki-20.2.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
@@ -1174,7 +1174,7 @@ metadata:
   name: loki
   namespace: monitoring
   labels:
-    helm.sh/chart: loki-20.0.2
+    helm.sh/chart: loki-20.2.0
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
     app.kubernetes.io/version: "3.7.9"
