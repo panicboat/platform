@@ -623,6 +623,19 @@ spec:
                 detailedMonitoring:
                   description: DetailedMonitoring controls if detailed monitoring is enabled for instances that are launched
                   type: boolean
+                enclaveOptions:
+                  description: |-
+                    EnclaveOptions specifies whether the instance is enabled for Amazon Web Services Nitro Enclaves.
+                    When enabled, instance types are restricted to those that support Nitro Enclaves.
+                    When enclaveOptions is omitted or enabled is false, Nitro Enclaves are disabled.
+                    When enclaveOptions is specified, enabled is required.
+                  properties:
+                    enabled:
+                      description: Enabled indicates whether the instance is enabled for Amazon Web Services Nitro Enclaves.
+                      type: boolean
+                  required:
+                    - enabled
+                  type: object
                 instanceProfile:
                   description: |-
                     InstanceProfile is the AWS entity that instances use.
@@ -644,119 +657,18 @@ spec:
                   minimum: 0
                   type: integer
                 kubelet:
+                  additionalProperties:
+                    x-kubernetes-preserve-unknown-fields: true
                   description: |-
-                    Kubelet defines args to be used when configuring kubelet on provisioned nodes.
-                    They are a subset of the upstream types, recognizing not all options may be supported.
-                    Wherever possible, the types and names should reflect the upstream kubelet types.
-                  properties:
-                    clusterDNS:
-                      description: |-
-                        clusterDNS is a list of IP addresses for the cluster DNS server.
-                        Note that not all providers may use all addresses.
-                      items:
-                        type: string
-                      type: array
-                    cpuCFSQuota:
-                      description: CPUCFSQuota enables CPU CFS quota enforcement for containers that specify CPU limits.
-                      type: boolean
-                    evictionHard:
-                      additionalProperties:
-                        type: string
-                        pattern: ^((\d{1,2}(\.\d{1,2})?|100(\.0{1,2})?)%||(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?)$
-                      description: EvictionHard is the map of signal names to quantities that define hard eviction thresholds
-                      type: object
-                      x-kubernetes-validations:
-                        - message: valid keys for evictionHard are ['memory.available','nodefs.available','nodefs.inodesFree','imagefs.available','imagefs.inodesFree','pid.available']
-                          rule: self.all(x, x in ['memory.available','nodefs.available','nodefs.inodesFree','imagefs.available','imagefs.inodesFree','pid.available'])
-                    evictionMaxPodGracePeriod:
-                      description: |-
-                        EvictionMaxPodGracePeriod is the maximum allowed grace period (in seconds) to use when terminating pods in
-                        response to soft eviction thresholds being met.
-                      format: int32
-                      type: integer
-                    evictionSoft:
-                      additionalProperties:
-                        type: string
-                        pattern: ^((\d{1,2}(\.\d{1,2})?|100(\.0{1,2})?)%||(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?)$
-                      description: EvictionSoft is the map of signal names to quantities that define soft eviction thresholds
-                      type: object
-                      x-kubernetes-validations:
-                        - message: valid keys for evictionSoft are ['memory.available','nodefs.available','nodefs.inodesFree','imagefs.available','imagefs.inodesFree','pid.available']
-                          rule: self.all(x, x in ['memory.available','nodefs.available','nodefs.inodesFree','imagefs.available','imagefs.inodesFree','pid.available'])
-                    evictionSoftGracePeriod:
-                      additionalProperties:
-                        type: string
-                      description: EvictionSoftGracePeriod is the map of signal names to quantities that define grace periods for each eviction signal
-                      type: object
-                      x-kubernetes-validations:
-                        - message: valid keys for evictionSoftGracePeriod are ['memory.available','nodefs.available','nodefs.inodesFree','imagefs.available','imagefs.inodesFree','pid.available']
-                          rule: self.all(x, x in ['memory.available','nodefs.available','nodefs.inodesFree','imagefs.available','imagefs.inodesFree','pid.available'])
-                    imageGCHighThresholdPercent:
-                      description: |-
-                        ImageGCHighThresholdPercent is the percent of disk usage after which image
-                        garbage collection is always run. The percent is calculated by dividing this
-                        field value by 100, so this field must be between 0 and 100, inclusive.
-                        When specified, the value must be greater than ImageGCLowThresholdPercent.
-                      format: int32
-                      maximum: 100
-                      minimum: 0
-                      type: integer
-                    imageGCLowThresholdPercent:
-                      description: |-
-                        ImageGCLowThresholdPercent is the percent of disk usage before which image
-                        garbage collection is never run. Lowest disk usage to garbage collect to.
-                        The percent is calculated by dividing this field value by 100,
-                        so the field value must be between 0 and 100, inclusive.
-                        When specified, the value must be less than imageGCHighThresholdPercent
-                      format: int32
-                      maximum: 100
-                      minimum: 0
-                      type: integer
-                    kubeReserved:
-                      additionalProperties:
-                        type: string
-                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                      description: KubeReserved contains resources reserved for Kubernetes system components.
-                      type: object
-                      x-kubernetes-validations:
-                        - message: valid keys for kubeReserved are ['cpu','memory','ephemeral-storage','pid']
-                          rule: self.all(x, x=='cpu' || x=='memory' || x=='ephemeral-storage' || x=='pid')
-                        - message: kubeReserved value cannot be a negative resource quantity
-                          rule: self.all(x, !self[x].startsWith('-'))
-                    maxPods:
-                      description: |-
-                        MaxPods is an override for the maximum number of pods that can run on
-                        a worker node instance.
-                      format: int32
-                      minimum: 0
-                      type: integer
-                    podsPerCore:
-                      description: |-
-                        PodsPerCore is an override for the number of pods that can run on a worker node
-                        instance based on the number of cpu cores. This value cannot exceed MaxPods, so, if
-                        MaxPods is a lower value, that value will be used.
-                      format: int32
-                      minimum: 0
-                      type: integer
-                    systemReserved:
-                      additionalProperties:
-                        type: string
-                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                      description: SystemReserved contains resources reserved for OS system daemons and kernel memory.
-                      type: object
-                      x-kubernetes-validations:
-                        - message: valid keys for systemReserved are ['cpu','memory','ephemeral-storage','pid']
-                          rule: self.all(x, x=='cpu' || x=='memory' || x=='ephemeral-storage' || x=='pid')
-                        - message: systemReserved value cannot be a negative resource quantity
-                          rule: self.all(x, !self[x].startsWith('-'))
+                    Kubelet configures the kubelet on provisioned nodes. Any field of the upstream
+                    KubeletConfiguration for the Kubernetes version Karpenter was built against may be set;
+                    see the k8s.io/kubelet version in go.mod for the exact set.
+                    Karpenter reads the fields relevant to scheduling (maxPods, podsPerCore, kubeReserved,
+                    systemReserved, evictionHard) and passes all others through to UserData unchanged.
+                    Field names and types are validated by Karpenter, which reports a rejected configuration
+                    on status.conditions as ValidationSucceeded=False rather than failing the apply.
                   type: object
-                  x-kubernetes-validations:
-                    - message: imageGCHighThresholdPercent must be greater than imageGCLowThresholdPercent
-                      rule: 'has(self.imageGCHighThresholdPercent) && has(self.imageGCLowThresholdPercent) ?  self.imageGCHighThresholdPercent > self.imageGCLowThresholdPercent  : true'
-                    - message: evictionSoft OwnerKey does not have a matching evictionSoftGracePeriod
-                      rule: has(self.evictionSoft) ? self.evictionSoft.all(e, (e in self.evictionSoftGracePeriod)):true
-                    - message: evictionSoftGracePeriod OwnerKey does not have a matching evictionSoft
-                      rule: has(self.evictionSoftGracePeriod) ? self.evictionSoftGracePeriod.all(e, (e in self.evictionSoft)):true
+                  x-kubernetes-preserve-unknown-fields: true
                 metadataOptions:
                   default:
                     httpEndpoint: enabled
@@ -1382,14 +1294,14 @@ spec:
                           Represents a key's relationship to a set of values.
                           Valid operators are In, NotIn, Exists, DoesNotExist. Gt, Lt, Gte, and Lte.
                         enum:
-                          - Gte
-                          - Lte
                           - In
                           - NotIn
                           - Exists
                           - DoesNotExist
                           - Gt
                           - Lt
+                          - Gte
+                          - Lte
                         type: string
                       values:
                         description: |-
@@ -1743,14 +1655,14 @@ spec:
                           Represents a key's relationship to a set of values.
                           Valid operators are In, NotIn, Exists, DoesNotExist. Gt, Lt, Gte, and Lte.
                         enum:
-                          - Gte
-                          - Lte
                           - In
                           - NotIn
                           - Exists
                           - DoesNotExist
                           - Gt
                           - Lt
+                          - Gte
+                          - Lte
                         type: string
                       values:
                         description: |-
@@ -1983,13 +1895,14 @@ spec:
                             description: |-
                               reasons is a list of disruption methods that this budget applies to. If Reasons is not set, this budget applies to all methods.
                               Otherwise, this will apply to each reason defined.
-                              allowed reasons are Underutilized, Empty, and Drifted.
+                              allowed reasons are Underutilized, Empty, Drifted, and Unhealthy.
                             items:
                               description: DisruptionReason defines valid reasons for disruption budgets.
                               enum:
                                 - Underutilized
                                 - Empty
                                 - Drifted
+                                - Unhealthy
                               type: string
                             maxItems: 50
                             type: array
@@ -2012,18 +1925,19 @@ spec:
                         - message: '''schedule'' must be set with ''duration'''
                           rule: self.all(x, has(x.schedule) == has(x.duration))
                     consolidateAfter:
+                      default: 0s
                       description: |-
                         ConsolidateAfter is the duration the controller will wait
                         before attempting to terminate nodes that are underutilized.
                         Refer to ConsolidationPolicy for how underutilization is considered.
-                        When replicas is set, ConsolidateAfter is simply ignored
+                        When replicas is set, ConsolidateAfter is simply ignored.
                       pattern: ^(([0-9]+(s|m|h))+|Never)$
                       type: string
                     consolidationPolicy:
                       default: WhenEmptyOrUnderutilized
                       description: |-
                         ConsolidationPolicy describes which nodes Karpenter can disrupt through its consolidation
-                        algorithm. This policy defaults to "WhenEmptyOrUnderutilized" if not specified.
+                        algorithm.
                         Valid values: "WhenEmpty", "WhenEmptyOrUnderutilized", "Balanced".
                         When replicas is set, ConsolidationPolicy is simply ignored.
                       enum:
@@ -2031,8 +1945,6 @@ spec:
                         - WhenEmptyOrUnderutilized
                         - Balanced
                       type: string
-                  required:
-                    - consolidateAfter
                   type: object
                 limits:
                   additionalProperties:
@@ -2179,14 +2091,14 @@ spec:
                                   Represents a key's relationship to a set of values.
                                   Valid operators are In, NotIn, Exists, DoesNotExist. Gt, Lt, Gte, and Lte.
                                 enum:
-                                  - Gte
-                                  - Lte
                                   - In
                                   - NotIn
                                   - Exists
                                   - DoesNotExist
                                   - Gt
                                   - Lt
+                                  - Gte
+                                  - Lte
                                 type: string
                               values:
                                 description: |-
@@ -2438,10 +2350,10 @@ metadata:
   name: karpenter
   namespace: karpenter
   labels:
-    helm.sh/chart: karpenter-1.14.1
+    helm.sh/chart: karpenter-1.15.1
     app.kubernetes.io/name: karpenter
     app.kubernetes.io/instance: karpenter
-    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/version: "1.15.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   maxUnavailable: 1
@@ -2457,10 +2369,10 @@ metadata:
   name: karpenter
   namespace: karpenter
   labels:
-    helm.sh/chart: karpenter-1.14.1
+    helm.sh/chart: karpenter-1.15.1
     app.kubernetes.io/name: karpenter
     app.kubernetes.io/instance: karpenter
-    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/version: "1.15.1"
     app.kubernetes.io/managed-by: Helm
 automountServiceAccountToken: false
 ---
@@ -2471,10 +2383,10 @@ metadata:
   name: karpenter-admin
   labels:
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
-    helm.sh/chart: karpenter-1.14.1
+    helm.sh/chart: karpenter-1.15.1
     app.kubernetes.io/name: karpenter
     app.kubernetes.io/instance: karpenter
-    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/version: "1.15.1"
     app.kubernetes.io/managed-by: Helm
 rules:
   - apiGroups: ["karpenter.sh"]
@@ -2490,10 +2402,10 @@ kind: ClusterRole
 metadata:
   name: karpenter-core
   labels:
-    helm.sh/chart: karpenter-1.14.1
+    helm.sh/chart: karpenter-1.15.1
     app.kubernetes.io/name: karpenter
     app.kubernetes.io/instance: karpenter
-    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/version: "1.15.1"
     app.kubernetes.io/managed-by: Helm
 rules:
   # Read
@@ -2515,11 +2427,21 @@ rules:
   - apiGroups: ["apps"]
     resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["autoscaling.k8s.io"]
+    resources: ["verticalpodautoscalers"]
+    verbs: ["get", "list", "watch"]
   - apiGroups: ["policy"]
     resources: ["poddisruptionbudgets"]
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources: ["events"]
+    verbs: ["get", "list", "watch"]
+  # DRA. Karpenter watches ResourceClaims and ResourceSlices, and reads DeviceClasses to resolve a
+  # claim's device selectors, whenever DRA requests are not ignored. Granted unconditionally: a rule
+  # naming an apiGroup the cluster doesn't serve is inert, so this needs no chart conditional and
+  # can't be forgotten when the feature is switched on.
+  - apiGroups: ["resource.k8s.io"]
+    resources: ["deviceclasses", "resourceclaims", "resourceslices"]
     verbs: ["get", "list", "watch"]
   # Write
   - apiGroups: ["karpenter.sh"]
@@ -2550,10 +2472,10 @@ kind: ClusterRole
 metadata:
   name: karpenter
   labels:
-    helm.sh/chart: karpenter-1.14.1
+    helm.sh/chart: karpenter-1.15.1
     app.kubernetes.io/name: karpenter
     app.kubernetes.io/instance: karpenter
-    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/version: "1.15.1"
     app.kubernetes.io/managed-by: Helm
 rules:
   # Read
@@ -2571,10 +2493,10 @@ kind: ClusterRoleBinding
 metadata:
   name: karpenter-core
   labels:
-    helm.sh/chart: karpenter-1.14.1
+    helm.sh/chart: karpenter-1.15.1
     app.kubernetes.io/name: karpenter
     app.kubernetes.io/instance: karpenter
-    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/version: "1.15.1"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -2591,10 +2513,10 @@ kind: ClusterRoleBinding
 metadata:
   name: karpenter
   labels:
-    helm.sh/chart: karpenter-1.14.1
+    helm.sh/chart: karpenter-1.15.1
     app.kubernetes.io/name: karpenter
     app.kubernetes.io/instance: karpenter
-    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/version: "1.15.1"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -2612,10 +2534,10 @@ metadata:
   name: karpenter
   namespace: karpenter
   labels:
-    helm.sh/chart: karpenter-1.14.1
+    helm.sh/chart: karpenter-1.15.1
     app.kubernetes.io/name: karpenter
     app.kubernetes.io/instance: karpenter
-    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/version: "1.15.1"
     app.kubernetes.io/managed-by: Helm
 rules:
   # Read
@@ -2641,10 +2563,10 @@ metadata:
   name: karpenter-dns
   namespace: kube-system
   labels:
-    helm.sh/chart: karpenter-1.14.1
+    helm.sh/chart: karpenter-1.15.1
     app.kubernetes.io/name: karpenter
     app.kubernetes.io/instance: karpenter
-    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/version: "1.15.1"
     app.kubernetes.io/managed-by: Helm
 rules:
   # Read
@@ -2660,10 +2582,10 @@ metadata:
   name: karpenter
   namespace: karpenter
   labels:
-    helm.sh/chart: karpenter-1.14.1
+    helm.sh/chart: karpenter-1.15.1
     app.kubernetes.io/name: karpenter
     app.kubernetes.io/instance: karpenter
-    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/version: "1.15.1"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -2681,10 +2603,10 @@ metadata:
   name: karpenter-dns
   namespace: kube-system
   labels:
-    helm.sh/chart: karpenter-1.14.1
+    helm.sh/chart: karpenter-1.15.1
     app.kubernetes.io/name: karpenter
     app.kubernetes.io/instance: karpenter
-    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/version: "1.15.1"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -2702,10 +2624,10 @@ metadata:
   name: karpenter
   namespace: karpenter
   labels:
-    helm.sh/chart: karpenter-1.14.1
+    helm.sh/chart: karpenter-1.15.1
     app.kubernetes.io/name: karpenter
     app.kubernetes.io/instance: karpenter
-    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/version: "1.15.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -2725,10 +2647,10 @@ metadata:
   name: karpenter
   namespace: karpenter
   labels:
-    helm.sh/chart: karpenter-1.14.1
+    helm.sh/chart: karpenter-1.15.1
     app.kubernetes.io/name: karpenter
     app.kubernetes.io/instance: karpenter
-    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/version: "1.15.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 2
@@ -2768,7 +2690,7 @@ spec:
             capabilities:
               drop:
                 - ALL
-          image: public.ecr.aws/karpenter/controller:1.14.1@sha256:445baefaaa689029cc12ac1f659b916b0b82fb14308ce536f8521fcf079116fa
+          image: public.ecr.aws/karpenter/controller:1.15.1@sha256:8314ff9c6bca66372031e80532c18025bbe6d34eae2443849d9ff02796fb09c8
           imagePullPolicy: IfNotPresent
           env:
             - name: KUBERNETES_MIN_VERSION
@@ -2802,7 +2724,9 @@ spec:
                   divisor: "0"
                   resource: limits.memory
             - name: FEATURE_GATES
-              value: "ReservedCapacity=true,SpotToSpotConsolidation=false,NodeRepair=false,NodeOverlay=false,StaticCapacity=false,CapacityBuffer=false"
+              value: "ReservedCapacity=true,SpotToSpotConsolidation=false,NodeRepair=false,NodeOverlay=false,StaticCapacity=false,CapacityBuffer=false,TerminateFirstDrift=false,TerminateFirstRepair=false,PodDeletionCostManagement=false"
+            - name: AWS_FEATURE_GATES
+              value: "NodeClassCEL=false,DRANVIDIAGPU=false,DRAEFA=false,RebootForRepair=false"
             - name: BATCH_MAX_DURATION
               value: "10s"
             - name: BATCH_IDLE_DURATION
@@ -2824,6 +2748,8 @@ spec:
             - name: AMI_REFRESH_INTERVAL
               value: "1m"
             - name: SUBNET_REFRESH_INTERVAL
+              value: "1m"
+            - name: SECURITY_GROUP_REFRESH_INTERVAL
               value: "1m"
           ports:
             - name: http-metrics
