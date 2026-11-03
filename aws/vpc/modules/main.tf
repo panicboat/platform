@@ -20,6 +20,9 @@ module "vpc" {
   private_subnet_ipv6_prefixes                   = [0, 1, 2]
   private_subnet_assign_ipv6_address_on_creation = true
 
+  # DNS64 is useless without NAT64 and would hand IPv4-only hosts unroutable synthetic AAAA records.
+  private_subnet_enable_dns64 = var.enable_nat_gateway
+
   enable_dns_support   = true
   enable_dns_hostnames = true
 

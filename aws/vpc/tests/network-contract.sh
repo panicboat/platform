@@ -31,6 +31,7 @@ required_configuration=(
   '  create_egress_only_igw = true'
   '  private_subnet_ipv6_prefixes                   = [0, 1, 2]'
   '  private_subnet_assign_ipv6_address_on_creation = true'
+  '  private_subnet_enable_dns64 = var.enable_nat_gateway'
 )
 
 for expected_line in "${required_configuration[@]}"; do
