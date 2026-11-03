@@ -59,8 +59,8 @@ override_module {
       }
     }
     security_groups = {
-      private_trust = {
-        id = "sg-private-trust"
+      internal = {
+        id = "sg-internal"
       }
     }
   }
@@ -90,7 +90,7 @@ variables {
   }
 }
 
-run "uses_private_trust_for_cluster_and_node_security_groups" {
+run "uses_internal_for_cluster_and_node_security_groups" {
   command = plan
 
   assert {

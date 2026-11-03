@@ -33,9 +33,9 @@ fi
 
 required_configuration=(
   '  create_security_group      = false'
-  '  security_group_id          = module.vpc.security_groups.private_trust.id'
+  '  security_group_id          = module.vpc.security_groups.internal.id'
   '  create_node_security_group = false'
-  '  node_security_group_id     = module.vpc.security_groups.private_trust.id'
+  '  node_security_group_id     = module.vpc.security_groups.internal.id'
 )
 
 for expected_line in "${required_configuration[@]}"; do
@@ -55,7 +55,7 @@ plan_output="$(
   aqua exec -- tofu test \
     -no-color \
     -verbose \
-    -filter=tests/private_trust_security_group.tftest.hcl
+    -filter=tests/internal_security_group.tftest.hcl
 )"
 
 control_plane_security_groups="$(
@@ -71,7 +71,7 @@ control_plane_security_groups="$(
   ' <<<"$plan_output"
 )"
 
-expected_security_groups="sg-private-trust"
+expected_security_groups="sg-internal"
 if test "$control_plane_security_groups" != "$expected_security_groups"; then
   printf 'planned control plane security groups:\n%s\n' "$control_plane_security_groups" >&2
   exit 1

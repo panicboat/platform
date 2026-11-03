@@ -28,7 +28,7 @@ actual_security_groups="$(
 expected_security_groups="$(
   printf '%s\n' \
     sg-primary \
-    sg-private-trust \
+    sg-internal \
     | sort
 )"
 

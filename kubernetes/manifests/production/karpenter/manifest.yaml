@@ -2829,7 +2829,7 @@ spec:
   - tags:
       aws:eks:cluster-name: eks-production
   - tags:
-      Name: private-trust-production
+      Name: internal
   subnetSelectorTerms:
   - tags:
       Tier: private

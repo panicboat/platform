@@ -33,7 +33,7 @@ expected_selectors="$(
     '  - tags:' \
     '      aws:eks:cluster-name: eks-production' \
     '  - tags:' \
-    '      Name: private-trust-production'
+    '      Name: internal'
 )"
 test "$actual_selectors" = "$expected_selectors"
 

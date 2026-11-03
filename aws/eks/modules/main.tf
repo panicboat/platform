@@ -27,9 +27,9 @@ module "eks" {
   addons         = local.cluster_addons
 
   create_security_group      = false
-  security_group_id          = module.vpc.security_groups.private_trust.id
+  security_group_id          = module.vpc.security_groups.internal.id
   create_node_security_group = false
-  node_security_group_id     = module.vpc.security_groups.private_trust.id
+  node_security_group_id     = module.vpc.security_groups.internal.id
 
   tags = var.common_tags
 }

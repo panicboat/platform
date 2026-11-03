@@ -1,8 +1,3 @@
-variable "environment" {
-  description = "Environment name (e.g., develop, staging, production)"
-  type        = string
-}
-
 variable "common_tags" {
   description = "Common tags to apply to all resources"
   type        = map(string)
@@ -49,4 +44,9 @@ variable "single_nat_gateway" {
   description = "Use a single shared NAT Gateway for all private subnets. Set to false to deploy one NAT Gateway per AZ."
   type        = bool
   default     = true
+}
+
+variable "enable_nat_gateway" {
+  description = "Create NAT Gateway(s) for IPv4 egress from private subnets"
+  type        = bool
 }
