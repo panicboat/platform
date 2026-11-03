@@ -56,6 +56,6 @@ run "finds_cluster_named_eks" {
 
   assert {
     condition     = output.cluster.name == "eks"
-    error_message = "The lookup must find the cluster named eks without an environment suffix."
+    error_message = "The lookup must find the cluster named eks."
   }
 }

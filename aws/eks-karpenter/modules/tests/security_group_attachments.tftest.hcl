@@ -91,7 +91,7 @@ run "plans_primary_and_internal_security_groups_for_system_nodes" {
   command = plan
 }
 
-run "names_karpenter_and_system_critical_resources_without_environment" {
+run "names_karpenter_and_system_critical_resources" {
   command = plan
 
   assert {

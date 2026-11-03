@@ -104,7 +104,7 @@ run "uses_internal_for_cluster_and_node_security_groups" {
 
 }
 
-run "names_cluster_and_roles_without_environment" {
+run "names_cluster_and_roles" {
   command = plan
 
   assert {
