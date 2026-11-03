@@ -71,8 +71,8 @@ override_module {
       }
     }
     security_groups = {
-      private_trust = {
-        id = "sg-private-trust"
+      internal = {
+        id = "sg-internal"
       }
     }
   }
@@ -86,6 +86,6 @@ variables {
   }
 }
 
-run "plans_primary_and_private_trust_security_groups_for_system_nodes" {
+run "plans_primary_and_internal_security_groups_for_system_nodes" {
   command = plan
 }

@@ -57,7 +57,7 @@ module "system_critical" {
   # The standalone module does not inherit cluster SG attachments, so both final SGs remain explicit.
   cluster_primary_security_group_id = module.eks.cluster.cluster_primary_security_group_id
 
-  vpc_security_group_ids = [module.vpc.security_groups.private_trust.id]
+  vpc_security_group_ids = [module.vpc.security_groups.internal.id]
 
   ami_type       = "AL2023_ARM_64_STANDARD"
   instance_types = var.system_critical_instance_types

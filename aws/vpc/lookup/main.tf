@@ -1,6 +1,6 @@
 data "aws_vpc" "this" {
   tags = {
-    Name = "vpc-${var.environment}"
+    Name = "vpc"
   }
 }
 
@@ -29,13 +29,13 @@ data "aws_subnets" "database" {
 }
 
 data "aws_db_subnet_group" "this" {
-  name = "vpc-${var.environment}"
+  name = "vpc"
 }
 
-data "aws_security_group" "private_trust" {
+data "aws_security_group" "internal" {
   vpc_id = data.aws_vpc.this.id
 
   tags = {
-    Name = "private-trust-${var.environment}"
+    Name = "internal"
   }
 }
