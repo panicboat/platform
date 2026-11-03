@@ -77,7 +77,7 @@ use_apply_creds
 
 info "Step 40.6: CloudWatch log groups"
 LG_NAMES=$(aws logs describe-log-groups --region "$REGION" \
-  --log-group-name-prefix "/aws/eks/eks" \
+  --log-group-name-prefix "/aws/eks/eks/" \
   --query 'logGroups[].logGroupName' --output text)
 if [ -n "$LG_NAMES" ]; then
   warn "Orphan CloudWatch log groups: $LG_NAMES"
