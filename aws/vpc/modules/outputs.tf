@@ -53,7 +53,7 @@ output "availability_zones" {
   value       = module.vpc.azs
 }
 
-output "private_trust_security_group_id" {
-  description = "ID of the private trust security group"
-  value       = aws_security_group.private_trust.id
+output "internal_security_group_id" {
+  description = "ID of the internal security group"
+  value       = aws_security_group.internal.id
 }

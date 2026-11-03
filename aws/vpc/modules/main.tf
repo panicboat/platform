@@ -2,7 +2,7 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 6.7"
 
-  name = "vpc-${var.environment}"
+  name = "vpc"
   cidr = var.vpc_cidr
 
   azs              = var.availability_zones
@@ -10,9 +10,15 @@ module "vpc" {
   private_subnets  = var.private_subnet_cidrs
   database_subnets = var.database_subnet_cidrs
 
-  enable_nat_gateway     = true
+  enable_nat_gateway     = var.enable_nat_gateway
   single_nat_gateway     = var.single_nat_gateway
   one_nat_gateway_per_az = false
+
+  enable_ipv6            = true
+  create_egress_only_igw = true
+
+  private_subnet_ipv6_prefixes                   = [0, 1, 2]
+  private_subnet_assign_ipv6_address_on_creation = true
 
   enable_dns_support   = true
   enable_dns_hostnames = true
@@ -36,7 +42,7 @@ module "vpc" {
   manage_default_security_group  = true
   default_security_group_ingress = []
   default_security_group_egress  = []
-  default_security_group_tags    = merge(var.common_tags, { Name = "default-vpc-${var.environment}-locked" })
+  default_security_group_tags    = merge(var.common_tags, { Name = "default-vpc-locked" })
 
   tags = var.common_tags
 }
@@ -49,30 +55,37 @@ resource "aws_vpc_endpoint" "s3" {
   route_table_ids   = module.vpc.private_route_table_ids
 
   tags = merge(var.common_tags, {
-    Name = "vpce-s3-${var.environment}"
+    Name = "vpce-s3"
   })
 }
 
-resource "aws_security_group" "private_trust" {
-  name        = "private-trust-${var.environment}"
-  description = "Private trust boundary for VPC resources"
+resource "aws_security_group" "internal" {
+  name        = "internal"
+  description = "Shared trust boundary for VPC workloads"
   vpc_id      = module.vpc.vpc_id
 
   tags = merge(var.common_tags, {
-    Name = "private-trust-${var.environment}"
+    Name = "internal"
   })
 }
 
-resource "aws_vpc_security_group_ingress_rule" "private_trust_self" {
-  security_group_id            = aws_security_group.private_trust.id
-  referenced_security_group_id = aws_security_group.private_trust.id
+resource "aws_vpc_security_group_ingress_rule" "internal_self" {
+  security_group_id            = aws_security_group.internal.id
+  referenced_security_group_id = aws_security_group.internal.id
   ip_protocol                  = "-1"
-  description                  = "Allow traffic within the private trust boundary"
+  description                  = "Allow traffic within the internal trust boundary"
 }
 
-resource "aws_vpc_security_group_egress_rule" "private_trust_ipv4" {
-  security_group_id = aws_security_group.private_trust.id
+resource "aws_vpc_security_group_egress_rule" "internal_ipv4" {
+  security_group_id = aws_security_group.internal.id
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
   description       = "Allow all IPv4 egress"
+}
+
+resource "aws_vpc_security_group_egress_rule" "internal_ipv6" {
+  security_group_id = aws_security_group.internal.id
+  cidr_ipv6         = "::/0"
+  ip_protocol       = "-1"
+  description       = "Allow all IPv6 egress"
 }

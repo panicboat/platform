@@ -12,8 +12,8 @@ terraform {
 }
 
 inputs = {
-  environment = include.env.locals.environment
-  aws_region  = include.env.locals.aws_region
+  aws_region         = include.env.locals.aws_region
+  enable_nat_gateway = false
 
   common_tags = merge(
     include.env.locals.environment_tags,
