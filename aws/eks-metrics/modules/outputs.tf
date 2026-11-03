@@ -3,11 +3,6 @@ output "bucket_name" {
   value       = module.s3.s3_bucket_id
 }
 
-output "bucket_path_prefix" {
-  description = "Bucket path prefix for env isolation (e.g., 'production'). Used as Mimir object storage prefix."
-  value       = var.environment
-}
-
 output "pod_identity_role_name" {
   description = "IAM role name bound to monitoring:mimir SA via Pod Identity Association. Used for verification."
   value       = aws_iam_role.pod_identity.name

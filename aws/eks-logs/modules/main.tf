@@ -33,11 +33,9 @@ module "s3" {
 
   lifecycle_rule = [
     {
-      id     = "${var.environment}-retention"
+      id     = "retention"
       status = "Enabled"
-      filter = {
-        prefix = "${var.environment}/"
-      }
+      filter = {}
       expiration = {
         days = local.retention_days
       }
@@ -49,7 +47,7 @@ module "s3" {
 
 # IAM role for Pod Identity Association
 resource "aws_iam_role" "pod_identity" {
-  name = "eks-${var.environment}-${local.service_name}"
+  name = "eks-${local.service_name}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
