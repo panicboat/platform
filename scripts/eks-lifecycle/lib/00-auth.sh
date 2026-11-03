@@ -70,7 +70,7 @@ APPLY_CREDS_FILE="/tmp/eks-lifecycle-apply-creds-$$"
 echo "$APPLY_CREDS" > "$APPLY_CREDS_FILE"
 export APPLY_CREDS_FILE
 
-ADMIN_ROLE_ARN="arn:aws:iam::${TARGET_ACCOUNT_ID}:role/eks-admin-${ENV}"
+ADMIN_ROLE_ARN="arn:aws:iam::${TARGET_ACCOUNT_ID}:role/eks-admin"
 
 info "Assuming admin role for kubectl: ${ADMIN_ROLE_ARN}"
 if ! ADMIN_CREDS=$(
@@ -107,7 +107,7 @@ ok "Admin role credentials valid until: $ADMIN_EXPIRATION"
   AWS_SECRET_ACCESS_KEY=$(jq -r .SecretAccessKey "$ADMIN_CREDS_FILE")
   AWS_SESSION_TOKEN=$(jq -r .SessionToken "$ADMIN_CREDS_FILE")
   export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
-  if aws eks update-kubeconfig --region "$REGION" --name "eks-${ENV}" >/dev/null 2>&1 && \
+  if aws eks update-kubeconfig --region "$REGION" --name "eks" >/dev/null 2>&1 && \
      kubectl get nodes >/dev/null 2>&1; then
     exit 0
   fi

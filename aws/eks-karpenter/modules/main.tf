@@ -14,7 +14,7 @@ module "karpenter" {
   enable_inline_policy = true
 
   # Disables name prefix to keep node IAM role name deterministic across recreations.
-  node_iam_role_name            = "Karpenter-eks-${var.environment}"
+  node_iam_role_name            = "Karpenter-eks"
   node_iam_role_use_name_prefix = false
 
   node_iam_role_additional_policies = {
@@ -43,7 +43,7 @@ module "system_critical" {
   source  = "terraform-aws-modules/eks/aws//modules/eks-managed-node-group"
   version = "21.29.0"
 
-  name         = "eks-${var.environment}-system-critical"
+  name         = "eks-system-critical"
   cluster_name = module.eks.cluster.name
 
   # Explicit cluster parameters required because standalone MNG does not auto-wire them.

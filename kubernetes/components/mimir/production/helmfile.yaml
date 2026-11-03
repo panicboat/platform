@@ -4,7 +4,6 @@ environments:
     values:
       - mimir:
           bucketName: mimir-337169763788
-          bucketPathPrefix: production
 ---
 repositories:
   - name: grafana

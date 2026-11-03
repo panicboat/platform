@@ -1,4 +1,4 @@
 locals {
   project_id   = "panicboat-platform-auth"
-  project_name = "google-oauth-production"
+  project_name = "google-oauth"
 }

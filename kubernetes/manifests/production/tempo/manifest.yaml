@@ -72,7 +72,6 @@ data:
             s3:
               bucket: tempo-337169763788
               endpoint: s3.ap-northeast-1.amazonaws.com
-              prefix: production
               region: ap-northeast-1
             wal:
               path: /var/tempo/wal
@@ -93,7 +92,7 @@ data:
               wait: 10s
       registry:
             external_labels:
-              cluster: eks-production
+              cluster: eks
       storage:
         path: "/tmp/tempo"
         remote_write:
@@ -247,7 +246,7 @@ spec:
         app.kubernetes.io/name: tempo
         app.kubernetes.io/instance: tempo
       annotations:
-        checksum/config: 7294ffd0cee7155acfd5d6f08267e8a161c297d2a5ec7c30d36973bed577e90c
+        checksum/config: 793a1b1d67e30a07a1946f6825d870e68fbdbccdce7c6be6662c54c1eae4075f
     spec:
       serviceAccountName: tempo
       automountServiceAccountToken: true

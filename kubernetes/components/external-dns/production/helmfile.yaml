@@ -4,7 +4,7 @@ environments:
     values:
       - cluster:
           # STABLE: deterministic role name configured in aws/eks/modules/addons.tf.
-          externalDnsRoleArn: arn:aws:iam::337169763788:role/eks-production-external-dns
+          externalDnsRoleArn: arn:aws:iam::337169763788:role/eks-external-dns
 ---
 repositories:
   - name: external-dns

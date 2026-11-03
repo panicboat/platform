@@ -1,6 +1,6 @@
 # aws/eks
 
-EKS clusters `eks-${env}` for the panicboat platform.
+EKS cluster `eks` for the panicboat platform.
 
 ## Environments
 
@@ -8,15 +8,15 @@ EKS clusters `eks-${env}` for the panicboat platform.
 
 | Environment | Region | Cluster Name | Status |
 |---|---|---|---|
-| `production` | `ap-northeast-1` | `eks-production` | Active |
+| `production` | `ap-northeast-1` | `eks` | Active |
 
-新環境を追加する際は、対応する `aws_region` を `${env}/env.hcl` に書き、`panicboat/ansible` 側の `eks-login.sh` の `case` 文にも region を追加すること（DRY 違反の二重管理だが現状は許容）。
+新環境を追加する際は、対応する `aws_region` を `${env}/env.hcl` に書き、`panicboat/dotfiles` 側の `.script/eks-login.sh` の `case` 文にも region と account ID を追加すること（DRY 違反の二重管理だが現状は許容）。
 
 ## Cluster (production)
 
 | 項目 | 値 |
 |---|---|
-| Name | `eks-production` |
+| Name | `eks` |
 | Region | `ap-northeast-1` |
 | Version | tracked via Renovate (`endoflife-date/amazon-eks`); see `production/env.hcl` |
 | Endpoint | public + private 両方有効 |
@@ -29,29 +29,29 @@ EKS clusters `eks-${env}` for the panicboat platform.
 
 ## kubectl access
 
-人間が kubectl を叩く経路は **`eks-admin-production` IAM role を assume する 1 本のみ**。CI 上の apply role は AWS API のみで Kubernetes API は触らない（GitOps 原則）。
+人間が kubectl を叩く経路は **`eks-admin` IAM role を assume する 1 本のみ**。CI 上の apply role は AWS API のみで Kubernetes API は触らない（GitOps 原則）。
 
-### Quick start (recommended: login script)
+### Quick start (recommended: login function)
 
-`panicboat/ansible` で deploy される `eks-login.sh` を source する：
+`panicboat/dotfiles` の zsh 関数 `eks-login`（`~/.script/eks-login.sh` を source する）を実行する。Claude Code 上では `! eks-login` と入力する：
 
 ```bash
-source ~/Workspace/eks-login.sh                          # → eks-production / ap-northeast-1
-source ~/Workspace/eks-login.sh production               # 同上 (明示)
-source ~/Workspace/eks-login.sh staging us-west-2        # 未知 env は region 必須
+eks-login                          # → eks / ap-northeast-1
+eks-login production               # 同上 (明示)
+eks-login production us-west-2     # region を上書き
 ```
 
 スクリプトは：
 
-1. env / region を解決（既知 env は default region、未知 env は明示必須）
-2. `aws sts get-caller-identity` で現在の account ID を動的取得
-3. `eks-admin-${env}` role を assume（session 1 時間）
+1. env から account ID と default region を解決（env は account と region の選択のみに使い、cluster 名と role 名には使わない）
+2. 対象 account の `OrganizationAccountAccessRole` を assume
+3. `eks-admin` role を assume（session 1 時間）
 4. `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` を export
-5. `aws eks update-kubeconfig` で kubeconfig 更新
+5. `aws eks update-kubeconfig --name eks` で kubeconfig 更新
 
 完了後 `kubectl get nodes` 等が通るようになる。
 
-> Source 必須（実行しても export が parent shell に反映されない）。スクリプトは `source` チェックで弾く。
+> `eks-login` は関数として定義されているため、export は呼び出した shell に反映される。`~/.script/eks-login.sh` を直接実行すると `source` チェックで弾かれる。
 
 ### Manual login (without script)
 
@@ -70,7 +70,7 @@ export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | jq -r .AccessKeyId)
 export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | jq -r .SecretAccessKey)
 export AWS_SESSION_TOKEN=$(echo "$CREDS" | jq -r .SessionToken)
 
-aws eks update-kubeconfig --region "${REGION}" --name "eks-${ENV}"
+aws eks update-kubeconfig --region "${REGION}" --name "eks"
 ```
 
 session を破棄するには `unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN`。
@@ -93,15 +93,15 @@ apply role の credentials が必要（CI と同じ `github-oidc-auth-production
 主な設計ハイライト：
 
 - **CNI**: VPC CNI を IPAM として残し、別途 Cilium を chaining mode で乗せる前提（次の Kubernetes spec で扱う）。node IAM role には `AmazonEKS_CNI_Policy` を付与せず、IRSA で aws-node SA に渡す（`iam_role_attach_cni_policy = false` + addon 側の `before_compute = true`）。
-- **Access Entries**: `eks-admin-production` role 1 本のみに `AmazonEKSClusterAdminPolicy` を付与。`enable_cluster_creator_admin_permissions = false` でステルス admin を防止。
+- **Access Entries**: `eks-admin` role 1 本のみに `AmazonEKSClusterAdminPolicy` を付与。`enable_cluster_creator_admin_permissions = false` でステルス admin を防止。
 - **Node アクセス**: SSM Session Manager のみ（`AmazonSSMManagedInstanceCore`）、SSH key なし。
 
 ## Troubleshooting
 
 | 症状 | 原因 / 対処 |
 |---|---|
-| `kubectl: error: You must be logged in to the server (Unauthorized)` | session credentials が expired（max 1 時間）または未 export。`eks-login.sh` を再 source。 |
-| `kubectl: error: ... credentials` after switching shells | 新 shell では assume-role の env vars が引き継がれない。再 source。 |
+| `kubectl: error: You must be logged in to the server (Unauthorized)` | session credentials が expired（max 1 時間）または未 export。`eks-login` を再実行。 |
+| `kubectl: error: ... credentials` after switching shells | 新 shell では assume-role の env vars が引き継がれない。`eks-login` を再実行。 |
 | `aws sts assume-role: AccessDenied` | 実行している IAM principal に `sts:AssumeRole` resource permission がない。IAM 側で付与（リポジトリ管理外）。 |
 | `update-kubeconfig: ResourceNotFoundException: No cluster found` | cluster が destroy 済 or 別 region。region と cluster name 確認。 |
 | Node が `NotReady` / Pod scheduling 不能 | vpc-cni / IRSA まわりの bootstrap 順序問題の可能性。`before_compute = true` で vpc-cni addon の registration が node 作成より前に完了するように指定している (= 早期 register によって IRSA based aws-node SA が起動時に既に bound されている状態を保証)。 |

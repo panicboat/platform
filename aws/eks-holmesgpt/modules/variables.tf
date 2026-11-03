@@ -1,8 +1,3 @@
-variable "environment" {
-  description = "Environment name (e.g., production). Used in IAM role name."
-  type        = string
-}
-
 variable "aws_region" {
   description = "AWS region"
   type        = string

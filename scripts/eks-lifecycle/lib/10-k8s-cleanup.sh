@@ -33,7 +33,7 @@ if [ "${DRY_RUN:-0}" != "1" ]; then
   use_apply_creds
   LEFTOVER_LB_ARNS=$(aws resourcegroupstaggingapi get-resources --region "$REGION" \
     --resource-type-filters "elasticloadbalancing:loadbalancer" \
-    --tag-filters "Key=elbv2.k8s.aws/cluster,Values=eks-${ENV}" \
+    --tag-filters "Key=elbv2.k8s.aws/cluster,Values=eks" \
     --query 'ResourceTagMappingList[].ResourceARN' --output text)
   if [ -n "$LEFTOVER_LB_ARNS" ]; then
     warn "Found leftover load balancers: $LEFTOVER_LB_ARNS — force-deleting."
@@ -90,7 +90,7 @@ if [ "${DRY_RUN:-0}" != "1" ]; then
   REGION="$(resolve_aws_region)"
   use_apply_creds
   LEFTOVER_VOL_IDS=$(aws ec2 describe-volumes --region "$REGION" \
-    --filters "Name=tag:KubernetesCluster,Values=eks-${ENV}" "Name=status,Values=available" \
+    --filters "Name=tag:KubernetesCluster,Values=eks" "Name=status,Values=available" \
     --query 'Volumes[].VolumeId' --output text)
   if [ -n "$LEFTOVER_VOL_IDS" ]; then
     warn "Found leftover EBS volumes: $LEFTOVER_VOL_IDS — force-deleting."
@@ -112,9 +112,9 @@ if [ "${DRY_RUN:-0}" != "1" ]; then
   if [ -n "$HOSTED_ZONE_ID" ] && [ "$HOSTED_ZONE_ID" != "None" ]; then
     # Derives associated records from TXT registry markers for atomic batch deletion.
     OWNED_BATCH=$(aws route53 list-resource-record-sets --hosted-zone-id "$HOSTED_ZONE_ID" --output json | \
-      jq -c --arg owner "eks-${ENV}" '
+      jq -c --arg owner "eks" '
         .ResourceRecordSets as $all
-        | ($all | map(select(.Type == "TXT" and (.ResourceRecords | map(.Value) | join(" ") | contains("external-dns/owner=" + $owner))))) as $txt
+        | ($all | map(select(.Type == "TXT" and (.ResourceRecords | map(.Value) | join(" ") | test("external-dns/owner=" + $owner + "[,\"]"))))) as $txt
         | ($txt | map(.Name | sub("^[a-z]+-"; "")) | unique) as $hosts
         | ($all | map(select((.Type == "A" or .Type == "AAAA" or .Type == "CNAME") and (.Name | IN($hosts[]))))) as $assoc
         | {Changes: (($txt + $assoc) | map({Action: "DELETE", ResourceRecordSet: .}))}

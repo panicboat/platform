@@ -3,9 +3,9 @@ environments:
     # Parent values are not auto-inherited by child helmfiles in helmfile v1.4, requiring explicit redefinition.
     values:
       - cluster:
-          name: eks-production
+          name: eks
         karpenter:
-          interruptionQueueName: Karpenter-eks-production
+          interruptionQueueName: Karpenter-eks
 ---
 # Karpenter chart is distributed via OCI registry without a separate Helm repo.
 repositories: []

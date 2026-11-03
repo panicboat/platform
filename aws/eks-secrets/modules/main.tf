@@ -5,7 +5,7 @@ locals {
 }
 
 resource "aws_iam_role" "pod_identity" {
-  name = "eks-${var.environment}-eso"
+  name = "eks-eso"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -38,9 +38,9 @@ resource "aws_iam_role_policy" "secrets_access" {
         Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:*"
       },
       {
-        Sid    = "KmsDecryptForSecretsManager"
-        Effect = "Allow"
-        Action = "kms:Decrypt"
+        Sid      = "KmsDecryptForSecretsManager"
+        Effect   = "Allow"
+        Action   = "kms:Decrypt"
         Resource = "*"
         Condition = {
           StringEquals = {

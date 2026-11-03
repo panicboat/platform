@@ -22,7 +22,7 @@ sweep_lb_controller_orphans() {
   local lb_arns sg_ids
   lb_arns=$(aws resourcegroupstaggingapi get-resources --region "$REGION" \
     --resource-type-filters "elasticloadbalancing:loadbalancer" \
-    --tag-filters "Key=elbv2.k8s.aws/cluster,Values=eks-${ENV}" \
+    --tag-filters "Key=elbv2.k8s.aws/cluster,Values=eks" \
     --query 'ResourceTagMappingList[].ResourceARN' --output text)
   if [ -n "$lb_arns" ]; then
     warn "Found leftover load balancers (post-cluster-destroy): $lb_arns — force-deleting."
@@ -39,7 +39,7 @@ sweep_lb_controller_orphans() {
 
   # Controller-managed security groups are untracked by Terraform and must be deleted explicitly.
   sg_ids=$(aws ec2 describe-security-groups --region "$REGION" \
-    --filters "Name=tag:elbv2.k8s.aws/cluster,Values=eks-${ENV}" \
+    --filters "Name=tag:elbv2.k8s.aws/cluster,Values=eks" \
     --query 'SecurityGroups[].GroupId' --output text)
   if [ -n "$sg_ids" ]; then
     warn "Found leftover ALB controller security groups: $sg_ids — deleting."

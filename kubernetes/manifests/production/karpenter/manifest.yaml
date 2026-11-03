@@ -2736,11 +2736,11 @@ spec:
             - name: MIN_VALUES_POLICY
               value: "Strict"
             - name: CLUSTER_NAME
-              value: "eks-production"
+              value: "eks"
             - name: VM_MEMORY_OVERHEAD_PERCENT
               value: "0.075"
             - name: INTERRUPTION_QUEUE
-              value: "Karpenter-eks-production"
+              value: "Karpenter-eks"
             - name: RESERVED_ENIS
               value: "0"
             - name: IGNORE_DRA_REQUESTS
@@ -2824,10 +2824,10 @@ spec:
     httpProtocolIPv6: disabled
     httpPutResponseHopLimit: 2
     httpTokens: required
-  role: Karpenter-eks-production
+  role: Karpenter-eks
   securityGroupSelectorTerms:
   - tags:
-      aws:eks:cluster-name: eks-production
+      aws:eks:cluster-name: eks
   - tags:
       Name: internal
   subnetSelectorTerms:

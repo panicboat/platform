@@ -3,7 +3,7 @@ mock_provider "aws" {}
 override_data {
   target = data.aws_eks_cluster.this
   values = {
-    arn      = "arn:aws:eks:ap-northeast-1:337169763788:cluster/eks-production"
+    arn      = "arn:aws:eks:ap-northeast-1:337169763788:cluster/eks"
     endpoint = "https://eks.example.test"
     vpc_config = [{
       vpc_id                    = "vpc-test"
@@ -41,10 +41,6 @@ override_data {
   }
 }
 
-variables {
-  environment = "production"
-}
-
 run "exposes_cluster_primary_security_group_id" {
   command = plan
 
@@ -53,4 +49,13 @@ run "exposes_cluster_primary_security_group_id" {
     error_message = "The lookup must identify the EKS-owned primary security group explicitly."
   }
 
+}
+
+run "finds_cluster_named_eks" {
+  command = plan
+
+  assert {
+    condition     = output.cluster.name == "eks"
+    error_message = "The lookup must find the cluster named eks."
+  }
 }

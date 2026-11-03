@@ -7,7 +7,7 @@ help:
 	@echo ""
 	@echo "  make eks-teardown ENV=production"
 	@echo ""
-	@echo "  Recreate: docs/runbooks/eks-production-recreate.md"
+	@echo "  Recreate: docs/runbooks/eks-recreate.md"
 	@echo ""
 	@echo "  ENV=$(ENV)"
 	@echo "  DRY_RUN=$(DRY_RUN) (= '1' for dry-run, anything else for live)"
