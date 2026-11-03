@@ -2,7 +2,7 @@
 
 Temporary teardown of `eks` cluster + 周辺 AWS stacks. 手元 shell から実行する想定 (= CI 経由 trigger は未対応)。
 
-詳細設計: `docs/superpowers/specs/2026-05-10-*-teardown-recreate-design.md`
+詳細設計: `docs/superpowers/specs/2026-05-10-eks-production-teardown-recreate-design.md`
 
 Recreate (= cluster bootstrap) は manual runbook で実行する: `docs/runbooks/eks-recreate.md`
 

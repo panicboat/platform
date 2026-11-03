@@ -60,7 +60,7 @@ if [ -n "$HOSTED_ZONE_ID" ] && [ "$HOSTED_ZONE_ID" != "None" ]; then
   STALE_RECORDS=$(aws route53 list-resource-record-sets --hosted-zone-id "$HOSTED_ZONE_ID" --output json | \
     jq -r --arg owner "eks" '
       .ResourceRecordSets as $all
-      | ($all | map(select(.Type == "TXT" and (.ResourceRecords | map(.Value) | join(" ") | contains("external-dns/owner=" + $owner))))) as $txt
+      | ($all | map(select(.Type == "TXT" and (.ResourceRecords | map(.Value) | join(" ") | test("external-dns/owner=" + $owner + "[,\"]"))))) as $txt
       | ($txt | map(.Name | sub("^[a-z]+-"; "")) | unique) as $hosts
       | ($all | map(select((.Type == "A" or .Type == "AAAA" or .Type == "CNAME") and (.Name | IN($hosts[]))))) as $assoc
       | ($txt + $assoc) | .[] | "\(.Name)\t\(.Type)"

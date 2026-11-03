@@ -142,7 +142,7 @@ kubectl get ns
 # Phase 2 が完走前なら eks の terragrunt output が空。 aws eks describe-cluster で代替取得。
 
 # 2. operator が editor で 4 marker を手動更新 (= eksApiEndpoint x2 + vpcId x2)
-#    Plan A operator-prompted 設計 (= docs/superpowers/specs/2026-05-10-*-teardown-recreate-design.md §0 Errata)
+#    Plan A operator-prompted 設計 (= docs/superpowers/specs/2026-05-10-eks-production-teardown-recreate-design.md §0 Errata)
 #
 #    対象 file + 該当行:
 #      kubernetes/helmfile.yaml.gotmpl                                            : eksApiEndpoint + vpcId
@@ -422,8 +422,8 @@ kubectl get nodes -L topology.kubernetes.io/zone
 
 ## 7. References
 
-- `docs/superpowers/specs/2026-05-10-*-teardown-recreate-design.md` — Phase 3 lifecycle script design
-- `docs/superpowers/plans/2026-05-10-*-teardown-recreate.md` — Phase 3 plan
+- `docs/superpowers/specs/2026-05-10-eks-production-teardown-recreate-design.md` — Phase 3 lifecycle script design
+- `docs/superpowers/plans/2026-05-10-eks-production-teardown-recreate.md` — Phase 3 plan
 - `docs/superpowers/specs/2026-05-16-eks-bootstrap-local-first-workflow-design.md` — workflow 改善 design
 - `scripts/eks-lifecycle/README.md` — operator-prompted RECREATE marker convention
 - PR #393 — Cilium native CNI (ENI mode) 化
