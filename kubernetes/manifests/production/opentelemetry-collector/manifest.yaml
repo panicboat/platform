@@ -94,7 +94,7 @@ data:
         attributes:
         - action: upsert
           key: cluster.name
-          value: eks-production
+          value: eks
       transform/workload:
         error_mode: ignore
         log_statements:
@@ -313,7 +313,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 058ba2e26835b4d7223bfdb466b1a715321539b353123f9d09b75143dc2bd8a3
+        checksum/config: 44ba2da7957eea4e967b3476b303f4282266ff7d6ffe5f15ac7853e10d6e1eb2
         
       labels:
         app.kubernetes.io/name: opentelemetry-collector

@@ -278,7 +278,7 @@ metadata:
     app.kubernetes.io/version: "0.23.0"
     app.kubernetes.io/managed-by: Helm
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::337169763788:role/eks-production-external-dns
+    eks.amazonaws.com/role-arn: arn:aws:iam::337169763788:role/eks-external-dns
 automountServiceAccountToken: true
 ---
 # Source: external-dns/templates/clusterrole.yaml
@@ -417,7 +417,7 @@ spec:
             - --source=gateway-httproute
             - --policy=sync
             - --registry=txt
-            - --txt-owner-id=eks-production
+            - --txt-owner-id=eks
             - --domain-filter=panicboat.net
             - --domain-filter=dystopia.city
             - --provider=aws
