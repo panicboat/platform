@@ -81,7 +81,6 @@ override_data {
 }
 
 variables {
-  environment           = "production"
   aws_region            = "ap-northeast-1"
   cluster_version       = "1.33"
   route53_zone_role_arn = "arn:aws:iam::559744160976:role/route53-zone-access"
@@ -103,4 +102,38 @@ run "uses_internal_for_cluster_and_node_security_groups" {
     error_message = "The EKS module must not create a node security group."
   }
 
+}
+
+run "names_cluster_and_roles_without_environment" {
+  command = plan
+
+  assert {
+    condition     = module.eks.cluster_name == "eks"
+    error_message = "The cluster must be named eks."
+  }
+
+  assert {
+    condition     = aws_iam_role.eks_admin.name == "eks-admin"
+    error_message = "The admin role must be named eks-admin."
+  }
+
+  assert {
+    condition     = module.alb_controller_irsa.name == "eks-alb-controller"
+    error_message = "The ALB controller role must be named eks-alb-controller."
+  }
+
+  assert {
+    condition     = module.external_dns_irsa.name == "eks-external-dns"
+    error_message = "The external-dns role must be named eks-external-dns."
+  }
+
+  assert {
+    condition     = aws_iam_role.cilium_operator.name == "eks-cilium-operator"
+    error_message = "The Cilium operator role must be named eks-cilium-operator."
+  }
+
+  assert {
+    condition     = jsondecode(aws_iam_role_policy.eks_admin_describe_cluster.policy).Statement[0].Resource == "arn:aws:eks:ap-northeast-1:337169763788:cluster/eks"
+    error_message = "The admin policy must target the cluster named eks."
+  }
 }

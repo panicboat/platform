@@ -2,7 +2,7 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "21.29.0"
 
-  name               = "eks-${var.environment}"
+  name               = "eks"
   kubernetes_version = var.cluster_version
 
   vpc_id                   = module.vpc.vpc.id

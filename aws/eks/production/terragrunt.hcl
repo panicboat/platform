@@ -13,7 +13,6 @@ terraform {
 }
 
 inputs = {
-  environment     = include.env.locals.environment
   aws_region      = include.env.locals.aws_region
   cluster_version = include.env.locals.cluster_version
 

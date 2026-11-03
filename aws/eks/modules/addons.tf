@@ -2,7 +2,7 @@ module "ebs_csi_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "~> 6.8"
 
-  name                  = "eks-${var.environment}-ebs-csi"
+  name                  = "eks-ebs-csi"
   attach_ebs_csi_policy = true
 
   oidc_providers = {
@@ -19,7 +19,7 @@ module "alb_controller_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "~> 6.8"
 
-  name                                   = "eks-${var.environment}-alb-controller"
+  name                                   = "eks-alb-controller"
   use_name_prefix                        = false
   attach_load_balancer_controller_policy = true
 
@@ -45,7 +45,7 @@ module "external_dns_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "~> 6.8"
 
-  name            = "eks-${var.environment}-external-dns"
+  name            = "eks-external-dns"
   use_name_prefix = false
 
   source_policy_documents = [data.aws_iam_policy_document.external_dns_assume_zone_access.json]
@@ -72,7 +72,7 @@ data "aws_iam_policy_document" "cilium_operator_assume" {
 }
 
 resource "aws_iam_role" "cilium_operator" {
-  name               = "eks-${var.environment}-cilium-operator"
+  name               = "eks-cilium-operator"
   assume_role_policy = data.aws_iam_policy_document.cilium_operator_assume.json
   tags               = var.common_tags
 }

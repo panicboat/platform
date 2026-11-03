@@ -1,7 +1,7 @@
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "eks_admin" {
-  name                 = "eks-admin-${var.environment}"
+  name                 = "eks-admin"
   max_session_duration = 3600
   tags                 = var.common_tags
 
@@ -33,7 +33,7 @@ resource "aws_iam_role_policy" "eks_admin_describe_cluster" {
           "eks:DescribeCluster",
           "eks:ListPodIdentityAssociations",
         ]
-        Resource = "arn:aws:eks:${var.aws_region}:${data.aws_caller_identity.current.account_id}:cluster/eks-${var.environment}"
+        Resource = "arn:aws:eks:${var.aws_region}:${data.aws_caller_identity.current.account_id}:cluster/eks"
       }
     ]
   })
