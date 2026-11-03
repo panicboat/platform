@@ -13,7 +13,7 @@ spec:
     - tags:
         "aws:eks:cluster-name": eks-production
     - tags:
-        Name: private-trust-production
+        Name: internal
   # STABLE: deterministic node role name configured in aws/eks-karpenter/modules/main.tf.
   role: Karpenter-eks-production
   blockDeviceMappings:
