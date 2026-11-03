@@ -16,7 +16,6 @@ tempo:
         bucket: {{ .Values.tempo.bucketName }}
         endpoint: s3.ap-northeast-1.amazonaws.com
         region: ap-northeast-1
-        prefix: {{ .Values.tempo.bucketPathPrefix }}
 
   # Jaeger protocol keys cannot be set to null due to nil pointer errors in chart port template.
   receivers:
@@ -32,7 +31,7 @@ tempo:
     enabled: true
     registry:
       external_labels:
-        cluster: eks-production
+        cluster: eks
     processor:
       service_graphs:
         wait: 10s

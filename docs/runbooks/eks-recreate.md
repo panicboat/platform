@@ -1,8 +1,8 @@
-# EKS Production Recreate — Manual Bootstrap Runbook
+# EKS Recreate — Manual Bootstrap Runbook
 
 > **Status**: 運用 runbook (= 2026-05-16 live run validated、 2026-08-06 に AI agent 主導で再 live run し Phase 9 順序 (9.1/9.2) を修正、 PR #401-#407, #727 merge 後の構成に対応。 2026-09-04 に AI agent 主導で 3 回目の live run、 Phase 7 stack list 漏れ (`eks-holmesgpt`) + Karpenter/cluster_version 互換性 + monorepo node churn を修正、 PR #874 merge 後の構成に対応)。
 >
-> **Scope**: `eks-production` cluster を **clean slate (= 全 stack destroy + orphan zero)** から **operator が手作業で 2 terminal 並行で sequentially bootstrap** する手順。
+> **Scope**: `eks` cluster を **clean slate (= 全 stack destroy + orphan zero)** から **operator が手作業で 2 terminal 並行で sequentially bootstrap** する手順。
 >
 > **Source-of-truth**: 本 runbook は実 live run 経験を反映した手順を提供する。 設計判断 (= chicken-and-egg の理由 / Pod Identity 採用根拠 等) は `docs/superpowers/specs/` の design spec を参照。
 
@@ -20,7 +20,7 @@ EKS cluster cold-start は cilium native CNI ENI mode (= PR #393) との chicken
 
 ### 2.1 Cluster state
 
-- `eks-production` cluster + 周辺 EKS stack が完全 destroy 済
+- `eks` cluster + 周辺 EKS stack が完全 destroy 済
 - VPC stack も destroy 済
 - `make eks-teardown ENV=production` 完走 + `make eks-teardown-verify ENV=production` で `No orphan resources detected` 確認済
 - `aws/iam-service-linked-roles` (`AWSServiceRoleForEC2Spot` 等、 account 単位 singleton) は本 runbook の destroy/recreate cycle 対象外。 account 初回 bootstrap 時に一度 apply されていれば以降は不要 (`aws iam get-role --role-name AWSServiceRoleForEC2Spot` で存在確認可能)
@@ -108,21 +108,21 @@ Phase 3 / 4 / 5 を **別 terminal で並行実行** すれば、 wait の間に
 cd /Users/takanokenichi/GitHub/panicboat/platform
 
 # Phase 2 で cluster ACTIVE 化を待つ (= ~10 分)
-while ! aws eks describe-cluster --region ap-northeast-1 --name eks-production --query 'cluster.status' --output text 2>/dev/null | grep -q ACTIVE; do
-  echo "waiting for eks-production cluster ACTIVE..."
+while ! aws eks describe-cluster --region ap-northeast-1 --name eks --query 'cluster.status' --output text 2>/dev/null | grep -q ACTIVE; do
+  echo "waiting for eks cluster ACTIVE..."
   sleep 30
 done
 echo "cluster ACTIVE"
 
 # admin role assume + kubeconfig
 ADMIN_CREDS=$(aws sts assume-role \
-  --role-arn arn:aws:iam::337169763788:role/eks-admin-production \
+  --role-arn arn:aws:iam::337169763788:role/eks-admin \
   --role-session-name bootstrap \
   --query Credentials --output json)
 export AWS_ACCESS_KEY_ID=$(echo "$ADMIN_CREDS" | jq -r .AccessKeyId)
 export AWS_SECRET_ACCESS_KEY=$(echo "$ADMIN_CREDS" | jq -r .SecretAccessKey)
 export AWS_SESSION_TOKEN=$(echo "$ADMIN_CREDS" | jq -r .SessionToken)
-aws eks update-kubeconfig --region ap-northeast-1 --name eks-production
+aws eks update-kubeconfig --region ap-northeast-1 --name eks
 kubectl get ns
 # → kubectl 接続 OK (= node はまだ無し、 ns 一覧のみ取得)
 ```
@@ -134,7 +134,7 @@ kubectl get ns
 (
   unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
   NEW_EKS_EP=$(cd aws/eks/production && TG_TF_PATH=tofu terragrunt output -raw cluster_endpoint_hostname 2>/dev/null \
-               || aws eks describe-cluster --region ap-northeast-1 --name eks-production --query 'cluster.endpoint' --output text | sed 's|https://||')
+               || aws eks describe-cluster --region ap-northeast-1 --name eks --query 'cluster.endpoint' --output text | sed 's|https://||')
   NEW_VPC_ID=$(cd aws/vpc/production && TG_TF_PATH=tofu terragrunt output -raw vpc_id)
   echo "NEW_EKS_EP=$NEW_EKS_EP"
   echo "NEW_VPC_ID=$NEW_VPC_ID"
@@ -142,7 +142,7 @@ kubectl get ns
 # Phase 2 が完走前なら eks の terragrunt output が空。 aws eks describe-cluster で代替取得。
 
 # 2. operator が editor で 4 marker を手動更新 (= eksApiEndpoint x2 + vpcId x2)
-#    Plan A operator-prompted 設計 (= docs/superpowers/specs/2026-05-10-eks-production-teardown-recreate-design.md §0 Errata)
+#    Plan A operator-prompted 設計 (= docs/superpowers/specs/2026-05-10-*-teardown-recreate-design.md §0 Errata)
 #
 #    対象 file + 該当行:
 #      kubernetes/helmfile.yaml.gotmpl                                            : eksApiEndpoint + vpcId
@@ -206,7 +206,7 @@ Phase 4 の cilium install 完了後、 Terminal A の Phase 2 がまだ addon w
 watch -n 10 'for a in coredns aws-ebs-csi-driver eks-pod-identity-agent; do
   printf "%s: " "$a"
   unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
-  aws eks describe-addon --region ap-northeast-1 --cluster-name eks-production --addon-name $a --query addon.status --output text 2>&1
+  aws eks describe-addon --region ap-northeast-1 --cluster-name eks --addon-name $a --query addon.status --output text 2>&1
 done'
 # 3 addon すべて ACTIVE になったら Ctrl+C → Phase 2 (= eks terragrunt apply) も完了する
 ```
@@ -365,7 +365,7 @@ kubectl get ciliumnodes -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.sp
 
 # addon
 for a in coredns aws-ebs-csi-driver eks-pod-identity-agent; do
-  echo "$a: $(aws eks describe-addon --region ap-northeast-1 --cluster-name eks-production --addon-name $a --query addon.status --output text)"
+  echo "$a: $(aws eks describe-addon --region ap-northeast-1 --cluster-name eks --addon-name $a --query addon.status --output text)"
 done
 # → 3 addon 全 ACTIVE
 
@@ -408,7 +408,7 @@ kubectl get nodes -L topology.kubernetes.io/zone
 | `kubectl get service -n cert-manager cert-manager-webhook -o jsonpath='{.spec.trafficDistribution}'` が `PreferSameZone` ではなく空を返す（`kubectl api-resources \| grep -i mutatingadmissionpolicy` では型が存在する） | `MutatingAdmissionPolicy` の CEL `expression` (`kubernetes/components/service-traffic-distribution/production/kustomization/mutating-admission-policy.yaml`) は実装時点（2026-09-16、cluster は既に destroy 済）に live API server で未検証。CEL の syntax / semantic error があっても、policy の `failurePolicy: Ignore` により評価エラーが Service create/update を block せず mutation を silently skip する | policy の `failurePolicy` を一時的に `Fail` に変更して Service apply を retry し、明示的な admission error で exact な CEL problem を確認する。expression を修正して redeploy 後、`failurePolicy` を `Ignore` に戻す |
 | Karpenter が worker node を provision できず Pending pod が滞留する (= karpenter controller log に `InsufficientInstanceCapacity` 系のエラー、 `ap-northeast-1a` 限定で発生) | 2026-09-16のcross-AZコスト対策 (docs/superpowers/plans/2026-09-16-eks-cross-az-cost.md) で `system-components` NodePool を `topology.kubernetes.io/zone: [ap-northeast-1a]` に固定したため、そのAZでspot/on-demand容量が枯渇すると他AZへのfallbackが効かない (3AZ分散なら回避できていたリスク) | 一時対応: `kubernetes/components/karpenter/production/kustomization/nodepool.yaml` の `topology.kubernetes.io/zone` values に他AZを追加してNodePool再apply。恒久対応が必要なら単一AZ化の costトレードオフを再評価する |
 | `system_critical` MNG の ASG が scaling 中のまま / `CREATE_FAILED` になり、node が cluster に join しない（Karpenter controller log の `InsufficientInstanceCapacity` とは異なる） | `system_critical_instance_types` の default が `t4g.small` 1種類に固定されており、`ap-northeast-1a` の capacity が constrained でも instance-type fallback がない。このMNGには CoreDNS、cilium-operator、Karpenter controller が載るため、scale 不能時は Karpenter 自身も self-heal できず影響が大きい | 一時対応: `aws/eks-karpenter/modules/variables.tf` の `system_critical_instance_types` を複数 size / generation に一時的に broaden して re-apply。AZ trade-off を受け入れる場合は、既存行の guidance に従い multi-AZ に戻す |
-| `holmesgpt` (Slack 連携含む) の `/api/chat` が 500、 pod ログの Bedrock エラーに `arn:.../assumed-role/Karpenter-eks-production/...` (= node の IAM role) が写り込む | Phase 7 の stack list に `eks-holmesgpt` が抜けていた版の runbook を使うと、 `aws/eks-holmesgpt` stack (= holmesgpt 用 Pod Identity Association + bedrock:InvokeModel IAM policy) が未 apply のまま bootstrap が完走してしまう。 Pod Identity 不在時、 AWS SDK は node (= Karpenter node role) の credential に fallback する | `aws eks list-pod-identity-associations --cluster-name eks-production --namespace holmesgpt` で association 有無を確認 → 無ければ `( cd aws/eks-holmesgpt/production && TG_TF_PATH=tofu terragrunt apply -auto-approve )` → `kubectl rollout restart deployment holmesgpt-holmes -n holmesgpt` で新 credential を反映 |
+| `holmesgpt` (Slack 連携含む) の `/api/chat` が 500、 pod ログの Bedrock エラーに `arn:.../assumed-role/Karpenter-eks/...` (= node の IAM role) が写り込む | Phase 7 の stack list に `eks-holmesgpt` が抜けていた版の runbook を使うと、 `aws/eks-holmesgpt` stack (= holmesgpt 用 Pod Identity Association + bedrock:InvokeModel IAM policy) が未 apply のまま bootstrap が完走してしまう。 Pod Identity 不在時、 AWS SDK は node (= Karpenter node role) の credential に fallback する | `aws eks list-pod-identity-associations --cluster-name eks --namespace holmesgpt` で association 有無を確認 → 無ければ `( cd aws/eks-holmesgpt/production && TG_TF_PATH=tofu terragrunt apply -auto-approve )` → `kubectl rollout restart deployment holmesgpt-holmes -n holmesgpt` で新 credential を反映 |
 | 上記を解消しても `holmesgpt` の Bedrock 呼び出しが `Model access is denied due to ... AWS Marketplace actions (aws-marketplace:ViewSubscriptions, aws-marketplace:Subscribe)` で 500 のまま。 **`OrganizationAccountAccessRole` (実質 AdministratorAccess) で直接 `bedrock-runtime converse` しても同じエラー** | account 単位で当該 Bedrock model (= inference profile `us.anthropic.claude-sonnet-4-6` 等) の AWS Marketplace subscription が一度も有効化されていない。 IAM policy の問題ではなく account/organization 側の未設定 (= AWS Organizations の SCP で `aws-marketplace:*` が block されている可能性も含む)。 production account-separation (= 337169763788 への切替) 後にこの一回限りの setup が漏れていた疑い。 **2026-09-04 recreate 時点で未解決** | 対応未確立。 次回発生時は (1) Organizations 側 SCP で `aws-marketplace:*` が deny されていないか確認、 (2) AWS Bedrock コンソールの Model access 画面から明示的に subscribe を試行、 のいずれかから着手する |
 | bootstrap 完了直後、 `dystopia` namespace の `monolith` / `frontend` pod が `CreateContainerConfigError` 等で scheduling に失敗し続け、 Karpenter が `system-components` NodePool に spot node を追加し続ける (= 2026-09-04 recreate 実績で 6分間で 11台まで増加) | `monorepo-cluster` Kustomization (= `kubernetes/clusters/production/repositories/monorepo.yaml`) が `suspend: false` の状態で recreate すると、 production で正常動作しない monorepo workload も bootstrap 直後から起動を試みる (= §3 Phase 10 NOTE on monorepo 参照)。 pod が `Too many pods` / `untolerated taint(s)` で scheduling 失敗を繰り返すたび、 Karpenter が新 node を追加してしまう | 即時停止: `flux suspend kustomization monolith frontend && kubectl scale deployment monolith frontend -n dystopia --replicas=0`（Flux suspend だけでは既存 Deployment の schedule 再試行は止まらないため scale が必須）。 恒久対応: `panicboat/monorepo` 側の該当 `clusters/production/dystopia/{monolith,frontend}/service.yaml` に `spec.suspend: true` を追加。 余剰 node は Karpenter の consolidation で自然に縮退する (= 数分〜要監視) |
 
@@ -422,8 +422,8 @@ kubectl get nodes -L topology.kubernetes.io/zone
 
 ## 7. References
 
-- `docs/superpowers/specs/2026-05-10-eks-production-teardown-recreate-design.md` — Phase 3 lifecycle script design
-- `docs/superpowers/plans/2026-05-10-eks-production-teardown-recreate.md` — Phase 3 plan
+- `docs/superpowers/specs/2026-05-10-*-teardown-recreate-design.md` — Phase 3 lifecycle script design
+- `docs/superpowers/plans/2026-05-10-*-teardown-recreate.md` — Phase 3 plan
 - `docs/superpowers/specs/2026-05-16-eks-bootstrap-local-first-workflow-design.md` — workflow 改善 design
 - `scripts/eks-lifecycle/README.md` — operator-prompted RECREATE marker convention
 - PR #393 — Cilium native CNI (ENI mode) 化

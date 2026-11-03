@@ -11,11 +11,11 @@ spec:
         Tier: private
   securityGroupSelectorTerms:
     - tags:
-        "aws:eks:cluster-name": eks-production
+        "aws:eks:cluster-name": eks
     - tags:
         Name: internal
   # STABLE: deterministic node role name configured in aws/eks-karpenter/modules/main.tf.
-  role: Karpenter-eks-production
+  role: Karpenter-eks
   blockDeviceMappings:
     - deviceName: /dev/xvda
       ebs:

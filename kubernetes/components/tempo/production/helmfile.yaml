@@ -4,7 +4,6 @@ environments:
     values:
       - tempo:
           bucketName: tempo-337169763788
-          bucketPathPrefix: production
 ---
 repositories:
   - name: grafana-community

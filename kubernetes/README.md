@@ -135,11 +135,11 @@ production で S3 を選ぶのは scale 要件の一致による:
 
 ## 🏢 Production Operations
 
-EKS production cluster `eks-production`（`ap-northeast-1`）の運用手順。
+EKS production cluster `eks`（`ap-northeast-1`）の運用手順。
 
 ### Cluster overview
 
-`eks-production` cluster は **Cilium が native CNI (ENI mode)** で稼働し、`kubeProxyReplacement: true` で kube-proxy を eBPF で代替している。
+`eks` cluster は **Cilium が native CNI (ENI mode)** で稼働し、`kubeProxyReplacement: true` で kube-proxy を eBPF で代替している。
 
 | 層 | 担当 |
 |---|---|
@@ -187,8 +187,8 @@ EKS managed addons: `coredns` / `aws-ebs-csi-driver` / `eks-pod-identity-agent`�
 |---|---|---|
 | `kubernetes/components/prometheus-operator/production/` | `monitoring` namespace | chart `prometheus-community/kube-prometheus-stack`。Prometheus が cluster の metrics を scrape し Mimir に remote write、Alertmanager (receivers 未設定、外部通知 wire up なし)、Grafana (data source: Mimir primary / Prometheus local secondary / Loki / Tempo)、node-exporter / kube-state-metrics / prometheus-operator を bundle |
 | `kubernetes/components/mimir/production/` | `monitoring` namespace | chart `grafana/mimir-distributed` (Microservices mode: distributor / ingester / querier / store-gateway / compactor 等を独立 deploy) |
-| Mimir S3 backend | `mimir-<account-id>/production/` | long-term metrics retention 90 日 (S3 lifecycle policy) |
-| Mimir Pod Identity | `monitoring:mimir` SA → `eks-${env}-mimir` IAM role | Mimir pod が S3 backend へ access するため。aws/eks stack で Pod Identity Association を provision。IAM role 名は `eks-${env}-${service}` pattern |
+| Mimir S3 backend | `mimir-<account-id>` | long-term metrics retention 90 日 (S3 lifecycle policy) |
+| Mimir Pod Identity | `monitoring:mimir` SA → `eks-mimir` IAM role | Mimir pod が S3 backend へ access するため。aws/eks stack で Pod Identity Association を provision。IAM role 名は `eks-<service>` pattern |
 | 共有 namespace | `monitoring` (= `kubernetes/components/prometheus-operator/namespace.yaml` で定義) | Mimir / Loki / Tempo / OpenTelemetry Collector / Prometheus / Grafana / Alertmanager / Beyla がすべて同 namespace で deploy |
 
 #### Observability — Logs stack
@@ -196,16 +196,16 @@ EKS managed addons: `coredns` / `aws-ebs-csi-driver` / `eks-pod-identity-agent`�
 | Component / Resource | 配置 | 役割 |
 |---|---|---|
 | `kubernetes/components/loki/production/` | `monitoring` namespace | chart `grafana-community/loki` (SingleBinary mode)。container log の OTLP HTTP ingest (= OTel Collector からの push)、LogQL query、Grafana datasource の primary log backend |
-| Loki S3 backend | `loki-<account-id>/production/` | long-term log retention 30 日 (S3 lifecycle policy) |
-| Loki Pod Identity | `monitoring:loki` SA → `eks-${env}-loki` IAM role | Loki pod が S3 backend へ access するため |
+| Loki S3 backend | `loki-<account-id>` | long-term log retention 30 日 (S3 lifecycle policy) |
+| Loki Pod Identity | `monitoring:loki` SA → `eks-loki` IAM role | Loki pod が S3 backend へ access するため |
 
 #### Observability — Traces stack
 
 | Component / Resource | 配置 | 役割 |
 |---|---|---|
 | `kubernetes/components/tempo/production/` | `monitoring` namespace | chart `grafana/tempo` (monolithic mode)。Beyla 由来 trace の OTLP gRPC ingest (= OTel Collector 経由)、TraceQL query、Grafana datasource の primary trace backend。metrics-generator (service-graphs processor) で service-graph metrics を生成し Mimir に remote_write |
-| Tempo S3 backend | `tempo-<account-id>/production/` | long-term trace retention 7 日 (S3 lifecycle policy) |
-| Tempo Pod Identity | `monitoring:tempo` SA → `eks-${env}-tempo` IAM role | Tempo pod が S3 backend へ access するため |
+| Tempo S3 backend | `tempo-<account-id>` | long-term trace retention 7 日 (S3 lifecycle policy) |
+| Tempo Pod Identity | `monitoring:tempo` SA → `eks-tempo` IAM role | Tempo pod が S3 backend へ access するため |
 
 #### Observability — Application Telemetry
 
@@ -341,7 +341,7 @@ kubectl get nodepool system-components                    # Ready=True
 kubectl get ec2nodeclass system-components                # Ready=True
 kubectl get nodeclaim                                     # 現在 Karpenter が起動した NodeClaim 一覧
 kubectl get nodes -L karpenter.sh/nodepool                # nodepool 別の node 一覧
-aws eks list-pod-identity-associations --cluster-name eks-production --namespace karpenter
+aws eks list-pod-identity-associations --cluster-name eks --namespace karpenter
 
 # Falco (runtime security)
 kubectl get ds -n falco falco                            # DESIRED == READY == node 数
@@ -372,7 +372,7 @@ kubectl logs -n falco -l app.kubernetes.io/name=falco | grep -i drop   # event d
 | Karpenter pod が `system_critical` MNG 以外の node に schedule される | values.yaml.gotmpl の nodeSelector / tolerations が rendered manifest に反映されていない or MNG の label / taint が誤り。`kubectl get pod -n karpenter -o wide` で 配置 node を確認、`kubectl get node -L node-role/system-critical` で label 確認 |
 | `kubectl get nodepool system-components` が `Ready=False` | EC2NodeClass の参照先 (Node IAM role) や subnet selector が誤り。`kubectl describe nodepool system-components` で詳細を確認、`aws iam get-role --role-name <ec2nodeclass.spec.role>` で role 存在確認 |
 | Pending pod があるのに Karpenter が node を起動しない | NodePool の requirements にマッチする instance type が region で出ない (capacity 不足) or `limits.cpu` に達している。`kubectl describe pod <pending-pod>` の events で Karpenter の判断ログを確認、必要なら一時的に NodePool requirements を緩める (e.g., `instance-generation` の下限を下げる、`instance-category` に他 series を追加) |
-| Karpenter pod が IAM role に assume できない | Pod Identity Association 未設定 or aws-pod-identity-agent (addon) が未稼働。`aws eks list-pod-identity-associations --cluster-name eks-production --namespace karpenter` で association 確認、`kubectl logs -n kube-system daemonset/eks-pod-identity-agent` で agent 状態確認 |
+| Karpenter pod が IAM role に assume できない | Pod Identity Association 未設定 or aws-pod-identity-agent (addon) が未稼働。`aws eks list-pod-identity-associations --cluster-name eks --namespace karpenter` で association 確認、`kubectl logs -n kube-system daemonset/eks-pod-identity-agent` で agent 状態確認 |
 | Falco Pod が `CrashLoopBackOff` で BPF 関連のエラーを出す | `leastPrivileged: true` の capabilities で BPF program を load できていない。`kubectl logs -n falco -l app.kubernetes.io/name=falco` でエラーを確認し、暫定対処として `values.yaml.gotmpl` の `driver.modernEbpf.leastPrivileged` を `false` に戻す (= chart default の `privileged: true` にフォールバック) |
 | Falco の init container `falcoctl-artifact-install` が失敗する | `ghcr.io` への egress が塞がれている。NetworkPolicy / SG / NAT の経路を確認する。ルールセットは image に同梱されないため、この init container が成功しないと Falco は起動しない |
 | Falco の検知イベントが Loki に出てこない | Falco Pod のログには出ているか (`kubectl logs -n falco -l app.kubernetes.io/name=falco`) をまず確認。出ているなら OTel Collector の filelog 経路の問題、出ていないなら `json_output` 設定かルール側の問題。LogQL は `{k8s_namespace_name="falco"} \| json` で引く |

@@ -31,7 +31,7 @@ actual_selectors="$(awk '
 expected_selectors="$(
   printf '%s\n' \
     '  - tags:' \
-    '      aws:eks:cluster-name: eks-production' \
+    '      aws:eks:cluster-name: eks' \
     '  - tags:' \
     '      Name: internal'
 )"

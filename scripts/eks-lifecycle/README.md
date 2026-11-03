@@ -1,16 +1,16 @@
 # EKS Lifecycle
 
-Temporary teardown of `eks-production` cluster + 周辺 AWS stacks. 手元 shell から実行する想定 (= CI 経由 trigger は未対応)。
+Temporary teardown of `eks` cluster + 周辺 AWS stacks. 手元 shell から実行する想定 (= CI 経由 trigger は未対応)。
 
-詳細設計: `docs/superpowers/specs/2026-05-10-eks-production-teardown-recreate-design.md`
+詳細設計: `docs/superpowers/specs/2026-05-10-*-teardown-recreate-design.md`
 
-Recreate (= cluster bootstrap) は manual runbook で実行する: `docs/runbooks/eks-production-recreate.md`
+Recreate (= cluster bootstrap) は manual runbook で実行する: `docs/runbooks/eks-recreate.md`
 
 ## Prerequisites
 
 - **操作者の IAM principal** が以下を満たすこと:
   - terragrunt destroy に必要な AWS 操作権限を default credential chain で利用可能 (= 例: panicboat IAM user は `AdministratorAccess` 保持)。GitHub OIDC apply role (= `github-oidc-auth-${ENV}-github-actions-apply-role`) は `sts:AssumeRoleWithWebIdentity` のみ trust で IAM user からは assume 不可、operator 自身の credentials で直接 terragrunt を実行する
-  - `eks-admin-${ENV}` role を `sts:AssumeRole` で assume 可能 (= 同 role の trust policy は IAM root を許可、AWS 上で account 内任意の IAM principal が `sts:AssumeRole` 権限保持していれば成立)
+  - `eks-admin` role を `sts:AssumeRole` で assume 可能 (= 同 role の trust policy は IAM root を許可、AWS 上で account 内任意の IAM principal が `sts:AssumeRole` 権限保持していれば成立)
 - 手元に installed: `tofu`, `terragrunt`, `kubectl`, `jq`, `aws`, `make`, `bash`
 - repo root から `make` を実行する (= `Makefile` がある場所)
 - **対話型 terminal で実行**: `confirm` プロンプトが stdin から `y` を読むため、CI / pipe / nohup 経由などの非対話実行ではプロンプトで EOF となり `set -e` で即終了する
@@ -26,7 +26,7 @@ unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 # 2. operator identity (= 期待する IAM user / role か)
 aws sts get-caller-identity
 # → user/panicboat (= 操作者本人の IAM principal) が出ること。
-# assumed-role/eks-admin-production/... のままだと、 eks-admin は EC2 / VPC
+# assumed-role/eks-admin/... のままだと、 eks-admin は EC2 / VPC
 # describe 権限を持たないため後段 (= 40-orphan-verify.sh の aws ec2 describe-*)
 # が UnauthorizedOperation で fail する。
 
@@ -61,11 +61,11 @@ make eks-teardown-aws ENV=production       # terragrunt destroy only
 make eks-teardown-verify ENV=production    # orphan verify only
 ```
 
-teardown 完了後、`workflow-config.yaml` (platform / `panicboat/monorepo` 両リポジトリ) の terragrunt の stack の `exclude` に `- environment: production` を足して PR で merge する (= Renovate PR の CI auto-apply が destroy 済 stack へ再作成を試みるのを防止)。recreate 時の再有効化手順は `docs/runbooks/eks-production-recreate.md` Phase 0 参照。
+teardown 完了後、`workflow-config.yaml` (platform / `panicboat/monorepo` 両リポジトリ) の terragrunt の stack の `exclude` に `- environment: production` を足して PR で merge する (= Renovate PR の CI auto-apply が destroy 済 stack へ再作成を試みるのを防止)。recreate 時の再有効化手順は `docs/runbooks/eks-recreate.md` Phase 0 参照。
 
 ### Recreate
 
-`docs/runbooks/eks-production-recreate.md` を参照。 cilium native CNI との chicken-and-egg があり、 operator が 2 terminal 並行で sequentially bootstrap する manual runbook で実行する。
+`docs/runbooks/eks-recreate.md` を参照。 cilium native CNI との chicken-and-egg があり、 operator が 2 terminal 並行で sequentially bootstrap する manual runbook で実行する。
 
 ## Failure handling
 
@@ -83,7 +83,7 @@ teardown 完了後、`workflow-config.yaml` (platform / `panicboat/monorepo` 両
   make eks-teardown-aws ENV=production   # 中断地点から再開、 fail fast 後の再 run は idempotent
   ```
   発生例: Renovate PR で `terraform-aws-modules/eks/aws` を `~> 21.20` に更新済みだが、 操作者の `.terragrunt-cache/` には v21.19.0 がキャッシュされているケース
-- `terragrunt destroy` (alb / vpc stack) が `DependencyViolation: ... has some mapped public address(es)` (IGW detach) や `has dependencies and cannot be deleted` (subnet/VPC) で fail する → AWS Load Balancer Controller が管理する ALB/NLB (+ 自動作成 security group) が terraform 管理外のまま残っている。 shared IngressGroup を `kubectl delete ingress --all` で 1 件ずつ消す際、 controller が同名 ALB を再作成するレースが原因 (= Step 10.4 の一度きりの tag sweep はこれを捕捉できない)。 `30-destroy-stacks.sh` は `eks` stack destroy 直後 (= controller 消滅後の安全なタイミング) に `elbv2.k8s.aws/cluster` タグで再 sweep するため通常は自動解消するが、 万一残る場合は `aws resourcegroupstaggingapi get-resources --resource-type-filters elasticloadbalancing:loadbalancer --tag-filters Key=elbv2.k8s.aws/cluster,Values=eks-production` で ALB を、 `aws ec2 describe-security-groups --filters Name=tag:elbv2.k8s.aws/cluster,Values=eks-production` で security group を特定し手動削除する
+- `terragrunt destroy` (alb / vpc stack) が `DependencyViolation: ... has some mapped public address(es)` (IGW detach) や `has dependencies and cannot be deleted` (subnet/VPC) で fail する → AWS Load Balancer Controller が管理する ALB/NLB (+ 自動作成 security group) が terraform 管理外のまま残っている。 shared IngressGroup を `kubectl delete ingress --all` で 1 件ずつ消す際、 controller が同名 ALB を再作成するレースが原因 (= Step 10.4 の一度きりの tag sweep はこれを捕捉できない)。 `30-destroy-stacks.sh` は `eks` stack destroy 直後 (= controller 消滅後の安全なタイミング) に `elbv2.k8s.aws/cluster` タグで再 sweep するため通常は自動解消するが、 万一残る場合は `aws resourcegroupstaggingapi get-resources --resource-type-filters elasticloadbalancing:loadbalancer --tag-filters Key=elbv2.k8s.aws/cluster,Values=eks` で ALB を、 `aws ec2 describe-security-groups --filters Name=tag:elbv2.k8s.aws/cluster,Values=eks` で security group を特定し手動削除する
 
 ## What is preserved through teardown
 

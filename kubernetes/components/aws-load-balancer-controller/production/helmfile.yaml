@@ -6,7 +6,7 @@ environments:
           # RECREATE: cd aws/vpc/production && TG_TF_PATH=tofu terragrunt output -raw vpc_id
           vpcId: vpc-0407902fa994e8750
           # STABLE: deterministic role name configured in aws/eks/modules/addons.tf.
-          albControllerRoleArn: arn:aws:iam::337169763788:role/eks-production-alb-controller
+          albControllerRoleArn: arn:aws:iam::337169763788:role/eks-alb-controller
 ---
 repositories:
   - name: eks

@@ -4,7 +4,6 @@ environments:
     values:
       - loki:
           bucketName: loki-337169763788
-          bucketPathPrefix: production
 ---
 repositories:
   - name: grafana-community

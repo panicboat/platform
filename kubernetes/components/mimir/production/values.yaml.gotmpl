@@ -12,7 +12,6 @@ mimir:
           endpoint: s3.ap-northeast-1.amazonaws.com
           region: ap-northeast-1
     blocks_storage:
-      storage_prefix: "{{ .Values.mimir.bucketPathPrefix }}"
       backend: s3
       s3:
         bucket_name: {{ .Values.mimir.bucketName }}

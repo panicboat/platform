@@ -24,7 +24,7 @@ fi
 
 info "Step 40.2: EBS volumes (= released by PVC reclaimPolicy=Delete)"
 EBS_IDS=$(aws ec2 describe-volumes --region "$REGION" \
-  --filters "Name=tag:KubernetesCluster,Values=eks-${ENV}" "Name=status,Values=available" \
+  --filters "Name=tag:KubernetesCluster,Values=eks" "Name=status,Values=available" \
   --query 'Volumes[].VolumeId' --output text)
 if [ -n "$EBS_IDS" ]; then
   warn "Orphan EBS volumes: $EBS_IDS"
@@ -58,7 +58,7 @@ HOSTED_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
 if [ -n "$HOSTED_ZONE_ID" ] && [ "$HOSTED_ZONE_ID" != "None" ]; then
   # Derives associated DNS records from TXT registry markers matching external-dns format.
   STALE_RECORDS=$(aws route53 list-resource-record-sets --hosted-zone-id "$HOSTED_ZONE_ID" --output json | \
-    jq -r --arg owner "eks-${ENV}" '
+    jq -r --arg owner "eks" '
       .ResourceRecordSets as $all
       | ($all | map(select(.Type == "TXT" and (.ResourceRecords | map(.Value) | join(" ") | contains("external-dns/owner=" + $owner))))) as $txt
       | ($txt | map(.Name | sub("^[a-z]+-"; "")) | unique) as $hosts
@@ -77,7 +77,7 @@ use_apply_creds
 
 info "Step 40.6: CloudWatch log groups"
 LG_NAMES=$(aws logs describe-log-groups --region "$REGION" \
-  --log-group-name-prefix "/aws/eks/eks-${ENV}" \
+  --log-group-name-prefix "/aws/eks/eks" \
   --query 'logGroups[].logGroupName' --output text)
 if [ -n "$LG_NAMES" ]; then
   warn "Orphan CloudWatch log groups: $LG_NAMES"
