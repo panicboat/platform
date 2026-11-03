@@ -28,7 +28,7 @@ locals {
 
 # IAM role for Pod Identity Association
 resource "aws_iam_role" "pod_identity" {
-  name = "eks-${var.environment}-holmesgpt"
+  name = "eks-holmesgpt"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

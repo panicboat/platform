@@ -33,23 +33,25 @@ mock_provider "aws" {
       id = "lt-test"
     }
   }
+  mock_resource "aws_sqs_queue" {
+    defaults = {
+      arn = "arn:aws:sqs:ap-northeast-1:337169763788:queue"
+    }
+  }
+  mock_resource "aws_iam_role" {
+    defaults = {
+      arn = "arn:aws:iam::337169763788:role/role"
+    }
+  }
 }
 
 mock_provider "cloudinit" {}
 
 override_module {
-  target = module.karpenter
-  outputs = {
-    node_iam_role_name = "Karpenter-eks-production"
-    queue_name         = "Karpenter-eks-production"
-  }
-}
-
-override_module {
   target = module.eks
   outputs = {
     cluster = {
-      name                              = "eks-production"
+      name                              = "eks"
       endpoint                          = "https://eks.example.test"
       certificate_authority_data        = "Y2E="
       service_cidr                      = "10.100.0.0/16"
@@ -79,8 +81,7 @@ override_module {
 }
 
 variables {
-  environment = "production"
-  aws_region  = "ap-northeast-1"
+  aws_region = "ap-northeast-1"
   common_tags = {
     Environment = "production"
   }
@@ -88,4 +89,23 @@ variables {
 
 run "plans_primary_and_internal_security_groups_for_system_nodes" {
   command = plan
+}
+
+run "names_karpenter_and_system_critical_resources_without_environment" {
+  command = plan
+
+  assert {
+    condition     = output.node_role_name == "Karpenter-eks"
+    error_message = "The Karpenter node role must be named Karpenter-eks."
+  }
+
+  assert {
+    condition     = output.interruption_queue_name == "Karpenter-eks"
+    error_message = "The interruption queue must be named Karpenter-eks."
+  }
+
+  assert {
+    condition     = module.system_critical.iam_role_name == "eks-system-critical-eks-node-group"
+    error_message = "The system-critical node group name must be eks-system-critical."
+  }
 }

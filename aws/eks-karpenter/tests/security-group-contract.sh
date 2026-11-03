@@ -22,7 +22,7 @@ actual_security_groups="$(
       gsub(/[+~ ",]/, "")
       if (length > 0) print
     }
-  ' <<<"$plan_output" | sort
+  ' <<<"$plan_output" | sort -u
 )"
 
 expected_security_groups="$(
