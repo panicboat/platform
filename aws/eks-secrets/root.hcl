@@ -8,7 +8,7 @@ locals {
     Project     = local.project_name
     Environment = local.environment
     ManagedBy   = "terragrunt"
-    Repository  = "monorepo"
+    Repository  = "panicboat/platform"
     Component   = "eks-secrets"
     Team        = "panicboat"
   }
@@ -30,7 +30,6 @@ remote_state {
 }
 
 inputs = {
-  environment = local.environment
   common_tags = local.common_tags
   aws_region  = "ap-northeast-1"
 }

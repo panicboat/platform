@@ -8,7 +8,7 @@ locals {
     Project     = local.project_name
     Environment = local.environment
     ManagedBy   = "terragrunt"
-    Repository  = "monorepo"
+    Repository  = "panicboat/platform"
     Component   = "iam-service-linked-roles"
     Team        = "panicboat"
   }
