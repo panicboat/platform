@@ -2,8 +2,8 @@ locals {
   environment = "production"
   aws_region  = "ap-northeast-1"
 
-  github_org  = "panicboat"
-  github_repos = ["monorepo","platform"]
+  github_org   = "panicboat"
+  github_repos = ["monorepo", "platform"]
 
   github_environments = [
     "production"
@@ -21,9 +21,4 @@ locals {
   assume_role_arns = [
     "arn:aws:iam::559744160976:role/route53-zone-access",
   ]
-
-  additional_tags = {
-    Component  = "github-oidc-auth"
-    Owner      = "panicboat"
-  }
 }

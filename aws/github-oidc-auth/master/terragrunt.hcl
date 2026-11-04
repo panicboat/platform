@@ -24,14 +24,4 @@ inputs = {
 
   claude_code_oidc_subjects  = include.env.locals.claude_code_oidc_subjects
   claude_code_bedrock_models = include.env.locals.claude_code_bedrock_models
-
-  common_tags = merge(
-    {
-      Environment = include.env.locals.environment
-      ManagedBy   = "terraform"
-      Project     = "github-oidc-auth"
-      Repository  = "panicboat/platform"
-    },
-    include.env.locals.additional_tags
-  )
 }
