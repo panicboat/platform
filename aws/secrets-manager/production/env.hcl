@@ -2,10 +2,4 @@ locals {
   environment = "production"
 
   aws_region = "ap-northeast-1"
-
-  environment_tags = {
-    Environment = local.environment
-    Component   = "secrets-manager"
-    Owner       = "panicboat"
-  }
 }

@@ -8,9 +8,8 @@ locals {
     Project     = local.project_name
     Environment = local.environment
     ManagedBy   = "terragrunt"
+    Owner       = "panicboat"
     Repository  = "panicboat/platform"
-    Component   = "github-oidc-auth"
-    Team        = "panicboat"
   }
 }
 

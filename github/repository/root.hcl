@@ -8,7 +8,8 @@ locals {
     Project     = local.project_name
     Environment = local.environment
     ManagedBy   = "terragrunt"
-    Team        = "panicboat"
+    Owner       = "panicboat"
+    Repository  = "panicboat/platform"
   }
 }
 

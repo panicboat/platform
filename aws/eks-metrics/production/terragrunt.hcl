@@ -14,13 +14,4 @@ terraform {
 
 inputs = {
   aws_region = include.env.locals.aws_region
-
-  common_tags = merge(
-    include.env.locals.environment_tags,
-    {
-      Project    = "eks-metrics"
-      ManagedBy  = "terraform"
-      Repository = "panicboat/platform"
-    }
-  )
 }

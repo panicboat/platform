@@ -25,9 +25,4 @@ locals {
   oidc_provider_arn    = ""
 
   max_session_duration = 14400
-
-  additional_tags = {
-    Component = "github-oidc-auth"
-    Owner     = "panicboat"
-  }
 }

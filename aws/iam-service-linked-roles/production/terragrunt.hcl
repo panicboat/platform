@@ -14,13 +14,4 @@ terraform {
 inputs = {
   environment = include.env.locals.environment
   aws_region  = include.env.locals.aws_region
-
-  common_tags = merge(
-    include.env.locals.environment_tags,
-    {
-      Project    = "iam-service-linked-roles"
-      ManagedBy  = "terraform"
-      Repository = "panicboat/platform"
-    }
-  )
 }
