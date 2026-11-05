@@ -1075,8 +1075,8 @@ spec:
         app: holmes
         
       annotations:
-        # checksum annotation triggering pod reload when .Values.toolsets changes by helm upgrade
-        checksum/toolset-config: 961fa65349aaf49c38ef0c47b41f6e774ff3961295d9c18664f1b746e6e3b59e
+        # Rolls the pod when the toolset configmap it mounts, or the skill settings, change.
+        checksum/toolset-config: a94f68d603bba6de457d7a8f6d5d9524d4223be63650e02439f635129101256b
     spec:
       serviceAccountName: holmesgpt
       securityContext:
@@ -1089,7 +1089,7 @@ spec:
       dnsPolicy: ClusterFirst
       containers:
       - name: holmes
-        image: "robustadev/holmes:0.45.0"
+        image: "robustadev/holmes:0.46.0"
         imagePullPolicy: IfNotPresent
         # Read-only root filesystem for security hardening.
         # /tmp is mounted as a writable emptyDir for ephemeral tool result files.
