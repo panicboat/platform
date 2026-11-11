@@ -6,10 +6,10 @@ metadata:
   name: external-secrets
   namespace: external-secrets
   labels:
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: external-secrets/templates/webhook-serviceaccount.yaml
@@ -20,10 +20,10 @@ metadata:
   namespace: external-secrets
   labels:
     
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets-webhook
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/metrics: "webhook"
 ---
@@ -9707,13 +9707,13 @@ spec:
                           type: object
                       type: object
                     nebiusmysterybox:
-                      description: NebiusMysterybox configures this store to sync secrets using NebiusMysterybox provider
+                      description: NebiusMysterybox configures this store to sync secrets using the Nebius SecretStash provider
                       properties:
                         apiDomain:
-                          description: NebiusMysterybox API endpoint
+                          description: Nebius SecretStash API endpoint
                           type: string
                         auth:
-                          description: Auth defines parameters to authenticate in MysteryBox
+                          description: Auth defines parameters to authenticate in SecretStash
                           properties:
                             serviceAccountCredsSecretRef:
                               description: |-
@@ -9755,7 +9755,7 @@ spec:
                                   type: string
                               type: object
                             tokenSecretRef:
-                              description: Token authenticates with Nebius Mysterybox by presenting a token.
+                              description: Token authenticates with Nebius SecretStash by presenting a token.
                               properties:
                                 key:
                                   description: |-
@@ -9831,7 +9831,7 @@ spec:
                             - message: exactly one of serviceAccountCredsSecretRef, tokenSecretRef, or workloadIdentity must be set
                               rule: '(has(self.serviceAccountCredsSecretRef) && has(self.serviceAccountCredsSecretRef.name) && size(self.serviceAccountCredsSecretRef.name) > 0 ? 1 : 0) + (has(self.tokenSecretRef) && has(self.tokenSecretRef.name) && size(self.tokenSecretRef.name) > 0 ? 1 : 0) + (has(self.workloadIdentity) ? 1 : 0) == 1'
                         caProvider:
-                          description: The provider for the CA bundle to use to validate NebiusMysterybox server certificate.
+                          description: The provider for the CA bundle to use to validate Nebius SecretStash server certificate.
                           properties:
                             certSecretRef:
                               description: |-
@@ -24795,13 +24795,13 @@ spec:
                           type: object
                       type: object
                     nebiusmysterybox:
-                      description: NebiusMysterybox configures this store to sync secrets using NebiusMysterybox provider
+                      description: NebiusMysterybox configures this store to sync secrets using the Nebius SecretStash provider
                       properties:
                         apiDomain:
-                          description: NebiusMysterybox API endpoint
+                          description: Nebius SecretStash API endpoint
                           type: string
                         auth:
-                          description: Auth defines parameters to authenticate in MysteryBox
+                          description: Auth defines parameters to authenticate in SecretStash
                           properties:
                             serviceAccountCredsSecretRef:
                               description: |-
@@ -24843,7 +24843,7 @@ spec:
                                   type: string
                               type: object
                             tokenSecretRef:
-                              description: Token authenticates with Nebius Mysterybox by presenting a token.
+                              description: Token authenticates with Nebius SecretStash by presenting a token.
                               properties:
                                 key:
                                   description: |-
@@ -24919,7 +24919,7 @@ spec:
                             - message: exactly one of serviceAccountCredsSecretRef, tokenSecretRef, or workloadIdentity must be set
                               rule: '(has(self.serviceAccountCredsSecretRef) && has(self.serviceAccountCredsSecretRef.name) && size(self.serviceAccountCredsSecretRef.name) > 0 ? 1 : 0) + (has(self.tokenSecretRef) && has(self.tokenSecretRef.name) && size(self.tokenSecretRef.name) > 0 ? 1 : 0) + (has(self.workloadIdentity) ? 1 : 0) == 1'
                         caProvider:
-                          description: The provider for the CA bundle to use to validate NebiusMysterybox server certificate.
+                          description: The provider for the CA bundle to use to validate Nebius SecretStash server certificate.
                           properties:
                             certSecretRef:
                               description: |-
@@ -33770,10 +33770,10 @@ kind: ClusterRole
 metadata:
   name: external-secrets-controller
   labels:
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
 rules:
   - apiGroups:
@@ -33924,10 +33924,10 @@ kind: ClusterRole
 metadata:
   name: external-secrets-view
   labels:
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
     rbac.authorization.k8s.io/aggregate-to-view: "true"
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
@@ -33977,10 +33977,10 @@ kind: ClusterRole
 metadata:
   name: external-secrets-edit
   labels:
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
@@ -34034,10 +34034,10 @@ metadata:
   name: external-secrets-servicebindings
   labels:
     servicebinding.io/controller: "true"
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
 rules:
   - apiGroups:
@@ -34056,10 +34056,10 @@ kind: ClusterRoleBinding
 metadata:
   name: external-secrets-controller
   labels:
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -34077,10 +34077,10 @@ metadata:
   name: external-secrets-leaderelection
   namespace: external-secrets
   labels:
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
 rules:
   - apiGroups:
@@ -34116,10 +34116,10 @@ metadata:
   name: external-secrets-leaderelection
   namespace: external-secrets
   labels:
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -34137,10 +34137,10 @@ metadata:
   name: external-secrets-metrics
   namespace: external-secrets
   labels:
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -34161,10 +34161,10 @@ metadata:
   namespace: external-secrets
   labels:
     
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets-webhook
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/metrics: "webhook"
     external-secrets.io/component: webhook
@@ -34191,10 +34191,10 @@ metadata:
   name: external-secrets
   namespace: external-secrets
   labels:
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
@@ -34206,10 +34206,10 @@ spec:
   template:
     metadata:
       labels:
-        helm.sh/chart: external-secrets-2.14.0
+        helm.sh/chart: external-secrets-2.15.0
         app.kubernetes.io/name: external-secrets
         app.kubernetes.io/instance: external-secrets
-        app.kubernetes.io/version: "v2.14.0"
+        app.kubernetes.io/version: "v2.15.0"
         app.kubernetes.io/managed-by: Helm
     spec:
       serviceAccountName: external-secrets
@@ -34227,7 +34227,7 @@ spec:
             runAsUser: 1000
             seccompProfile:
               type: RuntimeDefault
-          image: ghcr.io/external-secrets/external-secrets:v2.14.0
+          image: ghcr.io/external-secrets/external-secrets:v2.15.0
           imagePullPolicy: IfNotPresent
           args:
           - --concurrent=1
@@ -34255,10 +34255,10 @@ metadata:
   namespace: external-secrets
   labels:
     
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets-webhook
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/metrics: "webhook"
 spec:
@@ -34272,10 +34272,10 @@ spec:
     metadata:
       labels:
         
-        helm.sh/chart: external-secrets-2.14.0
+        helm.sh/chart: external-secrets-2.15.0
         app.kubernetes.io/name: external-secrets-webhook
         app.kubernetes.io/instance: external-secrets
-        app.kubernetes.io/version: "v2.14.0"
+        app.kubernetes.io/version: "v2.15.0"
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/metrics: "webhook"
     spec:
@@ -34294,7 +34294,7 @@ spec:
             runAsUser: 1000
             seccompProfile:
               type: RuntimeDefault
-          image: ghcr.io/external-secrets/external-secrets:v2.14.0
+          image: ghcr.io/external-secrets/external-secrets:v2.15.0
           imagePullPolicy: IfNotPresent
           args:
           - webhook
@@ -34349,10 +34349,10 @@ metadata:
   namespace: external-secrets
   labels:
     
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets-webhook
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/metrics: "webhook"
     external-secrets.io/component: webhook
@@ -34374,10 +34374,10 @@ apiVersion: "monitoring.coreos.com/v1"
 kind: ServiceMonitor
 metadata:
   labels:
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
     release: kube-prometheus-stack
   name: external-secrets-metrics
@@ -34402,10 +34402,10 @@ kind: ServiceMonitor
 metadata:
   labels:
     
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets-webhook
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/metrics: "webhook"
     release: kube-prometheus-stack
@@ -34432,10 +34432,10 @@ kind: ServiceMonitor
 metadata:
   labels:
     
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets-cert-controller
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/metrics: "cert-controller"
     release: kube-prometheus-stack
@@ -34463,10 +34463,10 @@ metadata:
   name: secretstore-validate
   labels:
     
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets-webhook
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/metrics: "webhook"
     external-secrets.io/component: webhook
@@ -34514,10 +34514,10 @@ metadata:
   name: externalsecret-validate
   labels:
     
-    helm.sh/chart: external-secrets-2.14.0
+    helm.sh/chart: external-secrets-2.15.0
     app.kubernetes.io/name: external-secrets-webhook
     app.kubernetes.io/instance: external-secrets
-    app.kubernetes.io/version: "v2.14.0"
+    app.kubernetes.io/version: "v2.15.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/metrics: "webhook"
     external-secrets.io/component: webhook
