@@ -13,6 +13,30 @@ locals {
       "arn:aws:bedrock:*::foundation-model/${m}",
     ]
   ])
+
+  claude_code_bedrock_statements = [
+    {
+      Effect = "Allow"
+      Action = [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream",
+      ]
+      Resource = local.claude_code_inference_profile_arns
+    },
+    {
+      Effect = "Allow"
+      Action = [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream",
+      ]
+      Resource = local.claude_code_foundation_model_arns
+      Condition = {
+        StringLike = {
+          "bedrock:InferenceProfileArn" = local.claude_code_inference_profile_arns
+        }
+      }
+    },
+  ]
 }
 
 # Terraform owns only the container; the value is put by hand so the token never lands in the state.
@@ -66,33 +90,55 @@ resource "aws_iam_role_policy" "claude_code" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "bedrock:InvokeModel",
-          "bedrock:InvokeModelWithResponseStream",
-        ]
-        Resource = local.claude_code_inference_profile_arns
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "bedrock:InvokeModel",
-          "bedrock:InvokeModelWithResponseStream",
-        ]
-        Resource = local.claude_code_foundation_model_arns
-        Condition = {
-          StringLike = {
-            "bedrock:InferenceProfileArn" = local.claude_code_inference_profile_arns
-          }
-        }
-      },
+    Statement = concat(local.claude_code_bedrock_statements, [
       {
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue"]
         Resource = aws_secretsmanager_secret.claude_code_oauth_token[0].arn
       }
+    ])
+  })
+}
+
+# Kept apart from the claude-code role so its callers cannot read the OAuth token secret.
+resource "aws_iam_role" "bedrock_invoke" {
+  count = length(var.bedrock_invoke_oidc_subjects) > 0 ? 1 : 0
+
+  name = "${var.project_name}-${var.environment}-github-actions-bedrock-invoke-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = local.oidc_provider_arn
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+            "token.actions.githubusercontent.com:sub" = var.bedrock_invoke_oidc_subjects
+          }
+        }
+      }
     ]
+  })
+
+  tags = merge(var.common_tags, {
+    Name    = "${var.project_name}-${var.environment}-github-actions-bedrock-invoke-role"
+    Purpose = "github-actions-bedrock-invoke"
+  })
+}
+
+resource "aws_iam_role_policy" "bedrock_invoke" {
+  count = length(aws_iam_role.bedrock_invoke)
+
+  name = "bedrock-invoke"
+  role = aws_iam_role.bedrock_invoke[0].id
+
+  policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = local.claude_code_bedrock_statements
   })
 }

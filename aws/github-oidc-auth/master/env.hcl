@@ -20,6 +20,10 @@ locals {
     "anthropic.claude-sonnet-4-6",
   ]
 
+  bedrock_invoke_oidc_subjects = [
+    "repo:panicboat/monorepo:environment:dystopia-e2e",
+  ]
+
   # Manages account-level OIDC provider singleton for the management account.
   create_oidc_provider = true
   oidc_provider_arn    = ""
