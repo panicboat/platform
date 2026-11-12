@@ -52,3 +52,8 @@ output "claude_code_oauth_token_secret_arn" {
   description = "ARN of the Secrets Manager secret holding the Claude OAuth token"
   value       = one(aws_secretsmanager_secret.claude_code_oauth_token[*].arn)
 }
+
+output "bedrock_invoke_role_arn" {
+  description = "ARN of the Bedrock-only GitHub Actions IAM role"
+  value       = one(aws_iam_role.bedrock_invoke[*].arn)
+}

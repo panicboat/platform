@@ -24,4 +24,6 @@ inputs = {
 
   claude_code_oidc_subjects  = include.env.locals.claude_code_oidc_subjects
   claude_code_bedrock_models = include.env.locals.claude_code_bedrock_models
+
+  bedrock_invoke_oidc_subjects = include.env.locals.bedrock_invoke_oidc_subjects
 }

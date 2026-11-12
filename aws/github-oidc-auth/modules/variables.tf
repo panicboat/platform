@@ -77,7 +77,13 @@ variable "claude_code_oidc_subjects" {
 }
 
 variable "claude_code_bedrock_models" {
-  description = "Bedrock foundation model IDs the claude-code role may invoke via global inference profiles"
+  description = "Bedrock foundation model IDs the claude-code and bedrock-invoke roles may invoke via global inference profiles"
+  type        = list(string)
+  default     = []
+}
+
+variable "bedrock_invoke_oidc_subjects" {
+  description = "GitHub OIDC subjects allowed to assume the Bedrock-only role; the role is skipped when empty"
   type        = list(string)
   default     = []
 }
