@@ -71,3 +71,26 @@ resource "github_repository_environment_deployment_policy" "repository" {
   environment = github_repository_environment.repository[each.value.env_key].environment
   tag_pattern = each.value.pattern
 }
+
+locals {
+  app_repositories = {
+    for k, v in var.repositories :
+    k => v if v.app_private_key_encrypted != null
+  }
+}
+
+resource "github_actions_secret" "app_private_key" {
+  for_each = local.app_repositories
+
+  repository      = github_repository.repository[each.key].name
+  secret_name     = "APP_PRIVATE_KEY"
+  value_encrypted = each.value.app_private_key_encrypted
+}
+
+resource "github_actions_variable" "app_id" {
+  for_each = local.app_repositories
+
+  repository    = github_repository.repository[each.key].name
+  variable_name = "APP_ID"
+  value         = var.app_id
+}

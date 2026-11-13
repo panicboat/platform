@@ -31,6 +31,11 @@ variable "github_token" {
   sensitive   = true
 }
 
+variable "app_id" {
+  description = "ID of the GitHub App whose token the workflows generate"
+  type        = string
+}
+
 variable "repositories" {
   description = "Map of repository configurations. visibility must be one of: public, private, internal"
   type = map(object({
@@ -43,7 +48,8 @@ variable "repositories" {
       wiki     = bool
       projects = bool
     })
-    environments = optional(map(object({ deployment_tag_patterns = list(string) })), {})
+    environments              = optional(map(object({ deployment_tag_patterns = list(string) })), {})
+    app_private_key_encrypted = optional(string)
   }))
 }
 

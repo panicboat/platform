@@ -7,6 +7,7 @@ variables {
   environment  = "master"
   github_org   = "panicboat"
   github_token = "dummy"
+  app_id       = "12345"
 }
 
 run "creates_tag_policy_for_declared_environment" {
@@ -149,5 +150,84 @@ run "creates_no_environment_by_default" {
   assert {
     condition     = length(github_repository_environment_deployment_policy.repository) == 0
     error_message = "No deployment policy must exist when environments is not declared."
+  }
+}
+
+run "creates_app_credentials_for_repository_with_encrypted_key" {
+  command = plan
+
+  variables {
+    repositories = {
+      platform = {
+        name        = "platform"
+        description = "Platform"
+        visibility  = "public"
+        features = {
+          issues   = true
+          wiki     = false
+          projects = true
+        }
+        app_private_key_encrypted = "Y2lwaGVydGV4dA=="
+      }
+    }
+  }
+
+  assert {
+    condition     = keys(github_actions_secret.app_private_key) == ["platform"]
+    error_message = "APP_PRIVATE_KEY must exist only for repositories with an encrypted key."
+  }
+
+  assert {
+    condition     = github_actions_secret.app_private_key["platform"].secret_name == "APP_PRIVATE_KEY"
+    error_message = "The secret must be named APP_PRIVATE_KEY."
+  }
+
+  assert {
+    condition     = github_actions_secret.app_private_key["platform"].value_encrypted == "Y2lwaGVydGV4dA=="
+    error_message = "The secret must use the declared ciphertext."
+  }
+
+  assert {
+    condition     = keys(github_actions_variable.app_id) == ["platform"]
+    error_message = "APP_ID must exist only for repositories with an encrypted key."
+  }
+
+  assert {
+    condition     = github_actions_variable.app_id["platform"].variable_name == "APP_ID"
+    error_message = "The variable must be named APP_ID."
+  }
+
+  assert {
+    condition     = github_actions_variable.app_id["platform"].value == "12345"
+    error_message = "The variable must use the declared app ID."
+  }
+}
+
+run "creates_no_app_credentials_without_encrypted_key" {
+  command = plan
+
+  variables {
+    repositories = {
+      dotfiles = {
+        name        = "dotfiles"
+        description = ""
+        visibility  = "public"
+        features = {
+          issues   = true
+          wiki     = false
+          projects = true
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = length(github_actions_secret.app_private_key) == 0
+    error_message = "No APP_PRIVATE_KEY must exist without an encrypted key."
+  }
+
+  assert {
+    condition     = length(github_actions_variable.app_id) == 0
+    error_message = "No APP_ID must exist without an encrypted key."
   }
 }
