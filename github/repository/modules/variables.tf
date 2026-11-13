@@ -31,13 +31,8 @@ variable "github_token" {
   sensitive   = true
 }
 
-variable "app_id" {
-  description = "ID of the GitHub App whose token the workflows generate"
-  type        = string
-}
-
 variable "repositories" {
-  description = "Map of repository configurations. visibility must be one of: public, private, internal"
+  description = "Map of repository configurations. visibility must be one of: public, private, internal. secrets values must be ciphertext from gh secret set --no-store"
   type = map(object({
     name                             = string
     description                      = string
@@ -48,8 +43,9 @@ variable "repositories" {
       wiki     = bool
       projects = bool
     })
-    environments              = optional(map(object({ deployment_tag_patterns = list(string) })), {})
-    app_private_key_encrypted = optional(string)
+    environments = optional(map(object({ deployment_tag_patterns = list(string) })), {})
+    variables    = optional(map(string), {})
+    secrets      = optional(map(string), {})
   }))
 }
 

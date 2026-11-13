@@ -72,25 +72,28 @@ resource "github_repository_environment_deployment_policy" "repository" {
   tag_pattern = each.value.pattern
 }
 
-locals {
-  app_repositories = {
-    for k, v in var.repositories :
-    k => v if v.app_private_key_encrypted != null
-  }
+resource "github_actions_variable" "repository" {
+  for_each = merge([
+    for repo_key, repo in var.repositories : {
+      for name, value in repo.variables :
+      "${repo_key}/${name}" => { repo_key = repo_key, name = name, value = value }
+    }
+  ]...)
+
+  repository    = github_repository.repository[each.value.repo_key].name
+  variable_name = each.value.name
+  value         = each.value.value
 }
 
-resource "github_actions_secret" "app_private_key" {
-  for_each = local.app_repositories
+resource "github_actions_secret" "repository" {
+  for_each = merge([
+    for repo_key, repo in var.repositories : {
+      for name, value in repo.secrets :
+      "${repo_key}/${name}" => { repo_key = repo_key, name = name, value = value }
+    }
+  ]...)
 
-  repository      = github_repository.repository[each.key].name
-  secret_name     = "APP_PRIVATE_KEY"
-  value_encrypted = each.value.app_private_key_encrypted
-}
-
-resource "github_actions_variable" "app_id" {
-  for_each = local.app_repositories
-
-  repository    = github_repository.repository[each.key].name
-  variable_name = "APP_ID"
-  value         = var.app_id
+  repository      = github_repository.repository[each.value.repo_key].name
+  secret_name     = each.value.name
+  value_encrypted = each.value.value
 }
