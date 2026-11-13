@@ -10,11 +10,15 @@ GitHub API は secret の値を返さないため、UI 等で外部から上書�
 
 ### Adding a Repository
 
-1. `master/<repo>.hcl` の `repository` に `app_private_key_encrypted` を追加する
+1. 次のコマンドで暗号文を出力する
 
    ```sh
    gh secret set APP_PRIVATE_KEY --no-store -R panicboat/<repo> < <private-key>.pem
    ```
+
+2. 出力を `master/<repo>.hcl` の `repository` に `app_private_key_encrypted` として追加する
+
+暗号文は作成時の repo の public key に紐づくため、GitHub が public key を変えた場合も同じ手順で作り直す。
 
 ### Rotating the Private Key
 
