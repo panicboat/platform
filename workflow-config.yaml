@@ -1,17 +1,3 @@
-profiles:
-  aws-master:
-    aws_region: ap-northeast-1
-    iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-master-github-actions-plan-role
-    iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-master-github-actions-apply-role
-  aws-develop:
-    aws_region: ap-northeast-1
-    iam_role_plan: arn:aws:iam::270242382571:role/github-oidc-auth-develop-github-actions-plan-role
-    iam_role_apply: arn:aws:iam::270242382571:role/github-oidc-auth-develop-github-actions-apply-role
-  aws-production:
-    aws_region: ap-northeast-1
-    iam_role_plan: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-plan-role
-    iam_role_apply: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-apply-role
-
 services:
   - id: infrastructure
     roots:
@@ -25,11 +11,17 @@ services:
           type: terragrunt
         environments:
           master:
-            use: [aws-master]
+            aws_region: ap-northeast-1
+            iam_role_plan: arn:aws:iam::559744160976:role/github-oidc-auth-master-github-actions-plan-role
+            iam_role_apply: arn:aws:iam::559744160976:role/github-oidc-auth-master-github-actions-apply-role
           develop:
-            use: [aws-develop]
+            aws_region: ap-northeast-1
+            iam_role_plan: arn:aws:iam::270242382571:role/github-oidc-auth-develop-github-actions-plan-role
+            iam_role_apply: arn:aws:iam::270242382571:role/github-oidc-auth-develop-github-actions-apply-role
           production:
-            use: [aws-production]
+            aws_region: ap-northeast-1
+            iam_role_plan: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-plan-role
+            iam_role_apply: arn:aws:iam::337169763788:role/github-oidc-auth-production-github-actions-apply-role
         exclude:
           - environment: production
 
