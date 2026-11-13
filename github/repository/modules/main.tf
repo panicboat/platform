@@ -71,3 +71,29 @@ resource "github_repository_environment_deployment_policy" "repository" {
   environment = github_repository_environment.repository[each.value.env_key].environment
   tag_pattern = each.value.pattern
 }
+
+resource "github_actions_variable" "repository" {
+  for_each = merge([
+    for repo_key, repo in var.repositories : {
+      for name, value in repo.variables :
+      "${repo_key}/${name}" => { repo_key = repo_key, name = name, value = value }
+    }
+  ]...)
+
+  repository    = github_repository.repository[each.value.repo_key].name
+  variable_name = each.value.name
+  value         = each.value.value
+}
+
+resource "github_actions_secret" "repository" {
+  for_each = merge([
+    for repo_key, repo in var.repositories : {
+      for name, value in repo.secrets :
+      "${repo_key}/${name}" => { repo_key = repo_key, name = name, value = value }
+    }
+  ]...)
+
+  repository      = github_repository.repository[each.value.repo_key].name
+  secret_name     = each.value.name
+  value_encrypted = each.value.value
+}

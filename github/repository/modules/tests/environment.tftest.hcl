@@ -151,3 +151,93 @@ run "creates_no_environment_by_default" {
     error_message = "No deployment policy must exist when environments is not declared."
   }
 }
+
+run "creates_declared_variables_and_secrets" {
+  command = plan
+
+  variables {
+    repositories = {
+      platform = {
+        name        = "platform"
+        description = "Platform"
+        visibility  = "public"
+        features = {
+          issues   = true
+          wiki     = false
+          projects = true
+        }
+        variables = { APP_ID = "12345" }
+        secrets   = { APP_PRIVATE_KEY = "Y2lwaGVydGV4dA==" }
+      }
+    }
+  }
+
+  assert {
+    condition     = keys(github_actions_variable.repository) == ["platform/APP_ID"]
+    error_message = "One variable must exist per declared repository and name."
+  }
+
+  assert {
+    condition     = github_actions_variable.repository["platform/APP_ID"].repository == "platform"
+    error_message = "The variable must target the declared repository."
+  }
+
+  assert {
+    condition     = github_actions_variable.repository["platform/APP_ID"].variable_name == "APP_ID"
+    error_message = "The variable must use the declared name."
+  }
+
+  assert {
+    condition     = github_actions_variable.repository["platform/APP_ID"].value == "12345"
+    error_message = "The variable must use the declared value."
+  }
+
+  assert {
+    condition     = keys(github_actions_secret.repository) == ["platform/APP_PRIVATE_KEY"]
+    error_message = "One secret must exist per declared repository and name."
+  }
+
+  assert {
+    condition     = github_actions_secret.repository["platform/APP_PRIVATE_KEY"].repository == "platform"
+    error_message = "The secret must target the declared repository."
+  }
+
+  assert {
+    condition     = github_actions_secret.repository["platform/APP_PRIVATE_KEY"].secret_name == "APP_PRIVATE_KEY"
+    error_message = "The secret must use the declared name."
+  }
+
+  assert {
+    condition     = github_actions_secret.repository["platform/APP_PRIVATE_KEY"].value_encrypted == "Y2lwaGVydGV4dA=="
+    error_message = "The secret must use the declared ciphertext."
+  }
+}
+
+run "creates_no_variables_or_secrets_by_default" {
+  command = plan
+
+  variables {
+    repositories = {
+      dotfiles = {
+        name        = "dotfiles"
+        description = ""
+        visibility  = "public"
+        features = {
+          issues   = true
+          wiki     = false
+          projects = true
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = length(github_actions_variable.repository) == 0
+    error_message = "No variable must exist when variables is not declared."
+  }
+
+  assert {
+    condition     = length(github_actions_secret.repository) == 0
+    error_message = "No secret must exist when secrets is not declared."
+  }
+}

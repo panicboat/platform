@@ -32,7 +32,7 @@ variable "github_token" {
 }
 
 variable "repositories" {
-  description = "Map of repository configurations. visibility must be one of: public, private, internal"
+  description = "Map of repository configurations. visibility must be one of: public, private, internal. secrets values must be ciphertext from gh secret set --no-store"
   type = map(object({
     name                             = string
     description                      = string
@@ -44,6 +44,8 @@ variable "repositories" {
       projects = bool
     })
     environments = optional(map(object({ deployment_tag_patterns = list(string) })), {})
+    variables    = optional(map(string), {})
+    secrets      = optional(map(string), {})
   }))
 }
 
