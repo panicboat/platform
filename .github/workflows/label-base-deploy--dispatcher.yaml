@@ -13,7 +13,7 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
-    uses: panicboat/.github/.github/workflows/reusable--label-base-deploy--dispatcher.yaml@8b7584f3294fd588e49f7f652cfb1b09a3aa6611 # v0.3.3
+    uses: panicboat/.github/.github/workflows/reusable--label-base-deploy--dispatcher.yaml@5cdc9877edabfc6f69bf8c8a339ac8f2f57a7cc3 # v0.3.4
     with:
       app-id: ${{ vars.APP_ID }}
     secrets:
