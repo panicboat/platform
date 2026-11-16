@@ -14,7 +14,7 @@ jobs:
   release-please:
     permissions:
       contents: read
-    uses: panicboat/.github/.github/workflows/reusable--release--please.yaml@b4045cb25420c5b596ad99c7e51106062feec5ab # v0.3.1
+    uses: panicboat/.github/.github/workflows/reusable--release--please.yaml@5cdc9877edabfc6f69bf8c8a339ac8f2f57a7cc3 # v0.3.4
     with:
       app-id: ${{ vars.APP_ID }}
     secrets:
