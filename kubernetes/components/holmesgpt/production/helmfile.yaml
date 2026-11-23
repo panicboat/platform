@@ -9,6 +9,6 @@ releases:
   - name: holmesgpt
     namespace: holmesgpt
     chart: robusta/holmes
-    version: "0.46.0"
+    version: "0.47.0"
     values:
       - values.yaml.gotmpl
